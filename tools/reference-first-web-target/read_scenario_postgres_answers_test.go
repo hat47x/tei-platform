@@ -61,6 +61,19 @@ func TestWebReadAndCLIReadAgreeOverRealPostgres(t *testing.T) {
 	if len(result.OrderLineRows) == 0 {
 		t.Fatal("the Web read observed no order lines")
 	}
+	// The order-line rows must have come from PostgreSQL, not from the fixed
+	// fixture: the fixture's line numbers are 1 and 2 for every order, and this
+	// seed's order 1001 also holds 1, 2 and 2, so the discriminating check is
+	// the row count and the runtime binding the runner reported.
+	orderLinesBindingFound := false
+	for _, binding := range result.RuntimeBindings {
+		if binding.Pattern == "order_entry.order_lines" && binding.Provider == "postgres" {
+			orderLinesBindingFound = true
+		}
+	}
+	if !orderLinesBindingFound {
+		t.Fatalf("the order-line read did not report a PostgreSQL runtime binding: %+v", result.RuntimeBindings)
+	}
 
 	rawExpected, err := os.ReadFile(filepath.Join(fixtures, "expected-before.json"))
 	if err != nil {
