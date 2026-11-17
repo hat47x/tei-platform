@@ -497,7 +497,7 @@
 - [再開（closed→open）に訂正能力を要求する確認（2026-11）](XTEA_LOWCODE_PERIOD_REOPEN_CORRECTION_2026-11.md)
 - [期間の要件を `tei view` へ投影する確認（2026-11）](XTEA_LOWCODE_PERIOD_REQUIREMENT_VIEW_2026-11.md)
 - [為替の粒度宣言と採番例の行データの設計判断](XTEA_LOWCODE_OPEN_DECISIONS_2026-11.md)（現行コードの読解に基づく設計判断。粒度宣言は任意のまま欠落を観測し、採番の行はテストフィクスチャに置く。判断は仮承認）
-- [改ページの見出し繰返しが宣言されるが効いていない](XTEA_LOWCODE_REPEAT_HEADER_INERT_2026-11.md)（`repeat-header`は受理・投影されるが描画に効かない。D-9の変種。修正は未了）
+- [改ページの見出し繰返しが宣言されるが効いていない](XTEA_LOWCODE_REPEAT_HEADER_INERT_2026-11.md)（`repeat-header`は受理・投影されるが描画に効かなかった。D-9の変種。**2026-11-17のやり直しで投影の中は直した**：`page-break N repeat-header`で明細をN行ごとの複数の表に分け、2面目以降も`<thead>`を出す。プレースホルダ数は`Rows`から切り離した。実データの行数への反映（`MappedResult`→印刷）は未実装）
 - [XF110の部分成功とpartial_successの接続](XTEA_LOWCODE_PARTIAL_SUCCESS_CONNECTION_2026-11.md)（設計判断の候補。`PartialError`は実在するがCommand境界でコードを返さない。実装は未了）
 - [部分成功をCommand境界から報告する](XTEA_LOWCODE_PARTIAL_SUCCESS_REPORTED_2026-11.md)（参照実装の試験記録。`COMMAND_PARTIAL_SUCCESS`を効果不明より先に報告。何が残っているかは未実装）
 - [XF310の一確定で3種の変更を載せる](XTEA_LOWCODE_XF310_MIXED_CHANGES_2026-11.md)（参照実装の試験記録。メモリアダプタが子を適用していなかった欠陥を修正。他のStore実装は未確認）
