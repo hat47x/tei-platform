@@ -63,11 +63,11 @@ jobs:
           const bundle = readFileSync(root + "dist/main.js", "utf8");
           const contract = JSON.parse(readFileSync(root + "inspection-reader.contract.json", "utf8"));
           const digest = "sha256:" + createHash("sha256").update(JSON.stringify(contract)).digest("hex");
-          if (!bundle.includes("// inspection-reader.generated.ts\\n"))
+          if (!bundle.includes("// inspection-reader.generated.ts\n"))
             throw Error("PRODUCT_BUNDLE_MISSING_GENERATED_READER");
           if (!bundle.includes('contractDigest: "' + digest + '"'))
             throw Error("PRODUCT_BUNDLE_STALE_READER_CONTRACT");
-          if ((bundle.match(/function readInspection\\d*\\(/g) ?? []).length !== 1)
+          if ((bundle.match(/function readInspection\d*\(/g) ?? []).length !== 1)
             throw Error("PRODUCT_BUNDLE_DUPLICATE_INSPECTOR_READERS");
           if (!bundle.includes("teiInspectionReaderCalls") || bundle.includes("seedReadInspection"))
             throw Error("PRODUCT_BUNDLE_READER_USE_NOT_OBSERVABLE");
