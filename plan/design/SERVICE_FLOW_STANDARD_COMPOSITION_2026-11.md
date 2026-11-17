@@ -614,3 +614,63 @@ DPC-01〜15を置き換えず、次の一因子反証を追加する。いずれ
 初回DPC-16aの独立Expectedは「D1に4行を挿入し、`members_first_page`が2行を返す。同じ2行についてCallerが`complete`を要求しても、`seatUnique`を`satisfied`と返さない」とする。続くDPC-16bは`personUnique=not-satisfied`と`seatUnique=undecided: relation-partially-read`を同時に確認する。DPC-16cは異なるScope／Bindingの根拠を流用しないこと、DPC-16dは0行だけで全件性を証明しないことを確認する。**比較対象は同じ実SQLの行結果とし、Coverage申告・資格だけを変える**。
 
 全件保証を静的に判定できない一般SQL、JOIN／DISTINCT／集計による粒度変更、複数ページのSnapshot不整合、認可による可視範囲の縮小は初回の合格対象にしない。限定Queryで成立した証拠を一般SQLや他Providerへ流用せず、必要ならQuery契約側に不足する宣言とその検証方法を別Issueへ切り出す。独立Expectedは#1180／#2514、実PostgreSQL・通常CLI・独立Consumerは#2586／#4496、StudioのSource往復は別検収のまま維持する。
+
+## 13. ノードモデル導入の最小契約：定義・出現・配線・表示を分ける（2026-11-17）
+
+### 13.1 ノードは業務要素の別名ではなく、ある構成内での出現である
+
+同じOperationを別のProcessから使う場合や、一つのProcessで二度使う場合、**Operation定義は一つでもNode出現は複数**になる。逆に、Graph上の一つの箱が複数の定義を束ねて見せる場合、その箱を一つの意味Subjectへ縮約しない。これらを区別できることを、ノードモデル導入の最初の受入条件とする。
+
+| 識別対象 | 役割 | 識別・版の最小要件 | してはならないこと |
+| --- | --- | --- | --- |
+| Definition／Semantic Subject | Data・Function・Rule・Operation・Pluginなど、参照先の意味定義 | 既存の安定ID、選択済みSource／Meaning版 | 表示名をIDとする。Flowごとに定義をコピーする |
+| Node occurrence | Graph／Processのどこに、その定義をどう配置したか | 所属Graph、出現ID、参照先Definition、出現固有の束縛 | 同じDefinitionの二出現を一つに潰す |
+| Port occurrence／Binding | どの出現の、どの入出力・Field・構造Pathを使うか | Node出現、契約Port／Role、型付きPath、必要なSnapshot／Scope | Port名やField名だけで同一とみなす |
+| Semantic edge occurrence | どの二つのPort／出現を、何の関係で結ぶか | **独立したEdge ID**、向き、Role、多重性、Source／Revision | 同端点・同labelの二辺を重複として消す |
+| View glyph／segment | Canvas上の箱、線分、折り畳み、グループ | View内の表示ID、Layout、Projection版、損失情報 | 座標や表示IDをMeaning ID・Writer Targetに転用する |
+
+上表は**既存の標準Graph・Subject・Source Index・契約情報の投影を検収するための項目**である。新しいCoreの\`Node\`型、共通ID採番器、Graph Registry、独自Compilerの採用案ではない。Source側に安定出現ID／Edge IDが存在しない場合は「未確定」として表示専用に留める。描画時の一時IDを恒久IDへ偽装しない。
+
+### 13.2 同じグラフを三つの問いに使う
+
+**構造の問い**では、Node／EdgeのID、向き、多重性、親Graph、入出力Pathと型が保存されているかを検査する。**意味の問い**では、接続先が要求するRole、grain、key、cardinality、time、NULL／not-fetched、complete、順序、Effectを、供給元の保証と照合する。**現在の利用資格の問い**では、Source・選択Plugin／Operator・Snapshot・Grant・実Builder／Provider・Attemptが実際に一致するかを検査する。
+
+「型が合う」「図上でつながる」「Generatorが生成できる」「実Callが成功した」を同じBooleanにしない。Data Edge、Control Edge、Event Edge、Effect Edge、Source／Evidence Link、Plugin bindingは表示部品を共有しても、成立条件とOwnerは共有しない。Edge Roleが不明なら、実行順序・権限・更新操作を導かない。
+
+Whole Recordをつなぐ場合、Field単位につなぐ場合、明示Adapterを挟む場合は、同じ構造Pathと要求を比較できるようにする。Adapterの存在は型の変換候補を示すに過ぎず、情報損失のない変換、未取得の補完、Provider実装の選択、外部への開示許可を証明しない。AggregationやGraph→Treeのような非単射投影はread-onlyを既定とする。
+
+### 13.3 最初のread-only投影が返すべき内容
+
+新しい永続モデルを作る前に、既存CLI／Inspectorから得られるSubject／Source Index／Operation／Plugin情報を使い、**対象を限定した照合結果**をJSONとStudio Node Viewへ渡す。必要な項目は次のとおり。
+
+| 出力項目 | 何を示すか | 不足した場合 |
+| --- | --- | --- |
+| \`graphRef\`・\`subjectRef\`・\`selection\` | 読み取ったGraph／SubjectとSource／Reader／Selection版 | 別版への合流や現在性を推測しない |
+| \`nodes\`（出現ID・定義参照・Source locator） | 表示する個々の出現とその出典 | 同名ノードを併合しない。位置不明なら逆編集不可 |
+| \`ports\`（出現・契約・Path・要求／保証） | 接続点と型付き関係、明示された必要条件 | 未指定を\`any\`や\`complete\`に補わない |
+| \`edges\`（独立ID・両端・向き・Role） | 多重Edgeを含む実際の関係 | ID重複は診断、ID未確定は編集対象外 |
+| \`qualifications\`・\`losses\`・\`diagnostics\` | Source読取、意味候補、構造適合、実利用、開示・編集可否と失われた情報 | 不明をPASSと表示しない |
+
+上記のJSON項目名は**read-only応答の検討用ラベル**であり、公開API schemaとして固定しない。既存の\`InspectSubject\`、Source Index、Data Context、Plugin Lock、RunPlan／Traceのどこで情報が確認できるかを先に採取し、不足項目だけを元Ownerへ返す。一般的な情報が得られない場合でも、部分的なNode Viewは作れる。ただし当該Graph全体を読み終えたと宣言しない。
+
+### 13.4 四つの最小反例と編集の停止線
+
+| ID | 入力・変更 | 独立Expectedとして必要な判別 | 既存Owner |
+| --- | --- | --- | --- |
+| **NM-01** | 同じlabelのNode二個、同じ両端・同じlabelの有向Edge二本。別のEdgeが同じIDを再利用する負例も用意 | Node出現二個とEdge二本を独立に保持。重複Edge IDは曖昧なSourceとして拒否し、先勝ち・後勝ちで選ばない | #1124／#2497／#2514。REA外部取込 #3394 |
+| **NM-02** | 一つのOperation定義を二つのProcess出現から参照し、一方だけField束縛を変える | Definition IDは一つ、出現とPort Pathは二つ。変更影響は当該束縛へ限定し、他方の出現を書き換えない | #2507／#2620／#4198 |
+| **NM-03** | Whole Record→二Field投影→Adapter→Consumer。未取得FieldとNULL、実Readが2/4行の差を含む | 値・型の一致と、必要なgrain／complete／Source／開示の一致を別判定。失った情報を推定で補完しない | #2497／#2506／#951／DPC-16a |
+| **NM-04** | 意味Graphは不変でLayoutだけ変更。続いてSourceをA→B→A、PluginまたはScopeを変更 | LayoutだけならMeaning／実Artifact再生成を要求しない。A→B→Aで過去のSelection／Review／実行資格を自動復活させない | #1124／#2600／#4198／#4583 |
+
+NM-01は既存のREA候補取込にあるEdge identityの実例を参照できる。ただし外部観測のEdgeと受理済みSemantic Edgeは別物であり、外部取込の成功をGraph編集・Owner受理の証拠にしない。各Expectedは既存#1180／#2514のScenarioに置き、ここに第二のExpected Storeを作らない。
+
+**編集の停止線**は一意な対象出現、元Sourceの現在Revision、意味を失わない局所逆写像、既存Writerの操作対応、現在の権限がそろう地点である。線のドラッグ・Port接続変更・AI提案は、最初は差分候補とSourceへのnavigationに留める。既存AcceptanceでPreview→確認→適用→独立再Readまで検収できた操作だけを編集可能にする。
+
+### 13.5 最初の実装Packetと採否
+
+1. **N0／NM-01**：既存Graph／REA／Sourceの固定Fixtureを使い、Definition／Occurrence／Port／Edge／Viewの識別対応と多重Edge保持をread-onlyで検査。まず実Sourceの読取・同一版の照合を記録する。
+2. **N1／NM-02・03**：現行Operator／Data Context／Pluginの要求と保証を二出現・Field単位で照合し、合格・不適合・材料不足を区別する。未知の意味契約を新型で埋めない。
+3. **N2／限定実現**：既存Source→選択Operator／Generator→実Builder入力→Artifact→通常CLI／独立Consumerに、同一Meaningの一つのNode経路を接続する。実Provider／Effectの資格は別票とし、新しいRunnerを作らない。
+4. **N3／Studio**：同一SubjectをProperty／Table／Graph／Node View／Source間で選択し、Pin／Dirty Buffer／保存済みSource／Accepted Meaningを別の状態として検査。既存Stage1→Stage2実WindowsのP0を維持する。逆編集は前段の一意Slotに限定する。
+
+**採否判断**：NM-01〜04で既存のData／Graph／Role／Operation／Source Indexだけでは保持できない事実が特定されたときに限り、最小の追加契約を担当OwnerとADRへ提案する。新Node DSL、新汎用Graph Runtime、第二Resolver／Host／Evidence Engineを導入しない。ここまでの記述は計画であり、NM試験の実行・正式契約の採用・Owner意味受理を意味しない。
