@@ -125,6 +125,10 @@ func TestShippedWebPageShowsRealPostgresRowAnswers(t *testing.T) {
 	if lines == "" {
 		t.Fatalf("the order-lines section could not be isolated")
 	}
+	// Counts alone would also pass if a failing answer moved to another line.
+	// The primary key, not the display position or duplicate line_number, is
+	// the identity that binds each displayed value to its Rule answer.
+	requireRenderedOrderLineAnswersByPrimaryKey(t, lines)
 	if got := strings.Count(lines, `<span class="pill">not-satisfied</span>`); got != 1 {
 		t.Fatalf("not-satisfied answer pills in the order-lines section=%d, want exactly the one seeded zero quantity", got)
 	}
@@ -139,6 +143,84 @@ func TestShippedWebPageShowsRealPostgresRowAnswers(t *testing.T) {
 	}
 	if !strings.Contains(page, "sales.order.lines.line_number_unique not-satisfied") {
 		t.Fatalf("the witnessed duplicate did not refute uniqueness on the page")
+	}
+}
+
+// requireRenderedOrderLineAnswersByPrimaryKey checks the same HTML response
+// the shipped Web entry point returned. The expected primary keys, values and
+// decisions were written from seed.sql and the declared Rules, not calculated
+// from the implementation or from the response. Two lines deliberately have
+// line_number=2; neither that number nor "Line N" identifies a business row.
+func requireRenderedOrderLineAnswersByPrimaryKey(t *testing.T, lines string) {
+	t.Helper()
+	parts := strings.Split(lines, "<p><strong>Line ")
+	if got := len(parts) - 1; got != 3 {
+		t.Fatalf("rendered %d order-line blocks, want the three independently seeded rows", got)
+	}
+	type expectedLine struct {
+		quantity   string
+		lineNumber string
+		quantityOK string
+	}
+	expected := map[string]expectedLine{
+		"1": {quantity: "2.000", lineNumber: "1", quantityOK: "satisfied"},
+		"2": {quantity: "0.000", lineNumber: "2", quantityOK: "not-satisfied"},
+		"3": {quantity: "5.000", lineNumber: "2", quantityOK: "satisfied"},
+	}
+	valueOf := func(block, attribute string) (string, bool) {
+		marker := "<code>" + attribute + "</code></th><td>"
+		start := strings.Index(block, marker)
+		if start < 0 {
+			return "", false
+		}
+		tail := block[start+len(marker):]
+		end := strings.Index(tail, "</td>")
+		if end < 0 {
+			return "", false
+		}
+		return strings.TrimSpace(tail[:end]), true
+	}
+	seen := make(map[string]bool)
+	for _, block := range parts[1:] {
+		key, ok := valueOf(block, "sales.order_line.order_line_id")
+		if !ok {
+			t.Fatal("rendered line lacks its declared primary-key attribute")
+		}
+		want, exists := expected[key]
+		if !exists || seen[key] {
+			t.Fatalf("rendered unknown or repeated order-line primary key %q", key)
+		}
+		seen[key] = true
+		for _, check := range []struct {
+			attribute string
+			want      string
+		}{
+			{"sales.order_line.quantity", want.quantity},
+			{"sales.order_line.line_number", want.lineNumber},
+		} {
+			got, present := valueOf(block, check.attribute)
+			if !present || got != check.want {
+				t.Fatalf("order line %s: %s=%q (present=%t), want %q", key, check.attribute, got, present, check.want)
+			}
+		}
+		for _, rule := range []struct {
+			id     string
+			answer string
+		}{
+			{"sales.order_line.quantity_positive", want.quantityOK},
+			{"sales.order_line.line_number_positive", "satisfied"},
+		} {
+			fragment := "<code>" + rule.id + "</code> <span class=\"pill\">" + rule.answer + "</span>"
+			if !strings.Contains(block, fragment) {
+				t.Fatalf("order line %s does not carry the independent answer %s=%s", key, rule.id, rule.answer)
+			}
+		}
+		if count := strings.Count(block, "<p class=\"status-line\">"); count != 2 {
+			t.Fatalf("order line %s has %d rule answers, want exactly two", key, count)
+		}
+	}
+	if len(seen) != len(expected) {
+		t.Fatalf("rendered %d distinct primary keys, want %d", len(seen), len(expected))
 	}
 }
 
