@@ -65,6 +65,28 @@ type webHostWiring struct {
 	wrapCommandRead func(readScenarioRunner) readScenarioRunner
 }
 
+// bindCommandToSelectedRead gives the HTTP read and Command validation the
+// same selected runner. Row indices only identify positions within each Run;
+// sharing a runner prevents a different fixture/provider from being silently
+// chosen for Submit. It does not make two separate Run calls one DB snapshot.
+func bindCommandToSelectedRead(
+	command *referenceCommandScenarioRunner,
+	selected readScenarioRunner,
+	wrap func(readScenarioRunner) readScenarioRunner,
+) error {
+	if command == nil || selected == nil {
+		return fmt.Errorf("selected Web read and Command are required")
+	}
+	if wrap != nil {
+		selected = wrap(selected)
+		if selected == nil {
+			return fmt.Errorf("Command read wrapper removed the selected Web read")
+		}
+	}
+	command.read = selected
+	return nil
+}
+
 // runCombinedWebTargetWithHost is runCombinedWebTargetWithEffectGrant plus the
 // Host's optional wiring.
 func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.Reader, effectReader HostEffectGrantReader, wiring webHostWiring, args []string) error {
@@ -197,11 +219,11 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 			}
 		}
 		command.submitStore = submitStore
-		if wiring.browse != nil {
-			command.read = orderRead
-		}
-		if wiring.wrapCommandRead != nil {
-			command.read = wiring.wrapCommandRead(command.read)
+		// The read endpoint and the Command's validation must use the same
+		// selected read source. A future PostgreSQL-backed read must never
+		// leave the Command silently evaluating a synthetic fixture instead.
+		if err := bindCommandToSelectedRead(command, orderRead, wiring.wrapCommandRead); err != nil {
+			return err
 		}
 		commandScenario = command
 	case core.MustCanonicalID("repair_intake"):
