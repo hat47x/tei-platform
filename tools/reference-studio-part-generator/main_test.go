@@ -196,9 +196,9 @@ func TestChildWritesOnceAndReportsWhatItWrote(t *testing.T) {
 // a real Workspace, with the effect the contract expects.
 func TestContractNamesWhatTheRealOperationReturns(t *testing.T) {
 	var contract struct {
-		Operation struct{ Effect string }
-		Response  map[string]string
-		Catalog   map[string]string
+		Operation      struct{ Effect string }
+		Response       map[string]string
+		Catalog        map[string]string
 		RequiredLimits map[string]string
 	}
 	if err := json.Unmarshal(read(t, contractFile), &contract); err != nil {
