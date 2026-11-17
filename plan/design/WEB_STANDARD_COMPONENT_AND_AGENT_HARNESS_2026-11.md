@@ -501,3 +501,35 @@ WEB-P1a-1で新設した `inspector-presentation.ts` をWorkbenchへ導入する
 この段階分割によって、候補を生成する技術的な可否と製品がその候補を採用する判断を分離できる。主線は引き続き、非Plugin StudioのStage1→Stage2セルフビルド（#2831／#4583）と、通常CLIの実Provider Readから独立Consumerへの受領（#2586／#4495）。Candidate専用Runtime、別Host、UI Registry、第二のSource正本、独立Test Runnerは導入しない。
 
 **既存の生成Inspector Readerは別の停止線である。** 直前の§21.3が記録した`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`の失敗（契約Digestを持つ生成Readerが埋込JSにない問題）は、この候補生成だけでは解決しない。候補の型検査・bundle成功を、生成Readerの実利用や正式Build Intent／Consumer受領へ昇格させない。次のWEB-P1a-2bは既存生成器によるReader組込みと新Presenterの利用をそれぞれ観測し、同一HEADで成立させる。
+
+## 23. 生成Inspector Readerの同値性を、正規Workbench接続より先に検収する（2026-11-17）
+
+### 23.1 既存Readerと生成Readerの契約差分
+
+main統合済みのPR #5303はreadInspectorPresentationによる「検証対象と表示先の一体化」、PR #5306は旧WORKBENCH_NATIVE_CLOSUREを保存した候補Bundleの生成までを成立させた。新しい正規Workbenchの実表示は、まだ受領されていない。
+
+現行のreference/tei-studio-workbench/presentation.tsと、inspection-reader.contract.json・builder-sources/inspection-reader-v1.transform.jsonから生成したinspection-reader.generated.tsを照合すると、次の差が残る。
+
+| 条件 | 手書きReader | 生成Reader | 受入判断 |
+| --- | --- | --- | --- |
+| 読取専用、qualified Subject、World・Source Index版 | 検証 | 検証 | 正負例で同値を検査 |
+| canonicalの存在と明示NULL | 保持 | 保持 | NULLを欠損・空集合へ縮約しない |
+| sourceStatus | 文字列を必須とする | 欠損をunknownに補完し、不正型も文字列化 | 現行の拒否条件を維持する |
+| authorityLimits | 配列・文字列・必須4制限を検査し表示用文言へ変換 | Contractにも生成Readerにも存在しない | 制限欠落を拒否し、Hostの制限を保存する |
+| 生成部品の使用観測 | 対象外 | contractDigestと呼出回数Marker | 実使用の証拠と意味同値の証拠を分ける |
+
+ここでは単なるimport変更を行わない。Go側の「生成ReaderがBundleに含まれること」という検査に合わせて、手書きReaderの制限検査を削除したり、生成側が不正応答を成功扱いしたりする修正は禁止する。表示ラベル変換はPresenterへ置いてもよいが、必要な検証と制限の伝達を、一つの実行経路で保証する。
+
+### 23.2 WEB-P1a-2bを三つの検収段階に分ける
+
+**W-R：Reader契約の同値化。** 既存Contractと決定論的Transformを更新し、sourceStatusの型、authorityLimitsの必要条件、NULL・partial・unfetchedの保持を生成TSでも満たす。同一Fixtureで、正常、異Kind、旧fingerprint、制限欠落、不正sourceStatus、明示NULL、部分取得を手書き・生成の両経路へ通す。Source byte・Transform版・生成Digestを同一Attemptで照合する。同値でなければ次へ進まない。
+
+**W-B：新しいSource Closureと正規Bundle。** W-Rを通ったReaderと一体型Presenterを、現在の選択・応答laneを維持して正式Workbenchへ接続する。旧Pinと過去の検収記録はそのまま保存し、新HEADのSource／Toolchain／生成入力で別資格を作る。Node24の試験・型検査・正規esbuild、生成Readerの実importと使用Marker、重複Reader不在、JS・HTML・CSS・第三者通知のWails埋込byte一致を確認する。古い固定指紋の置換やテスト緩和で合格としない。
+
+**W-C：実Consumerの独立受領。** 通常Studioと生成Studioを別々に起動し、同名異Kind、Workspace A→B→A、Focus／Pinの非干渉、古い返信、partial・未取得・制限欠落を実DOMで検査する。実Windows WebView2と、Stage1がStage2を自ら生成した証拠はさらに別資格とする。表示できたことをSource Open、現在Grant、Meaning受理、HTTP開示、実Provider Effectへ昇格させない。
+
+### 23.3 Webと他Targetへ返す設計判断
+
+標準UI、Web Components、React等の独自UI、Wails、CLI、HTTPは共通Operationの異なるConsumerである。Web ComponentsやDOMを意味の正本にせず、Node／Process Flowの表示Occurrenceと型付きPort／実Callを混同しない。#997／#1824がUIとConsumer、#951／#1158／#1251がWails非依存Operationと公開Adapter、#3503／#3278がGraph・Plugin接続、#3509がB2Cの完全Headless・Runtime-zeroの逃げ道、#1180／#2514が独立Expectedをそれぞれ扱う。HTTP公開ではローカルPresenterの値を無条件に返さず、Server側のAudience／Disclosure／現在Grantを独立に確認する。
+
+この節は、実コードの比較から成熟した受入設計である。**W-R／W-B／W-Cは新規実行・Owner受理とも未実施**。非Plugin StudioのStage1→Stage2実Windows（#2831／#4583）と通常CLI実Provider Read（#2586／#4495）のP0を変更せず、新Host・第二Runner・専用Registry・Hard Gateを設けない。
