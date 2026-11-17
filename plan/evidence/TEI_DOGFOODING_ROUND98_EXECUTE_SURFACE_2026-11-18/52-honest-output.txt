@@ -1,0 +1,12 @@
+The successful run prints its own limits next to its claim:
+
+  mode: reference (no durable effects)
+  committed: true (reference unit of work)
+  persisted: false (persistence: not-applicable, durability: none)
+  difference-check: not observed (this executor does not enumerate its operations)
+
+JSON also carries appliedUnobserved: true and authorizationMode:
+reference-allow-all.
+
+"committed: true" alone could be misread as durable; the same output refuses
+that reading on the next line. Not a defect.

@@ -1,0 +1,13 @@
+Systematic sweep of the "closed vocabulary that does not name its set" class:
+
+  'valid values are' in non-test code            -> 21 (the good pattern)
+  'unknown ...' without a value list             -> 3
+
+Of the 3:
+  UNKNOWN_APPLICATION_PACKAGE_REQUIREMENT
+    the parser already names them:
+    "package requires semantic or relation"
+  UNKNOWN_CROSS_REF_FROM / UNKNOWN_CROSS_REF_TO
+    a cross-reference target is any Subject, so there is no closed set to print.
+
+Conclusion: this class is exhausted; no new instance to fix.
