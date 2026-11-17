@@ -2,6 +2,9 @@
 
 ## 目的
 
+- [ノードモデル導入：定義・出現・配線・表示を分ける最小契約](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#13-ノードモデル導入の最小契約定義出現配線表示を分ける2026-11-17)：標準Data／Graph／Operation／Process／PluginとSource Indexを正本とし、Node Viewは**定義ID・Node出現ID・Port束縛・独立Edge ID・表示IDを区別する投影**として導入する。同名二Node／平行Edge／一Operationの複数出現、Whole／Field／Adapterの情報損失、Layout変更とA→B→Aの失効をNM-01〜04で検収する。Result-first／Node-firstは同じ意味定義へ接続し、実現方式P（直接解釈）／G（Go生成）／D（DB・外部Provider委譲）と、Source・Builder・実Call・Effectを別資格として扱う。最初の差分は既存Reader／CLIを使うread-only N0と実現N2への必要辺であり、新Node DSL／Graph Runtime／Host／第二意味正本は作らない。#2497/#2506/#2620/#1124/#4198/#2514へ分担し、**通常CLI→実Provider→独立ConsumerとStudio Stage1→Stage2 Windows実再入の並行P0は変更しない**（設計統合、追加の製品試験は未実施）。
+
+
 - [DB横断適合とNode・REA・Batchの実行経路](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#8-他チャット統合nodereabatchpluginをdb実行へ接続する2026-11-17)：Node Portの型適合とDB実行資格、REAの業務関係と物理参照、Batchの粒度・部分取得・Lineage、Studio RendererとCurrent Grantを分離する。DPC-N/R/B/W/Eの独立Expected候補を既存Ownerへ引き渡す。**直近はSQLite ReaderのCoverage偽申告を製品Callerで拒否し、通常CLIの実PostgreSQL一Functionを通す**。NoSQL実接続・実Job・Studio E2Eは未実施。新Engine・第二正本・セルフビルドP0の追加Hard Gateは設けない。
 
 - [TEI自身の要件を三要素Methodと型付きインスタンスでレビューする](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md#33-tei自身の要件全体をモデルとしてレビューする三要素method標準構造インスタンスx-tea移植2026-11-17設計統合)：TEIの標準Data/Role/Facet、Function/Process、標準データ構造・標準表現型・Mappingを**Meta→Model→型付きInstance→複数Projection**で見渡し、要件索引からSource・実装・試験へ追跡する。原典三要素はCore固定でなくMethod Profile（RQ-031）。原典の自由なInstance TextとTEI型付き例、表示Occurrenceと正式Relation/Identity、説明例と独立Expected、Source再投影と実行・受理を分離する。XM-0/1/2・XD-0/1・SELFを#1124/#1131/#1031/#2514/#2831へ割り当て、SDM-01〜12（NOT RUN）を既存Expectedに引き渡す。**最初はread-onlyな同名二ノード／平行辺、NULL・欠損・空集合・未取得、三要素Coverage負例**から検収し、GUI編集・Driver/DB・実Wailsを別段階とする。Studio Stage1→Stage2実Windowsセルフビルドと通常CLI実Providerの最優先P0には新たなHard Gateを追加しない（docs-only、製品受理なし）。
