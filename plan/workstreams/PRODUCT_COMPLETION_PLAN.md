@@ -941,6 +941,10 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 
 [REA一Function縦断設計§35](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)に基づき、外部Reverse Engineer Anythingを製品の実行基盤・必須解析入口とはしない。主な移行対象はソース・SQL/DB Schema・業務モデル・画面／帳票・設定・API・実入出力であり、これらを既存Reader／Source Index／三要素／Process／標準GraphへEvidence付きで投影して、Owner Review→生成Go／実Provider→独立Consumerの順に検証する。REAのNode/RelationやPartial/Unknown、元byte・版・出典の保持方法は共通規律として採用する一方、Ghidra/Hopper/IDA等の深いバイナリ解析は、ソースがなく代替できない証拠が必要な例外に限る。既存REAの互換回帰を維持し、解析器の機能数拡大をP0とはしない。通常CLI実PG Function ReadとStudio Stage1→Stage2 Windowsは最優先のままとする。
 
+### 一Function移行Reviewの負例と実装の入口（2026-11-17）
+
+[REA縦断設計§39](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)のMR-01〜MR-10を独立Expectedとする。まずSource Indexによる一原文Rangeの読取・同名別Identity・改版／A→B→A・部分取得／権限不足を固定する。三要素CRUDの明示／派生矛盾、外部REAの静的Relation、実Effect／Scope、Studioの原文Openはそれぞれ既存Ownerの受入へ接続する。表示成功をOwner受理、生成Goの実消費、通常CLI実PG Read、Windows Native受領へ昇格させない。
+
 ### 一Function移行の初回対象を決める停止条件（2026-11-17）
 
 [REA縦断設計§37](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)に従い、初回は旧Function・旧Data・操作入口の原本とSource Revisionを特定し、TEIのQualified ID候補との対応を別列でReviewする。X-TEAの合成`sales.order.submit`は旧原典との対応・正式commit・副作用防止が未確認のため、M-05以降の合格例として扱わない。原本が特定できなければ`blocked`で止め、実Read・生成Go・Studio Native受領の成功を推定しない。実PG Function Read #2586とWindows Stage1→Stage2 #2831は並行する独立P0であり、外部REAの採用は任意とする。
