@@ -164,7 +164,7 @@ jobs:
           set -euo pipefail
           # A DSN that is empty would make every test below skip, and a skipped
           # test exits 0, so the empty case is rejected before the run.
-          for key in TEI_COMMAND_PG_DSN TEI_STANDARD_CRUD_PG_DSN TEI_EXPECTED_STATE_PG_DSN TEI_WEB_SCOPED_PG_DSN TEI_ORG_AXIS_PG_DSN TEI_VIEW_PG_DSN; do
+          for key in TEI_COMMAND_PG_DSN TEI_STANDARD_CRUD_PG_DSN TEI_EXPECTED_STATE_PG_DSN TEI_WEB_SCOPED_PG_DSN TEI_ORG_AXIS_PG_DSN TEI_VIEW_PG_DSN TEI_TEST_POSTGRES_DSN; do
             test -n "${!key:-}" || { echo "${key} is empty; the suites would skip" >&2; exit 1; }
           done
           log="$RUNNER_TEMP/go-test.log"
@@ -183,6 +183,8 @@ jobs:
           # Native as-of Query, isolated DB probes, and source/IR route contract must execute.
           go test -count=1 -v -timeout 10m -run '^(TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate|ExclusionConstraintCandidate|TwoWriterExclusionCandidate)OptIn|TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs)$' \
             ./internal/operations | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run 'TestPostgresStore|TestPostgresReserves|TestPostgresRefuses' \
+            ./internal/numberingpostgres | tee -a "$log"
 
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証
         shell: bash
@@ -222,6 +224,8 @@ jobs:
             'TestPGRuntimeStageUnknownTakeoverEndToEnd'
             'TestScopedPostgresAgainstIsolatedDatabase'
             'TestScopedTenantPostgresAgainstIsolatedDatabase'
+            'TestPostgresStoreStartsAtZero'
+            'TestPostgresRefusesAStaleVersion'
             'TestScopedPostgresDefaultOrderRevealsUnpublishedOrderedAt'
             'TestScopedTenantPostgresDefaultOrderRevealsUnpublishedOrderedAt'
             'TestOrgAxisAsOfActualPostgresOptIn'
