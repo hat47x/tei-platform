@@ -392,7 +392,7 @@ func TestProductSliceLoadsValidatesAndViews(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("print view exit=%d err=%v body=%s", code, err, printed.String())
 	}
-	if !strings.Contains(printed.String(), "@page") || !strings.Contains(printed.String(), "3行/ページ") {
+	if !strings.Contains(printed.String(), "@page") || !strings.Contains(printed.String(), "3行ごとに面を分ける") {
 		t.Fatalf("print output is not a print sheet: %s", printed.String())
 	}
 }

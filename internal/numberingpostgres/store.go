@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"tei/internal/numbering"
 
@@ -42,6 +43,9 @@ func Open(ctx context.Context, dsn, table string) (*Store, error) {
 	}
 	if table == "" {
 		return nil, fmt.Errorf("numbering store: postgres table name is required")
+	}
+	if quoteIdentifier(table) == "" {
+		return nil, fmt.Errorf("numbering store: postgres table name %q contains a double quote", table)
 	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -133,9 +137,15 @@ func (s *Store) Save(ctx context.Context, ruleID string, expectedVersion int, st
 }
 
 // quoteIdentifier quotes a table name so it is used as an identifier and never as a
-// value. A name with a double quote is refused rather than escaped, because the
-// caller is naming a table this store creates.
+// value.
+//
+// A name containing a double quote is refused: the name comes from host
+// configuration, and escaping it would make the resulting identifier depend on the
+// quoting rules rather than on the name the host wrote. Returning an empty string
+// makes the statement fail, which is the fail-closed outcome.
 func quoteIdentifier(name string) string {
-	quoted := `"` + name + `"`
-	return quoted
+	if strings.Contains(name, `"`) {
+		return ""
+	}
+	return `"` + name + `"`
 }

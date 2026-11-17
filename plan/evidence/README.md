@@ -501,7 +501,7 @@
 - [XF110の部分成功とpartial_successの接続](XTEA_LOWCODE_PARTIAL_SUCCESS_CONNECTION_2026-11.md)（設計判断の候補。`PartialError`は実在するがCommand境界でコードを返さない。実装は未了）
 - [部分成功をCommand境界から報告する](XTEA_LOWCODE_PARTIAL_SUCCESS_REPORTED_2026-11.md)（参照実装の試験記録。`COMMAND_PARTIAL_SUCCESS`を効果不明より先に報告。何が残っているかは未実装）
 - [XF310の一確定で3種の変更を載せる](XTEA_LOWCODE_XF310_MIXED_CHANGES_2026-11.md)（参照実装の試験記録。メモリアダプタが子を適用していなかった欠陥を修正。他のStore実装は未確認）
-- [採番のPostgreSQL実装](XTEA_LOWCODE_NUMBERING_POSTGRES_2026-11.md)（実装と試験を追加しCIへ配線。この環境にPostgreSQLが無く全件SKIPのため、実DBの結果は未確認）
+- [採番のPostgreSQL実装](XTEA_LOWCODE_NUMBERING_POSTGRES_2026-11.md)（実装とCI配線。CIの使い捨てPostgreSQLで6件すべてPASS。並行の競合は未試験、製品DBは未確認）
 - [行スコープのフックへ渡す行集合の変換](XTEA_LOWCODE_ROW_ROWS_CONVERSION_2026-11.md)（参照実装の試験記録。driver結果から行集合への変換を hook 側に置いた。ホストの配線は未実装）
 - [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断を保留。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案は`Hook`へ行の出所を足す）
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）

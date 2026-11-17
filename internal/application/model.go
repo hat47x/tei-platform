@@ -144,7 +144,12 @@ type Layout struct {
 	Order []core.CanonicalID `json:"order,omitempty"`
 }
 
-// PageBreakは、header-detailの印刷で1ページに収める明細行数と、見出しの繰返しを宣言する。
+// PageBreakは、header-detailの印刷で明細を何行ごとに面へ分けるかと、見出しの繰返しを宣言する。
+//
+// It is a split unit, not a row count: the view has no real detail rows yet, so the
+// rows drawn are placeholders and Rows only decides how they are grouped into
+// pages. A declaration that reads as "this many rows per page" is therefore only
+// true once real rows arrive (plan/evidence/XTEA_LOWCODE_REPEAT_HEADER_INERT_2026-11.md).
 type PageBreak struct {
 	Rows         int  `json:"rows"`
 	RepeatHeader bool `json:"repeatHeader,omitempty"`
