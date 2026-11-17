@@ -24,9 +24,9 @@ func TestDestinationRuntimeViewRequiresExplicitInputsAndConnection(t *testing.T)
 		args []string
 		code string
 	}{
-		{name: "no input", code: "VIEW_EXECUTION_FAILED"},
+		{name: "no input", code: "INVALID_ARGUMENT"},
 		{name: "malformed input", args: []string{"-input", "1001"}, code: "INVALID_ARGUMENT"},
-		{name: "wrong input", args: []string{"-input", "line_number=1"}, code: "VIEW_EXECUTION_FAILED"},
+		{name: "wrong input", args: []string{"-input", "line_number=1"}, code: "INVALID_ARGUMENT"},
 		{name: "missing database connection", args: []string{"-input", "order_id=1001"}, code: "VIEW_EXECUTION_FAILED"},
 		{name: "duplicate input", args: []string{"-input", "order_id=1001", "-input", "order_id=1002"}, code: "INVALID_ARGUMENT"},
 	} {
