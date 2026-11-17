@@ -89,6 +89,13 @@ def version_prefix(version: str) -> tuple[str, str, str]:
     return parts[0], parts[1], parts[2]
 
 
+# Process enumeration starts a fresh PowerShell/WMI process on Windows CI.
+# The 15-second generic subprocess limit has intermittently rejected healthy
+# WebView2 runs before the process snapshot could be collected. Keep this
+# limit scoped to process enumeration; a real timeout must remain a failure.
+PROCESS_ENUM_TIMEOUT_SECONDS = 60
+
+
 def find_processes(image_name: str) -> list[dict[str, Any]]:
     script = (
         f"$name = '{image_name}'; "
@@ -103,7 +110,7 @@ def find_processes(image_name: str) -> list[dict[str, Any]]:
         text=True,
         encoding="utf-8",
         errors="replace",
-        timeout=15,
+        timeout=PROCESS_ENUM_TIMEOUT_SECONDS,
     )
     decoded = json.loads(result.stdout.strip() or "[]")
     if decoded is None:
