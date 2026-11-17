@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -63,6 +64,15 @@ type webHostWiring struct {
 	// wrapCommandRead wraps the read the submit Command validates. Tests use
 	// it to present a changed synthetic fixture row; it is not a Provider.
 	wrapCommandRead func(readScenarioRunner) readScenarioRunner
+	// readDatabase serves the order-line read from a real PostgreSQL instance,
+	// using the Workspace's own accepted SQL realization inside a read-only
+	// transaction per execution. nil keeps the fixture rows, which is what the
+	// shipped CLI does because it cannot select a database.
+	readDatabase *sql.DB
+	// readDatabaseError is set when a database was requested but the read could
+	// not be built. Publishing HTTP with a fixture in its place would show a page
+	// that claims a read it did not make, so the host refuses instead.
+	readDatabaseError error
 }
 
 // runCombinedWebTargetWithHost is runCombinedWebTargetWithEffectGrant plus the
@@ -162,6 +172,15 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	switch appID {
 	case core.MustCanonicalID("order_entry"):
 		orderRead := newReferenceReadScenarioRunner(loaded.World)
+		if wiring.readDatabaseError != nil {
+			return wiring.readDatabaseError
+		}
+		if wiring.readDatabase != nil {
+			var err error
+			if orderRead, err = newPostgresReadRunner(loaded.World, wiring.readDatabase); err != nil {
+				return err
+			}
+		}
 		if wiring.browse != nil {
 			orderRead.browse = wiring.browse
 		}
