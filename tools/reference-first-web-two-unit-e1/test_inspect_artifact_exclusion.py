@@ -247,10 +247,12 @@ class SymbolMatcherTests(unittest.TestCase):
         self.assertIn("tei/internal/brandnew", result["unexpectedTeiPackages"])
 
     def test_query_construction_and_typed_rule_reader_remain_runtime_only(self):
-        # Read decisions in the API use the same runtime query and Rule reader
-        # as the CLI. They must not be counted as a design-time exception.
+        # The API uses runtime Query construction, Rule evaluation and a
+        # read-only Function Context projected from the same observation.
+        # None of these is permission to ship a design-time Source loader.
         for pkg in ("tei/internal/database/sqlgen",
-                    "tei/internal/driver/validationread"):
+                    "tei/internal/driver/validationread",
+                    "tei/internal/functioncontext"):
             with self.subTest(pkg=pkg):
                 for profile in ("json-api", "frozen-world"):
                     result = module.analyze_symbols(
@@ -261,7 +263,8 @@ class SymbolMatcherTests(unittest.TestCase):
         # These names are exact, not a prefix-based waiver for new
         # executors, authoring code, or arbitrary linked dependencies.
         for pkg in ("tei/internal/database/sqlgen/external",
-                    "tei/internal/driver/validationread/unknown"):
+                    "tei/internal/driver/validationread/unknown",
+                    "tei/internal/functioncontext/unknown"):
             result = self.analyze([pkg + ".Run"])
             self.assertIn(pkg, result["unexpectedTeiPackages"])
             self.assertFalse(result["passed"])
