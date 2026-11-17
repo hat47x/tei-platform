@@ -104,6 +104,15 @@ func TestDestinationReadTextMarksTheDeclarationUnchecked(t *testing.T) {
 			decl: &destinationDeclaration{CoversSome: true, Checked: false},
 			want: "declaration covers some (unchecked)\n",
 		},
+		{
+			// The static validator rejects this combination, but the view path runs
+			// no validator, so the renderer must not pick one side and hide the
+			// other. Measured before this case existed: only "covers <relation>" was
+			// printed and "covers some" disappeared.
+			name: "both stated, contradictory",
+			decl: &destinationDeclaration{CoversRelation: "sales.order.lines", CoversSome: true},
+			want: "declaration covers sales.order.lines and covers some (contradictory) (unchecked)\n",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer

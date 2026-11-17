@@ -66,4 +66,21 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 			t.Fatalf("the two declarations became indistinguishable: %+v %+v", all, some)
 		}
 	})
+
+	// Both fields can be set at once on the struct even though the static
+	// validator rejects the combination, and the view path runs no validator.
+	// The converter must carry both through; dropping either hides a
+	// contradiction behind a clean-looking declaration.
+	t.Run("both stated is carried through, not collapsed", func(t *testing.T) {
+		got := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+			CoversRelation: "sales.order.lines",
+			CoversSome:     true,
+		})
+		if got == nil {
+			t.Fatal("a declaration was dropped")
+		}
+		if got.CoversRelation != "sales.order.lines" || !got.CoversSome {
+			t.Fatalf("a side of the contradiction was dropped: %+v", got)
+		}
+	})
 }
