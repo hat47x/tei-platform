@@ -129,6 +129,17 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		return readScenarioResult{}, fmt.Errorf("order-line read/answer mismatch: %w", err)
 	}
 
+	// Name the read the answers belong to: the selected order, the Contract
+	// Query target that was executed for its lines, and the input it ran with.
+	// Alignment alone cannot tell one read from another read of the same shape.
+	identity, err := readIdentityFrom(lines, selectedOrder, input.RowIndex)
+	if err != nil {
+		return readScenarioResult{}, err
+	}
+	if err := requireAnswersBelongToRead(identity, lineAnswers, relationAnswers); err != nil {
+		return readScenarioResult{}, fmt.Errorf("order-line read identity mismatch: %w", err)
+	}
+
 	return readScenarioResult{
 		ScenarioID:       "order-entry.read-only-web-slice",
 		Environment:      string(r.environmentID),
@@ -141,6 +152,7 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		OrderLineRows:    orderLineRows,
 		RowAnswers:       lineAnswers,
 		RelationAnswers:  relationAnswers,
+		ReadIdentity:     identity,
 		RuntimeBindings: []runtimeBindingProjection{
 			{
 				Pattern:    "order_entry.recent_orders",
