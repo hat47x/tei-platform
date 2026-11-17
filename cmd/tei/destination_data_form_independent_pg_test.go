@@ -165,7 +165,16 @@ func TestIndependentWarehouseDataFormThroughProductView(t *testing.T) {
 		"view", "-workspace", root, "-application", "warehouse_count",
 		"-pattern", "warehouse_count.receipts", "-environment", "development",
 		"-input", "order_id=1001", "-format", "json")
-	if wrong.code == 0 || !strings.Contains(wrong.stdout, "order_id is not an input of the Contract Query") {
-		t.Fatalf("stale order-specific input accepted: code=%d stdout=%s", wrong.code, wrong.stdout)
+	var rejected struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(wrong.stdout), &rejected); err != nil {
+		t.Fatalf("invalid rejection JSON: %v (%s)", err, wrong.stdout)
+	}
+	if wrong.code != 2 || rejected.OK || rejected.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("stale order-specific input was not rejected: code=%d stdout=%s", wrong.code, wrong.stdout)
 	}
 }
