@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"tei/internal/core"
 )
 
 func TestEnvironmentRowsHTMLPreservesObservedStatesAndDecisions(t *testing.T) {
@@ -50,6 +53,44 @@ func TestEnvironmentRowsHTMLPreservesObservedStatesAndDecisions(t *testing.T) {
 	second, err := renderEnvironmentRowsHTML(result)
 	if err != nil || page != second {
 		t.Fatalf("HTML projection is not deterministic: %v", err)
+	}
+}
+
+// A compound key must remain a row identity even when its values look alike.
+// Rendering must not select decisions by row order or a display-only number.
+func TestEnvironmentRowsHTMLPreservesCompoundRowKeys(t *testing.T) {
+	first := `["A&B","01"]`
+	second := `["A&B","1"]`
+	result := destinationRead{
+		Application: "inventory", Pattern: "inventory.lines", Environment: "development",
+		Relation: "inventory.entries", KeyAttributes: []core.CanonicalID{"inventory.item.sku", "inventory.item.lot"},
+		Coverage: "partial",
+		Rows: []destinationRow{{Key: first}, {Key: second}},
+		PerRow: map[string]map[string]string{
+			first: {"inventory.item.checked": "satisfied"},
+			second: {"inventory.item.checked": "not-satisfied"},
+		},
+	}
+	page, err := renderEnvironmentRowsHTML(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded := html.UnescapeString(page)
+	for _, key := range []string{first, second} {
+		if !strings.Contains(decoded, `data-row-key="`+key+`"`) {
+			t.Fatalf("compound key was not retained: %q", key)
+		}
+	}
+	for key, answer := range map[string]string{first: "satisfied", second: "not-satisfied"} {
+		start := strings.Index(decoded, `data-row-key="`+key+`"`)
+		end := strings.Index(decoded[start:], "</tr>")
+		if end < 0 || !strings.Contains(decoded[start:start+end], `data-answer="`+answer+`"`) {
+			t.Fatalf("the decision for key %s was changed or lost", key)
+		}
+	}
+	if !strings.Contains(decoded, "inventory.entries") ||
+		!strings.Contains(decoded, "inventory.item.lot") {
+		t.Fatal("the relation or declared key attributes were lost")
 	}
 }
 
