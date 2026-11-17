@@ -29,7 +29,7 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal("cannot initialize isolated PostgreSQL database")
 	}
-	defer db.Close()
+	t.Cleanup(func() { _ = db.Close() })
 	var actualName string
 	if err := db.QueryRow("select current_database()").Scan(&actualName); err != nil || actualName != databaseName {
 		t.Fatalf("isolated PostgreSQL database check failed: actual=%q err=%v", actualName, err)
