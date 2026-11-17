@@ -807,6 +807,13 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-database and -provider are required")
 			os.Exit(2)
 		}
+		// The format is checked before anything is loaded or realized: an
+		// unknown value would otherwise fall through to the JSON branch and
+		// print a snapshot the caller did not ask for, with exit 0 (#5408).
+		if *desiredSchemaFormat != "json" && *desiredSchemaFormat != "sql" {
+			fmt.Fprintf(os.Stderr, "desired-schema -format must be json or sql, not %q\n", *desiredSchemaFormat)
+			os.Exit(2)
+		}
 		pid := environment.DatabaseProvider(*providerName)
 		if !pid.Known() || pid == environment.ProviderGeneric {
 			fmt.Fprintf(os.Stderr, "unsupported concrete database provider %q\n", pid)
