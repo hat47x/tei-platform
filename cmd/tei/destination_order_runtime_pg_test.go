@@ -72,15 +72,24 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 		name     string
 		expected string
 		edited   bool
+		// covers adds `covers sales.order.lines` to the copy's binding. The
+		// reference Workspace does not state it yet (its accepted state
+		// changes only through the shared acceptance path).
+		covers bool
 	}{
 		{name: "before", expected: "expected-before.json"},
 		{name: "after", expected: "expected-after.json", edited: true},
+		{name: "before, every line stated", expected: "expected-before.json", covers: true},
+		{name: "after, every line stated", expected: "expected-after.json", edited: true, covers: true},
 	} {
 		t.Run(stage.name, func(t *testing.T) {
 			root := t.TempDir()
 			copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
 			if stage.edited {
 				applyDestinationEdit(t, root, string(editedRule))
+			}
+			if stage.covers {
+				stateEveryOrderLine(t, root)
 			}
 			// Validate the exact Workspace revision whose rules the real
 			// PostgreSQL read will evaluate. A different Workspace validating
@@ -120,8 +129,9 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 					var report struct {
 						OK     bool `json:"ok"`
 						Result struct {
-							Coverage string `json:"coverage"`
-							Rows     []struct {
+							Coverage           string `json:"coverage"`
+							CoverageDeclaredBy string `json:"coverageDeclaredBy"`
+							Rows               []struct {
 								OrderLineID string `json:"key"`
 								Fields      map[string]struct {
 									State string `json:"state"`
@@ -136,8 +146,12 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 					if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
 						t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
 					}
-					if !report.OK || report.Result.Coverage != "partial" {
-						t.Fatalf("CLI claimed complete coverage or failed: %+v", report)
+					wantCoverage, wantDeclaredBy := "partial", ""
+					if stage.covers {
+						wantCoverage, wantDeclaredBy = "complete", "header-detail-contract-query-binding:order_entry/order_entry.order_lines"
+					}
+					if !report.OK || report.Result.Coverage != wantCoverage || report.Result.CoverageDeclaredBy != wantDeclaredBy {
+						t.Fatalf("coverage=%q declaredBy=%q, want %q %q: %+v", report.Result.Coverage, report.Result.CoverageDeclaredBy, wantCoverage, wantDeclaredBy, report)
 					}
 					want := expected.Orders[orderID]
 					if !reflect.DeepEqual(report.Result.PerLine, want.PerLine) {
@@ -155,6 +169,14 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 						if row.Fields["sales.order_line.quantity"].State != "present" {
 							t.Fatalf("order=%s line=%s has no observed quantity", orderID, row.OrderLineID)
 						}
+					}
+					if stage.covers {
+						// With every line stated, the answers over all the
+						// lines are the hand-written ones, satisfied included.
+						if !reflect.DeepEqual(report.Result.PerOrder, want.PerOrder) || len(report.Result.PerOrderUndecided) != 0 {
+							t.Fatalf("order=%s perRelation=%v undecided=%v, expected independently %v", orderID, report.Result.PerOrder, report.Result.PerOrderUndecided, want.PerOrder)
+						}
+						return
 					}
 					for rule, answer := range want.PerOrder {
 						gotAnswer := report.Result.PerOrder[rule]
@@ -175,6 +197,49 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 			}
 		})
 	}
+
+	// The statement is the author's, and the answer rests on it. A Query
+	// that drops the second line numbered 2 while the binding still states
+	// every line gets "satisfied" for order 1001, and the result names the
+	// statement it relied on. This is the test that finds a wrong statement:
+	// dropping one row changes the answer.
+	t.Run("a stated Query that drops a line", func(t *testing.T) {
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		stateEveryOrderLine(t, root)
+		sourcePath := filepath.Join(root, "databases", "sales-core", "query-realizations", "order-line-find-by-order.sql")
+		source, err := os.ReadFile(sourcePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		const predicate = "WHERE order_id = :order_id"
+		if strings.Count(string(source), predicate) != 1 {
+			t.Fatalf("the reference Query's parent predicate changed: %s", source)
+		}
+		if err := os.WriteFile(sourcePath, []byte(strings.Replace(string(source), predicate, predicate+" AND order_line_id <> 3", 1)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.order_lines", "-environment", "development",
+			"-input", "order_id=1001", "-format", "json",
+		)
+		var report struct {
+			OK     bool `json:"ok"`
+			Result struct {
+				Coverage           string            `json:"coverage"`
+				CoverageDeclaredBy string            `json:"coverageDeclaredBy"`
+				PerRelation        map[string]string `json:"perRelation"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil || !report.OK {
+			t.Fatalf("err=%v stdout=%s stderr=%s", err, got.stdout, got.stderr)
+		}
+		if report.Result.Coverage != "complete" || report.Result.CoverageDeclaredBy == "" ||
+			report.Result.PerRelation["sales.order.lines.line_number_unique"] != "satisfied" {
+			t.Fatalf("result=%+v", report.Result)
+		}
+	})
 
 	// Nothing in the entry names the reference Workspace. The same rows are
 	// read through an Environment declared under another name, with no
@@ -472,5 +537,24 @@ FROM changed ORDER BY line_number, order_line_id`
 				t.Fatalf("the filtered Query changed uniqueness improperly: answer=%q reason=%q, want %q", answer, reason, tc.wantAnswer)
 			}
 		})
+	}
+}
+
+// stateEveryOrderLine adds `covers sales.order.lines` to the order lines
+// binding of a copy of the reference Workspace.
+func stateEveryOrderLine(t *testing.T, root string) {
+	t.Helper()
+	path := filepath.Join(root, "applications", "order-entry", "realizations", "header-detail", "order-lines.tei")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const anchor = "    input sales.order.order_id to order_id\n"
+	if strings.Count(string(content), anchor) != 1 || strings.Contains(string(content), "covers") {
+		t.Fatalf("the reference binding changed:\n%s", content)
+	}
+	stated := strings.Replace(string(content), anchor, anchor+"    covers sales.order.lines\n", 1)
+	if err := os.WriteFile(path, []byte(stated), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

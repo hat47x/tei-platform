@@ -44,7 +44,15 @@ cp -r reference/workspace /tmp/my-workspace
 
 `result.rows`に読んだ3行が、`result.perRow`に行ごとの規則の答えが出る。行は`key`（明細の主キー）で指す。数量が0の明細（`key` 2）は、`sales.order_line.quantity_positive`が`not-satisfied`になる。`result.perRelation`は受注一件の明細すべてに一度尋ねる規則の答えで、明細番号が重なっているので`not-satisfied`になる。
 
-受注1002では、明細番号の一意が`undecided`になる。読んだ2行に重なりはないが、Queryが受注の明細をすべて返したと、どこにも宣言していないためである。宣言の書き方は決めてあり、実装はこれからである。
+受注1002では、明細番号の一意が`undecided`になる。読んだ2行に重なりはないが、Queryが受注の明細をすべて返したと、どこにも書いていないためである。`tei validate`も、このことを警告`HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED`で知らせる。
+
+書くのは束縛の一行である。受注一件の明細をすべて返すQueryなら、写しの`applications/order-entry/realizations/header-detail/order-lines.tei`の`input`の行の下へ足す。
+
+```text
+    covers sales.order.lines
+```
+
+もう一度読むと、受注1002と1003の一意が`satisfied`になり、`result.coverage`が`complete`、`result.coverageDeclaredBy`がこの束縛を指す。これは書いた人の主張であり、TEIはSQLを調べて確かめてはいない。Queryが行を落としていれば、答えは誤る。どの宣言に依ったかが結果に残るのはそのためである。
 
 ## 3. 規則を一つ足す
 
@@ -98,7 +106,6 @@ rule sales.order_line.unit_price_positive:
 ## まだできないこと
 
 - 異なるData・Relationを持つ業務モデルで、同じ`tei view`を通すこと。現時点で実DBの試験が済んだ別名Patternは、受注明細と同じRelationを使っている。
-- 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
 - 定義から表を作ること。
 - JSON以外の読みやすい出力。
 - Webの画面で同じ答えを見ること。

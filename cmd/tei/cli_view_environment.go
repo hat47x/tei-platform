@@ -44,10 +44,11 @@ type destinationRow struct {
 // destinationRead is the read-only runtime result of `tei view -environment`.
 // It names no Application, Pattern, Environment or Data of a particular
 // Workspace: everything is resolved from the Workspace that was loaded.
-// Because the current Contract Query binding does not certify that every
-// relation row was fetched, it conservatively reports partial coverage.
-// A witnessed duplicate still invalidates uniqueness, but absence of
-// duplicates alone cannot establish it.
+// Coverage is "complete" only when the header-detail binding states
+// `covers <the Pattern's relation>`; CoverageDeclaredBy then names that
+// binding. The statement is the author's: the rows do not prove it. Without
+// it the coverage is "partial": a witnessed duplicate still refutes
+// uniqueness, but absence of duplicates cannot establish it.
 type destinationRead struct {
 	Application          core.CanonicalID             `json:"application"`
 	Pattern              core.CanonicalID             `json:"pattern"`
@@ -55,6 +56,7 @@ type destinationRead struct {
 	Relation             core.CanonicalID             `json:"relation"`
 	KeyAttributes        []core.CanonicalID           `json:"keyAttributes"`
 	Coverage             string                       `json:"coverage"`
+	CoverageDeclaredBy   string                       `json:"coverageDeclaredBy,omitempty"`
 	Rows                 []destinationRow             `json:"rows"`
 	PerRow               map[string]map[string]string `json:"perRow"`
 	PerRelation          map[string]string            `json:"perRelation"`
@@ -173,10 +175,15 @@ func readEnvironmentRows(
 		return destinationRead{}, fmt.Errorf("Contract Query execution failed; check the environment binding and database")
 	}
 	// Neither row count nor an SQL query without LIMIT proves complete
-	// relation coverage. An unknown coverage string is rejected by Decide;
-	// until a binding certifies completeness, report the conservative partial
-	// state and preserve its undecided reasons.
-	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, validationeval.CoveragePartial)
+	// relation coverage. Only the binding's own statement does, and only for
+	// the relation the Pattern reads; `tei validate` refuses a statement
+	// about another relation.
+	coverage, declaredBy := validationeval.CoveragePartial, ""
+	if prepared.Binding.CoversRelation != "" && !prepared.Binding.CoversSome &&
+		prepared.Binding.CoversRelation == prepared.Relation.Relation.ID {
+		coverage, declaredBy = validationeval.CoverageComplete, "header-detail-contract-query-binding:"+prepared.Binding.Identity()
+	}
+	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, coverage)
 	if err != nil {
 		return destinationRead{}, err
 	}
@@ -186,15 +193,16 @@ func readEnvironmentRows(
 	}
 
 	result := destinationRead{
-		Application:   appID,
-		Pattern:       patternID,
-		Environment:   envID,
-		Relation:      prepared.Relation.Relation.ID,
-		KeyAttributes: keyAttributes,
-		Coverage:      string(validationeval.CoveragePartial),
-		Rows:          make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
-		PerRow:        map[string]map[string]string{},
-		PerRelation:   map[string]string{},
+		Application:        appID,
+		Pattern:            patternID,
+		Environment:        envID,
+		Relation:           prepared.Relation.Relation.ID,
+		KeyAttributes:      keyAttributes,
+		Coverage:           string(coverage),
+		CoverageDeclaredBy: declaredBy,
+		Rows:               make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
+		PerRow:             map[string]map[string]string{},
+		PerRelation:        map[string]string{},
 	}
 	ids := make([]string, 0, len(execution.Execution.Result.Rows))
 	for _, row := range execution.Execution.Result.Rows {

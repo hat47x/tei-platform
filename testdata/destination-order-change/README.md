@@ -14,7 +14,8 @@
 
 - **動く**：[#5300](https://github.com/hat47x/tei-platform/pull/5300)で、通常の`tei view -environment`が宣言済みのQueryを実PostgreSQLで実行し、受注1001／1002／1003の行ごとのRule結果を返す。専用CIは変更前後の6ケースをこのディレクトリの独立した期待と照合する。手順3・4の設計変更と例の診断は`cmd/tei/destination_order_change_test.go`で検証済み。実DB試験も、**同じ作業領域を`tei validate`してから明細を読み直す**。
 - **試験だけ**：[#5271](https://github.com/hat47x/tei-platform/pull/5271)の内部PostgreSQL試験は、別の3／3／1行のデータで状態付きReaderを検査している。製品CLIの6ケースと別の試験であり、実DBを使わない実行ではPostgreSQLのテストはスキップされる。
-- **未実装**：明細全件を返すというContract Bindingの宣言と検証、その宣言を根拠にした`perOrder`の「成立」判定、手順5の生成Web画面と一ページの手順書。現行CLIは根拠のない全件性を主張せず`coverage: partial`を返す。
+- **動く**：束縛へ`covers sales.order.lines`を書いた写しでは、受注ごとの一意が`expected-*.json`のとおり「成立」まで一致する。実PostgreSQLの試験が、宣言を書いた段と書かない段の両方を照合する。参照用作業領域そのものには、まだ宣言がない。
+- **未実装**：手順5の生成Web画面。
 
 ## 期待の読み方
 
