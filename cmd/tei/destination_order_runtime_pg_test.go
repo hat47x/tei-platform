@@ -493,6 +493,11 @@ FROM changed ORDER BY line_number, order_line_id`
 		if _, err := db.Exec("insert into public.inventory_entries select * from public.order_lines"); err != nil {
 			t.Fatal(err)
 		}
+		// Deliberately differ from the reference table: a hidden fallback to
+		// public.order_lines must fail the independently fixed expectation.
+		if _, err := db.Exec("update public.inventory_entries set quantity = 0 where order_line_id = 4"); err != nil {
+			t.Fatal(err)
+		}
 
 		root := t.TempDir()
 		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
@@ -540,7 +545,7 @@ FROM changed ORDER BY line_number, order_line_id`
 			unique  string
 		}{
 			{orderID: "1001", ids: []string{"1", "2", "3"}, amounts: []string{"satisfied", "not-satisfied", "satisfied"}, unique: "not-satisfied"},
-			{orderID: "1002", ids: []string{"4", "5"}, amounts: []string{"satisfied", "satisfied"}, unique: "undecided"},
+			{orderID: "1002", ids: []string{"4", "5"}, amounts: []string{"not-satisfied", "satisfied"}, unique: "undecided"},
 			{orderID: "1003", ids: []string{}, amounts: []string{}, unique: "undecided"},
 		} {
 			t.Run(tc.orderID, func(t *testing.T) {
