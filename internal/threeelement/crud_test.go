@@ -1,6 +1,7 @@
 package threeelement
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -94,5 +95,98 @@ func TestCRUDGapsUseTheDataIndex(t *testing.T) {
 	if len(gaps) != 1 || gaps[0].FunctionID != "submit" ||
 		gaps[0].DataID != "order" || gaps[0].DataName != "Order data" {
 		t.Fatalf("CRUD gap used a non-Data index: %+v", gaps)
+	}
+}
+
+// TestMultipleFunctionOperationsFormOneCRUDCell keeps the Function/Data
+// correspondence at one row per pair. A first-match projection would omit U;
+// a one-row-per-Operation projection would invent duplicate Data subjects.
+func TestMultipleFunctionOperationsFormOneCRUDCell(t *testing.T) {
+	model := NewThreeElementModel("multi-operation", "Multiple CRUD intentions")
+	model.DataElements = []DataElement{{ID: "order", Name: "Order data"}}
+	model.BusinessElements = []BusinessElement{{ID: "order", Name: "Unrelated business"}}
+	model.FunctionElements = []FunctionElement{{
+		ID: "submit", Name: "Submit",
+		Operations: []FunctionOperation{
+			{DataID: "order", Operations: "r"},
+			{DataID: "order", Operations: "U"},
+			{DataID: "order", Operations: "R"},
+		},
+	}}
+
+	rows := GenerateCRUDTable(model)
+	if len(rows) != 1 {
+		t.Fatalf("one Function/Data pair should yield one CRUD cell, got %+v", rows)
+	}
+	if rows[0].DataName != "Order data" || !rows[0].Read || !rows[0].Update ||
+		rows[0].Create || rows[0].Delete || rows[0].Source != "derived" {
+		t.Fatalf("CRUD cell omitted or misattributed intent: %+v", rows[0])
+	}
+
+	refs := GenerateFunctionDataCrossReference(model)
+	if len(refs) != 1 || refs[0].DataName != "Order data" ||
+		refs[0].Operations != "RU" || refs[0].Source != "derived" {
+		t.Fatalf("Function/Data projection omitted unioned operations: %+v", refs)
+	}
+
+	// Reordering operations should not change the meaning or the read-only
+	// projection. The render order is not a business sequence.
+	model.FunctionElements[0].Operations = []FunctionOperation{
+		{DataID: "order", Operations: "U"},
+		{DataID: "order", Operations: "R"},
+		{DataID: "order", Operations: "r"},
+	}
+	if reordered := GenerateCRUDTable(model); !reflect.DeepEqual(rows, reordered) {
+		t.Fatalf("CRUD meaning depends on source operation order: before=%+v after=%+v", rows, reordered)
+	}
+	if reordered := GenerateFunctionDataCrossReference(model); !reflect.DeepEqual(refs, reordered) {
+		t.Fatalf("Function/Data meaning depends on operation order: before=%+v after=%+v", refs, reordered)
+	}
+}
+
+// TestMultipleFunctionOperationsRemainVisibleUnderExplicitCRUD makes sure
+// the selected display flags never erase the separate Function.Operations
+// facts. A declaration is not authorization to perform a real DB write.
+func TestMultipleFunctionOperationsRemainVisibleUnderExplicitCRUD(t *testing.T) {
+	model := NewThreeElementModel("explicit-multi", "Explicit and derived")
+	model.DataElements = []DataElement{{ID: "order", Name: "Order data"}}
+	model.FunctionElements = []FunctionElement{{
+		ID: "submit", Name: "Submit",
+		Operations: []FunctionOperation{
+			{DataID: "order", Operations: "R"},
+			{DataID: "order", Operations: "U"},
+		},
+	}}
+	model.CRUDDefinitions = []CRUDDefinition{{
+		ID: "declared", FunctionID: "submit", DataID: "order",
+		Read: true, Source: "declared",
+	}}
+
+	rows := GenerateCRUDTable(model)
+	if len(rows) != 1 || !rows[0].Read || rows[0].Update ||
+		rows[0].DerivedOperations != "RU" || rows[0].Source != "declared" ||
+		rows[0].ConflictingDeclarations {
+		t.Fatalf("explicit projection lost the additional Function intent: %+v", rows)
+	}
+	refs := GenerateFunctionDataCrossReference(model)
+	if len(refs) != 1 || refs[0].Operations != "R" ||
+		refs[0].DerivedOperations != "RU" || refs[0].Source != "declared" ||
+		refs[0].ConflictingDeclarations {
+		t.Fatalf("Function/Data cross-reference lost the derived intent: %+v", refs)
+	}
+
+	// An opposing explicit declaration is reported, not silently reconciled.
+	model.CRUDDefinitions[0].Read = false
+	model.CRUDDefinitions[0].Create = true
+	rows = GenerateCRUDTable(model)
+	refs = GenerateFunctionDataCrossReference(model)
+	if len(rows) != 1 || !rows[0].ConflictingDeclarations ||
+		!rows[0].Create || rows[0].Read || rows[0].Update ||
+		rows[0].DerivedOperations != "RU" {
+		t.Fatalf("opposing CRUD intent was hidden: %+v", rows)
+	}
+	if len(refs) != 1 || !refs[0].ConflictingDeclarations ||
+		refs[0].Operations != "C" || refs[0].DerivedOperations != "RU" {
+		t.Fatalf("opposing Function/Data intent was hidden: %+v", refs)
 	}
 }

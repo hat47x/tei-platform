@@ -40,8 +40,13 @@ func TestReferenceWorkspaceDefinesHeaderDetailContractQueryWithoutParentIdentity
 		t.Fatalf("Order source identityからQuery inputへの明示bindingが変わっています: %#v", binding.Inputs)
 	}
 
-	if diagnostics := validation.ValidateHeaderDetailContractQueryBindings(loaded.World); len(diagnostics) != 0 {
-		t.Fatalf("Reference header-detail Contract Query bindingがCanonical Validationを満たしません: %#v", diagnostics)
+	// The reference binding does not yet state which rows its Query returns:
+	// its accepted state changes only through the shared acceptance path.
+	// That one warning is expected; anything else is not.
+	for _, diagnostic := range validation.ValidateHeaderDetailContractQueryBindings(loaded.World) {
+		if diagnostic.Code != "HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED" || diagnostic.Severity != validation.Warning {
+			t.Fatalf("Reference header-detail Contract Query bindingがCanonical Validationを満たしません: %#v", diagnostic)
+		}
 	}
 
 	var relationFound bool

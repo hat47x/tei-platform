@@ -1,0 +1,109 @@
+{
+  "description": "A second explicit model profile: different semantic attributes, SQL input, table and composite primary key.",
+  "replacements": [
+    [
+      "sales.order.lines",
+      "sales.order.inventory_entries"
+    ],
+    [
+      "sales.order_line",
+      "sales.inventory_entry"
+    ],
+    [
+      "sales.inventory_entry_id",
+      "sales.entry_id"
+    ],
+    [
+      "order_line_id",
+      "entry_id"
+    ],
+    [
+      "public.order_lines",
+      "public.inventory_entries"
+    ],
+    [
+      "order_line",
+      "inventory_entry"
+    ],
+    [
+      "OrderLine",
+      "InventoryEntry"
+    ],
+    [
+      "type InventoryEntryId",
+      "type EntryId"
+    ],
+    [
+      "orderLineId",
+      "entryId"
+    ],
+    [
+      "line_number",
+      "slot"
+    ],
+    [
+      "lineNumber",
+      "slot"
+    ],
+    [
+      "item_code",
+      "sku"
+    ],
+    [
+      "itemCode",
+      "sku"
+    ],
+    [
+      "quantity",
+      "units"
+    ],
+    [
+      "unit_price",
+      "cost"
+    ],
+    [
+      "unitPrice",
+      "cost"
+    ],
+    [
+      "relation lines to",
+      "relation inventoryEntries to"
+    ],
+    [
+      "order_entry.inventory_entrys",
+      "order_entry.order_lines"
+    ]
+  ],
+  "patches": [
+    {
+      "path": "databases/sales-core/contracts/order-line.tei",
+      "old": "input order_id type sales.order_id",
+      "value": "input batch_key type sales.order_id"
+    },
+    {
+      "path": "applications/order-entry/realizations/header-detail/order-lines.tei",
+      "old": "input sales.order.order_id to order_id",
+      "value": "input sales.order.order_id to batch_key"
+    },
+    {
+      "path": "databases/sales-core/query-realizations/order-line-find-by-order.tei",
+      "old": "input order_id -> order_id",
+      "value": "input batch_key -> batch_key"
+    },
+    {
+      "path": "databases/sales-core/query-realizations/order-line-find-by-order.sql",
+      "old": "WHERE order_id = :order_id",
+      "value": "WHERE batch_key = :batch_key"
+    },
+    {
+      "path": "databases/sales-core/relation-storage/order-line.tei",
+      "old": "component sales.order.order_id -> order_id",
+      "value": "component sales.order.order_id -> batch_key"
+    },
+    {
+      "path": "databases/sales-core/persistence/order-line.tei",
+      "old": "primary-key sales.inventory_entry.entry_id",
+      "value": "primary-key sales.inventory_entry.entry_id\n    primary-key sales.inventory_entry.slot"
+    }
+  ]
+}

@@ -1,0 +1,209 @@
+{
+  "note": "With maxDepth 6 the linear chain created seven sessions at depths 0-6, and the depth-6 session's next spawn was refused with 'subagent depth 7 exceeds maxDepth 6'. Four points (3,4,5,6) now show maxDepth N admitting depth N and refusing N+1.",
+  "overlay": {
+    "plugin": "@deepseek-ai/dsh-subagent",
+    "id": "subagent",
+    "config": {
+      "maxDepth": 6
+    }
+  },
+  "configuredMaxDepth": 6,
+  "sessionsObserved": 7,
+  "maxDepthReached": 6,
+  "depthBySession": {
+    "session-ddd23def-0dc6-46cb-bda9-bafb8db61781": 0,
+    "d89e2354-c0df-4d84-b74a-e10767e8ff13": 1,
+    "02ffdc8e-29fb-4979-86fb-c2d7b4cef4e5": 2,
+    "d562ff1b-4dfd-41a5-9e08-c6dc4ffe86d0": 3,
+    "3a9d80ed-5bc2-4abd-8b72-08e9606564ae": 4,
+    "5bfff3e5-c876-444d-b2fa-f8141ad0bdc1": 5,
+    "5ca05d28-d5d1-4d09-b1f8-03e9298d6ea2": 6
+  },
+  "rootSession": "session-ddd23def-0dc6-46cb-bda9-bafb8db61781",
+  "requestCount": 16,
+  "requests": [
+    {
+      "file": "001-request.json",
+      "bytes": 101604,
+      "sha256": "17c99981462170aeb0e1853bcb05995c2ef34029eade546be50049ea5e593144",
+      "sessionId": "session-ddd23def-0dc6-46cb-bda9-bafb8db61781",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "002-request.json",
+      "bytes": 58307,
+      "sha256": "4370917c1903f5a360bc43086fc30daebc9ab1d7c683b2974b6c63540f49111e",
+      "sessionId": "session-ddd23def-0dc6-46cb-bda9-bafb8db61781",
+      "depth": 0,
+      "toolCount": 0,
+      "willSpawn": false
+    },
+    {
+      "file": "003-request.json",
+      "bytes": 53786,
+      "sha256": "2b3c5397e977f0184e6d325c870bc19625b1ed5409cce6e08f2c400c07dd359f",
+      "sessionId": "session-ddd23def-0dc6-46cb-bda9-bafb8db61781",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "004-request.json",
+      "bytes": 103261,
+      "sha256": "1b2707d38edf918dfb72ebb3fae9842aeec2d5258431420cfee859c85292f50c",
+      "sessionId": "d89e2354-c0df-4d84-b74a-e10767e8ff13",
+      "depth": 1,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "005-request.json",
+      "bytes": 54309,
+      "sha256": "5ef984272a502bf542a3ce7a2208b90cb0c5be690476c7452c1d41f785c82a2a",
+      "sessionId": "d89e2354-c0df-4d84-b74a-e10767e8ff13",
+      "depth": 1,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "006-request.json",
+      "bytes": 103286,
+      "sha256": "2294540d614836d0bf73d69589716611cfdeaa4c11909afde7479371ae2b4bbd",
+      "sessionId": "02ffdc8e-29fb-4979-86fb-c2d7b4cef4e5",
+      "depth": 2,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "007-request.json",
+      "bytes": 53897,
+      "sha256": "e656b30df07fa9ac1b53696530f9e1c89b84612d85afba66ef9a00492c612756",
+      "sessionId": "session-ddd23def-0dc6-46cb-bda9-bafb8db61781",
+      "depth": 0,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "008-request.json",
+      "bytes": 54336,
+      "sha256": "c82d8cca7359b124b7d355c94d7623e7666ee90baece52df1bc8107e85ca88ae",
+      "sessionId": "02ffdc8e-29fb-4979-86fb-c2d7b4cef4e5",
+      "depth": 2,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "009-request.json",
+      "bytes": 103334,
+      "sha256": "7b137eb7f5118591855362ec9123bad0ad71f805fbae85d23649d6a1f7750997",
+      "sessionId": "d562ff1b-4dfd-41a5-9e08-c6dc4ffe86d0",
+      "depth": 3,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "010-request.json",
+      "bytes": 54376,
+      "sha256": "58ec109a849f206323448d525f6fba63d6a701daeef7f22a856bb6071880d613",
+      "sessionId": "d562ff1b-4dfd-41a5-9e08-c6dc4ffe86d0",
+      "depth": 3,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "011-request.json",
+      "bytes": 103382,
+      "sha256": "d4fa7a489e14e7905cebdf8724aac1b3114b168d9b09c5062923524c2be61340",
+      "sessionId": "3a9d80ed-5bc2-4abd-8b72-08e9606564ae",
+      "depth": 4,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "012-request.json",
+      "bytes": 54430,
+      "sha256": "ad57b5d72c0aadba7ba53ac8d6b1b2da040f7ac4cc14b064dc75ff06e4af7896",
+      "sessionId": "3a9d80ed-5bc2-4abd-8b72-08e9606564ae",
+      "depth": 4,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "013-request.json",
+      "bytes": 103433,
+      "sha256": "ebcfb8dd830385dc9a52d531189c7b249462c05ab14ae9326dba1a3b307d3369",
+      "sessionId": "5bfff3e5-c876-444d-b2fa-f8141ad0bdc1",
+      "depth": 5,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "014-request.json",
+      "bytes": 54471,
+      "sha256": "1424ab86fa9df3fef824a55b1cc140b1ffd371121814d605b7b6a9d6efd7d8eb",
+      "sessionId": "5bfff3e5-c876-444d-b2fa-f8141ad0bdc1",
+      "depth": 5,
+      "toolCount": 24,
+      "willSpawn": false
+    },
+    {
+      "file": "015-request.json",
+      "bytes": 104460,
+      "sha256": "4480e1cbe9947467164458926eb150fe8a45c576336d7569d123fc24fc98a067",
+      "sessionId": "5ca05d28-d5d1-4d09-b1f8-03e9298d6ea2",
+      "depth": 6,
+      "toolCount": 24,
+      "willSpawn": true
+    },
+    {
+      "file": "016-request.json",
+      "bytes": 54442,
+      "sha256": "6ea177644d79c5149edf2626bd12c68778579b88ce158f964f361320e41e77ef",
+      "sessionId": "5ca05d28-d5d1-4d09-b1f8-03e9298d6ea2",
+      "depth": 6,
+      "toolCount": 24,
+      "willSpawn": false
+    }
+  ],
+  "refusalText": "Error: subagent depth 7 exceeds maxDepth 6",
+  "refusalFile": "016-request.json",
+  "refusalSession": "5ca05d28-d5d1-4d09-b1f8-03e9298d6ea2",
+  "refusalSessionDepth": 6,
+  "refusalAttemptedDepth": 7,
+  "refusalLimit": 6,
+  "spawnAccounting": {
+    "attempts": 7,
+    "refused": 1,
+    "succeeded": 6,
+    "attemptFiles": [
+      "001-request.json",
+      "004-request.json",
+      "006-request.json",
+      "009-request.json",
+      "011-request.json",
+      "013-request.json",
+      "015-request.json"
+    ]
+  },
+  "comparison": {
+    "maxDepth3": {
+      "sessions": 4,
+      "reached": 3
+    },
+    "maxDepth4": {
+      "sessions": 5,
+      "reached": 4
+    },
+    "maxDepth5": {
+      "sessions": 6,
+      "reached": 5
+    },
+    "maxDepth6": {
+      "sessions": 7,
+      "reached": 6
+    }
+  },
+  "caveat": "One run, one linear chain (one spawn per session). Whether maxDepth above 6 works, and whether the plugin clamps at some value of its own, was not tested. Depth derives from first-arrival order, valid only for a strictly linear chain."
+}

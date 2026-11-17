@@ -1,0 +1,174 @@
+{
+  "note": "A mechanical audit of the harness ledger against the records on main. The counts, the declared record total and every table link are consistent, but the cross-record findings in section 3 carry no record links at all: they cite H6-Ex codes, and one of those codes (H6-E2b) appears in no record anywhere.",
+  "auditedCommit": "ed25fb1988ba671411f8dbc86dcccc1d868487d0",
+  "ledger": "plan/evidence/DSH_HARNESS_EVIDENCE_LEDGER_2026-11-09.md",
+  "counts": {
+    "recordDirs": 70,
+    "tableRows": 70,
+    "uniqueTableRows": 70,
+    "declaredCount": 70,
+    "declaredMatchesRows": true,
+    "distinctLinksInLedger": 70
+  },
+  "consistencyFindings": {
+    "dirsWithoutRow": [],
+    "rowsWithoutDir": [],
+    "danglingLinks": [],
+    "verdict": "table-level consistency is clean: every record has exactly one row, no phantom rows, no dangling links"
+  },
+  "section3": {
+    "itemCount": 6,
+    "itemsWithZeroRecordLinks": 6,
+    "totalRecordLinks": 0,
+    "items": [
+      {
+        "item": 1,
+        "headline": "1. **DSHのSandbox modeは読取りの境界を与えない**。`read-only`（H6-E1）・`workspace-write`（非対称）・子P",
+        "recordLinks": [],
+        "linkCount": 0,
+        "codes": [
+          "H6-E1",
+          "H6-E2b"
+        ],
+        "codeTraceability": {
+          "H6-E1": 8,
+          "H6-E2b": 0
+        },
+        "codesWithZeroRecords": [
+          "H6-E2b"
+        ]
+      },
+      {
+        "item": 2,
+        "headline": "2. **読んだ内容は複数の経路で外へ出る**。モデル入力・Session Log・stdout・永続ログ（H6-E6）。Session Logの複製はTool",
+        "recordLinks": [],
+        "linkCount": 0,
+        "codes": [
+          "H6-E6"
+        ],
+        "codeTraceability": {
+          "H6-E6": 1
+        },
+        "codesWithZeroRecords": []
+      },
+      {
+        "item": 3,
+        "headline": "3. **Process生成はmodeで止まらない**。子Process（H6-E2b）も候補の子起動（H6-E5）も成立した。止まるのは書込みと言語モード。",
+        "recordLinks": [],
+        "linkCount": 0,
+        "codes": [
+          "H6-E2b",
+          "H6-E5"
+        ],
+        "codeTraceability": {
+          "H6-E2b": 0,
+          "H6-E5": 1
+        },
+        "codesWithZeroRecords": [
+          "H6-E2b"
+        ]
+      },
+      {
+        "item": 4,
+        "headline": "4. **利用者が指定しない入力が入る**。AGENTS.md・CLAUDE.md・Skill `description`（H6-E3）。Skill本文は載らず",
+        "recordLinks": [],
+        "linkCount": 0,
+        "codes": [
+          "H6-E3"
+        ],
+        "codeTraceability": {
+          "H6-E3": 1
+        },
+        "codesWithZeroRecords": []
+      },
+      {
+        "item": 5,
+        "headline": "5. **設定の表示と実効制限が一致しない**。`DSH_PERMISSION_MODE`は空のまま（H6-E0・非対称）。モード名を権限判断の根拠にできない。",
+        "recordLinks": [],
+        "linkCount": 0,
+        "codes": [
+          "H6-E0"
+        ],
+        "codeTraceability": {
+          "H6-E0": 3
+        },
+        "codesWithZeroRecords": []
+      },
+      {
+        "item": 6,
+        "headline": "6. **送出の停止は「安全」と同義ではない**。`maxBytes`を小さくするとLogの送出が止まるが、作業は続く（分割と停滞）。止まる境界は**1byte",
+        "recordLinks": [],
+        "linkCount": 0,
+        "codes": [],
+        "codeTraceability": {},
+        "codesWithZeroRecords": []
+      }
+    ]
+  },
+  "codeTraceability": {
+    "codesUsedInSection3": [
+      "H6-E0",
+      "H6-E1",
+      "H6-E2b",
+      "H6-E3",
+      "H6-E5",
+      "H6-E6"
+    ],
+    "codesMentionedByNoRecord": [
+      "H6-E2b"
+    ],
+    "perCodeRecordCounts": {
+      "H6-E0": 3,
+      "H6-E1": 8,
+      "H6-E2b": 0,
+      "H6-E3": 1,
+      "H6-E5": 1,
+      "H6-E6": 1
+    }
+  },
+  "findings": [
+    {
+      "id": "A1",
+      "severity": "ok",
+      "statement": "every DSH_* record on main has exactly one table row, and every row points at an existing record",
+      "evidence": {
+        "recordDirs": 70,
+        "tableRows": 70,
+        "missing": [],
+        "phantom": []
+      }
+    },
+    {
+      "id": "A2",
+      "severity": "ok",
+      "statement": "the declared record count equals the table row count",
+      "evidence": {
+        "declared": 70,
+        "rows": 70
+      }
+    },
+    {
+      "id": "A3",
+      "severity": "gap",
+      "statement": "section 3's cross-record findings contain zero record links; they rely on H6-Ex codes in prose",
+      "evidence": {
+        "items": 6,
+        "totalRecordLinks": 0
+      }
+    },
+    {
+      "id": "A4",
+      "severity": "defect",
+      "statement": "H6-E2b is cited in two section-3 findings but appears in no record on main, so that citation cannot be resolved from the evidence",
+      "evidence": {
+        "recordsContainingH6E2b": 0,
+        "recordsContainingH6E2": 0,
+        "likelyIntendedRecords": [
+          "DSH_CHILD_PROCESS_REACH_2026-11-08",
+          "DSH_H6E5_CANDIDATE_ESCAPE_2026-11-07"
+        ]
+      }
+    }
+  ],
+  "caveat": "This audits structure, not truth: it checks that citations resolve to records, not that the records support the claims. The H6-E2b mapping is inferred from what the adjacent records measure, not from an authoritative code table, which may itself not exist."
+}

@@ -151,6 +151,8 @@ Editor / Review Surface自身をCanonical source of truthとはしません。
 
 同じ構成内で固定寸法と相対位置、異なる座標枠、時間・多次元の軸を扱う場合は、参照枠・単位・変換・同期・投影で失う情報を明示できる必要があります。選択、配置、注釈、値や時間の編集は、入力手段に応じて既存の型付き操作へ接続し、書込み先、基準版、逆方向の対応、権限を確認します。表示上の一点や集計から更新対象が一意と分からない場合は、候補または未解決として扱います。具体的な語彙、表記、描画系の選択は[製品設計](../plan/design/PRODUCT_COMPLETION_DESIGN.md)と [#3827](https://github.com/hat47x/tei-platform/issues/3827)・[#4133](https://github.com/hat47x/tei-platform/issues/4133)で評価します。
 
+**モデル定義・型付きインスタンス・表現インスタンスの区別**：TEI自身の標準データ構造（Record/Collection/Graph等）と標準表現型も設計対象として説明でき、抽象的な型・関係・変換を具体的な正負の値の例から確認できる必要があります。異なる表示形式を往復しても、意味上のID、関係の向き・多重性、NULL／欠損／空集合／未取得、時点・単位・Source版が失われた箇所を検出できなければなりません。説明用の例、独立に受理した期待結果、実観測は区別します。三要素分析法でのレビューは、この汎用機構を利用する重要な方法論とし、唯一のCoreモデルとして強制しません。詳細な検収計画は[三要素Method §33](../plan/design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md#33-tei自身の要件全体をモデルとしてレビューする三要素method標準構造インスタンスx-tea移植2026-11-17設計統合)に置きます。
+
 ## RQ-012 Driverを設計検証用の実行・シミュレーション環境として利用できること
 
 Driverは、本番Runtimeだけでなく、設計途中のApplicationを動かし、Data、Rule、UI、Function、Database Contract等の整合性を確認する環境として利用できる必要があります。
@@ -387,6 +389,8 @@ TEIは、Data、Function / Interaction、Business Procedureを同じ業務シス
 Matrix、CRUD表、flow、graph等をこの相互検証に利用できますが、それらを独立した第二の正本として人が二重管理することを要求しません。
 
 三つの視点を同型のCanonical top-level objectへすることも要求しません。hard semantic error、architecture / policy violation、review diagnostic、design question、informational impact等のseverityは、現実的なReferenceでdefect classを再現してから確定します。
+
+**TEIの自己記述と移植検収**：TEI自身の要件についても、全体索引からData／Function／Business・横断制約の対象を探し、モデル定義・関係・具体例・Source・実装・テストへ段階的に移動できる必要があります。X-TEA Modeler/Driverからの移植は、原典の図法・データ・機能・業務・自由記述例の忠実な読取りと、TEI固有の抽象・型付き例・実Driverの検証を別々に評価します。図面の存在や合成データの成功を、要件網羅・業務意味の受理・実DB更新・Studioセルフビルドの証拠として扱ってはいけません。図面上の編集は、Source対象と版・被参照・影響を示し、明示した保存と再読込を通じて検証できる必要があります。実装段階は[三要素Method §33](../plan/design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に従い、RQ-031のCore中立性を維持します。
 
 ## RQ-027 AIが長期間にわたりApplicationへ再入場できる開発contextを提供できること
 

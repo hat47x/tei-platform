@@ -34,6 +34,14 @@
 
 **WEB-P1a-2の実装準備と検証の区切り**：[Web横断設計 §20](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)で、前回PR #5173のCI事実（埋込Bundle・Windows Smoke成功／Host・全体健全性の一部失敗）を資格別に整理し、旧`WORKBENCH_NATIVE_CLOSURE`を保護したまま新Presenterを実画面へ接続する手順を確定した。まず既存Readerと独立Presenterの組合せに、同名異Kind・別Workspace・同版異Subject・明示NULL・partial／unfetchedを検査する局所回帰を加える。画面接続は別PRとし、Node24、実esbuild、Wails埋込JS／HTML／CSS／第三者通知のbyte一致、Static Compositionの新閉包、通常／生成Consumerを同HEADで再資格化する。局所Presenter試験では新Workbenchの配布をPASSとしない。#5168のFocus／Pin独立Expectedを再利用し、内部Inspectorの本文をHTTP公開する際はAudience／Disclosureが別途受理されるまでは転送しない。
 
+**WEB-P1a-2aの具体的な検収**：[Web横断設計 §22](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)に基づき、過去のPinを改変せず、`inspector-candidate.mjs`が元`main.ts`・Reader・独立PresenterのGit blobを一致検査した後、Catalogの適格性検査と表示を一体化した`readInspectorPresentation`を成功時の経路へ接続した別Sourceを導出する。出力の上書きは禁止し、入力改版・固定Closure不整合を拒否する。Workbench埋込CIでは正規Bundleの一致検査を残したまま、候補の型検査・別esbuild・実依存入力・旧埋込JSとの差分を確認する。ここまでを**候補ビルド**とし、実画面の採用判断、新しいSource Closureの正式資格、通常／生成WailsでのConsumer受領はWEB-P1a-2bに分離する。SL-1a（Source位置Presenter #5212）やPin/後着#5168は独立のConsumer課題として再利用し、内部Inspectorの内容はAudience／Disclosureの現在資格なしにWeb公開しない。
+
+**WEB-P1a-1bのコード受入**：[Web横断設計 §21](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)の`readInspectorPresentation`を既存の独立Presenterに追加し、Catalog不在・曖昧、同名異Kindの応答、非read-only、Source Index旧版、制限欠落、表示先Workspaceの入力不正を、既存`presentation.test.mjs`のNode回帰で拒否する。検証済み結果だけを別Subjectへ表示し直す誤配線を防ぐため、現在の選択Contextと検証を同じ関数に渡す。これはread-onlyの局所受入であり、現行`main.ts`・歴史的`presentation.ts`・正規Bundle・旧Closureは変更しない。Source位置Presenter #5212とPin/Focus後着 #5168を別の既存Evidenceとして使い、WEB-P1a-2の実画面・Source閉包・生成Bundle・Windows Consumerと公開Web Disclosureは未検収のまま維持する。
+
+**生成Inspector Readerの未接続を別Gateとして扱う**：PR #5303の同一HEADではWorkbenchの正規Node24 Build／埋込byte一致はsuccessだが、複数の`cmd/tei-studio` Go Jobが`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`で停止した。既存テスト・生成Reader・埋込JS・`main.ts`・`build.mjs`のGit blobは分岐元と同じであり、今回のPresenter変更が直接原因ではない。WEB-P1a-2ではSource契約のDigest→生成Reader一件→実呼出し→正規Bundle→通常／生成Consumerの順に受入する。配布byte一致のみを生成部品の実組込みに昇格させず、既存Goテストの拒否を回避しない（[Web横断設計 §21.3](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)）。
+
+**WEB-P1a-2bの受入順序：Reader同値化を先行**：[Web横断設計 §23](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)の現行コード照合では、手書きReaderにある必須authorityLimitsの検証が生成Contract・生成Readerに無く、sourceStatusの型検査にも差がある。まずW-Rで生成元Contract／既存Transform／生成TSを同じ保証へ揃え、同一Fixtureの正負例で確認する。次にW-Bで一体型Presenterと生成Readerを単一実行経路へ接続し、過去の固定Closureを保存したまま正規Bundle・Digest・Marker・重複Reader不在・埋込byteを新HEADで検査する。最後にW-Cで通常・生成Studio・実Windows WebView2を独立に受領する。#5303／#5306の局所達成をW-R/B/C、Source Open、HTTP Disclosure、正式Stage1→Stage2、実Providerへ流用しない。#1180／#2514、#997／#1824、#2831／#4583の既存Ownerで検収し、新Host・第二正本・新Hard Gateは作らない。
+
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
@@ -169,6 +177,14 @@ Focused試験 internal/operations/inspect_markdown_data_table_date_rule_realizat
 対象の4行は、正値・0・NULL・負値。記録例を追加しても**既存Data／RuleのCanonical WorldとDefinitionの位置は変わらない**こと、Source Indexは元byteの変更として更新されること、期待を0の1セルだけ誤らせると`RULE_EXAMPLE_MISMATCH`を例の期待セルへ返すことを検証する。さらに、値が空のNULLと、項目列を持たない未取得は別の判定不能理由として扱う。CLI／Studioが同じ診断を表示する場合も、Rule定義の編集位置と例の期待値の位置を混ぜない。
 
 DC-55〜57をFocused試験のExpected、DC-58を#1180／#2514へ渡す。今回の判定範囲は実製品のReader、Source Index、Inspector、Rule例の評価と診断であり、実DB Reader、外部Provider、Gの実生成・Build、Dの実Call、取得範囲・Audience・現在Grant、Studioの実編集／Stage2を成功とはしない。並行する期間Rule／Contract Query Reader／Operator選択／Plugin Field投影のPRは、main統合と実Consumer確認後にだけ計画上の到達済みへ移す。通常CLI実ProviderとStage1→Stage2のP0を維持する。
+
+### P1：観測が足りないClaimを、型が合うだけで成立させない（2026年11月17日）
+
+[宣言的構文の合成契約§33](../design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)のDC-59〜66を、既存DF-P4a／DPC-16aとPlugin PC-1b／組織C1の受入へ接続する。成果物の値と型、Ruleの判定、実Readの範囲、公開Grant、実Consumerの受領は別々に確かめる。mainへ統合済みの#5148／#5149／#5156／#5166／#5168／#5181／#5210はそれぞれ異なる局所試験であり、この接合自体が製品で実行済みという意味ではない。
+
+最初のPRは**DC-59／60だけ**を対象とする。SQLite上のRelationに四行を用意し、既存Contract Queryの二行だけを受け取るCallerが無根拠なcompleteを拒否すること、同じpartialでも既知の重複違反なら不成立を確定し、違反が見えないだけなら成立を保留することを、既存Decideと独立Expectedで照合する。Source／Query／Ruleの意味ID・Scope・時点・実Readと申告根拠を同一Attemptで比較する。Callerによる根拠検査が現実に実装されるまでは**NOT RUN／未受理**とする。
+
+DC-61のPerson二世界、DC-62のWhole／Field Loss、DC-63のG／P／D適合、DC-64の古いStudio応答、DC-65の例による全件性誤認、DC-66のSource改版後Artifactは再実装せず、既存のOwner・Fixtureへ接続して結果を再利用する。検収は各変更HEADの実Go／DB／必要なConsumerで別々に判断する。R2-P、通常CLI実Provider→独立Consumer、Studio Stage1→Stage2実Windowsは引き続き独立P0であり、今回のP1を新しい前提条件にしない。
 
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
@@ -928,6 +944,22 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 
 **停止線**：`Source Revision`・`Context epoch`・`Identity/Slot`・`Quantity/Time/CRS`・`Required Scope`・`current Grant`のうち当該操作に必要なものが未確認なら、read説明は可能でもEdit/Executeを許可しない。実行証拠はWorld/Model/Artifact revision、実選択Provider/Generator、実消費byte、独立Expected、Owner受理を分離し、既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)/[#1180](https://github.com/hat47x/tei-platform/issues/1180)/[#1119](https://github.com/hat47x/tei-platform/issues/1119)のGateに載せる。新たな公開DSL・Core TypeKind・固定15表現Enumは異種Consumerの反例を得てからADRで判断する。
 
+
+### REAを外部診断器として扱い、設計復元をTEIの主線に据える（2026-11-17、方式案）
+
+[REA一Function縦断設計§35](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)に基づき、外部Reverse Engineer Anythingを製品の実行基盤・必須解析入口とはしない。主な移行対象はソース・SQL/DB Schema・業務モデル・画面／帳票・設定・API・実入出力であり、これらを既存Reader／Source Index／三要素／Process／標準GraphへEvidence付きで投影して、Owner Review→生成Go／実Provider→独立Consumerの順に検証する。REAのNode/RelationやPartial/Unknown、元byte・版・出典の保持方法は共通規律として採用する一方、Ghidra/Hopper/IDA等の深いバイナリ解析は、ソースがなく代替できない証拠が必要な例外に限る。既存REAの互換回帰を維持し、解析器の機能数拡大をP0とはしない。通常CLI実PG Function ReadとStudio Stage1→Stage2 Windowsは最優先のままとする。
+
+### 一Function移行Reviewの負例と実装の入口（2026-11-17）
+
+[REA縦断設計§39](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)のMR-01〜MR-10を独立Expectedとする。まずSource Indexによる一原文Rangeの読取・同名別Identity・改版／A→B→A・部分取得／権限不足を固定する。三要素CRUDの明示／派生矛盾、外部REAの静的Relation、実Effect／Scope、Studioの原文Openはそれぞれ既存Ownerの受入へ接続する。表示成功をOwner受理、生成Goの実消費、通常CLI実PG Read、Windows Native受領へ昇格させない。
+
+### 一Function移行の初回対象を決める停止条件（2026-11-17）
+
+[REA縦断設計§37](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)に従い、初回は旧Function・旧Data・操作入口の原本とSource Revisionを特定し、TEIのQualified ID候補との対応を別列でReviewする。X-TEAの合成`sales.order.submit`は旧原典との対応・正式commit・副作用防止が未確認のため、M-05以降の合格例として扱わない。原本が特定できなければ`blocked`で止め、実Read・生成Go・Studio Native受領の成功を推定しない。実PG Function Read #2586とWindows Stage1→Stage2 #2831は並行する独立P0であり、外部REAの採用は任意とする。
+
+### 外部REAなしでも成立する一Function移行の製品検収（2026-11-17）
+
+[REA縦断設計§36](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)のM-01〜M-08を移行ベンチマークの受入票とする。出典二種類の独立Source Byte/Range/Revision照合、Qualified Data/Function候補の三要素図面化、旧Functionの実Read/WriteとOwner判断を分けてから、生成Go・通常CLI実Provider Read・旧新の入力/結果/Effect比較・Windows Studio独立Consumerを別Gateで検証する。REAのGraphだけでは正式な業務意味を受理せず、REAを使わずに同等の証拠が揃えば成功と数える。M-01〜04の設計復元とM-05〜07の製品P0を混同せず、M-08の外部Analyzer採否は必要性と維持費で判断する。
 
 ### REAの一Relation質問と現在Sourceへの対応を分けて検証する（2026-11-17）
 
@@ -1702,4 +1734,26 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 
 最初のコードPRはDF-P4aの一因子に限定する。既存の`validationread/sqlite_path_test.go`は誤申告の危険性を示しているが、**製品Callerが虚偽の`complete`を拒否したという証拠ではない**。必要な契約が既存Query／Data Contextで説明できない場合は、欠落条件と代案を受入票に残し、汎用Query Engineや新Stateful Portを先行追加しない。
 
-今回の計画追補だけで新しいGo／DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。現在mainの限定成果と、審査中PR #5187（条件付き必須）・#5214（任意Field状態損失）・#5213（研究計画）を区別する。独立Expectedは従来どおり#1180／#2514へ引き渡す。
+この計画追補だけで実DB／Windows E2E、Owner意味受理、R2-P、R3、Stage1→Stage2をPASSとは扱わない。条件付き必須RuleのPR #5187はmainへ統合済みだが、対象Target・取得範囲・実Consumerでの適格性は別に検収する。任意Fieldの値投影がNULLと欠損を同一化する局所負例（PR #5214）もmainへ統合済みであり、[PC-1bの検収計画§7.1](PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)を次の入口とする。研究計画PR #5213はクローズ・未マージで、mainの実装実績には数えない。独立Expectedは引き続き#1180／#2514へ引き渡す。
+
+### 全件性の申告を根拠付きで受理する最小パケット（2026年11月17日）
+
+[標準Flow§12.14](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)のDPC-16a〜dで、既存DF-P4aの最初の実装境界を具体化する。①限定SQLite Fixtureのfirst_page（2/4行）の虚偽completeを製品Callerで拒否、②同じ部分観測で重複違反の確定と一意性成立の保留を区別、③Scope／Binding不一致と0件の誤全件主張を拒否、④Query／Context／実Callの同一Attempt証拠を通常CLI・実Providerへ接続する。
+
+現行validationread.FromHeaderDetailはCallerからのCoverage申告を利用するReaderであり、それ自体で取得完全性を証明しない。既存Coverageの二値は維持し、未立証は検収票でunknown、Rule入力では保守的にpartialとする。単にLIMITがない、結果が0件、ページ終端らしく見えることをcompleteの根拠にしない。新しい汎用Query Resolver、独立Coverage Engine、第二Expected正本やPlugin ABIを先行追加しない。
+
+**今回の追補はdocs-only**。DPC-16a〜dのGo／DB／CLI実行、#2586の実PostgreSQLと独立Consumer、R2-P実Builder、Studio Stage2、Owner意味受理は未実施の独立合格条件とする。
+
+### Rule正規形と標準表現型を、取得の根拠を失わず接続する（2026年11月17日）
+
+[標準Flow§12.15](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)を、[Rule正規形の決定](../design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)と[三要素モデルの図面契約](../design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)に接続する。Operator署名が要求するRelation／入力範囲、Contract Query束縛の供給宣言、実Providerの取得、Rule判断、表・Graph等へのProjection、Consumerの受領は、**同じ意味IDに基づくが互いに独立して検収する**。全件宣言をQueryのSQL実行の正しさと混同しない。
+
+既存DF-P4の作業順を維持し、(1) DPC-16aの虚偽completeを製品Callerで拒否する一因子Go回帰、(2) Operatorの署名・選択Query束縛から必要Relation／Scopeを確認（新しいRule正規形の実装待ちの場合は既存Rule IDで同等条件を固定）、(3) NULL／未取得、部分観測の陽性違反／成立保留を実Readから検証、(4) 表・Graphのread-only投影でIdentity／Relation・状態・Source版を損なわないことを確認、(5) 実PostgreSQL→通常CLI→独立Consumerを同一Attemptで受領、の順に検収する。
+
+自己記述のSDM-01〜12、Graphの同名異ID・並列辺、組織C1の同一MembershipからPerson数を一意に決められない反例は、新しいFixture Storeを作らず既存#1124/#1131/#2497/#2514に引き渡す。Source編集往復とStudio Stage1→Stage2は別P0として継続し、Data／Ruleの一局所試験を全Modeler・製品セルフビルドの完成とは呼ばない。**ここで追加したのは設計と受入順であり、Operator正規形移行・DPC-16 Caller実装・実GUI・実Consumerの新規PASSではない。**
+
+### DPC-16 Caller資格判定の実装受入票（2026年11月17日）
+
+[標準Flow§12.16](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に基づき、DF-P4aの実装PRを次の順序に限定する。第一段階は既存SQLite FixtureのD1／`members_first_page`（4行中2行）を使い、実行済みContract Queryと同一Scope／Binding／Attemptの全件保証を示せないCallerが`CoverageComplete`を渡さないことを独立Expectedで検査する。既存Readerの「誤ったcompleteを渡せばseatUniqueがsatisfiedになる」負例を残し、**Callerで防げたこと**を別試験として確認する。
+
+第二段階で、観測済み重複の不成立と未観測行が残る一意性成立の保留、別Scope・Bindingの証拠流用拒否、0行の全件性未立証を追加する。Query契約に保証根拠がない場合は未立証→Rule入力partialとし、契約追加の必要性を受入票に残す。既存`validationeval.Coverage`や汎用SQL Executorの改造、Graph／Studioの新実装をこのPRの必須条件にしない。成功の上限は限定Callerの資格判定であり、一般SQL、全Provider、実PostgreSQL／通常CLI／独立Consumer、Owner意味受理へは昇格しない。

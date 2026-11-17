@@ -526,3 +526,177 @@ DPC-01〜15を置き換えず、次の一因子反証を追加する。いずれ
 | DPC-20 | 部分取得の重複／期間重複と、違反未観測の一覧 | 見えた違反は確定できるが、見えない違反を全件不存在と断定しない |
 
 **最初に実装するのはDPC-16**。既存SQL Executorを通った結果から、Callerが`CoverageComplete`を申告できる条件を既存Query／Function Data Contextの選択情報と突き合わせる。現状のSQLite試験は、誤申告が起き得ることを示す基線であって、その拒否が製品で成立した証拠ではない。正式な実PostgreSQL→通常CLI→独立Consumerでの受理は#2586／#4496の別P0に維持する。
+
+### 12.14 全件性は「問われた範囲」についてのみ証明する：DPC-16実装契約（2026-11-17）
+
+データ様式が保存すべきものを、**入力の構造**、**実際に観測した内容**、**判断に必要な閉包**に分ける。「SQLの返却行を読み終えた」だけでは、Functionが問うRelation・Scope・時点の全件性は保証されない。逆に、データベース全体を走査しなくても、定義した対象範囲を読み切れれば、その範囲での判断は成立し得る。
+
+最小の読取専用検収票では、既存のQuery／Function Data Context／Evidenceを参照し、次の欄を**別々の事実**として扱う。これは既存の受理票に加える照合項目であり、新しいCore型や第二のデータ正本を設けない。
+
+| 欄 | 記録・照合する内容 | 誤って推論してはならないこと |
+| --- | --- | --- |
+| Requested | Function／Ruleが要求したRelation、Header・業務Identity、Scope、時点、Field、粒度 | SQLの返却列だけで要求範囲を決める |
+| Executed | 選択Query Contract、実RealizationとSource Revision、Provider、Binding、実Callの識別 | 宣言があるだけで実行済みとする |
+| Observed | 実行が返したRow／Attribute、明示NULL、未選択列、ページ進行、Read終了状態 | 返却件数や値の一致から全件とみなす |
+| Claimed | Callerが「全件」と申告した範囲と根拠 | CoverageCompleteを証拠そのものとみなす |
+| Qualified | Requestedに対して実Readが証明した範囲、未立証の理由、現在の利用資格 | 「未立証」と「欠落が実際に確認済み」を混同する |
+
+**ReaderとCallerの境界**：現行のvalidationread.FromHeaderDetailは、Callerが渡したCoverageをRule評価へ引き継ぐReaderであって、完全性の証明者ではない。製品Callerはその前でClaimを照合し、根拠のないcompleteを渡さない。既存validationeval.Coverageはcomplete／partialの二値なので、証拠不足は検収票ではunknownとして保持し、Ruleへの入力では安全側のpartialにする。そうすると、観測済みの重複違反は確定し得る一方、未観測の重複が存在しないとは断定できない。未立証を、物理的な欠落が確定した証拠として表示しない。
+
+#### 初回の限定合格と拒否条件
+
+既存のinternal/driver/validationread/sqlite_path_test.go（D1の4行、members／members_first_page、seatUnique／personUnique）を再利用する。Provider、Relation、Scope、Ruleを固定し、次の一因子比較から始める。
+
+| ID | 入力差分 | Callerが許してよい結果 |
+| --- | --- | --- |
+| DPC-16a | first_pageの2/4行にcompleteを申告 | 根拠不足としてcompleteを拒否／保留し、Ruleへ偽の全件を渡さない |
+| DPC-16b | 同じ2/4行を未立証として扱う | seatUniqueは判定保留、観測済みpersonUnique違反は不成立と確定 |
+| DPC-16c | 異なるScope・Query Bindingを全件の根拠として提示 | 返却行が一致しても、別Scopeの資格を流用しない |
+| DPC-16d | 0行の応答だけを全件の根拠とする | 空集合・不存在・一意性成立の認定を保留 |
+
+最初は**一つのContract Queryについて、実行したQuery／Binding／ScopeとCallerの申告を同じAttemptで突き合わせる**。SQLにLIMITが見えないこと、ReadがEOFまで進んだこと、件数が一致したことは一般的な完全性の証明にはならない。WHEREの対象縮小、JOIN・DISTINCT・集計の粒度変化、ページング未完了、時点や可視範囲の不一致は別の反証とし、静的に認定できないQueryは未立証とする。複数ページを結合するときは、継続位置・一意な順序・読み取りSnapshotの一貫性も確認する。
+
+**合格の上限**：初回DPC-16a〜dが実装されても、最初に認定できるのは限定Queryに対するCaller境界の拒否能力のみ。全SQL静的解析、全Provider、公開Grant、実Builder、Studio、Owner業務意味受理は含まない。実PostgreSQL→通常CLI→独立Consumerは既存#2586／#4496、独立Expectedは#1180／#2514に引き渡す。この文書の追加自体は新規Go／DB／Studio試験を実施した証拠ではない。
+
+### 12.15 Operatorの署名・図面Projection・Sourceを一つのデータ取得へ結び付ける（2026-11-17横断統合）
+
+[規則の正規形とOperator署名](RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の採用判断、[三要素Method](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)と[自己記述の第一縦断](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md)の設計、および既存の型付きPort設計§11を照合する。ここでは新しい意味モデルを増やさず、**一つのDataと実Readに、必要なRule入力・図面・Consumerを対応付ける条件**を整理する。
+
+#### 12.15.1 Ruleが要求する範囲と、Queryが供給を宣言する範囲を突き合わせる
+
+採用済みの規則設計は、規則を「宣言済みOperator一つと名前付き入力の割当て」に正規化し、Operator署名に型・入力単位・値か有無か・一部観測で反証できるかを記述する方針である。**これは設計判断であり、現行製品の評価器全体が正規形へ移行済みという意味ではない。** 現行の六種のValidationは移行中も互換性を保つ。
+
+- Operator署名が「Relationの全行」を要求する場合、まずRuleのRelation ID・親業務Identity・Scopeと、選択されたContract Query束縛の「対象Relationをすべて返す」という宣言を照合する。束縛が未宣言、別Relation、別Scopeなら、全件性を要求するRuleに無条件で供給しない。
+- Query束縛の宣言は**供給者の保証の主張**であって、実SQLが正しく全件を返したことの自動証明ではない。実行したRealization、入力Binding、ページ終端、Read Cohort・時点、取得列、必要な独立回帰を確認する。現行製品にこれらをすべて証明する能力がなければ、未立証のまま扱う。
+- 実行時のCallerができるのは、束縛が述べた範囲をより狭く扱うことまでとし、**partial／未立証からcompleteへの格上げを認めない**。既存二値Coverageへ渡すときは未立証を保守的にpartialへ写す。ただし、検収票上の「未立証」と「実際に一部しか読んでいない」は分けて残す。
+- 見えた重複で不成立と判断できるかは、Operator署名の「一部の行で反証できる」条件に依存する。観測できなかった行の値を推測して、成立／不存在／総件数を確定しない。
+
+§12.14の「根拠付き全件性」と矛盾させないため、**静的な契約適合**、**実行時に守られた取得範囲**、**独立試験で確認した保証範囲**を別々の資格として記録する。Operator署名とQuery宣言を照合できても、Provider実Readや第三者Consumerの成功に昇格させない。
+
+#### 12.15.2 同じ読取結果を表と図へ渡す際に保つもの
+
+標準データ構造の意味は、表・Graph・Tree・三要素の図面・Node Viewといった表現型に従属しない。Meta／Model／InstanceとProjectionを分け、同じQualified Subjectを複数画面で表示する場合は、少なくとも**意味Identity、個々のRelation occurrence、順序と多重性、値の状態、単位・精度、対象範囲・時点、Source版**のうち当該判断に必要なものを追跡する。
+
+例えば同じ所属Relationを表とGraphに投影するとき、表が一部の列を省略しても、元Relationが完全であったと再認定してはならない。同名の二Node・並列Edgeを一つへまとめるProjectionは、表示用には許せても、元のRelation IDやEdge IDを復元して編集する根拠にはならない。Whole Record／Field／明示Adapterの型が一致しても、粒度・NULLと未取得・Disclosure・現在Grantが異なれば、経路全体の適格性は別検査とする（§11〜12.13）。
+
+図面・Studio・SHO・SUIが共用するのは**選択したSubjectとSource／Projectionの関係**であり、表示を正本として複製することではない。現在の原本は選択済みMarkdown等のSourceとし、read-onlyレビュー→Source位置の再確認→対象Occurrence／Revision・被参照の検証→編集Preview→明示Save→再Read→再Projectionの順に進める。Viewからの直接書戻しや、古いPinに基づく変更は別資格とする。
+
+#### 12.15.3 一つのFixtureで各境界を個別に検収する
+
+最初の実装Packetは既存D1所属の実SQLite4行と一意性Ruleを使い、複雑なGraphや新DSLを先行実装しない。同じSource版とQuery選択を使って、①Relationの要求Scope、②実SQLの4行／2行、③Operatorの必要な全件性と部分観測の反証、④Field投影でのNULL／not-fetched、⑤表と簡単な関係図のread-only Projection、⑥独立Expectedと受領Consumer、を**別の検収欄**としてつなぐ。
+
+組織C1の実PostgreSQL試験で観測された「同じMembershipの投影4件から異なる仮想Person対応（3人／4人）が成立する」反例は、表面の値が一致しても人物数のClaimを決定できないことを示す。これをGraphや型付きPortへも再利用する際、**未観測のPerson Linkを推定で補わない**。実際にSourceへ保存するIdentity／Relationと、図の候補Edgeは区別する。
+
+| 検収する一辺 | 成立条件 | 不成立・保留の例 |
+| --- | --- | --- |
+| Rule要求→Query束縛 | 同一Relation／Header／Scopeに対する必要範囲の一致 | 別Scopeのcomplete宣言を流用 |
+| 契約束縛→実Read | 選択Realization・Binding・実結果の同一Attempt照合 | 2/4行のページを全件と自己申告 |
+| 実Read→Rule判断 | Operator入力の値状態・必要閉包・反証条件が一致 | 観測なしを「違反なし」と確定 |
+| Data→Projection／Port | Identity・粒度・状態・Source版・開示条件を明示 | 同じ表示値から欠けたPerson Linkを推定 |
+| Projection→元Source | Subject／Occurrence／現在Revisionと変更対象が一意 | 同名Nodeや古いPinから直接書戻し |
+
+この照合は既存DPC-16〜20・三要素SDM-01〜12・独立Expected #1180/#2514へ接続し、新しい試験正本は増やさない。**次の実コード差分はDPC-16aのCaller拒否を優先**し、Operator正規形の全移行や図面の双方向編集をその前提にしない。実Provider→通常CLI→独立Consumer #2586/#4496、およびStudio Stage1→Stage2 #2831/#4583は並行の最上位P0を維持する。今回の設計追補自体は新規の実行・Owner受理の証拠ではない。
+
+### 12.16 全件性の根拠を「宣言・実行・観測・検証」に分けて受け渡す（2026-11-17）
+
+§12.14〜12.15の実装を進める際、Callerが単に`CoverageComplete`を引数へ渡せることと、その申告が正しいことを混同しない。現行`validationread.FromHeaderDetail`は取得結果とCoverageを受け取るReaderであり、契約QueryのSQLや実際の母集合を検証する責務は持たない。初回はReaderやRuleを変更せず、**Readerを呼ぶ直前の製品Callerに限って、申告の根拠を点検する**。
+
+| 資格 | 記録するもの | それだけでは認めないこと |
+| --- | --- | --- |
+| Requested | Rule ID、対象Relation、親Identity、Scope、必要な列・全件性 | 実Readが行われたこと |
+| Declared | 選択Contract Query、Realization、Query入力、供給範囲の宣言 | 実SQLが宣言を満たしたこと |
+| Executed | 実行したQuery／Realization、Binding、Provider、Attempt | 母集合の完全な観測 |
+| Observed | 取得行、取得列、NULL／not-fetched、ページ継続・終了の観測 | 全件性、存在しない行の不存在 |
+| Qualified | RequestedとDeclaredの一致、実行根拠、保証済み範囲、未立証理由 | Ownerによる業務意味受理、他Providerへの一般化 |
+
+**判定規則**：同じRelation・Scope・Binding・Attemptで必要な全件性が裏付けられる場合だけ`complete`を渡す。証拠が欠ける、食い違う、またはページ途中である場合は、理由を記録して既存Ruleには`partial`を渡す。これは安全側の縮退であり、未立証を実際の部分取得と同一視するものではない。反証可能な重複が観測済みなら`not-satisfied`は維持できるが、未観測の行がある限り`satisfied`への格上げは認めない。
+
+初回DPC-16aの独立Expectedは「D1に4行を挿入し、`members_first_page`が2行を返す。同じ2行についてCallerが`complete`を要求しても、`seatUnique`を`satisfied`と返さない」とする。続くDPC-16bは`personUnique=not-satisfied`と`seatUnique=undecided: relation-partially-read`を同時に確認する。DPC-16cは異なるScope／Bindingの根拠を流用しないこと、DPC-16dは0行だけで全件性を証明しないことを確認する。**比較対象は同じ実SQLの行結果とし、Coverage申告・資格だけを変える**。
+
+全件保証を静的に判定できない一般SQL、JOIN／DISTINCT／集計による粒度変更、複数ページのSnapshot不整合、認可による可視範囲の縮小は初回の合格対象にしない。限定Queryで成立した証拠を一般SQLや他Providerへ流用せず、必要ならQuery契約側に不足する宣言とその検証方法を別Issueへ切り出す。独立Expectedは#1180／#2514、実PostgreSQL・通常CLI・独立Consumerは#2586／#4496、StudioのSource往復は別検収のまま維持する。
+
+## 13. ノードモデル導入の最小契約：定義・出現・配線・表示を分ける（2026-11-17）
+
+### 13.1 ノードは業務要素の別名ではなく、ある構成内での出現である
+
+同じOperationを別のProcessから使う場合や、一つのProcessで二度使う場合、**Operation定義は一つでもNode出現は複数**になる。逆に、Graph上の一つの箱が複数の定義を束ねて見せる場合、その箱を一つの意味Subjectへ縮約しない。これらを区別できることを、ノードモデル導入の最初の受入条件とする。
+
+| 識別対象 | 役割 | 識別・版の最小要件 | してはならないこと |
+| --- | --- | --- | --- |
+| Definition／Semantic Subject | Data・Function・Rule・Operation・Pluginなど、参照先の意味定義 | 既存の安定ID、選択済みSource／Meaning版 | 表示名をIDとする。Flowごとに定義をコピーする |
+| Node occurrence | Graph／Processのどこに、その定義をどう配置したか | 所属Graph、出現ID、参照先Definition、出現固有の束縛 | 同じDefinitionの二出現を一つに潰す |
+| Port occurrence／Binding | どの出現の、どの入出力・Field・構造Pathを使うか | Node出現、契約Port／Role、型付きPath、必要なSnapshot／Scope | Port名やField名だけで同一とみなす |
+| Semantic edge occurrence | どの二つのPort／出現を、何の関係で結ぶか | **独立したEdge ID**、向き、Role、多重性、Source／Revision | 同端点・同labelの二辺を重複として消す |
+| View glyph／segment | Canvas上の箱、線分、折り畳み、グループ | View内の表示ID、Layout、Projection版、損失情報 | 座標や表示IDをMeaning ID・Writer Targetに転用する |
+
+上表は**既存の標準Graph・Subject・Source Index・契約情報の投影を検収するための項目**である。新しいCoreの`Node`型、共通ID採番器、Graph Registry、独自Compilerの採用案ではない。Source側に安定出現ID／Edge IDが存在しない場合は「未確定」として表示専用に留める。描画時の一時IDを恒久IDへ偽装しない。
+
+### 13.2 同じグラフを三つの問いに使う
+
+**構造の問い**では、Node／EdgeのID、向き、多重性、親Graph、入出力Pathと型が保存されているかを検査する。**意味の問い**では、接続先が要求するRole、grain、key、cardinality、time、NULL／not-fetched、complete、順序、Effectを、供給元の保証と照合する。**現在の利用資格の問い**では、Source・選択Plugin／Operator・Snapshot・Grant・実Builder／Provider・Attemptが実際に一致するかを検査する。
+
+「型が合う」「図上でつながる」「Generatorが生成できる」「実Callが成功した」を同じBooleanにしない。Data Edge、Control Edge、Event Edge、Effect Edge、Source／Evidence Link、Plugin bindingは表示部品を共有しても、成立条件とOwnerは共有しない。Edge Roleが不明なら、実行順序・権限・更新操作を導かない。
+
+Whole Recordをつなぐ場合、Field単位につなぐ場合、明示Adapterを挟む場合は、同じ構造Pathと要求を比較できるようにする。Adapterの存在は型の変換候補を示すに過ぎず、情報損失のない変換、未取得の補完、Provider実装の選択、外部への開示許可を証明しない。AggregationやGraph→Treeのような非単射投影はread-onlyを既定とする。
+
+### 13.3 最初のread-only投影が返すべき内容
+
+新しい永続モデルを作る前に、既存CLI／Inspectorから得られるSubject／Source Index／Operation／Plugin情報を使い、**対象を限定した照合結果**をJSONとStudio Node Viewへ渡す。必要な項目は次のとおり。
+
+| 出力項目 | 何を示すか | 不足した場合 |
+| --- | --- | --- |
+| `graphRef`・`subjectRef`・`selection` | 読み取ったGraph／SubjectとSource／Reader／Selection版 | 別版への合流や現在性を推測しない |
+| `nodes`（出現ID・定義参照・Source locator） | 表示する個々の出現とその出典 | 同名ノードを併合しない。位置不明なら逆編集不可 |
+| `ports`（出現・契約・Path・要求／保証） | 接続点と型付き関係、明示された必要条件 | 未指定を`any`や`complete`に補わない |
+| `edges`（独立ID・両端・向き・Role） | 多重Edgeを含む実際の関係 | ID重複は診断、ID未確定は編集対象外 |
+| `qualifications`・`losses`・`diagnostics` | Source読取、意味候補、構造適合、実利用、開示・編集可否と失われた情報 | 不明をPASSと表示しない |
+
+上記のJSON項目名は**read-only応答の検討用ラベル**であり、公開API schemaとして固定しない。既存の`InspectSubject`、Source Index、Data Context、Plugin Lock、RunPlan／Traceのどこで情報が確認できるかを先に採取し、不足項目だけを元Ownerへ返す。一般的な情報が得られない場合でも、部分的なNode Viewは作れる。ただし当該Graph全体を読み終えたと宣言しない。
+
+### 13.4 四つの最小反例と編集の停止線
+
+| ID | 入力・変更 | 独立Expectedとして必要な判別 | 既存Owner |
+| --- | --- | --- | --- |
+| **NM-01** | 同じlabelのNode二個、同じ両端・同じlabelの有向Edge二本。別のEdgeが同じIDを再利用する負例も用意 | Node出現二個とEdge二本を独立に保持。重複Edge IDは曖昧なSourceとして拒否し、先勝ち・後勝ちで選ばない | #1124／#2497／#2514。REA外部取込 #3394 |
+| **NM-02** | 一つのOperation定義を二つのProcess出現から参照し、一方だけField束縛を変える | Definition IDは一つ、出現とPort Pathは二つ。変更影響は当該束縛へ限定し、他方の出現を書き換えない | #2507／#2620／#4198 |
+| **NM-03** | Whole Record→二Field投影→Adapter→Consumer。未取得FieldとNULL、実Readが2/4行の差を含む | 値・型の一致と、必要なgrain／complete／Source／開示の一致を別判定。失った情報を推定で補完しない | #2497／#2506／#951／DPC-16a |
+| **NM-04** | 意味Graphは不変でLayoutだけ変更。続いてSourceをA→B→A、PluginまたはScopeを変更 | LayoutだけならMeaning／実Artifact再生成を要求しない。A→B→Aで過去のSelection／Review／実行資格を自動復活させない | #1124／#2600／#4198／#4583 |
+
+NM-01は既存のREA候補取込にあるEdge identityの実例を参照できる。ただし外部観測のEdgeと受理済みSemantic Edgeは別物であり、外部取込の成功をGraph編集・Owner受理の証拠にしない。各Expectedは既存#1180／#2514のScenarioに置き、ここに第二のExpected Storeを作らない。
+
+**編集の停止線**は一意な対象出現、元Sourceの現在Revision、意味を失わない局所逆写像、既存Writerの操作対応、現在の権限がそろう地点である。線のドラッグ・Port接続変更・AI提案は、最初は差分候補とSourceへのnavigationに留める。既存AcceptanceでPreview→確認→適用→独立再Readまで検収できた操作だけを編集可能にする。
+
+### 13.5 最初の実装Packetと採否
+
+1. **N0／NM-01**：既存Graph／REA／Sourceの固定Fixtureを使い、Definition／Occurrence／Port／Edge／Viewの識別対応と多重Edge保持をread-onlyで検査。まず実Sourceの読取・同一版の照合を記録する。
+2. **N1／NM-02・03**：現行Operator／Data Context／Pluginの要求と保証を二出現・Field単位で照合し、合格・不適合・材料不足を区別する。未知の意味契約を新型で埋めない。
+3. **N2／限定実現**：既存Source→選択Operator／Generator→実Builder入力→Artifact→通常CLI／独立Consumerに、同一Meaningの一つのNode経路を接続する。実Provider／Effectの資格は別票とし、新しいRunnerを作らない。
+4. **N3／Studio**：同一SubjectをProperty／Table／Graph／Node View／Source間で選択し、Pin／Dirty Buffer／保存済みSource／Accepted Meaningを別の状態として検査。既存Stage1→Stage2実WindowsのP0を維持する。逆編集は前段の一意Slotに限定する。
+
+**採否判断**：NM-01〜04で既存のData／Graph／Role／Operation／Source Indexだけでは保持できない事実が特定されたときに限り、最小の追加契約を担当OwnerとADRへ提案する。新Node DSL、新汎用Graph Runtime、第二Resolver／Host／Evidence Engineを導入しない。ここまでの記述は計画であり、NM試験の実行・正式契約の採用・Owner意味受理を意味しない。
+
+### 13.6 他のTEI設計から取り込む共通原則
+
+| 関連する議論 | ノードモデルへ取り込む判断 | 追加しないもの |
+| --- | --- | --- |
+| 成果物中心のBatch／データマート（成果物合成§10〜14） | Result-firstでは出力の粒度・計算単位・集計位置・時間と必要品質を先に決め、Node-firstではOperationの構成を先に決める。どちらも同じData／Rule／Operator／Processを参照し、必要なInput／Result閉包と変更影響を照合する | Node配置を成果物要求の正本にすること、専用Optimizer |
+| 実行モデル・Lifecycle・BRMS | Data依存とControl／Event／State／Error／Effectを分離する。Ruleの判断不能、Guard、時間シフト、再入、失敗後のReceiptを図の矢印から推測しない | 一種類の「次に実行」線、独自Scheduler／Host |
+| 宣言的構文・文書制作・SHO | Markdown表・式・Graphviz・ノード画面は意味の別投影。Reader／Role／Source occurrenceを明示し、原文の糖衣・コメント・byteを保持する。非単射・折り畳み表示からの自動書戻しは拒否する | ノード専用DSL、図面ごとの意味正本、全面Formatter |
+| 標準データ様式・Graph・組織モデリング・REA | 同名二Node、平行辺、複数親、関係の有効時点、Definition／Instance／Occurrence、NULL／not-fetched、対象範囲を保持する。外部観測Edgeと受理済みRelationを分ける | 名前ベースの重複排除、Treeへの強制変形 |
+| Plugin／Web／Desktop／API | 同じContractをCLI・Web・Wailsの入口に表示するが、宣言・選択・Buildへの含有・実Call・受領・現在Grantを区別する。Wailsは表示・Transportの一つであり、APIの意味を所有しない | Wails依存のCore API、第二Resolver／Policy |
+| SUI／Studio／AI協業 | 一つのSource-backed SubjectをTable／Tree／Graph／Canvas／Inspector／CUIで共用する。Selection epoch・Pin・Dirty／Saved・AI差分候補を別管理し、編集は既存Acceptanceを通す | Canvas位置からの意味推定、AI提案の自動Apply |
+
+ここでいう「共用」は描画と対象参照を共用することであり、**SUIの自由配置Node、業務GraphのEntity、プロセスのOperation出現、PluginのProvider、実行TraceのAttemptを一つの型・一つの実行単位へ畳み込むことではない**。表示上のGroupやSubgraphは、所有するSourceとRef、折り畳みによるlossが追跡できる範囲で扱う。繰返し・複数親・時点付き参照を単純な親子木に変形しない。
+
+同じ意味定義を実現する方式は **P：既存の汎用Evaluatorによる直接解釈、G：Go生成コード、D：DBまたは外部Providerへの明示委譲**として比較する。NodeはOperator／Operationの出現を指すのであって、方式そのものを内包しない。実現方式を決めるときにはDeclared／Selected／Generated／Built／Invoked／Observedを区別し、一方式のPASSを他方式へ流用しない。異なる方式の同値は、入力集合、Required Reads、NULL／partial、順序、丸め、エラー、Effect、実Consume byteを固定して判別する。単なる値の一致やGoへのdelegateを「意味を生成できた」としない。
+
+### 13.7 実装の優先順位と検収資格
+
+**今すぐ実装する候補はN0のread-only投影と、その入力契約を実Product Reader／CLIへ結ぶ小さな変更まで**とする。まずNM-01のID保存・二本のEdgeをテストし、NM-02で定義の共有と二出現を区別する。NM-03は既存DPC-16a／PC-1bのCaller証拠を再利用し、NM-04は既存Studio Pin／Build失効試験へ引き渡す。新しい四件の独立Corpusや専用Graph Validatorを作るのではない。
+
+その後の実製品受入は二系統を並行させる。
+
+- **通常CLI側のP0**：正式Source／選択Reader／契約→生成Go・実Builder byte／Artifact→実Provider Read→独立Consumerという同じAttemptを確かめる。生成・実Read・開示は個別の証拠として報告する。NMの画面が完成していなくても進める。
+- **Studio側のP0**：既存Stage1→Stage2の実Windows Wails再入を先に検証する。Node Viewはその上に載せるread-only Consumerとし、Drag、Patch、Flow Dispatchを前提にしない。
+
+**マージの条件**：設計文書は出典・Owner・停止線と既存P0への接続を静的レビューすればdocs-onlyとしてマージ可能。Go変更は正負の独立Expected、同一HEADのテスト／CI、実Consumerの必要な観測がそろって初めて実装済みとする。docs-onlyマージをNM-01〜04や正式Owner AcceptanceのPASSと記録しない。

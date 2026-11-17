@@ -79,9 +79,10 @@ func TestSourceRevisionChangesPartAndIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, revised := range map[string][]byte{
-		"version":       edit(t, contract, `"version": "1.0.0"`, `"version": "1.0.1"`),
-		"failure code":  edit(t, contract, `"STALE_MODEL_PROJECTION"`, `"STALE_PROJECTION"`),
-		"response name": edit(t, contract, `"canonical": "canonical"`, `"canonical": "projection"`),
+		"version":        edit(t, contract, `"version": "1.0.0"`, `"version": "1.0.1"`),
+		"failure code":   edit(t, contract, `"STALE_MODEL_PROJECTION"`, `"STALE_PROJECTION"`),
+		"response name":  edit(t, contract, `"canonical": "canonical"`, `"canonical": "projection"`),
+		"required limit": edit(t, contract, `"source-location-is-not-write-authority"`, `"source-location-is-not-edit-authority"`),
 	} {
 		next, nextReport, err := generate(transformRaw, revised)
 		if err != nil {
@@ -126,10 +127,12 @@ func TestRejectedSources(t *testing.T) {
 		"another format": {transformRaw, edit(t, contract, `"formatVersion": 1`, `"formatVersion": 2`), "assert-equal"},
 		"missing field": {transformRaw,
 			edit(t, contract, `"sourceStatus": "sourceStatus"`, `"status": "sourceStatus"`), "sourceStatus"},
+		"missing required limits": {transformRaw,
+			edit(t, contract, `"authorityLimits": "authorityLimits"`, `"other": "authorityLimits"`), "authorityLimits"},
 		"string leaves its literal": {transformRaw,
 			edit(t, contract, `"read-only"`, `"read-only\" || true || \""`), "code-safe"},
-		"blank value":         {transformRaw, edit(t, contract, `"unknown"`, `""`), "code-safe"},
-		"array in contract":   {transformRaw, edit(t, contract, `"unknown"`, `["unknown"]`), "unsupported kind"},
+		"blank value":         {transformRaw, edit(t, contract, `"required"`, `""`), "code-safe"},
+		"array in contract":   {transformRaw, edit(t, contract, `"required"`, `["required"]`), "unsupported kind"},
 		"contract not object": {transformRaw, []byte(`["tei.studio.inspection_reader"]`), "one JSON object"},
 		"duplicate key":       {transformRaw, edit(t, contract, `"formatVersion": 1,`, `"formatVersion": 1, "formatVersion": 1,`), "contract Source JSON"},
 		"generator with another input": {
@@ -193,9 +196,10 @@ func TestChildWritesOnceAndReportsWhatItWrote(t *testing.T) {
 // a real Workspace, with the effect the contract expects.
 func TestContractNamesWhatTheRealOperationReturns(t *testing.T) {
 	var contract struct {
-		Operation struct{ Effect string }
-		Response  map[string]string
-		Catalog   map[string]string
+		Operation      struct{ Effect string }
+		Response       map[string]string
+		Catalog        map[string]string
+		RequiredLimits map[string]string
 	}
 	if err := json.Unmarshal(read(t, contractFile), &contract); err != nil {
 		t.Fatal(err)
@@ -220,6 +224,25 @@ func TestContractNamesWhatTheRealOperationReturns(t *testing.T) {
 		}
 		if _, ok := response[name]; !ok {
 			t.Fatalf("contract response.%s names %q, which InspectSubject does not return", role, name)
+		}
+	}
+	var suppliedLimits []string
+	if err := json.Unmarshal(response[contract.Response["authorityLimits"]], &suppliedLimits); err != nil {
+		t.Fatalf("InspectSubject authority limits: %v", err)
+	}
+	if len(contract.RequiredLimits) != 4 {
+		t.Fatalf("contract must name four independently checked limits: %v", contract.RequiredLimits)
+	}
+	for role, code := range contract.RequiredLimits {
+		found := false
+		for _, supplied := range suppliedLimits {
+			if supplied == code {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("InspectSubject is missing contract requiredLimits.%s (%q)", role, code)
 		}
 	}
 	var effect string

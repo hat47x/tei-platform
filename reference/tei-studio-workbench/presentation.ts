@@ -216,49 +216,10 @@ export function readValidation(raw: unknown): Finding[] {
     };
   });
 }
-const INSPECTION_REQUIRED_LIMITS = [
-  "inspection-is-a-derived-read-only-projection",
-  "source-location-is-not-semantic-acceptance",
-  "source-location-is-not-write-authority",
-  "local-read-is-not-disclosure-permission",
-] as const;
-const INSPECTION_LIMIT_LABELS: Record<string, string> = {
-  "inspection-is-a-derived-read-only-projection": "表示内容は読み取り専用の派生情報です。",
-  "source-location-is-not-semantic-acceptance": "元Sourceの位置が分かっても、業務上の意味が受理されたとは限りません。",
-  "source-location-is-not-write-authority": "元Sourceの位置は、編集や保存の許可を示しません。",
-  "local-read-is-not-disclosure-permission": "ローカルで読めても、外部への開示が許可されたとは限りません。",
-};
-export function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {
-  const v = record(raw), limits = v.authorityLimits;
-  if (
-    v.effect !== "read-only" ||
-    subjectKey(subject(v.subject)) !== subjectKey(expected) ||
-    !Object.hasOwn(v, "canonical") ||
-    typeof v.worldFingerprint !== "string" ||
-    typeof v.sourceIndexFingerprint !== "string" ||
-    typeof v.sourceStatus !== "string" ||
-    !Array.isArray(limits) ||
-    !limits.every((limit: unknown) => typeof limit === "string") ||
-    !INSPECTION_REQUIRED_LIMITS.every((limit) => limits.includes(limit))
-  )
-    throw Error("INVALID_INSPECTION_RESPONSE");
-  if (!catalog ||
-      v.worldFingerprint !== catalog.worldFingerprint ||
-      v.sourceIndexFingerprint !== catalog.sourceIndexFingerprint)
-    throw Error("STALE_MODEL_PROJECTION");
-  return {
-    text: JSON.stringify(v.canonical, null, 2),
-    version: `${v.worldFingerprint}:${v.sourceIndexFingerprint}`,
-    sourceStatus: String(v.sourceStatus ?? "unknown"),
-    worldFingerprint: v.worldFingerprint,
-    sourceIndexFingerprint: v.sourceIndexFingerprint,
-    // Display limits returned by the actual read-only Host operation, not a
-    // client-side guess at grants or the current acceptance state.
-    authorityLimits: (limits as string[]).map(
-      (limit) => INSPECTION_LIMIT_LABELS[limit] ?? `追加の利用制限：${limit}`,
-    ),
-  };
-}
+// Keep exactly one product Inspector reader: generated from the current contract.
+// A type-only dependency from the generated part does not create a runtime cycle.
+export { readInspection } from "./inspection-reader.generated.ts";
+
 export function relatedGraph(entries: readonly Entry[], selected: Subject) {
   const key = subjectKey(selected);
   const active = entries.find((e) => subjectKey(e.subject) === key);

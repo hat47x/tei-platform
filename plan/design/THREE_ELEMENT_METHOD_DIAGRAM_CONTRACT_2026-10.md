@@ -1370,3 +1370,86 @@ R0bとR0dは並行に進められる。ただしStudio Desktopをセルフビル
 **既存Expectedへ返す限定反証**（新Scenario正本を作らない）：D-W1 生成部品がファイルに存在する／Windows exeがBuild済みでも実WebView2 Consumer未使用、D-W2 generated server Chromiumまたは手書きコードだけが同値Resultを返す、D-W3 Workspace A→B後に旧A応答が遅延到着、F-B1-1 Query SQLだけ変更したのに生成Revision/実Binaryが不変、F-B1-2 SQLのundeclared入力を正式型契約と誤認、F-B1-3 stale Binaryのreceiptのみ書換え、F-B1-4 READ ONLY静的検査のみで書込拒否試験を省く、B-S1 外部Launcherによる二回BuildでStage1自身のStage2実行を捏造。#1180/#2514の既存Scenario/Expected、#2831 SB、#4559 B1試験に紐付け、同じテストを各PRで複製しない。
 
 **Ownerと優先順位**：P0-A D-Wは#1824（Desktop Consumer）と#1121/#4544（生成）で最初の一件。F-B1の生成器品質・正式入力/Source Index残差は#4559/#1121、通常製品Readは#2586/#1251、Stage1再入場は#2831が担当。P0-CのX-TEA read-only三視点#1124はD-Wで使えるSubject/Locateがあればその後に接続し、原典互換の範囲を新たに推測しない。**今回のD-W1〜3、F-B1-1〜4、B-S1を新たに製品実試験したわけではない。D-W実OS動作、Source-bound生成のmain統合、全CI、Stage2実自己起動、Owner意味受理はいずれもNOT RUN / NOT PROVEN。**
+
+## 33. TEI自身の要件全体をモデルとしてレビューする：三要素Method・標準構造・インスタンス・X-TEA移植（2026-11-17、設計統合）
+
+### 33.1 位置づけと最初の縦断対象
+
+**TEIが扱う要件全体をTEI自身のモデルと図面で説明・検証できること**を、モデルの自己記述性とX-TEA Modeler/Driver移植の共通ベンチマークにする。対象はデータモデルだけではなく、Function、Business Procedure、標準データ構造、標準表現型、Plugin/Operator、Source/生成/実行/証拠への追跡を含む。最初からすべてを一枚の図に押し込まず、全体索引→関心ごとの図→要素詳細→型付きインスタンス→Source/実装/検証の順にたどる。
+
+ただし、**三要素分析法をTEI Core唯一のモデル体系にはしない**（RQ-031、§28）。既存の汎用Data/Relation/Role/Facet、Function、Process、Projection、Method Profileを使う重要なAuthoring Methodとして提供する。業務担当者向けの三要素は、原典に忠実なData Model／Function Model／Business Modelを区別し、TEIの追加解釈（標準構造、表現型、Build/Effect等）は別の規則・凡例を持つ派生図とする。非機能要求や社会・組織上の制約は適切な対象・Constraint・Evidenceへ結び付け、無理に三つのオブジェクト種別へ強制変換しない。自由なGo/SQL等のNative Sourceも通常の設計・実装候補であり、専用DSL化を要求しない。
+
+**要件を図面化する**ことと、**全要件の充足を証明する**ことは異なる。Coverageは問い・Scope・Source版・Method規則・開示範囲ごとに数え、未知・未対応・未取得・未表示を区別する。文書から宣言を抽出できても、意味受理・生成物の実消費・Provider実呼出し・受領・Effect・Ownerの受理は別の証拠で判断する。
+
+### 33.2 自己記述の四つの区別と図面の帰属
+
+| 対象 | モデル上の責務 | 説明する最小の問い |
+| --- | --- | --- |
+| メタモデル／標準データ構造 | 基本型、Record/Table、Collection、Tree、Graph、Temporal、Spatial/N-D、制約・関係・型付きOperationを表す。Metaと対象Modelの依存方向を示す | この構造で何を保存でき、何を表せないか |
+| 対象モデル定義 | TEIのData/Function/Business、Role/Facet、Method/Plugin、標準表現型とMappingを、実Subject・関係・Sourceとして記述 | 何が設計され、どの要素と関係するか |
+| **型付きインスタンス／Scenario** | 構造・制約を満たす例、境界値、違反例、実行前後の値を識別子付きで扱う。説明例・受理済み期待・実観測を別資格とする | 具体的に何が存在し、どの値・状態で成否が変わるか |
+| **表現型／図面Projection** | 同じ構造・値・SubjectをER、テーブル、ツリー、Graph、Node View、手順図、Markdown等へ投影。Functionに配置された表現インスタンスとLayoutを意味定義から分離 | 同じ情報を別の角度で見ても、何が保存／省略／変換されたか |
+
+**型付きインスタンスは単なる図中コメントではない**。例えば受注／明細の「明細0件」「note=null」「note欠損」、Graphの同名二ノード＋平行有向辺、時間データの重複期間・未確定時点は、検査条件と比較できる実例とする。表示だけの自由記述も保持できるが、X-TEAの自由なInstance TextやSlide順を型付きデータ・時系列・期待値へ暗黙変換しない（§4、#1131）。
+
+同一インスタンスを複数表現へ写したとき、保存すべきものは少なくとも**Qualified Identity／Relation ID・向き・多重性／値のPresence・精度・単位／Source・版／意味上の順序・時点**。折畳み、レイアウト、列の省略、表示順、描画Edge IDはProjectionの属性とする。Lossyな表示には消えた情報を明示する。Graphの同名ノード・平行辺、Table/Treeの順序、Collectionの空集合等の負例で、見た目が一致しても構造を潰していないことを検査する。
+
+### 33.3 レビュー可能な図面セットと通常の編集操作
+
+| 図面・レビュー面 | 必要な到達点 | 表示が成功しても未成立のこと |
+| --- | --- | --- |
+| 要件全体索引／三要素俯瞰 | Data/Function/Businessを見渡し、要件・未配置・未解決・横断制約の数と理由、現在地を示す | TEI全要件の網羅・各要件の受理 |
+| データ型・構造・関係図 | Meta→Model→Instanceを切り替え、型・Key・FD・Relation・Graph ID・Instance値まで拡大する | 任意Sourceへの安全な保存・実DB同値 |
+| 標準表現型／Mapping図 | 構造→View occurrence／slot／port／connection、変換・欠落・逆写像資格、Functionへの配置を辿る | Rendererの第二Meaning・逆編集の一意性 |
+| 機能・業務・CRUD図 | Task→Action→Function→I/O→Data、手作業・組織責任、read/writeと実Effectを区別して辿る | Taskの自動CRUDや実Business完了 |
+| 実装・検証への追跡図 | Source occurrence→受理Meaning→Generator/Artifact/Provider/Consumer/Scenarioと現存の根拠を示す | byte一致だけの実行許可・Owner受理 |
+
+本文のMarkdown/表/Mermaid/Graphviz等は、正本として書かれたものか、同じモデルから導出した図かを図ごとに区別する。**現在開いている `*.tei.md` をGUIで視覚的に操作することが基本**であり、意味を持つ内容の別保存・別の双方向同期正本は追加しない。GUI操作はSourceの対象Spanと版を確認し、編集Preview→既存Source保存→再Read→再Projectionを通す。表示用Layoutの変更は意味変更と区別する（#2497、#3788）。要素の削除時には、被参照候補、正式参照、外部観測、Derived、unknownを種別ごとに見せ、曖昧・未取得を「参照0件＝安全」として扱わない（§29）。
+
+Feature Workshopのような専門的な編集面も、Featureを設計書として独立させる／既存設計書内で扱う、どちらであってもSourceの帰属とシステム設計との関係が追えることを先に検査する。専用UIを先行して別のMeaning正本を増やさない。Modeler、SHO、SUI、Plugin配線、Node Viewが利用する共通のSelection/Projection/Source契約を再利用し、要素ごとの専門Methodに解釈を残す。
+
+### 33.4 最小の自己記述コーパス（説明例と独立Expectedを分離）
+
+最初は**固定した小さなTEI設計コーパス**で、図面と構造の双方向照合を行う。自己参照するMeta全体を一挙に実装するのではなく、次の既存要素の一部分から始める。
+
+1. **Data**：Record/Collection/Graphを各一つ。Graphは異なるIDの同名二ノード、同じ端点間の方向のある平行二辺、Relation属性を含む。空集合、NULL、欠損、未取得を独立例にする。メタモデルの「型」と実例の「値」の区別を保つ。
+2. **Representation**：同じDataをMarkdown表・ツリー・Node/Graph図に投影し、各表示の省略／集約／順序／向き／逆写像の条件を一覧にする。表現インスタンスがFunctionに帰属しても、データ正本がRendererへ移らないことを示す。
+3. **Function**：型付きInput/Output、Operator、Rule、選択可能な直接解釈／生成Go／Provider委譲のうち実際に実証した一経路を示す。Generated method名だけを安定識別子にしない。生成Go・実Build・実Call・Effectは独立に認定する。
+4. **Business**：Task→Action→Function→I/O→Dataの一連鎖。人手承認・外部作業を残し、Function CRUDとAction固有Effectを混同しない。
+5. **Studio自体**：同じQualified SubjectをCatalog/Source/Diagram/Inspectorから選択→Pin→元Sourceへ移動するread-only操作。現在のWorkspace/epoch/Source Revisionを照合し、古い応答と別版の図を現在の内容に差し替えない。
+
+期待値は人が独立に作り、生成した図面やTEI Generatorの出力から自動作成して合格根拠にしない。正例と一因子負例を固定し、合成コーパスに成功してもX-TEA実原典やWindows実Studioの資格へ外挿しない（#1180/#2514/#4134）。
+
+### 33.5 X-TEA Modeler/Driver移植のベンチマークと段階ゲート
+
+| 段階 | 合格とする限定条件 | 担当・後続 |
+| --- | --- | --- |
+| **XM-0 原典再現** | 固定したXeadModeler版・実SourceのData/Function/Business、関係・Key・CRUD、原文Instance Text/SortKey、Source位置のLoss/Unknownを保存してread-only表示。原典の図法とTEIの追加図を区別 | #950/#1031/#1124/#1125/#1126 |
+| **XM-1 型付き図面レビュー** | 原典SourceとTEIコーパスについて、Meta→Model→Instance、三要素横断参照、同名/多重辺、欠損・Null/空/未取得、表示損失・Coverageを図・表・CLIで照合 | #1124/#1131/#2497 |
+| **XM-2 明示編集往復** | Qualified Subjectと保存前Source Revisionを固定し、図上の一操作を型付きChange Planへ変換、影響・被参照をPreview、元Markdown等へ明示Save→再Read→再投影。拒否/曖昧/旧版を検証 | #1124/#1126/#3788 |
+| **XD-0 Driver設計検証** | 旧Driverの入力、Rule/分岐、Scenario、検証・拒否・エラーを、固定条件のLegacy実測Lと独立Expected Dに照合。合成Stateだけの成功はDB commitを主張しない | #1131/#1031/#1180/#2514 |
+| **XD-1 実消費・実副作用** | 受理済みTEI機能の生成／Provider／通常製品CLI／独立Consumer受領、Target実測T、DB commit/receipt/recoveryの実証を分離し、L/D/Tの差異と意図的変更をレビュー | #2586/#4495/#2831・各Owner |
+| **SELF Studio自己記述** | TEI自身の一つの設計要素から実Desktopの表示・定位・検証へ到達。TEI生成部品の実使用、Stage1→Stage2と再起動は§32のDS-S2〜S4で**別々に**判定 | #1824/#2831/#1124 |
+
+この表は検収計画であり、**全段階は本追記による新しい製品E2Eの証明ではない**。特に旧Draft #4570の合成Source・WebView2限定スモークを実X-TEA Sourceの意味受理やmainの完成機能と読み替えない。元のX-TEA資産は版を固定して扱い、一般公開できない例は掲載せず、合成データや公開可能な最小例で代替する。
+
+### 33.6 独立Expectedへ渡す反証ケース（新規実行前）
+
+| ID | 一因子負例 | 拒否すべき誤判定 |
+| --- | --- | --- |
+| **SDM-01** | 同名二ノード＋平行有向二辺をTable/Graph切替 | ID・方向・多重辺を同一化 |
+| **SDM-02** | NULL／欠損／空集合／未取得を同じ表示場所に置く | すべて「値なし」と認定 |
+| **SDM-03** | 同一Subjectの二図面Occurrence／別Workspace同名Subject | 描画IDやラベルを意味Identity化 |
+| **SDM-04** | 集約Viewの一項目を編集し逆写像候補が2件 | 初めの一致先へSource書戻し |
+| **SDM-05** | Sourceだけ改版・A→B→A・旧Pinned View | Hash一致だけで現意味・資格を自動復活 |
+| **SDM-06** | 三要素のDataのみ読取complete、Function/Businessはunsupported | 未観測の二視点を0件・全件確認済みと表示 |
+| **SDM-07** | 外部REA候補Edge／図上Edge／受理済みRelationを混在 | 正式CRUD・被参照数に候補Edgeを算入 |
+| **SDM-08** | X-TEA自由Instance Text／表示Slide順を読取 | 型付き値・時間・業務Effectを捏造 |
+| **SDM-09** | Go生成コードが存在するがBuilder未消費／Consumer未受領 | Self-build・機能実行の成功と認定 |
+| **SDM-10** | 合成Driver Stateは変化、正式DB commit/receiptなし | 更新完了・重複副作用抑止を認定 |
+| **SDM-11** | GUIからSource削除候補、正式/Derived/Unknownな被参照が混在 | 参照検索0件だけで安全削除 |
+| **SDM-12** | 標準データ構造は同じで表示Profileだけ差替え | 業務MeaningやOwner受理を暗黙変更 |
+
+既存§19のMAP、§27のMapping、§29の参照、#1131のExample、#2514の独立Expectedへ対応させ、テスト正本・Graph Store・認可Engine・Runnerを重複作成しない。実装ではまずSDM-01/02/03/06のread-only CLIを固定し、次にSDM-04/05/11のSource編集、最後にSDM-09/10の正式Build/Driverへ接続する。実Windows StudioのS0→S2、通常CLI実Provider Read、TEI生成→実Builderの主P0は**並行**して進め、本Method全完成を新たなHard Gateにはしない。
+
+**今回の受入上限**：既存の要件・設計へ本ベンチマークを統合したdocs-only変更。SDM-01〜12の独立試験、実XeadModeler/Driver操作、実Studio GUI、Go/Provider/DB実行、Sourceの意味受理、セルフビルドの新しい成功はすべて**NOT RUN / NOT ACCEPTED**。採否と不足は#1124（Modeler）・#1131（Instance）・#2514（Expected）・#2831（Self-build）の既存Ownerへ返す。

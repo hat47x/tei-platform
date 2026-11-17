@@ -2,7 +2,7 @@
 
 この文書は、TEIの設計、実装、開発状況を知るための案内です。製品要求、設計判断、受入条件、検証結果はここで新たに定義せず、それぞれの正本を案内します。
 
-全体像は[TEIの考え方](overview.md)、技術上の境界は[全体構成](architecture.md)、業務設計の境界は[業務システム設計](business-system-design.md)で説明しています。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、開発の主な計画は[TEIの全体計画](../plan/MASTER_PLAN.md)を参照してください。
+全体像は[TEIの考え方](overview.md)、技術上の境界は[全体構成](architecture.md)、業務設計の境界は[業務システム設計](business-system-design.md)で説明しています。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、現在の優先順位と到達点は[いま進めること](../plan/NOW.md)を参照してください。これまでの検討経緯は[TEIの全体計画](../plan/MASTER_PLAN.md)に残しています。
 
 最初からすべての文書を読む必要はありません。知りたい内容に合わせて、読む文書を選んでください。リポジトリ全体の案内は[README](../README.md)にあります。
 
@@ -21,6 +21,7 @@
 | 要求と検証根拠のつながり | [上位の受け入れシナリオとの追跡関係](../plan/UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) | [TEIの計画](../plan/README.md) |
 | 現在どこまで動くか | [現在の実装状況](status.md) | [TEIの計画](../plan/README.md) |
 | 実際に動かす | [TEIを動かす](getting-started.md) | [現在の実装状況](status.md) |
+| 規則を一つ足して答えが変わるのを確かめる | [はじめての一変更](first-change.md) | [いま進めること](../plan/NOW.md) |
 | 安全性と権限の境界 | [安全性](security.md) | [全体構成の読み方](architecture-reading-guide.md) |
 | 用語と命名 | [TEIの名称と共通用語](naming.md) | [TEIの考え方](overview.md) |
 | 文書の執筆と確認 | [TEI文書品質ガイド](documentation-quality.md) | [`AGENTS.md`](../AGENTS.md) |

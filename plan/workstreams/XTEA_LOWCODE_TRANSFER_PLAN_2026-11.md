@@ -396,6 +396,7 @@ WP10 統合と引継ぎ
 | プロセスを跨ぐ結末の検査 | 確認済み | 付録C.5、`internal/command`・`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_OUTCOME_CROSS_PROCESS_2026-11.md) |
 | `uses`呼出しの効果の補償 | 不要と確認 | 付録C.5、`internal/hook`・`internal/command`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_USES_COMPENSATION_2026-11.md) |
 | Studio経路での`after-*`拒否時の取り消し | 実装（参照・既定経路は未到達） | 付録C.5、`internal/studiohost`、[確認記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_REVERT_2026-11.md) |
+| `StageUnknown`からの復帰のCLI入口 | 実装（運用手順は未決） | 付録C.5、`cmd/tei`、[確認記録](../evidence/XTEA_LOWCODE_LIFECYCLE_TAKEOVER_ENTRY_2026-11.md) |
 | 規則Pluginの発見・束縛・版の契約 | 未決（対象版では境界と差込み口を確認） | 付録C.5、`internal/hook`、[対象版の記録](../evidence/XTEA_LOWCODE_RULE_PLUGIN_CONTRACT_2026-11.md) |
 | `after-*`へ到達するStudio配線 | 実装（参照UIから任意指定、実画面操作は未確認） | 付録C.5、`internal/studiohost`・`internal/hook`、[UI配線の記録](../evidence/XTEA_LOWCODE_HOOK_AFTER_CHANGE_STUDIO_UI_2026-11.md) |
 | 実行時の値変換 | 不要と確認 | 付録C.5、`internal/validation`、[確認記録](../evidence/XTEA_LOWCODE_VALUE_CONVERSION_2026-11.md)（受理条件が同一の下位原始型を要求するため、変換を要する組は通らない） |

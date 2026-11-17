@@ -9,7 +9,7 @@ import {
   relatedGraph,
   readXeadObservation,
 } from "./presentation.ts";
-import { presentInspection } from "./inspector-presentation.ts";
+import { presentInspection, readInspectorPresentation } from "./inspector-presentation.ts";
 const data = {
   subject: { kind: "semantic-data", id: "sales.order" },
   sourceStatus: "indexed",
@@ -183,6 +183,69 @@ test("Inspector projection keeps qualified identity and observed coverage distin
     "a validated reply for another kind cannot be used for this Subject");
   assert.ok(dataAtA.authorityLimits.some(x => /開示/.test(x)),
     "local Inspect result still does not authorize public disclosure");
+});
+
+test("an Inspector presentation cannot change identity after Host validation", () => {
+  const data = { kind: "semantic-data", id: "shared.id" };
+  const rule = { kind: "semantic-rule", id: "shared.id" };
+  const catalog = readCatalog({
+    effect: "read-only", modelRevision: "m3",
+    worldFingerprint: "world-3", sourceIndexFingerprint: "source-3",
+    entries: [
+      { subject: data, sourceStatus: "indexed" },
+      { subject: rule, sourceStatus: "indexed" },
+    ],
+  });
+  const limits = [
+    "inspection-is-a-derived-read-only-projection",
+    "source-location-is-not-semantic-acceptance",
+    "source-location-is-not-write-authority",
+    "local-read-is-not-disclosure-permission",
+  ];
+  const reply = {
+    effect: "read-only", subject: data, sourceStatus: "partial",
+    worldFingerprint: "world-3", sourceIndexFingerprint: "source-3",
+    canonical: { value: null }, authorityLimits: limits,
+  };
+  const context = { workspaceId: "workspace-A", selected: data, catalog };
+  const expected = presentInspection(readInspection(reply, data, catalog), "workspace-A", data);
+  const result = readInspectorPresentation(reply, context);
+  assert.deepEqual(result, expected);
+  assert.deepEqual(JSON.parse(result.document.text), { value: null });
+  assert.match(result.sourceStatusText, /partial/);
+  assert.ok(result.authorityLimits.some(x => /開示/.test(x)));
+
+  // Same textual ID is not the same qualified Subject; reusing a reply is invalid.
+  assert.throws(() => readInspectorPresentation(reply, { ...context, selected: rule }),
+    /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspectorPresentation(reply, { ...context, workspaceId: "" }),
+    /INVALID_INSPECTION_WORKSPACE/);
+  assert.throws(() => readInspectorPresentation(reply, { ...context, workspaceId: " workspace-A" }),
+    /INVALID_INSPECTION_WORKSPACE/);
+  assert.throws(() => readInspectorPresentation({ ...reply, effect: "write" }, context),
+    /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspectorPresentation({ ...reply, authorityLimits: limits.slice(1) }, context),
+    /INVALID_INSPECTION_RESPONSE/);
+  assert.throws(() => readInspectorPresentation({ ...reply, sourceIndexFingerprint: "old" }, context),
+    /STALE_MODEL_PROJECTION/);
+
+  const missing = readCatalog({
+    effect: "read-only", modelRevision: "m3",
+    worldFingerprint: "world-3", sourceIndexFingerprint: "source-3",
+    entries: [],
+  });
+  assert.throws(() => readInspectorPresentation(reply, { ...context, catalog: missing }),
+    /SUBJECT_NOT_FOUND/);
+  const ambiguous = readCatalog({
+    effect: "read-only", modelRevision: "m3",
+    worldFingerprint: "world-3", sourceIndexFingerprint: "source-3",
+    entries: [
+      { subject: data, sourceStatus: "indexed", ambiguous: true },
+      { subject: data, sourceStatus: "indexed", ambiguous: true },
+    ],
+  });
+  assert.throws(() => readInspectorPresentation(reply, { ...context, catalog: ambiguous }),
+    /SUBJECT_AMBIGUOUS/);
 });
 
 test("graph contains actual catalog relations and reports clipped neighbours", () => {

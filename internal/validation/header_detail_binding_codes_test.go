@@ -34,6 +34,13 @@ func TestHeaderDetailBindingFieldCodesAreProduced(t *testing.T) {
 		want   string
 	}{
 		{
+			name: "every row and only some rows",
+			mutate: func(b *realization.HeaderDetailContractQueryBinding) {
+				b.CoversRelation, b.CoversSome = "sales.order.lines", true
+			},
+			want: "HEADER_DETAIL_BINDING_COVERAGE_CONFLICT",
+		},
+		{
 			name:   "application missing",
 			mutate: func(b *realization.HeaderDetailContractQueryBinding) { b.Application = "" },
 			want:   "HEADER_DETAIL_BINDING_APPLICATION_REQUIRED",

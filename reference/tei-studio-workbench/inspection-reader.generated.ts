@@ -3,13 +3,14 @@
 // Transform: builder-sources/inspection-reader-v1.transform.json
 // Regenerate with tools/reference-studio-part-generator (see its README).
 import type { Catalog, Subject } from "./presentation.ts";
+import { inspectionLimitLabel } from "./inspection-limit-labels.ts";
 
 /** Identity of the TEI-owned Source this part was generated from. */
 export const inspectionReaderProvenance = Object.freeze({
   part: "tei.studio.inspection_reader",
   version: "1.0.0",
   operation: "main.StudioBridge.InspectSubject",
-  contractDigest: "sha256:7156cba6cee13d0e4564e3c1d0b8e8c43e18702a3dffe4032d7773ccee3dac3c",
+  contractDigest: "sha256:0a65d341992bee8ab44f9e767321536a7c8e0d13bc4c60a2ddba34a18bf1359b",
 });
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -37,8 +38,14 @@ function recordUse() {
     Number(root.dataset.teiInspectionReaderCalls ?? "0") + 1,
   );
 }
+const REQUIRED_INSPECTION_LIMITS = [
+  "inspection-is-a-derived-read-only-projection",
+  "source-location-is-not-semantic-acceptance",
+  "source-location-is-not-write-authority",
+  "local-read-is-not-disclosure-permission",
+] as const;
 export function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {
-  const v = record(raw);
+  const v = record(raw), limits = v["authorityLimits"];
   const world = v["worldFingerprint"],
     index = v["sourceIndexFingerprint"];
   if (
@@ -46,7 +53,11 @@ export function readInspection(raw: unknown, expected: Subject, catalog: Catalog
     key(subject(v["subject"])) !== key(expected) ||
     !Object.hasOwn(v, "canonical") ||
     typeof world !== "string" ||
-    typeof index !== "string"
+    typeof index !== "string" ||
+    typeof v["sourceStatus"] !== "string" ||
+    !Array.isArray(limits) ||
+    !limits.every((limit: unknown) => typeof limit === "string") ||
+    !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit))
   )
     throw Error("INVALID_INSPECTION_RESPONSE");
   if (
@@ -59,7 +70,8 @@ export function readInspection(raw: unknown, expected: Subject, catalog: Catalog
   return {
     text: JSON.stringify(v["canonical"], null, 2),
     version: world + ":" + index,
-    sourceStatus: String(v["sourceStatus"] ?? "unknown"),
+    sourceStatus: v["sourceStatus"] as string,
+    authorityLimits: (limits as string[]).map(inspectionLimitLabel),
     worldFingerprint: world,
     sourceIndexFingerprint: index,
   };

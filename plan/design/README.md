@@ -136,6 +136,7 @@
 | [`DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md`](DESKTOP_STUDIO_HOST_INTEGRATION_DESIGN.md) | Desktop Studio Hostの操作・状態・資源の境界の設計候補。実機の起動と操作の検証は未実施 |
 | [`DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md`](DSL_OPERATOR_PLUGIN_COMPOSITION_DESIGN.md) | DSLの言語プラグインと演算子の合成についての設計候補 |
 | [`THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md`](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md) | 三要素分析の意味拡張／方法論・図法／図面投影・配置・編集候補を分離し、既存Studio・Source受理・旧資産Adapterへ接続する設計候補（#1124/#1125/#1126、未採用） |
+| [`TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md`](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md) | TEI自身の要求を三要素分析法のモデル定義・同名ノード／並行辺のインスタンス・図面・Source位置・独立Expectedで照合する第一縦断。read-onlyのCRUD対応表の操作集合・独立検証と、原典の実証資格を区別する設計・検収票。例示図は正式な意味受理や実Providerの証拠ではない。 |
 | [`EXAMPLE_ER_SLIDE_M1_2026-10.md`](EXAMPLE_ER_SLIDE_M1_2026-10.md) | 具体例からER図のスライドへつなぐ参照実装（M1）の候補 |
 | [`EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md`](EXTERNAL_SEMANTIC_ACCEPTANCE_HANDOFF_2026-10.md) | 外部の業務意味資産の選択と、案件での受理を結ぶ証拠契約の候補 |
 | [`GENERIC_CAPABILITY_MIGRATION_DESIGN.md`](GENERIC_CAPABILITY_MIGRATION_DESIGN.md) | Generic Capabilityへの移行設計（評価待ち・未採用） |
@@ -197,6 +198,7 @@
 | [`ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md`](ORGANIZATION_RELATION_GOVERNANCE_MODEL_2026-10.md) | 組織関係・時点・統制の標準意味モデル：横断設計と最小検証計画 |
 | [`ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md`](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md) | 高度組織モデリングの段階計画：5段階の基本設計（Identity・Relation・Cardinality・Time・Validation・Query・表示形式）と作業単位WU-01〜14（[#2386](https://github.com/hat47x/tei-platform/issues/2386)、設計・未受理） |
 | [`ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md`](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md) | 組織C1の人物・所属関係、二時点履歴、Case責任、実Provider読取とConsumer受領を、既存r7と担当Ownerに結び付ける横断受入補遺（#2386/#4490/#4501、意味受理・実DB完了前） |
+| [`ORGANIZATION_C1_CLAIM_SUFFICIENCY_DELIVERY_2026-11.md`](ORGANIZATION_C1_CLAIM_SUFFICIENCY_DELIVERY_2026-11.md) | 組織C1の観測の十分性と業務判断・Consumerの受入条件。段階的な実装順、反例、完了条件を整理する（新しい業務意味の受理ではない） |
 | [`DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md`](DSL_NEUTRAL_UNICODE_AUTHORING_AND_SAFE_AI_2026-11.md) | TEI DSL：グローバル共通構文・Unicode表層名・Studio表示・AI入力安全性の統合計画（2026-11-03） |
 | [`ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md`](ETL_ELT_MFT_CROSSBOUNDARY_CONTRACT_PRESSURE_2026-11.md) | ETL/ELT・MFT/ファイルリレー横断契約の圧力試験（設計候補・2026-11-04） |
 | [`PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md`](PLUGIN_REALIZATION_AND_OPTIMIZATION_REQUIREMENTS_2026-11.md) | Plugin機能の実現・安全な最適化に必要な契約（2026-11-06、設計/要件候補） |
@@ -213,6 +215,7 @@
 | [`DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md`](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) | Draft 引用の解決（`recorded-not-resolved` のまま）と Occurrence ID の永続性（snapshot-local のまま）の代行決定と根拠・撤回条件 |
 | [`TEI_MD_READ_SIDE_DESIGN_2026-11.md`](TEI_MD_READ_SIDE_DESIGN_2026-11.md) | SHO 保存物（`*.tei.md`）の TEI 側読み取り設計。読み取り側が答えるべき4つ（R-01〜04）・Parser完了後も変えない境界・Parser 入出力契約。実装は Parser（#3346）完了後（設計のみ） |
 | [`TEI_MD_RULE_READER_AND_CORE_STRUCTURE_DECISION_2026-11.md`](TEI_MD_RULE_READER_AND_CORE_STRUCTURE_DECISION_2026-11.md) | `*.tei.md`の`rule`を製品Loadで読む経路の設計判断。言語の選択、読む領域、位置の得方、既存Validationへの変換と、その代替案・見直す条件。Role・型・Operator・Contractの区別、ほかの分野で足りない能力、反証の結果、引継ぎ（提案。実装はmain統合済み） |
+| [`RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md`](RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md) | 規則を「宣言したOperator一つを名前付きの入力へ当てたもの」と定め、規則の種別を増やす進め方を終える判断。Operatorの署名、評価の入口の一本化、全件かどうかの束縛への宣言、暦日、例の表、式の入れ子・組織・移行候補の方針と、受入れ条件（決定。実装は未着手） |
 | [`AI_GENERATOR_AUTHORING_STANDARD_2026-11.md`](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md) | 生成AIがコードジェネレータを作るときの標準方式の設計案（未採用）。Transform Source・外部Generator・Generator Definitionの3方式の比較、共通の最小契約、停止条件、決定性と生成AI過程の分離、メタ生成の境界、検証手順。最小実証は[`tools/reference-generator-selection/`](../../tools/reference-generator-selection/README.md)の`validation`契約（[#4553](https://github.com/hat47x/tei-platform/issues/4553)） |
 
 ## 関連する参照事例と評価

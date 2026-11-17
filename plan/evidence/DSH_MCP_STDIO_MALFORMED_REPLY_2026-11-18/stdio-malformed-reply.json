@@ -1,0 +1,355 @@
+{
+  "note": "A malformed stdio reply produces DIFFERENT outcomes depending on whether the child then exits. If it exits, the call fails immediately with 'MCP connection closed'. If it stays alive, the malformed bytes are silently ignored and the call waits until toolCallTimeoutMs expires, surfacing 'Request timed out'.",
+  "overlay": {
+    "transport": "stdio",
+    "serverName": "partialmock/alivemock",
+    "toolCallTimeoutMs": 4000,
+    "failOnStartupError": false
+  },
+  "modes": {
+    "truncate-json": "half a JSON reply, then exit(2)",
+    "no-newline": "complete JSON without trailing newline, then exit(0)",
+    "garbage": "'NOT JSON AT ALL {{{', then exit(2)",
+    "keepalive-garbage": "'NOT JSON AT ALL {{{', then stays alive 30s",
+    "keepalive-truncate": "half a JSON reply, then stays alive 30s"
+  },
+  "runs": {
+    "truncate-json": {
+      "childExitedAfterWriting": true,
+      "wrote": {
+        "event": "wrote-partial",
+        "bytes": 59,
+        "ofTotal": 118,
+        "hasNewline": false,
+        "t": 6.64
+      },
+      "toolResult": {
+        "callId": "toolu_1",
+        "status": "error",
+        "result": "Error: Error: MCP connection closed"
+      },
+      "reachedToolsCall": true,
+      "childLog": [
+        {
+          "event": "started",
+          "mode": "truncate-json",
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "server/discover",
+          "id": "server-discover-probe-1",
+          "t": 0.0
+        },
+        {
+          "event": "started",
+          "mode": "truncate-json",
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "initialize",
+          "id": 0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "notifications/initialized",
+          "id": null,
+          "t": 0.015
+        },
+        {
+          "event": "request",
+          "method": "tools/list",
+          "id": 1,
+          "t": 0.015
+        },
+        {
+          "event": "request",
+          "method": "tools/call",
+          "id": 2,
+          "t": 6.64
+        },
+        {
+          "event": "wrote-partial",
+          "bytes": 59,
+          "ofTotal": 118,
+          "hasNewline": false,
+          "t": 6.64
+        }
+      ]
+    },
+    "no-newline": {
+      "childExitedAfterWriting": true,
+      "wrote": {
+        "event": "wrote-complete-no-newline",
+        "bytes": 118,
+        "t": 0.61
+      },
+      "toolResult": {
+        "callId": "toolu_1",
+        "status": "error",
+        "result": "Error: Error: MCP connection closed"
+      },
+      "reachedToolsCall": true,
+      "childLog": [
+        {
+          "event": "started",
+          "mode": "no-newline",
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "server/discover",
+          "id": "server-discover-probe-1",
+          "t": 0.0
+        },
+        {
+          "event": "started",
+          "mode": "no-newline",
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "initialize",
+          "id": 0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "notifications/initialized",
+          "id": null,
+          "t": 0.016
+        },
+        {
+          "event": "request",
+          "method": "tools/list",
+          "id": 1,
+          "t": 0.016
+        },
+        {
+          "event": "request",
+          "method": "tools/call",
+          "id": 2,
+          "t": 0.61
+        },
+        {
+          "event": "wrote-complete-no-newline",
+          "bytes": 118,
+          "t": 0.61
+        }
+      ]
+    },
+    "garbage": {
+      "childExitedAfterWriting": true,
+      "wrote": {
+        "event": "wrote-garbage",
+        "t": 0.609
+      },
+      "toolResult": {
+        "callId": "toolu_1",
+        "status": "error",
+        "result": "Error: Error: MCP connection closed"
+      },
+      "reachedToolsCall": true,
+      "childLog": [
+        {
+          "event": "started",
+          "mode": "garbage",
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "server/discover",
+          "id": "server-discover-probe-1",
+          "t": 0.0
+        },
+        {
+          "event": "started",
+          "mode": "garbage",
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "initialize",
+          "id": 0,
+          "t": 0.015
+        },
+        {
+          "event": "request",
+          "method": "notifications/initialized",
+          "id": null,
+          "t": 0.015
+        },
+        {
+          "event": "request",
+          "method": "tools/list",
+          "id": 1,
+          "t": 0.015
+        },
+        {
+          "event": "request",
+          "method": "tools/call",
+          "id": 2,
+          "t": 0.609
+        },
+        {
+          "event": "wrote-garbage",
+          "t": 0.609
+        }
+      ]
+    },
+    "keepalive-garbage": {
+      "childExitedAfterWriting": false,
+      "wrote": {
+        "event": "wrote-garbage-then-stays-alive",
+        "t": 0.719
+      },
+      "toolResult": {
+        "callId": "toolu_1",
+        "status": "error",
+        "result": "Error: Request timed out"
+      },
+      "reachedToolsCall": true,
+      "childLog": [
+        {
+          "event": "started",
+          "mode": "keepalive-garbage",
+          "hang": 30.0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "server/discover",
+          "id": "server-discover-probe-1",
+          "t": 0.0
+        },
+        {
+          "event": "started",
+          "mode": "keepalive-garbage",
+          "hang": 30.0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "initialize",
+          "id": 0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "notifications/initialized",
+          "id": null,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "tools/list",
+          "id": 1,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "tools/call",
+          "id": 2,
+          "t": 0.719
+        },
+        {
+          "event": "wrote-garbage-then-stays-alive",
+          "t": 0.719
+        }
+      ]
+    },
+    "keepalive-truncate": {
+      "childExitedAfterWriting": false,
+      "wrote": {
+        "event": "wrote-partial-then-stays-alive",
+        "bytes": 50,
+        "ofTotal": 100,
+        "t": 1.453
+      },
+      "toolResult": {
+        "callId": "toolu_1",
+        "status": "error",
+        "result": "Error: Request timed out"
+      },
+      "reachedToolsCall": true,
+      "childLog": [
+        {
+          "event": "started",
+          "mode": "keepalive-truncate",
+          "hang": 30.0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "server/discover",
+          "id": "server-discover-probe-1",
+          "t": 0.0
+        },
+        {
+          "event": "started",
+          "mode": "keepalive-truncate",
+          "hang": 30.0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "initialize",
+          "id": 0,
+          "t": 0.0
+        },
+        {
+          "event": "request",
+          "method": "notifications/initialized",
+          "id": null,
+          "t": 0.016
+        },
+        {
+          "event": "request",
+          "method": "tools/list",
+          "id": 1,
+          "t": 0.016
+        },
+        {
+          "event": "request",
+          "method": "tools/call",
+          "id": 2,
+          "t": 1.453
+        },
+        {
+          "event": "wrote-partial-then-stays-alive",
+          "bytes": 50,
+          "ofTotal": 100,
+          "t": 1.453
+        }
+      ]
+    }
+  },
+  "childExitsThenObservation": {
+    "truncate-json": "Error: Error: MCP connection closed",
+    "no-newline": "Error: Error: MCP connection closed",
+    "garbage": "Error: Error: MCP connection closed"
+  },
+  "childStaysAliveThenObservation": {
+    "keepalive-garbage": "Error: Request timed out",
+    "keepalive-truncate": "Error: Request timed out"
+  },
+  "answers": {
+    "exitAfterMalformedBytes": "MCP connection closed",
+    "stayAliveAfterMalformedBytes": "Request timed out (bytes were ignored, not rejected)",
+    "clientRejectsMalformedBytesPromptly": "not measured",
+    "errorDependsOnChildLifetime": true,
+    "note": "the data shows that a malformed reply while the child stays alive ends in 'Request timed out' and while it exits ends in 'MCP connection closed'. It does NOT measure how quickly either happens, nor record a parse/reject event."
+  },
+  "implication": "'MCP connection closed' reports the closed pipe, NOT a parse failure. When the child keeps the pipe open, malformed or truncated output is discarded without any error and the caller simply waits out the timeout. So the same defect (a bad reply) looks like a connection loss in one case and a timeout in another, and neither names the real cause.",
+  "caveat": "Five shapes, one tool, one timeout, one 30s keepalive. Whether the bytes are ever parsed after the timeout, and whether a well-formed-but-wrong-shaped reply behaves differently, were not tested.",
+  "timingNote": {
+    "removedFields": [
+      "runElapsedSeconds",
+      "elapsedSeconds"
+    ],
+    "why": "an earlier draft reported 18.3s and 38.0s from the outer shell's stopwatch, which includes DSH startup and shell overhead. Those are NOT tool-call latencies, and 38s even exceeds the 30s keepalive. They have been removed rather than reinterpreted.",
+    "whatIsRecorded": "only child-side timestamps (when tools/call arrived and when the child wrote its bytes); no time-to-error was captured for the client side"
+  }
+}

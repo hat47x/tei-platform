@@ -17,6 +17,7 @@ import (
 var acceptedCommands = []string{
 	"application-release-compatibility",
 	"artifacts",
+	"business-procedure",
 	"commands",
 	"consumer-impact",
 	"database-compatibility",
@@ -81,6 +82,7 @@ var helperDispatchedCommands = []string{
 	"plugin-resolve",
 	"plugin-runtime-plan",
 	"plugin-inventory",
+	"plugin-plan",
 }
 
 func init() {
@@ -269,6 +271,15 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// without a second edit — restating them by hand is what left the
 			// catalog flags missing from -h.
 			writeFlagHelp(&out, selfBuildHelpFlags(), command, nil)
+			return out.String()
+		}
+		if command == "business-procedure" {
+			// business-procedure parses its own FlagSet, so it cannot carry an
+			// allowlist entry. The listing is derived from the same FlagSet
+			// that parses the arguments.
+			var args businessProcedureArgs
+			writeFlagHelp(&out, businessProcedureFlagSet(&args), command, nil)
+			fmt.Fprintf(&out, "\nthe projection is read-only. A manual step is kept with its actor and\ninstruction, a business trigger is not an automatic run, approval and\nrejection are separate branches, and a Function reference that does not\nreach exactly one declared target is reported, never guessed.\n")
 			return out.String()
 		}
 		if strings.HasPrefix(command, "three-element") {

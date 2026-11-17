@@ -351,3 +351,24 @@
 
 # Argument-ceiling observations are hashed as raw bytes.
 /plan/evidence/DSH_MCP_ARG_CEILING_2026-11-17/** -text
+
+# maxDepth 5 observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH5_2026-11-17/** -text
+
+# maxDepth 6 observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH6_2026-11-17/** -text
+
+# Malformed-reply observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_STDIO_MALFORMED_REPLY_2026-11-18/** -text
+
+# Ledger self-audit output is hashed as raw bytes.
+/plan/evidence/DSH_LEDGER_SELF_AUDIT_2026-11-18/** -text
+
+# Later-run recovery observations are hashed as raw bytes.
+/plan/evidence/DSH_MCP_LATER_RUN_RECOVERY_2026-11-18/** -text
+
+# maxDepth 7 observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH7_2026-11-18/** -text
+
+# maxDepth 8 observations are hashed as raw bytes.
+/plan/evidence/DSH_SUBAGENT_DEPTH8_2026-11-18/** -text

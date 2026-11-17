@@ -520,6 +520,15 @@ func Validate(w ir.World) []Diagnostic {
 			} else if !strings.HasPrefix(string(c.Attribute), string(m.SemanticData)+".") {
 				out = append(out, errd("PERSISTENCE_ATTRIBUTE_PARENT_MISMATCH", "persistence mapping %s attribute %s does not belong to semantic data %s", m.ID, c.Attribute, m.SemanticData))
 			}
+			// A calendar date stored as a moment in time has no day of its
+			// own: which day the moment falls on depends on a time zone, and
+			// the reader of the column gets the zone of the machine it runs
+			// on. The same record would then read as a date on one machine
+			// and not on another.
+			if attribute, known := semanticAttributeByID[c.Attribute]; known &&
+				c.Storage == persistence.StorageDateTimeTZ && semantic.IsCalendarDateType(semanticTypes, attribute.TypeRef) {
+				out = append(out, errd("PERSISTENCE_CALENDAR_DATE_STORED_AS_MOMENT", "persistence mapping %s stores attribute %s, a calendar date, as %s, a moment in time; which day a moment falls on depends on a time zone the record does not hold. Store it as %s or %s in the form YYYY-MM-DD, or declare the attribute as std.datetime", m.ID, c.Attribute, c.Storage, persistence.StorageVarchar, persistence.StorageText))
+			}
 			if !c.Storage.Valid() {
 				out = append(out, errd("INVALID_PERSISTENCE_STORAGE_TYPE", "persistence mapping %s attribute %s has invalid storage type %q; valid values are %s", m.ID, c.Attribute, c.Storage, validValues(persistence.StorageTypes)))
 			}

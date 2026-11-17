@@ -36,6 +36,17 @@ const WORKBENCH_NATIVE_CLOSURE = Object.freeze({
   'reference/tei-studio-workbench/package.json': '55c30d71161b0318f33313389a6455348916a771',
   'reference/tei-studio-workbench/package-lock.json': '0dc26032126a8a3ab5ed874d3d47d9cd550aa475',
 });
+// New source revision: generated Inspector is imported by the production entry.
+// This is a candidate closure until the exact-head Windows Consumer qualifies it;
+// historical native and earlier pins remain byte-for-byte unchanged.
+export const WORKBENCH_GENERATED_READER_HEAD = '648cfa983639b6e716b9d47dbf4d154c8f38e5fb';
+export const WORKBENCH_GENERATED_READER_MAIN_BLOB = 'b9927b2d4b2b18b13cd905fc0bdcc03f656d0df6';
+const WORKBENCH_GENERATED_READER_CLOSURE = Object.freeze({
+  ...WORKBENCH_NATIVE_CLOSURE,
+  'reference/tei-studio-workbench/presentation.ts': 'a31dc45024725a529a6956d896ffd67ebdd2dd84',
+  'reference/tei-studio-workbench/inspection-reader.generated.ts': '5ae1d69a41cc71300d322ee95909640c70d2cb9e',
+  'reference/tei-studio-workbench/inspection-limit-labels.ts': '0584b591ba6a48d72e355d2cf67b92abc5b040fe',
+});
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -60,6 +71,13 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_NATIVE_CLOSURE}),
+  Object.freeze({head: WORKBENCH_GENERATED_READER_HEAD,
+    mainBlob: WORKBENCH_GENERATED_READER_MAIN_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    closureBlobs: WORKBENCH_GENERATED_READER_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';

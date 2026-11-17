@@ -1148,3 +1148,52 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 | S5 Projection/Port (#2497/#2516/#1124) | Graph/Tree/SHO/Pluginの型付きPort・Adapterと投影損失、ConsumerのDisclosureを比較 | Nodeの表示や型ShapeだけでPerson Link・Relation Edge・Grantが復元されたとみなさない |
 
 Person Linkの同一性、訂正か再所属か、どの時間条件で人数を数えるかは#2386/#1126のOwnerが採否を判断する。S3の実DB反例はその判断を代行しない。#2831 Desktopセルフビルドは引き続き独立P0。
+
+
+<!-- org-claim-sufficiency-delivery-20261117 -->
+### 10.22 Claimの情報十分性を、通常CLI実受領から段階的に製品検収する
+
+[組織C1：観測の十分性から業務判断・Consumerへ進むための受入計画](ORGANIZATION_C1_CLAIM_SUFFICIENCY_DELIVERY_2026-11.md)に、§10.20〜10.21の次の実装順・判別ケース・停止条件をまとめた。PR #5155/#5210の隔離PostgreSQL局所PASSを基線とし、人物数の正式確定、二Consumer、業務Rule、Host Effectの合格とはしない。
+
+製品Exitは **G1 通常CLIのFunction→実Provider→一Consumer同一Attempt受領 → G2 Owner受理済みPerson Linkと正式二時点保存 → G3 人物数/FTE等のClaim別十分性 → G4 二Consumerと損失認識Projection → G5 業務候補・現在Grant・Effect** と分ける。G1とG2の準備、G4の独立Expectedは並行可能。G3の確定値は正式Linkと完全Readがそろうまでunknownにする。各Gateは既存Owner/Scenario/Expectedへ接続し、組織専用Runtimeや新しい意味正本を設けない。
+
+優先P0は引き続き #2586 の通常CLI実Readと #2831 のDesktopセルフビルド。上記G1〜G5は**本追補時点では計画であり未実行**。固定HEAD・実Provider・Consumer受領・Owner受理を別々に確認してから受入状態を更新する。
+
+<!-- org-claim-quantifier-handoff-20261117 -->
+### 10.23 S3→S4のClaim判断を、量化と取得範囲ごとに検収する
+
+[組織C1補遺§44.4](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)は、二世界の観測不十分性をさらに具体化し、部分取得の存在証人・反例から結論を確定できる場合と、対象母集団の閉包が必要な場合を分けた。
+
+- **片側結論**：同一Scope/時点/Query条件でR⊆Lが確立したMembership occurrenceを1件観測すれば「1件以上」は真、異なる2 IDなら「高々1件」は偽。ただしpartialな0件は不存在を、partialな1件は唯一性を証明しない。
+- **業務上の粒度**：Membershipの結果をPerson数・配賦FTE・承認候補へ昇格しない。正式Person Relation、否定条件を含むRuleの必要Read、valid/knownとRead Cohort、Claimごとの完全集合性を分けて要求する。
+- **Owner配分**：#2586/#2506の同一Attempt実Read・一Consumer、#2514の片側結論と独立Expected、#2386/#1126のPerson意味受理、#4490の判断候補、#2497/#2516の情報損失・Disclosureを接続する。新Org Evaluator、Temporal Engine、Expected Storeは設けない。
+
+最小の追加試験は**同一条件で0/1/2所属をcomplete/partialそれぞれで照合し、確定・反証・unknownを一Consumerへ伝える**こと。既存Expectedの拡張として行い、新しい検証正本は作らない。Person数と承認候補は正式Relation・Ruleの受理後に別資格で確認する。設計のみで実Provider/Consumerの合格や現在Grantを主張しない。通常CLI実Read #2586とStudioセルフビルド #2831を引き続き先行P0とする。
+
+<!-- org-cross-domain-witness-20261117 -->
+### 10.24 組織C1を三要素・REA・プロセス・Pluginの共通検証例にする
+
+組織の新しい専用CoreやDSLを先行させず、既存Data/Relation、Function/Query、Rule/Business、Process、型付きPlugin Port、用途別Projectionを組み合わせる。組織モデルは**意味上の責任を扱うが、実行主体の認証・現在Grant・外部EffectはHost側**に残す。三要素分析やREA、SUI/CSWの探索的Affinityは候補を説明する視点であり、Accepted Membership/ResponsibilityやGrantの代替ではない。
+
+| 接合面 | 同じ合成Case C1で保持する区別 | 次の受入／既存Owner |
+| --- | --- | --- |
+| 三要素・REA | Person/OrgUnit/Position等の主体・構造、Case/資源、業務行為・責任を別Identity/Relationとして結ぶ。REAから決裁・実行を自動確定しない | #2386/#1126が意味受理。候補→受理のSource/反例を残す |
+| Process | C1の取扱D1→D2、責任移管の提案、相手の受領ACK、業務判断、Effect Receiptを別状態とする。通知成功は移管完了ではない | #1125/#1444/#1174。Commit uncertainとD1→D2→D1を負例にする |
+| 型付きPlugin | 単純な属性port、複合型port、明示Adapterを許容。Shape一致だけでPerson Link、Relation occurrence、時間、Scope、Lawを復元しない | #4515/#2516。選択→含有→実呼出し→受信を独立に検査 |
+| 抽象経路テスト | Source/World/Meaning→Relation/Query→Builder/Interpreter→実Provider→Function Context→Consumer→独立Expectedを同一Attemptに束縛 | #2586/#2506/#2514。生成メソッド名・別RunのPASSを証拠として合算しない |
+| SUI/CSW/SHO | 探索Card/Island、Mapping Candidate、Owner Accepted Relation、Document Draftを別版・別用途で扱う。公開Slice以外のCount/Edge/Sourceを漏らさない | #2516/#1124、SUI/SHO側Owner。受信と意味保存を分離 |
+| Studioセルフビルド | *.tei.mdのGraph/Query/Flow/UIから生成または汎用評価し、どの実装経路が選ばれたかを追跡する | #2831のStage1→Stage2は独立P0。組織の局所PASSでDesktop自走を主張しない |
+
+#### 最小縦断と反例
+
+1. **ORG-XD-01（Read）**：同一C1・Source版・Query ID・validAt/knownAt・Read Scopeの下で、通常CLI Function→実Provider→一Consumerの受領を照合する。partialの0/1/2件に対する存在・一意・不存在の片側結論は§10.23/§44.4の独立Expectedを再利用。通常CLIの実行証拠がなければNOT RUN。
+2. **ORG-XD-02（Identity）**：同じ4 Membershipの観測からPerson 3人/4人となる二世界を、正式Person Relationがない間はunknownに保つ。OwnerがRelationを受理した後にだけ、同一Scope/Read Cohortで再集計する。
+3. **ORG-XD-03（Process）**：MembershipのD1→D2異動だけではC1の担当・責任を変更しない。Case責任移管、候補、通知、ACK、現在Grant、Effectを別Expectedで検査する。
+4. **ORG-XD-04（Port/Projection）**：Graph/Table/Tree/SHO/Pluginへ渡すとき、同名の二Person、多重Edge、非開示Relation、Adapterによる情報損失を対照にする。非可逆Projectionから正式Relationを自動編集しない。
+5. **ORG-XD-05（Harness/ABA）**：選択A→B→A、Source/Policy epoch変更、別TenantへのConsumer切替で、旧AI候補・Read・Grant・Receiptを再利用しない。
+
+**実装順**：まず#2586の通常CLI実Readと一Consumer受領（ORG-XD-01）。Person Relationの意味受理と独立Expectedの準備は並行可。次にPerson集計・二Consumer・型付きPort、最後にCase責任・実Host Effectを接合する。#2831 Studioセルフビルドは並行する独立P0であり、組織側の未完成を新しいHard Gateにしない。
+
+**設計上の停止条件**：別Attemptの証拠を同一経路と称する、未受理のREA/Affinityを正式Relationへ昇格する、PersonとPrincipalを同一視する、partialから不存在を断定する、同Shapeで欠落したRelationを復元したとみなす、承認候補を現在Grantにする、通知をACK/Effectとする、という実装は不合格。上記ORG-XDは既存Scenario/Expectedへ追加する候補であり、独立のOrg Runner・Workflow Engine・Evidence DBは作らない。
+
+**状態**：横断設計・検証条件の追補。ORG-XD-01〜05の実行、三要素/REA正式Plugin、実Port/SHO受領、Host Effect、Ownerの新規意味受理は未実証。
