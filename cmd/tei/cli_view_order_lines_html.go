@@ -105,9 +105,9 @@ func renderDestinationOrderLinesHTML(result destinationRead) (string, error) {
 	}
 	page := destinationHTMLPage{
 		Application: string(result.Application),
-		Pattern: string(result.Pattern),
+		Pattern:     string(result.Pattern),
 		Environment: string(result.Environment),
-		Coverage: result.Coverage,
+		Coverage:    result.Coverage,
 	}
 	for id := range fields {
 		page.FieldIDs = append(page.FieldIDs, id)
