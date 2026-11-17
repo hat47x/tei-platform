@@ -2,7 +2,7 @@
 
 この文書は、TEIの設計、実装、開発状況を知るための案内です。製品要求、設計判断、受入条件、検証結果はここで新たに定義せず、それぞれの正本を案内します。
 
-全体像は[TEIの考え方](overview.md)、技術上の境界は[全体構成](architecture.md)、業務設計の境界は[業務システム設計](business-system-design.md)で説明しています。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、開発の主な計画は[TEIの全体計画](../plan/MASTER_PLAN.md)を参照してください。
+全体像は[TEIの考え方](overview.md)、技術上の境界は[全体構成](architecture.md)、業務設計の境界は[業務システム設計](business-system-design.md)で説明しています。正式な要求は[製品要求](../requirements/TEI_PRODUCT_REQUIREMENTS.md)、現在の優先順位と到達点は[いま進めること](../plan/NOW.md)を参照してください。これまでの検討経緯は[TEIの全体計画](../plan/MASTER_PLAN.md)に残しています。
 
 最初からすべての文書を読む必要はありません。知りたい内容に合わせて、読む文書を選んでください。リポジトリ全体の案内は[README](../README.md)にあります。
 
