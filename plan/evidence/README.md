@@ -503,7 +503,8 @@
 - [XF310の一確定で3種の変更を載せる](XTEA_LOWCODE_XF310_MIXED_CHANGES_2026-11.md)（参照実装の試験記録。メモリアダプタが子を適用していなかった欠陥を修正。他のStore実装は未確認）
 - [採番のPostgreSQL実装](XTEA_LOWCODE_NUMBERING_POSTGRES_2026-11.md)（実装とCI配線。CIの使い捨てPostgreSQLで6件すべてPASS。並行の競合は未試験、製品DBは未確認）
 - [行スコープのフックへ渡す行集合の変換](XTEA_LOWCODE_ROW_ROWS_CONVERSION_2026-11.md)（参照実装の試験記録。driver結果から行集合への変換を hook 側に置いた。ホストの配線は未実装）
-- [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断を保留。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案は`Hook`へ行の出所を足す）
+- [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案B（`Hook`へ行の出所を足す）を実装し、出所を宣言した`scope row`は警告を出さない。既定の参照実行はQueryを実行しないためskipは残る）
+- [行スコープのフックが行の出所を宣言する](XTEA_LOWCODE_HOOK_ROW_SOURCE_2026-11.md)（参照実装の試験記録。`rows from query <id>`を足し、出所の解決を検証で強制、変換とホスト入口まで実装。実Query実行からの配線と空ページの区別は未実装）
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
 - [実行器はあるのに振り分けが無いrea-intakeを配線する](TEI_DOGFOODING_ROUND77_REA_INTAKE_ROUTE_2026-11-11/README.md)（runThreeElementReaIntakeは実装済みでテスト12箇所が呼んでいたが、dispatcherにcaseが無く14件FAILしていた。テストが実行器を直接呼んでいたため見落とされていた。14→0。rea-evidenceは実装自体が無く範囲外、gofmt違反6ファイルはrecord only）
 - [未統合機能の孤児テストがrepository-healthを常時赤にする](TEI_DOGFOODING_ROUND78_REA_EVIDENCE_ORPHAN_2026-11-12/README.md)（rea-evidenceを要求する2試験がmainに在り、実装は未統合ブランチ（157コミット遅れ）にのみ存在。依存のinternal/externalanalysis 1,202行もmainに無い。スタブは採らない（動くように見せるため）。起票 #4455。plan-checkは第76〜77ラウンドで緑）

@@ -262,7 +262,15 @@ func (r Runner) runReachable(ctx context.Context, applicationID, patternID core.
 			}
 			report.Skipped = append(report.Skipped, phase)
 			if scope == "row" {
-				report.Reasons[phase] = "the hook declares scope row, so it needs the row set; pass the rows to apply it"
+				// The declaration may name its supplier. Naming it in the reason
+				// tells a reader which rows are missing, not just that some are: a
+				// hook with a declared source and a hook without one are different
+				// declarations, and the same wording for both hides that.
+				if declaration.Rows != nil {
+					report.Reasons[phase] = fmt.Sprintf("the hook declares scope row from query %s, so it needs the row set; pass the source's rows to apply it", declaration.Rows.Query)
+				} else {
+					report.Reasons[phase] = "the hook declares scope row, so it needs the row set; pass the rows to apply it"
+				}
 			} else {
 				report.Reasons[phase] = fmt.Sprintf("the hook declares scope %s but this runner applies one hook per record", scope)
 			}
