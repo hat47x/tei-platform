@@ -1,0 +1,7 @@
+M1 old wording
+   -> FAIL the message omits the accepted form ":status"
+M2 never warn
+   -> FAIL a positional placeholder was treated as a reference
+
+Regression: internal/validation ok, internal/workspace ok, cmd/tei ok (467s).
+CI gate: 6 steps PASS.
