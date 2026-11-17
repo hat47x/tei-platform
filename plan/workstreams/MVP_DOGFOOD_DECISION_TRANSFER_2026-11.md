@@ -232,10 +232,12 @@ Reader／Presenterの表示成功はHostの閲覧Grantではない。選択Subje
 
 ## 16. 11月17日：実CLIと正規Studio Readerを基線に、次の実証を選ぶ
 
-§15の**Studioが次のStudioを作る一巡**をMVPの最優先とする。並行する受注明細の実Readは、この一巡の前提Gateにはしない。最新mainで統合された[#5300](https://github.com/hat47x/tei-platform/pull/5300)（明示Environmentで`tei view`から実PostgreSQL受注明細を読み、選択Ruleで判定）、[#5325](https://github.com/hat47x/tei-platform/pull/5325)（生成Inspector Readerを正規Workbench／Wails埋込へ接続）、[#5331](https://github.com/hat47x/tei-platform/pull/5331)（直後のHealth不具合修復）を、それぞれ**実CLIの局所受入、生成Readerの製品同梱、CI修復**として記録する。どれもStage2の実起動やWindows画面での自己変更受領を単独では証明しない。
+**優先順位は[いま進めること](../NOW.md)が正本**であり、製品の第一目標は「受注の一変更」の五手順である。すでに実PostgreSQLで動く手順1〜4を前提に、最初は**別Workspace・別Patternでも同じCLIが動くこと（道の1）**、次に生成Webで同じ答えを見ること（道の2）、その後に全件性の宣言と検証（道の3）へ進む。§15の**Studioが次のStudioを作る一巡**は、NOWが認める唯一の並行作業であって、製品主線に優先しない。最新mainで統合された[#5300](https://github.com/hat47x/tei-platform/pull/5300)（明示Environmentで`tei view`から実PostgreSQL受注明細を読み、選択Ruleで判定）、[#5325](https://github.com/hat47x/tei-platform/pull/5325)（生成Inspector Readerを正規Workbench／Wails埋込へ接続）、[#5331](https://github.com/hat47x/tei-platform/pull/5331)（直後のHealth不具合修復）を、それぞれ**実CLIの局所受入、生成Readerの製品同梱、CI修復**として記録する。どれもStage2の実起動やWindows画面での自己変更受領を単独では証明しない。
 
 | 最初の独立Packet | 現在使える基線 | 次の一因子と反証 | 完了を主張しない範囲 |
 | --- | --- | --- | --- |
+| **P1：別Patternでの実CLI** | [#5327](https://github.com/hat47x/tei-platform/pull/5327)の入口一般化は審査中、#5300の受注明細経路は動作済み | 別Workspace・別header-detail Patternで同じ`tei view -environment`を**コード変更なし**に実行し、主キー・入力Binding・Environment選択・独立Expectedを確認。旧`perLine`→新`perRow`の出力互換も次のConsumerに確認する | 入口のハードコード除去と参照FixtureのGreenだけで別Patternの実適用を認定しない |
+| **P2：生成Webの実受領** | [#5317](https://github.com/hat47x/tei-platform/pull/5317)の静的HTML候補はDraft、実PostgreSQLとHTMLの専用CIは成功 | P1を受け、同じRule結果と行ID・未取得・NULL・`coverage:partial`を実Browserの別Consumerで照合。#5327のJSON名変更との整合性を再検証 | 静的HTML出力を生成Web Components・公開Host・完全な実Browser受入と呼ばない |
 | **S1：定義から正規Bundleまで** | #5325の生成Inspector Reader／正規`main.ts`／Wails embed、§15 D0〜D3 | Inspector応答の**必須項目を一つだけ**TEI定義へ追加。Generatorソースを変えず、Stage1が選んだSource byte・Generator版・実Builder入力と、新しいReader／Bundle byteを一試行で照合。古いReader、手書きFallback、別Sourceの同名IDを負例にする | CIが生成できたことだけでStage1の実Build選択・Stage2の実使用を認めない |
 | **S2：次世代の実受領** | §15 D4〜D5、既存のWebView2 Smoke／Inspector／Pin | S1のArtifactを**Stage2 Binaryとして起動**し、Windows WebView2で新必須項目を含む同じSubject／Revision／Scopeの表示を確認。古い応答、別Workspace、現在のGrant外Sourceを拒否 | Stage1の画面、既存PoC、参照セルフビルドの収束値をStage2と呼ばない |
 | **R1：実受注明細の全件性** | #5300の`tei view -environment`、`order_entry.order_lines`、`Detail.Decide` | 受注1001／1002／1003の独立Expected（明細3／2／0件）を業務IDで照合。Query Scope／Binding／絞込み／ページ終端／Snapshotから**全件性の根拠**を示す。部分Readで見つかった違反は確定、見つからないことによる成立は保留 | 現行CLIの`coverage: partial`を無根拠に`complete`へ昇格させず、生成Webの実受領も未達とする |
@@ -244,4 +246,4 @@ Reader／Presenterの表示成功はHostの閲覧Grantではない。選択Subje
 
 **設計の共通境界**：三要素モデルのData／Function／Business、標準Graphの同名異IDと並行辺、型付きPluginのWhole／Field／Adapter、RuleのOperator署名は、同じ意味IDとSourceを別のProjectionで説明するために用いる。図面のEdgeやPlugin配線を、実Read、認可、業務Functionの実Effectへ自動昇格させない。Markdown原本への編集は現在のSource Span／Revisionを確かめた局所パッチとし、参照を壊す削除には診断と明示確認を要求する。
 
-**優先順位**：S1→S2をセルフビルドの主線、R1→R2を実データConsumerの主線、M1→M2を自己記述の独立改善とする。三本の成功を混ぜず、各Packetで実Source／実Builderまたは実Provider／実Consumer／独立Expectedを照合する。[#5324](https://github.com/hat47x/tei-platform/pull/5324)は並行統合で前提が古くなり競合したため未マージで閉じ、本節に最新mainで有効な判断だけを引き継いだ。
+**着手順と停止条件**：製品の主線はNOWのP1→P2→全件性R1とし、唯一の並行作業はS1→S2とする。R2はP2のConsumer受入に含め、M1→M2は自己記述に残る設計課題として記録するのみで、製品五手順が通るまで新たな設計PRや別実装を起こさない。各Packetで実Source／実Builderまたは実Provider／実Consumer／独立Expectedを照合する。[#5324](https://github.com/hat47x/tei-platform/pull/5324)は並行統合で前提が古くなり競合したため未マージで閉じ、本節に最新mainで有効な判断だけを引き継いだ。
