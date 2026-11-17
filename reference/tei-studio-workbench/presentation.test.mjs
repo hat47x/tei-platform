@@ -49,7 +49,7 @@ test("validation preserves direct syntax errors, warnings, and empty results dis
 });
 test("a response for a different subject cannot replace the selected projection", () => {
   const raw = {
-    effect: "read-only",
+    schemaVersion: "tei.operations.inspect/v0", effect: "read-only",
     subject: { kind: "semantic", id: "other" },
     canonical: {},
     worldFingerprint: "w",
@@ -71,7 +71,7 @@ test("inspection discloses its read-only limits and refuses incomplete authority
     "local-read-is-not-disclosure-permission",
   ];
   const raw = {
-    effect: "read-only",
+    schemaVersion: "tei.operations.inspect/v0", effect: "read-only",
     subject: data.subject,
     canonical: { name: "注文" },
     sourceStatus: "indexed",
@@ -107,7 +107,7 @@ test("Inspector presentation preserves validated data without claiming authority
     "local-read-is-not-disclosure-permission",
   ];
   const raw = {
-    effect: "read-only", subject: data.subject,
+    schemaVersion: "tei.operations.inspect/v0", effect: "read-only", subject: data.subject,
     canonical: { name: "注文", total: null },
     sourceStatus: "partial",
     worldFingerprint: "world-A", sourceIndexFingerprint: "source-A",
@@ -157,7 +157,7 @@ test("Inspector projection keeps qualified identity and observed coverage distin
   assert.deepEqual(inspectEligibility(catalog, dataSubject), { ok: true });
   assert.deepEqual(inspectEligibility(catalog, ruleSubject), { ok: true });
   const raw = (subject, sourceStatus, canonical) => ({
-    subject, sourceStatus, canonical, effect: "read-only",
+    subject, sourceStatus, canonical, schemaVersion: "tei.operations.inspect/v0", effect: "read-only",
     worldFingerprint: catalog.worldFingerprint,
     sourceIndexFingerprint: catalog.sourceIndexFingerprint,
     authorityLimits,
@@ -203,7 +203,7 @@ test("an Inspector presentation cannot change identity after Host validation", (
     "local-read-is-not-disclosure-permission",
   ];
   const reply = {
-    effect: "read-only", subject: data, sourceStatus: "partial",
+    schemaVersion: "tei.operations.inspect/v0", effect: "read-only", subject: data, sourceStatus: "partial",
     worldFingerprint: "world-3", sourceIndexFingerprint: "source-3",
     canonical: { value: null }, authorityLimits: limits,
   };

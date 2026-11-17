@@ -419,6 +419,80 @@
           },
           "field": "disclosure"
         }
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "contract"
+          },
+          "field": "requiredResponseFields"
+        },
+        "item": "field",
+        "body": {
+          "op": "assert-nonblank",
+          "from": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "field"
+            },
+            "field": "name"
+          }
+        }
+      },
+      {
+        "op": "assert-each",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "contract"
+          },
+          "field": "requiredResponseFields"
+        },
+        "item": "field",
+        "body": {
+          "op": "assert-enum",
+          "actual": {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "field"
+            },
+            "field": "type"
+          },
+          "allowed": [
+            "boolean",
+            "number",
+            "present",
+            "string"
+          ]
+        }
+      },
+      {
+        "op": "assert-unique-by",
+        "from": {
+          "op": "select-field",
+          "from": {
+            "op": "input",
+            "name": "contract"
+          },
+          "field": "requiredResponseFields"
+        },
+        "item": "field",
+        "keys": [
+          {
+            "op": "select-field",
+            "from": {
+              "op": "input",
+              "name": "field"
+            },
+            "field": "name"
+          }
+        ]
       }
     ],
     "output": {
@@ -616,7 +690,60 @@
         },
         {
           "op": "literal",
-          "literal": "\",\n] as const;\nexport function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {\n  const v = record(raw), limits = v[\""
+          "literal": "\",\n] as const;\n// Required response fields declared in the contract. Adding one is a\n// contract-only change: this Generator Source does not name them.\nconst REQUIRED_RESPONSE_FIELDS: readonly (readonly [string, string])[] = [\n"
+        },
+        {
+          "op": "join-array",
+          "separator": "",
+          "from": {
+            "op": "map-array",
+            "from": {
+              "op": "select-field",
+              "from": {
+                "op": "input",
+                "name": "contract"
+              },
+              "field": "requiredResponseFields"
+            },
+            "item": "field",
+            "body": {
+              "op": "join-strings",
+              "values": [
+                {
+                  "op": "literal",
+                  "literal": "  [\""
+                },
+                {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "field"
+                  },
+                  "field": "name"
+                },
+                {
+                  "op": "literal",
+                  "literal": "\", \""
+                },
+                {
+                  "op": "select-field",
+                  "from": {
+                    "op": "input",
+                    "name": "field"
+                  },
+                  "field": "type"
+                },
+                {
+                  "op": "literal",
+                  "literal": "\"],\n"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "literal",
+          "literal": "];\nexport function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {\n  const v = record(raw), limits = v[\""
         },
         {
           "op": "select-field",
@@ -744,7 +871,7 @@
         },
         {
           "op": "literal",
-          "literal": "\"] !== \"string\" ||\n    !Array.isArray(limits) ||\n    !limits.every((limit: unknown) => typeof limit === \"string\") ||\n    !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit))\n  )\n    throw Error(\""
+          "literal": "\"] !== \"string\" ||\n    !Array.isArray(limits) ||\n    !limits.every((limit: unknown) => typeof limit === \"string\") ||\n    !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit)) ||\n    !REQUIRED_RESPONSE_FIELDS.every(([name, type]) =>\n      type === \"present\" ? Object.hasOwn(v, name) : typeof v[name] === type)\n  )\n    throw Error(\""
         },
         {
           "op": "select-field",
