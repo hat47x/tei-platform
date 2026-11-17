@@ -119,3 +119,11 @@ test("PIN-UI-07: catalog replacement during delayed Inspect cannot become inspec
   assert.equal(await task, false);
   assert.equal(pin.current().observation.state, "unavailable");
 });
+
+test("PIN-UI-08: missing Inspector authority limits cannot qualify a pin", async () => {
+  const malformed = reply(A);
+  delete malformed.value.authorityLimits;
+  const { pin } = manager(async () => malformed);
+  assert.equal(await pin.pin("workspace-a", 1, A), false);
+  assert.equal(pin.current().observation.state, "unavailable");
+});
