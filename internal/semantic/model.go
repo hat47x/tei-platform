@@ -248,6 +248,10 @@ type Operator struct {
 	// The single-input form `takes number` names it "value", which is what the
 	// rule surface already assumes when a rule writes no name.
 	InputName string `json:"inputName,omitempty"`
+	// AbsentAs is the name the input's absent value is read as, declared with
+	// `absent as <name>`. A rule may name only a mapping declared here; an
+	// undeclared mapping would state a reading the operator never fixed.
+	AbsentAs string `json:"absentAs,omitempty"`
 	// Cases are the examples the contract states. An implementation that
 	// answers any of them differently does not implement this operator.
 	Cases []OperatorCase `json:"cases,omitempty"`

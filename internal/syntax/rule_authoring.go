@@ -94,6 +94,11 @@ type OperatorAuthoring struct {
 	// `takes low: number`. It is empty for the single-input form
 	// `takes number`, which names its one input "value" when it is read.
 	InputName string
+	// AbsentAs is the name a value-absent input is read as, written
+	// `absent as <name>`. Empty means the declaration states no mapping, and
+	// then a rule cannot ask for one.
+	AbsentAs     string
+	AbsentAsSpan Anchor
 
 	DeclarationSpan Anchor
 	IDSpan          Anchor
@@ -131,6 +136,10 @@ type RuleInputAssignment struct {
 	Value     string
 	NameSpan  Anchor
 	ValueSpan Anchor
+	// AbsentAs is the mapping name written after `or`, asking the operator to
+	// read an absent value this way. Empty means the rule stated no mapping.
+	AbsentAs     string
+	AbsentAsSpan Anchor
 }
 
 // RuleAuthoring is one parsed `rule` declaration. Spans are UTF-8 byte offsets
@@ -340,6 +349,46 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
 			"unknown operator input %q; accepted inputs are number", inputTok.Text))
 	}
+	// `absent as <name>` declares how the input reads when it holds no value.
+	var absentAs string
+	var absentAsSpan Anchor
+	if nt.Kind == TokenIdent && nt.Text == "absent" {
+		if _, err := p.next(); err != nil {
+			return OperatorAuthoring{}, err
+		}
+		asTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if asTok.Kind != TokenIdent || asTok.Text != "as" {
+			at := asTok
+			if asTok.Kind == TokenEOF {
+				at = nt
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected \"as\" after \"absent\"; the mapping is written \"absent as <name>\"")
+		}
+		nameTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if nameTok.Kind != TokenIdent || ruleAuthoringDeclarationEnds(nameTok) {
+			at := nameTok
+			if nameTok.Kind != TokenIdent {
+				at = asTok
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected the name the absent value is read as after \"absent as\"")
+		}
+		if _, err := core.ParseLocalName(nameTok.Text); err != nil {
+			return OperatorAuthoring{}, p.errAt(nameTok, fmt.Sprintf(
+				"%q is not a usable mapping name: %v", nameTok.Text, err))
+		}
+		absentAs = nameTok.Text
+		absentAsSpan = tokenAnchor(nameTok)
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+	}
 	if !ruleAuthoringDeclarationEnds(nt) {
 		return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
 			"unexpected %q after the operator declaration; an operator takes exactly one input", nt.Text))
@@ -350,10 +399,12 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		Symbol:          symbol,
 		Input:           OperatorInputWord(inputTok.Text),
 		InputName:       inputName,
+		AbsentAs:        absentAs,
 		DeclarationSpan: Anchor{Start: keyword.Start, End: inputTok.End},
 		IDSpan:          tokenAnchor(nameTok),
 		InputSpan:       tokenAnchor(inputTok),
 		InputNameSpan:   inputNameSpan,
+		AbsentAsSpan:    absentAsSpan,
 	}, nil
 }
 
@@ -548,13 +599,39 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 				return RuleAuthoring{}, p.errAt(at, fmt.Sprintf(
 					"expected the value of input %q after \":\"; write an attribute id or a constant", nameTok.Text))
 			}
-			inputs = append(inputs, RuleInputAssignment{
+			assignment := RuleInputAssignment{
 				Name:      nameTok.Text,
 				Value:     valueTok.Text,
 				NameSpan:  tokenAnchor(nameTok),
 				ValueSpan: tokenAnchor(valueTok),
-			})
-			lastTok = valueTok
+			}
+			// `or <name>` asks the operator to read an absent value this way.
+			// Whether the operator declared that mapping is checked against the
+			// declarations, not here.
+			afterValue, err := p.peek()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if afterValue.Kind == TokenIdent && afterValue.Text == "or" {
+				if _, err := p.next(); err != nil {
+					return RuleAuthoring{}, err
+				}
+				mappingTok, err := p.next()
+				if err != nil {
+					return RuleAuthoring{}, err
+				}
+				if mappingTok.Kind != TokenIdent || ruleAuthoringDeclarationEnds(mappingTok) {
+					at := mappingTok
+					if mappingTok.Kind != TokenIdent {
+						at = afterValue
+					}
+					return RuleAuthoring{}, p.errAt(at, "expected the mapping name after \"or\"")
+				}
+				assignment.AbsentAs = mappingTok.Text
+				assignment.AbsentAsSpan = tokenAnchor(mappingTok)
+				lastTok = mappingTok
+			}
+			inputs = append(inputs, assignment)
 		}
 	} else if predTok.Text == "required" {
 		// `required if <attribute>`.

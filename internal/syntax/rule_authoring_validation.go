@@ -69,8 +69,9 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 	// names an input no operator declares must be diagnosed, and that check
 	// needs the declarations.
 	declaredInputs := declaredOperatorInputNames(file.Operators)
+	declaredMappings := declaredOperatorMappings(file.Operators)
 	for _, rule := range file.Rules {
-		validation, issue := ruleToValidationWithInputs(rule, declaredInputs)
+		validation, issue := ruleToValidationWithInputs(rule, declaredInputs, declaredMappings)
 		if issue != nil {
 			issues = append(issues, *issue)
 			continue
@@ -93,6 +94,7 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 		out.Operators = append(out.Operators, semantic.Operator{
 			ID: operator.ID, Symbol: operator.Symbol, Input: input,
 			InputName: operator.InputName,
+			AbsentAs:  operator.AbsentAs,
 		})
 	}
 	return out, issues
@@ -121,6 +123,21 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 // The name stays out of the emitted semantic.Operator. This index is what the
 // rule check reads; the contract continues to carry only what the author wrote,
 // so a reader that needs a name for the single input still applies "value".
+// declaredOperatorMappings indexes the value-absent mapping each declaration
+// gives, keyed by operator id. An operator with no entry is either undeclared in
+// this source or declares no mapping; the caller only checks operators it knows.
+func declaredOperatorMappings(operators []OperatorAuthoring) map[core.CanonicalID][]string {
+	mappings := make(map[core.CanonicalID][]string, len(operators))
+	for _, operator := range operators {
+		entry := mappings[operator.ID]
+		mappings[operator.ID] = entry
+		if operator.AbsentAs != "" {
+			mappings[operator.ID] = append(entry, operator.AbsentAs)
+		}
+	}
+	return mappings
+}
+
 func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.CanonicalID][]string {
 	names := make(map[core.CanonicalID][]string, len(operators))
 	for _, operator := range operators {
@@ -147,6 +164,7 @@ func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.Canonica
 func ruleToValidationWithInputs(
 	rule RuleAuthoring,
 	declaredInputs map[core.CanonicalID][]string,
+	declaredMappings map[core.CanonicalID][]string,
 ) (semantic.Validation, *RuleConversionIssue) {
 	if rule.Operator == nil || len(rule.Inputs) == 0 {
 		return ruleToValidation(rule)
@@ -168,6 +186,18 @@ func ruleToValidationWithInputs(
 		}
 		if issue := assignmentValueTypeIssue(rule, assignment); issue != nil {
 			return semantic.Validation{}, issue
+		}
+		if assignment.AbsentAs != "" {
+			if mappings, known := declaredMappings[core.CanonicalID(rule.Operator.Text)]; known {
+				if !inputNameDeclared(mappings, assignment.AbsentAs) {
+					return semantic.Validation{}, &RuleConversionIssue{
+						RuleID: rule.ID, Span: assignment.AbsentAsSpan,
+						Msg: fmt.Sprintf(
+							"operator %s declares no value-absent mapping named %q; a rule cannot read an absent value a way the operator never stated",
+							rule.Operator.Text, assignment.AbsentAs),
+					}
+				}
+			}
 		}
 	}
 	// An assignment that survives the name check still has nowhere to go:
