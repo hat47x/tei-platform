@@ -1,0 +1,10 @@
+CLI-only design of an application over the equip domain:
+
+  1 application loan_desk { uses semantic equip }        -> no error
+  2 datasource sales in a query                          -> UNKNOWN_DATASOURCE_ALIAS
+  3 sql postgres file "..."                              -> (UNKNOWN_SQL_DIALECT before adding it)
+  4 QUERY_INPUT_NOT_REFERENCED borrower                   <-- the finding
+  5 :borrower                                            -> warning clears
+  6 environment { kind test }                            -> expected plugin, bundle, ...
+  7 database-instance ... { target ... }                 -> expected definition or provider
+  8 + bundle tei.reference.providers ^1                  -> ok, 0 diagnostics of mine
