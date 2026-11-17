@@ -596,3 +596,21 @@ DPC-01〜15を置き換えず、次の一因子反証を追加する。いずれ
 | Projection→元Source | Subject／Occurrence／現在Revisionと変更対象が一意 | 同名Nodeや古いPinから直接書戻し |
 
 この照合は既存DPC-16〜20・三要素SDM-01〜12・独立Expected #1180/#2514へ接続し、新しい試験正本は増やさない。**次の実コード差分はDPC-16aのCaller拒否を優先**し、Operator正規形の全移行や図面の双方向編集をその前提にしない。実Provider→通常CLI→独立Consumer #2586/#4496、およびStudio Stage1→Stage2 #2831/#4583は並行の最上位P0を維持する。今回の設計追補自体は新規の実行・Owner受理の証拠ではない。
+
+### 12.16 全件性の根拠を「宣言・実行・観測・検証」に分けて受け渡す（2026-11-17）
+
+§12.14〜12.15の実装を進める際、Callerが単に`CoverageComplete`を引数へ渡せることと、その申告が正しいことを混同しない。現行`validationread.FromHeaderDetail`は取得結果とCoverageを受け取るReaderであり、契約QueryのSQLや実際の母集合を検証する責務は持たない。初回はReaderやRuleを変更せず、**Readerを呼ぶ直前の製品Callerに限って、申告の根拠を点検する**。
+
+| 資格 | 記録するもの | それだけでは認めないこと |
+| --- | --- | --- |
+| Requested | Rule ID、対象Relation、親Identity、Scope、必要な列・全件性 | 実Readが行われたこと |
+| Declared | 選択Contract Query、Realization、Query入力、供給範囲の宣言 | 実SQLが宣言を満たしたこと |
+| Executed | 実行したQuery／Realization、Binding、Provider、Attempt | 母集合の完全な観測 |
+| Observed | 取得行、取得列、NULL／not-fetched、ページ継続・終了の観測 | 全件性、存在しない行の不存在 |
+| Qualified | RequestedとDeclaredの一致、実行根拠、保証済み範囲、未立証理由 | Ownerによる業務意味受理、他Providerへの一般化 |
+
+**判定規則**：同じRelation・Scope・Binding・Attemptで必要な全件性が裏付けられる場合だけ`complete`を渡す。証拠が欠ける、食い違う、またはページ途中である場合は、理由を記録して既存Ruleには`partial`を渡す。これは安全側の縮退であり、未立証を実際の部分取得と同一視するものではない。反証可能な重複が観測済みなら`not-satisfied`は維持できるが、未観測の行がある限り`satisfied`への格上げは認めない。
+
+初回DPC-16aの独立Expectedは「D1に4行を挿入し、`members_first_page`が2行を返す。同じ2行についてCallerが`complete`を要求しても、`seatUnique`を`satisfied`と返さない」とする。続くDPC-16bは`personUnique=not-satisfied`と`seatUnique=undecided: relation-partially-read`を同時に確認する。DPC-16cは異なるScope／Bindingの根拠を流用しないこと、DPC-16dは0行だけで全件性を証明しないことを確認する。**比較対象は同じ実SQLの行結果とし、Coverage申告・資格だけを変える**。
+
+全件保証を静的に判定できない一般SQL、JOIN／DISTINCT／集計による粒度変更、複数ページのSnapshot不整合、認可による可視範囲の縮小は初回の合格対象にしない。限定Queryで成立した証拠を一般SQLや他Providerへ流用せず、必要ならQuery契約側に不足する宣言とその検証方法を別Issueへ切り出す。独立Expectedは#1180／#2514、実PostgreSQL・通常CLI・独立Consumerは#2586／#4496、StudioのSource往復は別検収のまま維持する。
