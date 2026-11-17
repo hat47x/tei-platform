@@ -2,6 +2,8 @@
 
 ## 目的
 
+- [DB横断適合とNode・REA・Batchの実行経路](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#8-他チャット統合nodereabatchpluginをdb実行へ接続する2026-11-17)：Node Portの型適合とDB実行資格、REAの業務関係と物理参照、Batchの粒度・部分取得・Lineage、Studio RendererとCurrent Grantを分離する。DPC-N/R/B/W/Eの独立Expected候補を既存Ownerへ引き渡す。**直近はSQLite ReaderのCoverage偽申告を製品Callerで拒否し、通常CLIの実PostgreSQL一Functionを通す**。NoSQL実接続・実Job・Studio E2Eは未実施。新Engine・第二正本・セルフビルドP0の追加Hard Gateは設けない。
+
 - [TEI自身の要件を三要素Methodと型付きインスタンスでレビューする](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md#33-tei自身の要件全体をモデルとしてレビューする三要素method標準構造インスタンスx-tea移植2026-11-17設計統合)：TEIの標準Data/Role/Facet、Function/Process、標準データ構造・標準表現型・Mappingを**Meta→Model→型付きInstance→複数Projection**で見渡し、要件索引からSource・実装・試験へ追跡する。原典三要素はCore固定でなくMethod Profile（RQ-031）。原典の自由なInstance TextとTEI型付き例、表示Occurrenceと正式Relation/Identity、説明例と独立Expected、Source再投影と実行・受理を分離する。XM-0/1/2・XD-0/1・SELFを#1124/#1131/#1031/#2514/#2831へ割り当て、SDM-01〜12（NOT RUN）を既存Expectedに引き渡す。**最初はread-onlyな同名二ノード／平行辺、NULL・欠損・空集合・未取得、三要素Coverage負例**から検収し、GUI編集・Driver/DB・実Wailsを別段階とする。Studio Stage1→Stage2実Windowsセルフビルドと通常CLI実Providerの最優先P0には新たなHard Gateを追加しない（docs-only、製品受理なし）。
 - [TEI自己記述の第一縦断（図面・具体例・レビュー票）](design/TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md)：RQ-011／026／031を起点に、三要素Methodの図面、同名異ID・平行辺・値の有無の型付き例、X-TEAのFunction CRUDとTaskActionの帰属差、Coverageの未確認を一件票で照合する。#1124/#1031/#1131/#2497/#2514にread-onlyから引き渡し、実Windows Studio／実Providerの並行P0に新しいHard Gateを加えない（SDM全体・実GUI/Driver・Owner受理はNOT RUN）。§6では既存`internal/threeelement`の同一Function/Data複数Operationを1セルへ統合するFocused Go回帰を追加し、明示CRUDと派生意図・相互対立・操作順序を別々に照合する。これはread-only参照実装の限定試験であり、旧対応表全体や実DB Effectを証明しない。 §7で集約セルから個々の元宣言へ戻るread-onlyの出現位置一覧を追加し、複数宣言・対立・未解決を保持する。配列位置を永続ID／Source Span／編集許可と同一視せず、#1031の原典token、#1124の選択、#1131の型付きInstanceへ段階接続する。
 
