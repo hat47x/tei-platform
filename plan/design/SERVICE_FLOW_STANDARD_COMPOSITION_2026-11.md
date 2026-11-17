@@ -674,3 +674,29 @@ NM-01は既存のREA候補取込にあるEdge identityの実例を参照でき�
 4. **N3／Studio**：同一SubjectをProperty／Table／Graph／Node View／Source間で選択し、Pin／Dirty Buffer／保存済みSource／Accepted Meaningを別の状態として検査。既存Stage1→Stage2実WindowsのP0を維持する。逆編集は前段の一意Slotに限定する。
 
 **採否判断**：NM-01〜04で既存のData／Graph／Role／Operation／Source Indexだけでは保持できない事実が特定されたときに限り、最小の追加契約を担当OwnerとADRへ提案する。新Node DSL、新汎用Graph Runtime、第二Resolver／Host／Evidence Engineを導入しない。ここまでの記述は計画であり、NM試験の実行・正式契約の採用・Owner意味受理を意味しない。
+
+### 13.6 他のTEI設計から取り込む共通原則
+
+| 関連する議論 | ノードモデルへ取り込む判断 | 追加しないもの |
+| --- | --- | --- |
+| 成果物中心のBatch／データマート（成果物合成§10〜14） | Result-firstでは出力の粒度・計算単位・集計位置・時間と必要品質を先に決め、Node-firstではOperationの構成を先に決める。どちらも同じData／Rule／Operator／Processを参照し、必要なInput／Result閉包と変更影響を照合する | Node配置を成果物要求の正本にすること、専用Optimizer |
+| 実行モデル・Lifecycle・BRMS | Data依存とControl／Event／State／Error／Effectを分離する。Ruleの判断不能、Guard、時間シフト、再入、失敗後のReceiptを図の矢印から推測しない | 一種類の「次に実行」線、独自Scheduler／Host |
+| 宣言的構文・文書制作・SHO | Markdown表・式・Graphviz・ノード画面は意味の別投影。Reader／Role／Source occurrenceを明示し、原文の糖衣・コメント・byteを保持する。非単射・折り畳み表示からの自動書戻しは拒否する | ノード専用DSL、図面ごとの意味正本、全面Formatter |
+| 標準データ様式・Graph・組織モデリング・REA | 同名二Node、平行辺、複数親、関係の有効時点、Definition／Instance／Occurrence、NULL／not-fetched、対象範囲を保持する。外部観測Edgeと受理済みRelationを分ける | 名前ベースの重複排除、Treeへの強制変形 |
+| Plugin／Web／Desktop／API | 同じContractをCLI・Web・Wailsの入口に表示するが、宣言・選択・Buildへの含有・実Call・受領・現在Grantを区別する。Wailsは表示・Transportの一つであり、APIの意味を所有しない | Wails依存のCore API、第二Resolver／Policy |
+| SUI／Studio／AI協業 | 一つのSource-backed SubjectをTable／Tree／Graph／Canvas／Inspector／CUIで共用する。Selection epoch・Pin・Dirty／Saved・AI差分候補を別管理し、編集は既存Acceptanceを通す | Canvas位置からの意味推定、AI提案の自動Apply |
+
+ここでいう「共用」は描画と対象参照を共用することであり、**SUIの自由配置Node、業務GraphのEntity、プロセスのOperation出現、PluginのProvider、実行TraceのAttemptを一つの型・一つの実行単位へ畳み込むことではない**。表示上のGroupやSubgraphは、所有するSourceとRef、折り畳みによるlossが追跡できる範囲で扱う。繰返し・複数親・時点付き参照を単純な親子木に変形しない。
+
+同じ意味定義を実現する方式は **P：既存の汎用Evaluatorによる直接解釈、G：Go生成コード、D：DBまたは外部Providerへの明示委譲**として比較する。NodeはOperator／Operationの出現を指すのであって、方式そのものを内包しない。実現方式を決めるときにはDeclared／Selected／Generated／Built／Invoked／Observedを区別し、一方式のPASSを他方式へ流用しない。異なる方式の同値は、入力集合、Required Reads、NULL／partial、順序、丸め、エラー、Effect、実Consume byteを固定して判別する。単なる値の一致やGoへのdelegateを「意味を生成できた」としない。
+
+### 13.7 実装の優先順位と検収資格
+
+**今すぐ実装する候補はN0のread-only投影と、その入力契約を実Product Reader／CLIへ結ぶ小さな変更まで**とする。まずNM-01のID保存・二本のEdgeをテストし、NM-02で定義の共有と二出現を区別する。NM-03は既存DPC-16a／PC-1bのCaller証拠を再利用し、NM-04は既存Studio Pin／Build失効試験へ引き渡す。新しい四件の独立Corpusや専用Graph Validatorを作るのではない。
+
+その後の実製品受入は二系統を並行させる。
+
+- **通常CLI側のP0**：正式Source／選択Reader／契約→生成Go・実Builder byte／Artifact→実Provider Read→独立Consumerという同じAttemptを確かめる。生成・実Read・開示は個別の証拠として報告する。NMの画面が完成していなくても進める。
+- **Studio側のP0**：既存Stage1→Stage2の実Windows Wails再入を先に検証する。Node Viewはその上に載せるread-only Consumerとし、Drag、Patch、Flow Dispatchを前提にしない。
+
+**マージの条件**：設計文書は出典・Owner・停止線と既存P0への接続を静的レビューすればdocs-onlyとしてマージ可能。Go変更は正負の独立Expected、同一HEADのテスト／CI、実Consumerの必要な観測がそろって初めて実装済みとする。docs-onlyマージをNM-01〜04や正式Owner AcceptanceのPASSと記録しない。
