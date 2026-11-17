@@ -57,15 +57,15 @@ func TestRuleAuthoringReadsTheUnnamedInputAsValue(t *testing.T) {
 			}
 			file, err := syntax.ParseRuleAuthoringFile(src)
 			if err != nil {
-				if tc.wantIssue != "" {
-					return // refused at parse time, which is also refusing
-				}
 				t.Fatalf("%q did not parse: %v", tc.name, err)
 			}
 			namespace, issues := syntax.RuleNamespace(file)
 			if tc.wantIssue != "" {
 				if len(issues) != 1 || !strings.Contains(issues[0].Msg, tc.wantIssue) {
 					t.Fatalf("issues=%+v, want %q", issues, tc.wantIssue)
+				}
+				if len(namespace.Validations) != 0 {
+					t.Fatalf("a rejected assignment produced validations: %+v", namespace.Validations)
 				}
 				return
 			}
