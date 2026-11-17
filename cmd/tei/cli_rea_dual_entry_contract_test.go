@@ -18,18 +18,17 @@ import (
 func TestREADualEntryCapturedInputAndIdentityBoundaries(t *testing.T) {
 	// The graph-bearing delivery belongs to this test, not to the shared
 	// receipt-only externalanalysis fixture (#5266). The checked-in copy is
-	// UTF-8 with BOM; the independently recorded Windows delivery was UTF-16LE.
-	// Recreate those original bytes and check the recorded size and SHA-256
+	// UTF-8 (possibly with BOM); the independently recorded Windows delivery
+	// was UTF-16LE. Recreate those original bytes and check size and SHA-256
 	// before using them in either read-only CLI.
 	fixture := filepath.Join("testdata", "rea-6.8.0", "analysis.json")
 	capturedCopy, err := os.ReadFile(fixture)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.HasPrefix(capturedCopy, []byte{0xef, 0xbb, 0xbf}) {
-		t.Fatal("REA fixture copy must have the recorded UTF-8 BOM")
-	}
-	utf8JSON := capturedCopy[3:]
+	// The BOM on the UTF-8 copy is not the identity of the original
+	// delivery. Its reconstructed SHA-256 below is the independent pin.
+	utf8JSON := bytes.TrimPrefix(capturedCopy, []byte{0xef, 0xbb, 0xbf})
 	if !json.Valid(utf8JSON) {
 		t.Fatal("REA fixture copy is not a single valid JSON document")
 	}
