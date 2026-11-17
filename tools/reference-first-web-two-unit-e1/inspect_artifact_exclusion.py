@@ -135,6 +135,12 @@ RUNTIME_EXPECTED = (
     "tei/internal/semantic",
     "tei/internal/driver",
     "tei/internal/driver/queryresult",
+    # SQL dialect binding / statement construction and typed reads from the
+    # already-executed Contract Query are runtime work. The Web read response
+    # uses the SAME validationread as 'tei view'; this does not enable an
+    # authoring, compiler, or new semantic runtime inside the API binary.
+    "tei/internal/database/sqlgen",
+    "tei/internal/driver/validationread",
     "tei/internal/permission",
     "tei/internal/plugin",
     "tei/internal/realization",
