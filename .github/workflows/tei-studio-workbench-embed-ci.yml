@@ -47,6 +47,9 @@ jobs:
           node --version
           npm ci --no-audit --no-fund
           npm test
+          # R0: compare the new generated Reader against the current product behavior.
+          # This does not qualify inclusion in the historical embedded bundle.
+          node --test inspection-reader.generated.test.mjs
           npm run typecheck
           npm run build
 
