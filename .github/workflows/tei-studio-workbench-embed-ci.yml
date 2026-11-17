@@ -52,6 +52,12 @@ jobs:
           npm run typecheck
           npm run build
 
+      - name: Verify historical Inspector candidate against its original source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tools/reference-studio-static-composition/inspector-candidate.test.mjs
+
       - name: Verify product bundle contains exactly one generated Inspector Reader
         shell: bash
         run: |
