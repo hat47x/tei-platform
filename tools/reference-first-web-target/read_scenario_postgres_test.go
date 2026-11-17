@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"math/big"
@@ -40,6 +41,16 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	// The confirmation environment variable is NOT proof of the actual
+	// connected database. Refuse all fixture DDL until PostgreSQL itself
+	// reports the exact disposable database name.
+	if err := requireIsolatedWebReadDatabase(t.Context(), db, readPostgresDatabase); err != nil {
+		t.Fatal(err)
+	}
+	// A mismatched name must be refused before either DROP or INSERT.
+	if err := requireIsolatedWebReadDatabase(t.Context(), db, readPostgresDatabase+"_unexpected"); err == nil {
+		t.Fatal("a different database name passed the isolation guard")
+	}
 	if err := seedReadFixture(t, db); err != nil {
 		t.Fatal(err)
 	}
@@ -118,6 +129,24 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 	if !foundDuplicate {
 		t.Fatal("no relation-wide line_number_unique answer for the database read")
 	}
+}
+
+// requireIsolatedWebReadDatabase checks the ACTUAL PostgreSQL database, not
+// merely the caller's confirmation string or the database name parsed from a
+// DSN. This must run before the disposable fixture performs any DDL.
+func requireIsolatedWebReadDatabase(ctx context.Context, db *sql.DB, expected string) error {
+	if expected == "" || db == nil {
+		return fmt.Errorf("isolated PostgreSQL database is not configured")
+	}
+	var actual string
+	if err := db.QueryRowContext(ctx, "select current_database()").Scan(&actual); err != nil {
+		// Driver errors can include DSN fragments; do not echo them here.
+		return fmt.Errorf("cannot verify the isolated PostgreSQL database")
+	}
+	if actual != expected {
+		return fmt.Errorf("refusing to modify a database other than the isolated %s", expected)
+	}
+	return nil
 }
 
 // seedReadFixture creates the table the accepted persistence mapping declares,
