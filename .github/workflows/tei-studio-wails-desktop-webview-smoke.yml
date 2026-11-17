@@ -165,6 +165,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          python cmd/tei-studio/test/desktop_webview_smoke_process_test.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python cmd/tei-studio/test/desktop_webview_smoke.py $env:STUDIO_DESKTOP_EXE $env:STUDIO_SMOKE_EVIDENCE_DIR
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -310,6 +312,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          python cmd/tei-studio/test/desktop_webview_smoke_process_test.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not $env:TEI_GENERATED_WORKBENCH_BUNDLE_SHA256) { throw 'Generated bundle digest missing' }
           python cmd/tei-studio/test/desktop_webview_smoke.py $env:STUDIO_DESKTOP_EXE $env:STUDIO_SMOKE_EVIDENCE_DIR
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
