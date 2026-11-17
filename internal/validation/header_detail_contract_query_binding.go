@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"fmt"
+
 	"tei/internal/application"
 	"tei/internal/core"
 	"tei/internal/database"
@@ -53,6 +55,11 @@ func ValidateHeaderDetailContractQueryBindings(w ir.World) []Diagnostic {
 		out = append(out, validateHeaderDetailBindingIdentity(bindingSubject, binding)...)
 		inputDiagnostics := validateHeaderDetailBindingInputsShape(bindingSubject, binding)
 		out = append(out, inputDiagnostics...)
+		if binding.CoversRelation != "" && binding.CoversSome {
+			out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_COVERAGE_CONFLICT",
+				"header-detail Contract Query binding %s states both that it returns every row of %s and that it returns only some rows",
+				identity, binding.CoversRelation))
+		}
 
 		if !headerDetailBindingIdentityReady(binding) || !headerDetailBindingInputsReady(binding) {
 			continue
@@ -86,8 +93,58 @@ func ValidateHeaderDetailContractQueryBindings(w ir.World) []Diagnostic {
 			resolved,
 			attributes,
 		)...)
+		out = append(out, validateHeaderDetailBindingCoverage(w, bindingSubject, binding, resolved)...)
 	}
 
+	return out
+}
+
+// validateHeaderDetailBindingCoverage checks what the binding states about
+// which rows the Contract Query returns. A rule about all the rows of a
+// Relation, used by the Application, can be answered "satisfied" only when
+// the binding states that it returns every row of that Relation. Without the
+// statement such a rule stays undecided whenever it holds, so the missing
+// statement is reported. It is a warning: the read itself is sound.
+func validateHeaderDetailBindingCoverage(
+	w ir.World,
+	bindingSubject subject.Subject,
+	binding realization.HeaderDetailContractQueryBinding,
+	resolved resolvedHeaderDetailBinding,
+) []Diagnostic {
+	var out []Diagnostic
+	if binding.CoversRelation != "" && binding.CoversSome {
+		// Reported with the shape of the binding, before it is resolved.
+		return out
+	}
+	if binding.CoversRelation != "" && binding.CoversRelation != resolved.Relation.ID {
+		return append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_COVERS_OTHER_RELATION",
+			"header-detail Contract Query binding %s states that it returns every row of %s, but Pattern %s reads Relation %s",
+			binding.Identity(), binding.CoversRelation, binding.Pattern, resolved.Relation.ID))
+	}
+	if binding.CoversRelation != "" || binding.CoversSome {
+		return out
+	}
+	used := map[core.CanonicalID]bool{}
+	for _, id := range resolved.Application.Validations {
+		used[id] = true
+	}
+	for _, namespace := range w.Semantics {
+		for _, rule := range namespace.Validations {
+			if !used[rule.ID] || rule.Relation != resolved.Relation.ID {
+				continue
+			}
+			if rule.Kind != semantic.ValidationRelationUnique && rule.Kind != semantic.ValidationNoOverlap {
+				continue
+			}
+			out = append(out, Diagnostic{
+				Code:     "HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED",
+				Severity: Warning,
+				Subject:  &bindingSubject,
+				Message: fmt.Sprintf("Application %s uses rule %s about all the rows of %s, but header-detail Contract Query binding %s does not state that it returns every row; the rule can be refuted but never satisfied. Add `covers %s` if the Query returns every row for the header, or `covers some` if it does not",
+					resolved.Application.ID, rule.ID, resolved.Relation.ID, binding.Identity(), resolved.Relation.ID),
+			})
+		}
+	}
 	return out
 }
 
