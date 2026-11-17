@@ -29,13 +29,13 @@
 
 | 順 | 作業 | 担当先 |
 | --- | --- | --- |
-| 1 | **汎用の読取入口を別の業務モデルで実証する。** 固定IDの除去と別名Patternの実DB試験は進んだ。次は、異なるData・Relationを持つWorkspaceから同じ`tei view`で読み、行IDとRule結果を独立した期待に照合する | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
+| 1 | **異なる構造の業務モデルでも同じ読取入口を通す。** 別のData・Relation・実テーブルを使う試験は通った。次は、列構成・主キー・Query入力も異なるモデルを、同じ`tei view`と独立した期待で検証する | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
 | 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
 | 3 | 束縛へ全件の宣言を書き、明細番号の一意に「成立」と答える。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
 | 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
 | 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
-入口から参照用作業領域の固定名を除く変更は[#5327](https://github.com/hat47x/tei-platform/pull/5327)で進めた。入力名と行の主キーを宣言から解決し、同じ受注Relationに別名Patternを加えた実PostgreSQL試験は通った。ただし、異なるData・Relationに対しても同じ入口が動くことは未確認である。ここを確かめるまで道の1は完了としない。
+[#5327](https://github.com/hat47x/tei-platform/pull/5327)で固定名の決め打ちを外し、[#5339](https://github.com/hat47x/tei-platform/pull/5339)でData・Relationの意味IDとPostgreSQLの参照テーブルを変えた試験が通った。ただし後者は元の受注明細と同じ列構成を使っている。道の1の残る検証は、**別の属性、Query入力、主キー構成を持つ独立モデル**を実DBから読み、Row Key・Rule結果・取得範囲を実装から独立した期待と照合すること。次のコード変更は`cmd/tei/destination_order_runtime_pg_test.go`の試験から独立したFixtureに切り出し、同じ`tei view`の実行入口を再利用する。これが通るまで道の1は完了としない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
