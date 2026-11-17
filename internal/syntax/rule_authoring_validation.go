@@ -115,8 +115,8 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 // gives it "value" (see OperatorAuthoring.InputName). That name has to be in
 // this index too, or a rule that writes `value:` against `takes number` is
 // refused as undeclared while the same contract read through
-// `takes value: number` accepts it — two readings of one signature that
-// disagree (#4362).
+// `takes value: number` passes the name check. Both forms must still refuse
+// value transport until semantic normalization can preserve it (#4362).
 //
 // The name stays out of the emitted semantic.Operator. This index is what the
 // rule check reads; the contract continues to carry only what the author wrote,
