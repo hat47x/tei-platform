@@ -25,7 +25,7 @@ function catalog(fingerprint) {
 }
 function inspection(fingerprint) {
   return {
-    effect: 'read-only', subject: selected,
+    schemaVersion: 'tei.operations.inspect/v0', effect: 'read-only', subject: selected,
     canonical: { version: fingerprint, id: selected.id },
     worldFingerprint: `world-${fingerprint}`,
     sourceIndexFingerprint: `source-${fingerprint}`,
