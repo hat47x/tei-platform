@@ -97,6 +97,13 @@ FORBIDDEN = (
 # symbol diff of one Go version is not reliable: whether a data-only package
 # shows up in nm depends on the Go version, e.g. only as `type:.eq.` symbols).
 # --------------------------------------------------------------------------
+# Type-only linkage from postgresquery.Runner's Go package. The same
+# package also defines optional acquisition-observation functions that use
+# functioncontext, but this Web read never calls those functions. Count only
+# equality/hash type descriptors as a visible intrusion. Executable functions
+# from this package are still unexpected and fail the API boundary check.
+TYPE_ONLY_LINKAGE = ("tei/internal/functioncontext",)
+
 KNOWN_INTRUSION = (
     "tei/internal/workspace",
     "tei/internal/syntax",
@@ -190,7 +197,14 @@ def analyze_symbols(names, profile="json-api"):
                 if len(hit["examples"]) < 3:
                     hit["examples"].append(name[:200])
         for pkg in set(_TEI_PKG.findall(name)):
-            if pkg in KNOWN_INTRUSION:
+            if pkg in TYPE_ONLY_LINKAGE:
+                type_only = (name.startswith("type:.eq." + pkg + ".") or
+                             name.startswith("type:.hash." + pkg + "."))
+                if type_only:
+                    intrusion[pkg] = intrusion.get(pkg, 0) + 1
+                else:
+                    unexpected[pkg] = unexpected.get(pkg, 0) + 1
+            elif pkg in KNOWN_INTRUSION:
                 intrusion[pkg] = intrusion.get(pkg, 0) + 1
             elif pkg in RUNTIME_EXPECTED:
                 runtime[pkg] = runtime.get(pkg, 0) + 1

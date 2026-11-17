@@ -3,8 +3,10 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -39,6 +41,16 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	// The confirmation environment variable is NOT proof of the actual
+	// connected database. Refuse all fixture DDL until PostgreSQL itself
+	// reports the exact disposable database name.
+	if err := requireIsolatedWebReadDatabase(t.Context(), db, readPostgresDatabase); err != nil {
+		t.Fatal(err)
+	}
+	// A mismatched name must be refused before either DROP or INSERT.
+	if err := requireIsolatedWebReadDatabase(t.Context(), db, readPostgresDatabase+"_unexpected"); err == nil {
+		t.Fatal("a different database name passed the isolation guard")
+	}
 	if err := seedReadFixture(t, db); err != nil {
 		t.Fatal(err)
 	}
@@ -88,8 +100,11 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 			if !ok {
 				t.Fatalf("row %d has no quantity although it was answered", index)
 			}
-			if quantity != "0" {
-				t.Fatalf("row %d is marked not-satisfied but holds quantity %q", index, quantity)
+			// PostgreSQL returns declared numeric(12,3) values as "0.000".
+			// Check the numeric meaning, not the representation's scale.
+			value, valid := new(big.Rat).SetString(quantity)
+			if !valid || value.Sign() != 0 {
+				t.Fatalf("row %d is marked not-satisfied but holds nonzero or invalid quantity %q", index, quantity)
 			}
 		}
 	}
@@ -97,14 +112,41 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 		t.Fatalf("not-satisfied answers=%d, want exactly the one seeded zero quantity", unsatisfied)
 	}
 
-	// A rule about the whole relation stays undecided while the read cannot
-	// certify it saw every row, and must say so rather than read as satisfied
-	// because no duplicate appeared in a partial read.
+	// Order 1001 has two different rows with the same line_number=2.
+	// A witnessed duplicate refutes uniqueness even for a partial read.
+	// Unknown coverage prevents proving uniqueness, not disproving it.
+	const wantDuplicate = "sales.order.lines.line_number_unique not-satisfied"
+	foundDuplicate := false
 	for _, line := range read.RelationAnswers {
-		if strings.Contains(line, "line_number_unique") && !strings.Contains(line, "undecided") {
-			t.Fatalf("relation-wide rule did not stay undecided: %q", line)
+		if !strings.Contains(line, "sales.order.lines.line_number_unique") {
+			continue
+		}
+		foundDuplicate = true
+		if line != wantDuplicate {
+			t.Fatalf("witnessed duplicate must refute uniqueness: got %q, want %q", line, wantDuplicate)
 		}
 	}
+	if !foundDuplicate {
+		t.Fatal("no relation-wide line_number_unique answer for the database read")
+	}
+}
+
+// requireIsolatedWebReadDatabase checks the ACTUAL PostgreSQL database, not
+// merely the caller's confirmation string or the database name parsed from a
+// DSN. This must run before the disposable fixture performs any DDL.
+func requireIsolatedWebReadDatabase(ctx context.Context, db *sql.DB, expected string) error {
+	if expected == "" || db == nil {
+		return fmt.Errorf("isolated PostgreSQL database is not configured")
+	}
+	var actual string
+	if err := db.QueryRowContext(ctx, "select current_database()").Scan(&actual); err != nil {
+		// Driver errors can include DSN fragments; do not echo them here.
+		return fmt.Errorf("cannot verify the isolated PostgreSQL database")
+	}
+	if actual != expected {
+		return fmt.Errorf("refusing to modify a database other than the isolated %s", expected)
+	}
+	return nil
 }
 
 // seedReadFixture creates the table the accepted persistence mapping declares,
