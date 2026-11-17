@@ -16,6 +16,7 @@ on:
       - 'cmd/tei/cli_view_environment_test.go'
       - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
+      - 'cmd/tei/destination_independent_shape_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
@@ -39,6 +40,7 @@ on:
       - 'cmd/tei/cli_view_environment_test.go'
       - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
+      - 'cmd/tei/destination_independent_shape_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
@@ -132,6 +134,7 @@ jobs:
           set -euo pipefail
           gofmt -d cmd/tei/cli_view.go cmd/tei/cli_view_environment.go \
             cmd/tei/cli_view_environment_test.go cmd/tei/destination_order_runtime_pg_test.go \
+            cmd/tei/destination_independent_shape_pg_test.go \
             | tee "$RUNNER_TEMP/destination-order-gofmt.diff"
           test ! -s "$RUNNER_TEMP/destination-order-gofmt.diff"
 
@@ -189,7 +192,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^(TestDestinationOrderChangeReadViaCLIFromPostgres|TestDestinationIndependentShapeViaCLIFromPostgres)$' ./cmd/tei | tee -a "$log"
 
       - name: SKIPとFAILの検証
         shell: bash
@@ -231,6 +234,7 @@ jobs:
             'TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn'
             'TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs'
             'TestDestinationOrderChangeReadViaCLIFromPostgres'
+            'TestDestinationIndependentShapeViaCLIFromPostgres'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
