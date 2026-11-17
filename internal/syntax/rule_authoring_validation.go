@@ -151,6 +151,9 @@ func ruleToValidationWithInputs(
 					rule.Operator.Text, assignment.Name),
 			}
 		}
+		if issue := assignmentValueTypeIssue(rule, assignment); issue != nil {
+			return semantic.Validation{}, issue
+		}
 	}
 	// An assignment that survives the name check still has nowhere to go:
 	// semantic.Validation carries the operator and its subject, not the input
@@ -170,6 +173,67 @@ func refuseAssignedInputs(rule RuleAuthoring) (semantic.Validation, *RuleConvers
 		Msg: "the meaning has no place for an operator input value yet; " +
 			"a rule that assigns an input cannot be converted until the normalization carries it",
 	}
+}
+
+// assignmentValueTypeIssue refuses a value whose type the declared input does
+// not take.
+//
+// Only `number` exists today, so the check is narrow and exact: a numeric input
+// takes a canonical attribute id (an id names the item whose value is read) or a
+// decimal constant. Anything else - a word, a quoted string, a bare `true` - is a
+// type mismatch, and saying so is more useful than reporting it later as an
+// unsupported transport.
+func assignmentValueTypeIssue(rule RuleAuthoring, assignment RuleInputAssignment) *RuleConversionIssue {
+	if !isNumberText(assignment.Value) && !isCanonicalReferenceText(assignment.Value) {
+		return &RuleConversionIssue{
+			RuleID: rule.ID, Span: assignment.ValueSpan,
+			Msg: fmt.Sprintf(
+				"input %q takes a number, but %q is neither a decimal number nor an attribute id",
+				assignment.Name, assignment.Value),
+		}
+	}
+	return nil
+}
+
+// isNumberText reports whether text reads as a decimal number under the same
+// rule the operator examples use: digits, an optional leading minus, and an
+// optional fraction, nothing else.
+func isNumberText(text string) bool {
+	if text == "" {
+		return false
+	}
+	digits := text
+	if digits[0] == '-' {
+		digits = digits[1:]
+	}
+	seenDigit, seenPoint, fractionDigits := false, false, 0
+	for i := 0; i < len(digits); i++ {
+		c := digits[i]
+		switch {
+		case c >= '0' && c <= '9':
+			seenDigit = true
+			if seenPoint {
+				fractionDigits++
+			}
+		case c == '.' && !seenPoint && seenDigit:
+			seenPoint = true
+		default:
+			return false
+		}
+	}
+	if !seenDigit || seenPoint && fractionDigits == 0 {
+		return false
+	}
+	// "007" is refused by the example reader as ambiguous, so it is refused here.
+	return !(len(digits) > 1 && digits[0] == '0' && digits[1] != '.')
+}
+
+// isCanonicalReferenceText reports whether text is a multi-segment id, which is
+// what an attribute reference looks like. Whether the id resolves is the
+// validator's decision, not this surface's.
+func isCanonicalReferenceText(text string) bool {
+	return strings.Contains(text, ".") && text != "." &&
+		!strings.HasPrefix(text, ".") && !strings.HasSuffix(text, ".")
 }
 
 func inputNameDeclared(names []string, name string) bool {
