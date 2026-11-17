@@ -29,8 +29,16 @@ func validateQueryInputs(w ir.World) []Diagnostic {
 			if !types[string(input.Type)] && !strings.HasPrefix(string(input.Type), "std.") {
 				out = append(out, errFor(querySubject, "UNKNOWN_QUERY_INPUT_TYPE", "query %s input %s refers to unknown type %s", query.ID, name, input.Type))
 			}
+			// Only a NAMED placeholder is detected: this check looks for the
+			// input's own name after a prefix. A positional placeholder such as
+			// $1 is valid PostgreSQL and the driver does bind it, so saying the
+			// input is "not referenced" would be false. The message therefore
+			// says what was not found and which forms are recognised, so an
+			// author who wrote $1 knows what to change and why.
 			if query.Source != "" && !strings.Contains(query.Source, ":"+name) && !strings.Contains(query.Source, "$"+name) && !strings.Contains(query.Source, "@"+name) {
-				out = append(out, warnd("QUERY_INPUT_NOT_REFERENCED", "query %s input %s is not referenced in its SQL source", query.ID, name))
+				out = append(out, warnd("QUERY_INPUT_NOT_REFERENCED",
+					"query %s input %s is not referenced by name in its SQL source; write it as :%s, $%s or @%s (a positional placeholder such as $1 is not matched)",
+					query.ID, name, name, name, name))
 			}
 		}
 	}

@@ -238,6 +238,17 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "\nthe comparison is read-only. It names which occurrences need\nreconfirmation and never updates the draft, the document or a Source.\n")
 			return out.String()
 		}
+		if command == "model ddl" {
+			// model ddl parses its own FlagSet; these flags are its grammar.
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -world string\n    \tnormalized M0 IR JSON (a `tei world` output); exactly one of -workspace or -world\n")
+			fmt.Fprintf(&out, "  -format string\n    \toutput emphasis: %s|%s\n", operations.ModelDDLFormatSQL, operations.ModelDDLFormatJSON)
+			fmt.Fprintf(&out, "    \tdefault: %s\n", operations.ModelDDLFormatSQL)
+			fmt.Fprintf(&out, "  -subject-kind string\n    \toptional exact subject kind: %s\n", operations.ModelDDLSubjectKind)
+			fmt.Fprintf(&out, "  -subject-id string\n    \toptional exact semantic-data element ID; with -subject-kind emits only that table\n")
+			fmt.Fprintf(&out, "\nthe projection is read-only and applied to no database. result.ddl carries the\nPostgreSQL text and result.tables the structured form in both formats. A column whose\ndeclared type has no PostgreSQL mapping is emitted as a `-- unmapped` comment and listed\nin result.unmappedColumns, never guessed.\n")
+			return out.String()
+		}
 		if command == "db-introspect" {
 			// db-introspect is dispatched but deliberately absent from the
 			// read-only discovery catalog, so it cannot carry an allowlist
