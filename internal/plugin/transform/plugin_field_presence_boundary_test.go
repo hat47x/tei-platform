@@ -54,7 +54,7 @@ func TestPluginOptionalProjectionCannotStandInForAStatefulTypedRead(t *testing.T
 		},
 		Inputs: []transform.InputSpec{{Name: "record", Kind: transform.InputObject}},
 		Program: transform.Program{Output: transform.Expr{
-			Op: transform.OpConstructObject,
+			Op:     transform.OpConstructObject,
 			Fields: []transform.ObjectFieldExpr{{Name: "amount", Value: amountExpr}},
 		}},
 	}
