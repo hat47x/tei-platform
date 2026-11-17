@@ -17,6 +17,7 @@ on:
       - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
+      - 'tools/reference-first-web-target/**'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
@@ -41,6 +42,7 @@ on:
       - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
+      - 'tools/reference-first-web-target/**'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
@@ -208,6 +210,9 @@ jobs:
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
           go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$' ./cmd/tei | tee -a "$log"
+          # The Web read of the same rows and answers. Its DSN is
+          # TEI_TEST_POSTGRES_DSN, which this job already sets.
+          go test -count=1 -v -timeout 10m -run '^TestWebReadAndCLIReadAgreeOverRealPostgres$' ./tools/reference-first-web-target | tee -a "$log"
 
       - name: SKIPとFAILの検証
         shell: bash
@@ -256,6 +261,7 @@ jobs:
             'TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs'
             'TestDestinationOrderChangeReadViaCLIFromPostgres'
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
+            'TestWebReadAndCLIReadAgreeOverRealPostgres'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
