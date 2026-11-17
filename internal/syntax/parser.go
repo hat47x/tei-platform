@@ -1651,11 +1651,29 @@ func (p *Parser) ParsePersistence() (persistence.Mapping, error) {
 			if err != nil {
 				return m, err
 			}
+			// An optional "(precision,scale)" may follow the storage type. It is
+			// consumed from the lexer's source rather than as new tokens, so a
+			// Source without a width keeps the same token sequence.
+			if st.Text != string(persistence.StorageDecimal) && p.lx.PeekOpenParen() {
+				return m, p.errAt(st, fmt.Sprintf("storage %q cannot carry decimal precision", st.Text))
+			}
+			precision, scale, hasWidth, err := p.lx.TryConsumeDecimalWidth()
+			if err != nil {
+				return m, err
+			}
 			n, err := p.expect(TokenIdent)
 			if err != nil {
 				return m, err
 			}
-			m.Columns = append(m.Columns, persistence.ColumnMapping{Attribute: attr, Column: c.Text, Storage: persistence.StorageType(st.Text), Nullability: persistence.Nullability(n.Text)})
+			column := persistence.ColumnMapping{Attribute: attr, Column: c.Text, Storage: persistence.StorageType(st.Text), Nullability: persistence.Nullability(n.Text)}
+			if hasWidth {
+				column.Precision = &precision
+				column.Scale = &scale
+			}
+			if err := column.ValidateDecimalWidth(); err != nil {
+				return m, p.errAt(a, err.Error())
+			}
+			m.Columns = append(m.Columns, column)
 		case "primary-key":
 			_, _ = p.next()
 			a, err := p.expect(TokenIdent)

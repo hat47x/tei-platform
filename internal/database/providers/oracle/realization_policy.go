@@ -33,6 +33,14 @@ func (RealizationPolicy) PhysicalType(storage persistence.StorageType) (string, 
 	}
 }
 
+// DecimalType renders a declared decimal width as Oracle's NUMBER(p,s).
+func (RealizationPolicy) DecimalType(precision, scale int) (string, error) {
+	if precision < 1 || scale < 0 || scale > precision {
+		return "", fmt.Errorf("decimal width (%d,%d) is not a valid Oracle NUMBER", precision, scale)
+	}
+	return fmt.Sprintf("NUMBER(%d,%d)", precision, scale), nil
+}
+
 func (RealizationPolicy) IndexDefaults() persistence.IndexDefaults {
 	return persistence.IndexDefaults{}
 }

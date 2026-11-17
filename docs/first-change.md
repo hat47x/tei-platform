@@ -25,7 +25,7 @@ psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 
 `-format sql`を省くと、同じ定義を列・型・主キーを持つJSONとして返す。どちらも同じ定義から出しているので、列・型・主キーの食い違いは起きない。
 
-**型の精度は定義されていない。** 保存の定義は`storage decimal`までしか言わないため、SQLは`numeric`になり、`numeric(12,3)`のような桁数は付かない。手で書いていた頃のSQLは桁数を持っていたので、同じ表にはならない。桁数が要る場合は定義側に足す必要があり、それはまだできない。
+**桁数は定義側に書く。** 保存の定義に`storage decimal(12,3)`と書けば、SQLは`numeric(12,3)`になる。書かなければ`numeric`になり、桁数は付かない。手で書いていた頃のSQLは桁数を持っていたので、同じ表にするには定義へ桁数を足す。
 
 受注1001に3行、1002に2行が入る。1003には明細がない。
 
@@ -102,5 +102,5 @@ rule sales.order_line.unit_price_positive:
 
 - 異なる属性集合を持つ**さらに別の**業務モデル。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/`・`cmd/tei/destination_order_alternate_pg_case_test.go`・#5362）。
 - 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
-- **列の精度と位取り**を定義すること。型は`numeric`まで出せるが、`numeric(12,3)` のような指定は出せない（保存の定義が`storage decimal`までしか持たない）。
+
 - Webの画面で同じ答えを見ること。

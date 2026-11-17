@@ -40,6 +40,17 @@ func RealizeDesiredWithUnresolved(mappings []Mapping, databaseID string, policy 
 	return snapshot.Normalize(), unresolved, nil
 }
 
+// modelPhysicalType asks the policy for the physical type of one column,
+// using the declared decimal width when there is one and the plain storage
+// type otherwise. The physical type stays derived from the declaration; this
+// function adds no second table of types.
+func modelPhysicalType(policy PhysicalRealizationPolicy, column ColumnMapping) (string, error) {
+	if precision, scale, ok := column.DecimalWidth(); ok {
+		return policy.DecimalType(precision, scale)
+	}
+	return policy.PhysicalType(column.Storage)
+}
+
 func realizeDesiredTables(mappings []Mapping, databaseID string, policy PhysicalRealizationPolicy) (physical.SchemaSnapshot, error) {
 	if policy == nil {
 		return physical.SchemaSnapshot{}, fmt.Errorf("physical realization policy is nil")
@@ -58,7 +69,10 @@ func realizeDesiredTables(mappings []Mapping, databaseID string, policy Physical
 		t := physical.Table{Schema: schema, Name: table, Kind: physical.TableKindTable}
 		columnByAttribute := columnNamesByAttribute(m)
 		for i, c := range m.Columns {
-			pt, err := policy.PhysicalType(c.Storage)
+			if err := c.ValidateDecimalWidth(); err != nil {
+				return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s column %s: %w", m.ID, c.Column, err)
+			}
+			pt, err := modelPhysicalType(policy, c)
 			if err != nil {
 				return physical.SchemaSnapshot{}, fmt.Errorf("mapping %s attribute %s: %w", m.ID, c.Attribute, err)
 			}

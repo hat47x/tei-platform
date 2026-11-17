@@ -3389,3 +3389,51 @@ AFTER   ... is not referenced by name in its SQL source; write it as :borrower,
 ### 位置付け
 
 **「要求はするが、従い方が書いていない」の3例目**である（第90ラウンドの `.tei`、第92ラウンドの `Function` に続く）。今回は**警告文の中に**その欠落があった。**検査を緩めず、説明だけを直した。**
+
+## 95. 第94ラウンド（2026-11-17）: `tei view` の引数拒否が、私が実際に渡した引数と食い違っていた
+
+目的文の「再びドッグフーディングに戻る」を実行し、**宣言した Application が `tei view` で実際に読めるか**を利用者の経路で確かめた。生出力は[第94ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND94_VIEW_ARGFOR_FAILURE_REASONS_2026-11-17/README.md)にある。
+
+### 動いたこと（先に確認）
+
+| 経路 | 結果 |
+| --- | --- |
+| `view -application loan_desk` | アプリ・semanticUses・パターン・fingerprint |
+| `view -pattern ... browse` | data・query・**列一覧**（`1. borrower : std.text`） |
+| `-format text/json/html/print` | **4形式すべて rc=0**（html は実際に table を描画） |
+| 交差参照 | `APPLICATION_PATTERN_QUERY_APPLICATION_MISMATCH` で**別アプリのクエリを拒否** |
+
+**宣言は本当に読める。** `model overview` の `needsAttention` も、私が入れた不正な結果列を**その subject で捕まえた。**
+
+### 見つけた穴: 拒否メッセージが argv と食い違う
+
+```text
+$ tei view -workspace W -application loan_desk -pattern p -execute
+error INVALID_ARGUMENT
+  view requires exact -workspace and -application, at most one of -pattern,
+  -package, or -command, without positional arguments
+```
+
+**私は `-workspace` と `-application` を渡し、セレクタを1つだけ渡していた。** メッセージは「私がしていない間違い」を説明していた。本当の理由は `-execute` が `-command` を要求すること。
+
+原因はガードの形で、**約20個の条件が1つの文言を共有**していた。
+
+### 修正
+
+`switch` に分け、**それぞれが悪い flag を名指し**するようにした。**拒否する組合せは変えていない**（変えたのは説明だけ）。`-environment` の複合条件は意味を変えずに統合した。
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 1つの case を旧汎用文言に戻す | FAIL `message does not say "-execute requires -command"` |
+
+**最初の変異は `switch` を壊してビルド不能になった。** 変異が壊れているのは証拠にならないので、組み立て直してビルドが通る形で再実行した。
+
+### 回帰確認
+
+`./cmd/tei` ok（581秒）、`./internal/applicationview` ok、`./internal/validation` ok、**CI gate 6ステップ PASS**。
+
+### 位置付け
+
+**「要求はするが、従い方が書いていない」の4例目**である。今度は**私が既に従っていた**ので、文言が**私の argv と矛盾**した。**拒否の範囲を変えず、理由だけを分けた。**
