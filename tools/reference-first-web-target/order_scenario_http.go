@@ -89,6 +89,12 @@ func (s *webTargetServer) handleReadScenario(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "execute read scenario: "+err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
+	// The JSON endpoint must not publish an answer against a different display
+	// position even if a custom runner returns an otherwise successful result.
+	if err := requireReadRowAnswerAlignment(result.OrderLineRows, result.RowAnswers); err != nil {
+		http.Error(w, "read scenario answers do not match the observed rows", http.StatusInternalServerError)
+		return
+	}
 
 	response := webReadScenarioResponse{
 		HandoverBaselineID:         s.projection.HandoverBaselineID,
