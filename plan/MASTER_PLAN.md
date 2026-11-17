@@ -2,6 +2,9 @@
 
 ## 目的
 
+- [DB取得範囲と業務Claimの観測十分性](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#9-観測した行と業務上の判断を分けるclaim-sufficiency2026-11-17)：組織C1の実PG二世界反例（同一Membership 4件でもPerson数3/4）を、ProviderのCoverageとConsumerのClaim Sufficiencyの区別に接続する。DPC-C01〜04を#2506/#2514/#1180へ引き渡し、同一Attemptの実Function→Rowset→Data Context→通常CLIで、結果の完全性と用途別判断の十分性を別票検査する。正式Person Link・NoSQL実検証・Studio E2Eは未受理。#2586/#2831のP0は維持する。
+
+
 - [DB横断適合とNode・REA・Batchの実行経路](design/DATA_PROVIDER_CROSS_DB_CONFORMANCE_2026-11.md#8-他チャット統合nodereabatchpluginをdb実行へ接続する2026-11-17)：Node Portの型適合とDB実行資格、REAの業務関係と物理参照、Batchの粒度・部分取得・Lineage、Studio RendererとCurrent Grantを分離する。DPC-N/R/B/W/Eの独立Expected候補を既存Ownerへ引き渡す。**直近はSQLite ReaderのCoverage偽申告を製品Callerで拒否し、通常CLIの実PostgreSQL一Functionを通す**。NoSQL実接続・実Job・Studio E2Eは未実施。新Engine・第二正本・セルフビルドP0の追加Hard Gateは設けない。
 
 - [TEI自身の要件を三要素Methodと型付きインスタンスでレビューする](design/THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md#33-tei自身の要件全体をモデルとしてレビューする三要素method標準構造インスタンスx-tea移植2026-11-17設計統合)：TEIの標準Data/Role/Facet、Function/Process、標準データ構造・標準表現型・Mappingを**Meta→Model→型付きInstance→複数Projection**で見渡し、要件索引からSource・実装・試験へ追跡する。原典三要素はCore固定でなくMethod Profile（RQ-031）。原典の自由なInstance TextとTEI型付き例、表示Occurrenceと正式Relation/Identity、説明例と独立Expected、Source再投影と実行・受理を分離する。XM-0/1/2・XD-0/1・SELFを#1124/#1131/#1031/#2514/#2831へ割り当て、SDM-01〜12（NOT RUN）を既存Expectedに引き渡す。**最初はread-onlyな同名二ノード／平行辺、NULL・欠損・空集合・未取得、三要素Coverage負例**から検収し、GUI編集・Driver/DB・実Wailsを別段階とする。Studio Stage1→Stage2実Windowsセルフビルドと通常CLI実Providerの最優先P0には新たなHard Gateを追加しない（docs-only、製品受理なし）。
