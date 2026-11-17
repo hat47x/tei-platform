@@ -12,9 +12,9 @@
 
 ## 状態
 
-- **動く**：手順3と4のうち、設計文書の変更が`tei validate`を通ること、例と規則の答えが食い違うと診断になること。`cmd/tei/destination_order_change_test.go`が毎回確かめる。
-- **試験だけ**：参照Workspaceで選んだPattern・Query・Environmentから、実PostgreSQLの行を状態付きReaderへ渡し、Ruleを判定する経路は[#5271](https://github.com/hat47x/tei-platform/pull/5271)でmainに入った。実DB試験は使い捨ての専用DBで明示的に有効にした場合に実行する。まだ通常の`tei`コマンドを通っておらず、試験用データもこの到達点の`seed.sql`とは異なる。
-- **未実装**：手順1、2、5。通常の`tei view`から実PostgreSQLの明細を読み、その行へRuleを当てて答えを返す入口と、生成Web画面での表示がまだない。入口ができたら、同じ試験へ`expected-before.json`と`expected-after.json`の照合を足す（[#2586](https://github.com/hat47x/tei-platform/issues/2586)、[#1119](https://github.com/hat47x/tei-platform/issues/1119)）。
+- **動く**：[#5300](https://github.com/hat47x/tei-platform/pull/5300)で、通常の`tei view -environment`が宣言済みのQueryを実PostgreSQLで実行し、受注1001／1002／1003の行ごとのRule結果を返す。専用CIは変更前後の6ケースをこのディレクトリの独立した期待と照合する。手順3・4の設計変更と例の診断は`cmd/tei/destination_order_change_test.go`で検証済み。今回、実DB試験でも**同じ作業領域を`tei validate`してから明細を読み直す**検査を追加した。
+- **試験だけ**：[#5271](https://github.com/hat47x/tei-platform/pull/5271)の内部PostgreSQL試験は、別の3／3／1行のデータで状態付きReaderを検査している。製品CLIの6ケースと別の試験であり、実DBを使わない実行ではPostgreSQLのテストはスキップされる。
+- **未実装**：明細全件を返すというContract Bindingの宣言と検証、その宣言を根拠にした`perOrder`の「成立」判定、手順5の生成Web画面と一ページの手順書。現行CLIは根拠のない全件性を主張せず`coverage: partial`を返す。
 
 ## 期待の読み方
 
@@ -22,7 +22,7 @@
 
 ## 次の実装へ引き渡す条件
 
-次の製品コード変更は、既存の`cmd/tei/cli_view.go`から、参照Workspaceの`order_entry.order_lines`を`-environment`と`-input order_id=...`で選び、実際のContract Queryの結果を既存`validationread.Detail.Decide`へ渡すこと。その出力を、`cmd/tei/destination_order_change_test.go`から通常の`tei`プロセスとして実行し、このディレクトリの独立した期待結果へ照合する。新しいコマンドやReaderを作らない。
+次の製品コード変更は、既存のContract Query Bindingへ**親の受注一件に対する明細全件**の宣言と、その宣言を照合する検証を追加すること（[規則の正規形とOperator署名の決定](../../plan/design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の作業5）。宣言があるだけでQueryの正しさを証明したことにはせず、ページ・フィルター・Scopeを変えた負例で検査する。続いて既存`tei view`の結果を生成Web画面へ渡す（[#2586](https://github.com/hat47x/tei-platform/issues/2586)、[#1119](https://github.com/hat47x/tei-platform/issues/1119)）。新しいコマンドやReaderは作らない。
 
 受注1001・1002・1003の明細件数は、この`seed.sql`でそれぞれ**3・2・0行**である。受注1001の明細ID 2と3は、同じ`line_number=2`を持つ異なる実体なので、`perLine`のキーには明細の`order_line_id`を使う。行番号や表示順で二つを合併してはならない。PR #5271の内部PostgreSQL試験が使った3・3・1行の別データを、この到達点の期待へ流用しない。
 
