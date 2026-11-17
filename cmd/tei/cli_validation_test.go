@@ -420,3 +420,47 @@ func TestValidateJSONDiagnosticsKeepNestedDiagnostic(t *testing.T) {
 		t.Fatalf("diagnostics[0] lost its diagnostic object: %v", first)
 	}
 }
+
+// A subject declared once in a native *.tei file and once in a selected
+// *.tei.md source must reach the CLI with both physical positions. Load knows
+// the authored byte range, so an "unknown" origin here would hide a position
+// the product already holds (#2621).
+func TestValidateWorkspaceJSONNamesBothSurfacesOfADuplicate(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceFile(t, root, "tei.workspace.yaml",
+		"workspace: cross_surface\nformatVersion: 1\nsources:\n  - semantic\nlanguages:\n  - tei.authoring/v1\n")
+	writeWorkspaceFile(t, root, "semantic/base.tei",
+		"namespace sales\n\ntype OrderId from std.identifier\n")
+	writeWorkspaceFile(t, root, "semantic/order.tei.md",
+		"# 注文\n\n<!-- tei: data OrderId in sales -->\n| attribute | type |\n| --- | --- |\n| value | std.text |\n")
+
+	var out bytes.Buffer
+	code, err := validateWorkspaceJSON(&out, root)
+	if err != nil || code != 1 {
+		t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+	}
+	for _, item := range readValidationReport(t, &out).Diagnostics {
+		if item.Diagnostic.Code != "DUPLICATE_SEMANTIC_ELEMENT" ||
+			item.Diagnostic.Subject == nil || item.Diagnostic.Subject.ID != "sales.order_id" {
+			continue
+		}
+		if len(item.UnresolvedSourceOrigins) != 0 {
+			t.Fatalf("a known authored position was reported as unresolved: %+v", item.UnresolvedSourceOrigins)
+		}
+		byPath := map[string]int{}
+		for _, source := range item.Sources {
+			byPath[source.ArtifactPath] = source.Range.Start.Line
+		}
+		nativeLine, okNative := byPath["semantic/base.tei"]
+		authoredLine, okAuthored := byPath["semantic/order.tei.md"]
+		if !okNative || !okAuthored {
+			t.Fatalf("both surfaces must be named: %+v", item.Sources)
+		}
+		// The identity is written on line 3 of each authored document.
+		if nativeLine != 3 || authoredLine != 3 {
+			t.Fatalf("positions do not point at the declarations: native=%d authored=%d", nativeLine, authoredLine)
+		}
+		return
+	}
+	t.Fatalf("cross-surface duplicate diagnostic missing: %s", out.String())
+}
