@@ -462,3 +462,11 @@ WEB-P1a-1の`presentInspection(view, workspaceId, selected)`は、Hostで検証�
 他チャットでmainへ統合された[Source位置の読み取り専用表示 PR #5212](https://github.com/hat47x/tei-platform/pull/5212)も同じ境界に属する。位置・Role・byte offsetを表示できることと、原文を開けることは別である。NodeのPort配線、Wails、SUI Canvas、B2C公開Headを横断しても、この境界を緩めない。
 
 今回の新しいコードと回帰は`inspector-presentation.ts`と既存`presentation.test.mjs`のみ。歴史的`main.ts`、`presentation.ts`、固定Closure、Wails埋込Bundleを変更しない。次の画面接続では現行`main.ts`の成功時コールバックを新しい入口に置換してから、Node24／正規生成・埋込Bundle／実Consumerを**同一HEAD**で検収する。全体P0は非Plugin StudioのStage1→Stage2実Windowsと、通常CLI実Provider Readを引き続き優先する。
+
+### 21.3 生成Inspector Readerの埋込不一致は別の実装不合格として閉じる
+
+PR #5303の対象HEADでは、Node24の`npm test`／`typecheck`／`build`と埋込Bundle四ファイルのbyte一致を行う`build-and-match-embedded-bundle`が**success**だった。一方、`cmd/tei-studio`の`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`が複数のGo Jobで**failure**となった。これは「配布JSのbyteが現在のWorkbench buildと一致する」ことと、「必要な生成部品がそのJSに実際に組み込まれている」ことが異なるためである。失敗の直接原因は、埋込`main.js`に契約Digest付きの生成Readerが見つからないこと（`embedded Workbench bundle does not contain the generated Inspector reader`）。
+
+今回のPRで変更していない`cmd/tei-studio/embedded_generated_part_test.go`、`assets/workbench/main.js`、`inspection-reader.generated.ts`、`main.ts`、`build.mjs`は、分岐元mainとGit blobがすべて一致している。したがってこの不合格を今回の純粋Presenterの変更に帰属させない。ただし、独立した製品障害として残し、**このチェックが失敗している限り生成Readerの埋込／実Consumerの資格は未受理**とする。
+
+WEB-P1a-2では、契約Source→既存生成器→`inspection-reader.generated.ts`→実Workbench import／呼出し→正規esbuild→埋込JSを同一HEADで追う。生成Readerが**一つだけ**含まれ、契約Digestが現在のSourceと一致し、手書き`readInspection`との二重定義がなく、実利用記録を保持することを既存Goテストで確認する。生成物へ固定文字列だけを追記したり、旧Pinの指紋を置換したり、Goテストを緩めたりして通してはならない。次に通常・生成Workbenchと実WindowsのConsumerへ引き渡す。これは生成部品の組込み資格であり、Providerの実CallやStage1→Stage2セルフビルドの成功とは別である。
