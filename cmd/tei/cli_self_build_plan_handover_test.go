@@ -198,7 +198,7 @@ func TestSelfBuildRefusesTwoPlansForOneChild(t *testing.T) {
 	if err := os.WriteFile(callerPlan, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, spelling := range [][]string{{"-plan", callerPlan}, {"-plan=" + callerPlan}} {
+	for _, spelling := range [][]string{{"-plan", callerPlan}, {"-plan=" + callerPlan}, {"--plan", callerPlan}, {"--plan=" + callerPlan}} {
 		report, code, stderr := f.run(t,
 			append(spelling, "-repo", f.repoRoot, "-go", f.goExe),
 			append(f.inProcess(), "-hand-over-plan")...)
@@ -265,5 +265,42 @@ func TestConfirmPlanUnchangedDetectsARewrittenFile(t *testing.T) {
 	confirmPlanUnchanged(record)
 	if *record.UnchangedAfterChild {
 		t.Fatal("a removed file was reported as unchanged")
+	}
+}
+
+// A terminator in the caller's arguments would turn the flags this entry
+// appends (-plan, -state, -artifact-out) into positional arguments.
+func TestReservedChildFlagsCoverEverySpelling(t *testing.T) {
+	cases := map[string]string{
+		"-state":        "-state",
+		"--state":       "-state",
+		"--state=/x":    "-state",
+		"-artifact-out": "-artifact-out",
+		"--supply=/s":   "-supply",
+		"--":            "--",
+		"-repo":         "",
+		"--repo=/r":     "",
+		"positional":    "",
+	}
+	for arg, want := range cases {
+		if got := reservedChildFlagIn([]string{"-go", "/go", arg}); got != want {
+			t.Errorf("reservedChildFlagIn(%q) = %q, want %q", arg, got, want)
+		}
+	}
+	if !flagIn([]string{"--plan=/p"}, "-plan") || flagIn([]string{"-planner", "--plans"}, "-plan") {
+		t.Error("flagIn does not match exactly the spellings of -plan")
+	}
+}
+
+func TestMarkPlanNotStarted(t *testing.T) {
+	record := &selfBuildPlanHandover{State: planHandoverHanded, PlanPath: "/p"}
+	markPlanNotStarted(record)
+	if record.State != "written-child-not-started" || record.Reason == "" {
+		t.Fatalf("record = %+v", record)
+	}
+	untouched := planHandoverNotAsked()
+	markPlanNotStarted(untouched)
+	if untouched.State != "not-requested" {
+		t.Fatalf("a record that was never handed over was rewritten: %+v", untouched)
 	}
 }

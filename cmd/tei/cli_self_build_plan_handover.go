@@ -29,9 +29,10 @@ import (
 
 const (
 	planHandoverHanded       = "handed-over"
+	planHandoverNotStarted   = "written-child-not-started"
 	planHandoverNotRequested = "not-requested"
 
-	selfBuildPlanHandoverBoundary = "handed-over means the child was started with -plan pointing at a file this entry wrote from its own in-process resolution, and the file still had those bytes after the child exited. It does not show that the child read that file or built from it: that is what planCrossCheck (the plan fingerprint the child reports) and the artifact checks are for"
+	selfBuildPlanHandoverBoundary = "handed-over means the child was started with -plan pointing at a file this entry wrote from its own in-process resolution, and the file still had those bytes after the child exited. It does not show that the child read that file or built from it: that is what planCrossCheck (the plan fingerprint the child reports) and the artifact checks are for. The check after the child is a comparison of contents at one moment: a child running as the same user can replace the file and put it back"
 )
 
 type selfBuildPlanHandover struct {
@@ -79,6 +80,15 @@ func writePlanForChild(receipt *PlanReceipt) (*selfBuildPlanHandover, string, er
 		return nil, "", err
 	}
 	raw = append(raw, '\n')
+	// The fingerprint recorded is that of the bytes about to be written, read
+	// back the way a child would read them, not that of the value in memory.
+	var written plugin.BuildPlan
+	if err := json.Unmarshal(raw, &written); err != nil {
+		return nil, "", fmt.Errorf("the plan this entry would write does not read back: %w", err)
+	}
+	if writtenFingerprint, err := plugin.BuildPlanFingerprint(written); err != nil || writtenFingerprint != fingerprint {
+		return nil, "", errors.New("the plan this entry would write does not read back to the resolved fingerprint")
+	}
 	dir, err := os.MkdirTemp("", "tei-self-build-plan-")
 	if err != nil {
 		return nil, "", err
@@ -95,6 +105,16 @@ func writePlanForChild(receipt *PlanReceipt) (*selfBuildPlanHandover, string, er
 		PlanFingerprint: fingerprint,
 		Boundary:        selfBuildPlanHandoverBoundary,
 	}, dir, nil
+}
+
+// markPlanNotStarted corrects the record when the entry wrote the plan but
+// refused to start the child: nothing was handed to anyone.
+func markPlanNotStarted(record *selfBuildPlanHandover) {
+	if record == nil || record.State != planHandoverHanded {
+		return
+	}
+	record.State = planHandoverNotStarted
+	record.Reason = "the plan was written, but this entry refused to start the child"
 }
 
 // confirmPlanUnchanged re-reads the handed-over file after the child exited.
