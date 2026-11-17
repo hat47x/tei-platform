@@ -40,6 +40,8 @@
 
 **生成Inspector Readerの未接続を別Gateとして扱う**：PR #5303の同一HEADではWorkbenchの正規Node24 Build／埋込byte一致はsuccessだが、複数の`cmd/tei-studio` Go Jobが`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`で停止した。既存テスト・生成Reader・埋込JS・`main.ts`・`build.mjs`のGit blobは分岐元と同じであり、今回のPresenter変更が直接原因ではない。WEB-P1a-2ではSource契約のDigest→生成Reader一件→実呼出し→正規Bundle→通常／生成Consumerの順に受入する。配布byte一致のみを生成部品の実組込みに昇格させず、既存Goテストの拒否を回避しない（[Web横断設計 §21.3](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)）。
 
+**WEB-P1a-2bの受入順序：Reader同値化を先行**：[Web横断設計 §23](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)の現行コード照合では、手書きReaderにある必須authorityLimitsの検証が生成Contract・生成Readerに無く、sourceStatusの型検査にも差がある。まずW-Rで生成元Contract／既存Transform／生成TSを同じ保証へ揃え、同一Fixtureの正負例で確認する。次にW-Bで一体型Presenterと生成Readerを単一実行経路へ接続し、過去の固定Closureを保存したまま正規Bundle・Digest・Marker・重複Reader不在・埋込byteを新HEADで検査する。最後にW-Cで通常・生成Studio・実Windows WebView2を独立に受領する。#5303／#5306の局所達成をW-R/B/C、Source Open、HTTP Disclosure、正式Stage1→Stage2、実Providerへ流用しない。#1180／#2514、#997／#1824、#2831／#4583の既存Ownerで検収し、新Host・第二正本・新Hard Gateは作らない。
+
 後続の**WEB-P2**はCLI direct／Studio Host／HTTPの同一Operationを一つのread-only実Consumerで比較し、Actor／Audience／Disclosureと現在Providerの選択を別資格で検査する。**WEB-P3**は公開可能なB2C説明Facet一件をTarget Head Slotと実Asset Memberへ接続する。両者をUI Framework選定やDesktopセルフビルドの前提条件にしない。担当は#997／#1824／#1158／#951／#3509、反証は既存#1180／#2514。ここでの追記は実装引渡しであり、製品の新しいE2E試験合格ではない。
 
 ### 図解のP1：定義・生成・実Attemptを証拠つきで比較する（2026年11月15日）
