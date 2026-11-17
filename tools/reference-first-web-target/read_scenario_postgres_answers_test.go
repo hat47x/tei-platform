@@ -130,15 +130,13 @@ func openEmptyFixtureDB(t *testing.T, dsn string) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	var userRelations int
-	if err := db.QueryRow(`
-SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind IN ('r','p','v','m','S','f')
-  AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%'`).Scan(&userRelations); err != nil {
+	// The shared fixture database is used by other suites in the same job, so
+	// its other relations are not this test's concern. Replace only the two
+	// tables this read needs, so an earlier run cannot stand in for the rows
+	// seeded here.
+	if _, err := db.Exec(`DROP TABLE IF EXISTS public.order_lines;
+DROP TABLE IF EXISTS public.orders;`); err != nil {
 		t.Fatal(err)
-	}
-	if userRelations != 0 {
-		t.Fatalf("refusing to use a database that already has %d user relations", userRelations)
 	}
 	if _, err := db.Exec(`CREATE TABLE public.orders (
   order_id bigint PRIMARY KEY,

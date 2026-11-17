@@ -129,6 +129,10 @@ RUNTIME_EXPECTED = (
     # executors (internal/driver/queryruntime/*/executor.go ->
     # driver.RelationQuerySQL -> sqlgen). It arrived here in 41de7910a (#4415).
     "tei/internal/database/sqlgen",
+    # The PostgreSQL runner the Contract Query execution uses reports its
+    # acquisition observation through this package. It is part of the same
+    # runtime read the API serves, not presentation.
+    "tei/internal/functioncontext",
     "tei/internal/database/migration",
     "tei/internal/database/persistence",
     "tei/internal/database/physical",
