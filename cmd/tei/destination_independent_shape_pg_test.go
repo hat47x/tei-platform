@@ -36,7 +36,7 @@ func TestDestinationIndependentShapeViaCLIFromPostgres(t *testing.T) {
 	if _, err := db.Exec("drop table if exists public.shipment_positions"); err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(\`create table public.shipment_positions (
+	_, err = db.Exec(`create table public.shipment_positions (
 		shipment_code varchar not null,
 		segment varchar not null,
 		token varchar not null,
@@ -45,7 +45,7 @@ func TestDestinationIndependentShapeViaCLIFromPostgres(t *testing.T) {
 		units numeric(12,3) not null,
 		unit_cost numeric(12,2) not null,
 		primary key (segment, token)
-	)\`)
+	)`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,11 +54,11 @@ func TestDestinationIndependentShapeViaCLIFromPostgres(t *testing.T) {
 			t.Errorf("cannot clean up disposable shipment positions: %v", err)
 		}
 	})
-	if _, err := db.Exec(\`insert into public.shipment_positions
+	if _, err := db.Exec(`insert into public.shipment_positions
 		(shipment_code, segment, token, sequence_num, sku, units, unit_cost)
 		values ('0007', 'a/b', 'c', 1, 'X', 1, 10),
 		       ('0007', 'a', 'b/c', 2, 'Y', 0, 20),
-		       ('7', 'other', 'item', 1, 'Z', 2, 30)\`); err != nil {
+		       ('7', 'other', 'item', 1, 'Z', 2, 30)`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -149,11 +149,11 @@ func TestDestinationIndependentShapeViaCLIFromPostgres(t *testing.T) {
 		rewrite("databases/sales-core/query-realizations/order-line-find-by-order.tei", c.old, c.new)
 	}
 	query := filepath.Join(root, "databases", "sales-core", "query-realizations", "order-line-find-by-order.sql")
-	if err := os.WriteFile(query, []byte(\`SELECT segment, token, sequence_num, sku, units, unit_cost
+	if err := os.WriteFile(query, []byte(`SELECT segment, token, sequence_num, sku, units, unit_cost
 FROM public.shipment_positions
 WHERE shipment_code = :shipment_code
 ORDER BY sequence_num, segment, token;
-\`), 0o644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -163,21 +163,21 @@ ORDER BY sequence_num, segment, token;
 		t.Fatalf("independent Workspace does not validate: stdout=%s stderr=%s", validated.stdout, validated.stderr)
 	}
 	type report struct {
-		OK bool \`json:"ok"\`
+		OK     bool `json:"ok"`
 		Result struct {
-			Relation      string   \`json:"relation"\`
-			Coverage      string   \`json:"coverage"\`
-			KeyAttributes []string \`json:"keyAttributes"\`
-			Rows []struct {
-				Key string \`json:"key"\`
+			Relation      string   `json:"relation"`
+			Coverage      string   `json:"coverage"`
+			KeyAttributes []string `json:"keyAttributes"`
+			Rows          []struct {
+				Key    string `json:"key"`
 				Fields map[string]struct {
-					State string \`json:"state"\`
-				} \`json:"fields"\`
-			} \`json:"rows"\`
-			PerRow               map[string]map[string]string \`json:"perRow"\`
-			PerRelation          map[string]string            \`json:"perRelation"\`
-			PerRelationUndecided map[string]string            \`json:"perRelationUndecided"\`
-		} \`json:"result"\`
+					State string `json:"state"`
+				} `json:"fields"`
+			} `json:"rows"`
+			PerRow               map[string]map[string]string `json:"perRow"`
+			PerRelation          map[string]string            `json:"perRelation"`
+			PerRelationUndecided map[string]string            `json:"perRelationUndecided"`
+		} `json:"result"`
 	}
 	read := func(input string) report {
 		t.Helper()
@@ -198,7 +198,7 @@ ORDER BY sequence_num, segment, token;
 		return result
 	}
 	zeroPrefixed := read("0007")
-	first, second := \`["a/b","c"]\`, \`["a","b/c"]\`
+	first, second := `["a/b","c"]`, `["a","b/c"]`
 	if len(zeroPrefixed.Result.Rows) != 2 || zeroPrefixed.Result.Rows[0].Key != first || zeroPrefixed.Result.Rows[1].Key != second {
 		t.Fatalf("composite row identities were collapsed or text input lost its zeros: %+v", zeroPrefixed.Result.Rows)
 	}
@@ -215,7 +215,7 @@ ORDER BY sequence_num, segment, token;
 		t.Fatal("the independent incomplete Relation was accepted as complete")
 	}
 	unprefixed := read("7")
-	if len(unprefixed.Result.Rows) != 1 || unprefixed.Result.Rows[0].Key != \`["other","item"]\` {
+	if len(unprefixed.Result.Rows) != 1 || unprefixed.Result.Rows[0].Key != `["other","item"]` {
 		t.Fatalf("a text input was coerced or the wrong parent was fetched: %+v", unprefixed.Result.Rows)
 	}
 }
