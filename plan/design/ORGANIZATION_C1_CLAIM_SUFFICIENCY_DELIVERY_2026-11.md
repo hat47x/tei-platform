@@ -86,3 +86,18 @@ G1とG2のOwner作業は並行可能。G3は必要な正式Linkが整ってか�
 | Verdict | 確認できた局所事実、依然NOT RUNの製品接続、Owner未受理事項、停止理由 |
 
 第一候補は#2586の通常CLI一Function・一Query・一Consumerへの読取受渡しで、対象はまず既存の合成受注とする。組織C1のPerson Linkや新しいRuntimeを先行条件にしない。並行中の[PR #5382](https://github.com/hat47x/tei-platform/pull/5382)のCoverage実装、[PR #5431](https://github.com/hat47x/tei-platform/pull/5431)のWeb受信は、各々の実行資格と統合状態を確認してから使用する。**本節は設計のみ。実Provider→Org Rule→二Consumer・Hostの合格は未実証。**
+
+## 8. 複数Resultとページの整合した受領（2026-11-18）
+
+[組織モデリング段階計画§10.26](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)は、既存G1〜G5に新Gateを増やさず、**同じ組として使う複数Resultを、ConsumerがどのCutで受信したか**を確認する。バッチ[複数成果物の世代整合§15](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)のMG-02/03/04/06/08と、組織ORG-BEH-03／ORG-XD-02〜05の反例を再利用する。
+
+| 既存Gate | 読取・利用上の最小反例 | 受入可能な境界 |
+| --- | --- | --- |
+| G1 | 一回のQueryは正しいが、ページ1と2を別Transactionで読む間に公開版が切り替わった | 同一Snapshot/版Pinを実確認するか、複数ページにまたがる全件Claimをunknownとする |
+| G2/G3 | r7で新所属一覧3件と旧FTE 3.0を同一現行時点として提示、または同一所属行からPerson数を確定 | 旧4件・3.0／新3件・2.4を別Cutで示し、正式Person Link未受理なら人数はunknown |
+| G4 | Treeは新しいSource、Tableは旧Source、SHOはさらに古いPinを保持 | Consumerごとの実受領世代・Scopeを明記し、同一組という表示を拒否。比較用途なら差分として表示 |
+| G5 | 組織の新世代公開をC1責任移管・通知ACK・現在Grant・Effect確定と同一視 | Case Responsibility・Handoff・Hostの実証を独立の条件とする |
+
+**最初の比較票**：業務as-of（validAt/knownAt）、各Source/Meaning版、実Read Snapshot/Cohort、必要RelationのCoverage、Result IDと入力依存・Generation、公開された組または「未確認」、実ConsumerのPin/受領/開示Scope、Claim別Expected/Observedを列として照合する。Readerが複数要求の固定Snapshotを提供しなければ、その能力を仮定したテストはPASSにしない。実Targetで原子的な組の公開ができない場合も、個別Resultの成功と共同公開の成功は別に報告する。
+
+**実装順**：#2586の一Function・一Consumerの実Readを先行。次にr7の旧新所属＋FTEを独立Expectedでread-only照合し、#2506/#2516で二Consumer/ページを比較。現行GrantとHandoffは既存#1174/#1444で別検収する。main統合済み#5431のWeb実ReaderとDraft #5382のCoverageを、追加のOrg専用Routerなしで利用可能か検査する。#2831のStudioセルフビルドは並行P0。**本節は設計のみで、実Page Pin・Org共同公開・Host実行の新しい試験はNOT RUN。**

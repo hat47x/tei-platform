@@ -1233,8 +1233,46 @@ Person Linkの同一性、訂正か再所属か、どの時間条件で人数を
 4. **責任と実効を切り離す（ORG-XD-03／ORG-BEH-04〜06）**：P1のD1→D2異動、C1の責任移管提案、通知、受領ACK、動的承認候補、現在Grant、実Effectの各版と観測を別列にする。旧ReceiptのA→B→A復活や、Commit不明での無条件再試行を拒否。
 5. **異なるConsumerへ渡す（ORG-XD-04/05／#2516/#1124）**：同じContextの公開可能なSliceだけをCLIとStudio/SHO等へ配送。表示Treeの隠れた親・Graph多重Edge・Plugin Adapterの損失、Source/Selection epochとRecipient差で、意味と開示の資格を再検査する。未接続のConsumerはNOT RUN。
 
-**現行の並行実装との境界**：Draft PR #5382の `covers` とSQL／Relation Storage照合は取得範囲を証明する候補経路だが、その限定的なSQL形の成功だけで、二時点のPerson Link・Ruleの必要集合・Tenant開示・受信を証明したとは言わない。Open PR #5431の実PostgreSQL→Web行表示も、組織C1の正式Function／二時点Read／Grantの合格には合算しない。両PRのHEAD・統合状態は採用時に再確認する。
+**現行の並行実装との境界**：Draft PR #5382の `covers` とSQL／Relation Storage照合は取得範囲を証明する候補経路だが、その限定的なSQL形の成功だけで、二時点のPerson Link・Ruleの必要集合・Tenant開示・受信を証明したとは言わない。main統合済みPR #5431の実PostgreSQL→Web行表示も、組織C1の正式Function／二時点Read／Grantの合格には合算しない。両PRのHEAD・統合状態は採用時に再確認する。
 
 **担当と停止線**：#2586/#2506が実Read・Context・一Consumer、#2386/#1126が業務Identity・二時点Link、#2514/#4490がClaimとRuleの独立Expected、#1125/#1444がCase引継ぎ、#1174/#2499が現在Grant・Effect、#2497/#2516/#1124がProjectionと受信を所有する。新Schema・専用Temporal/Proof/ACL Engine・第二Expected正本は作らず、**通常CLI実ProviderとStudio Stage1→Stage2の並行P0を維持**する。
 
 **今回の状態**：計画・受入条件の統合のみ。新しいCLI/Provider/Rule/Consumerの同一Attempt試験、Host Effect、Owner意味受理は **NOT RUN／NOT ACCEPTED**。実装時はexact HEAD・非SKIP・独立Expected・実観測・不足している証拠を分けて記録する。
+
+<!-- org-publication-consumer-cut-20261118 -->
+### 10.26 組織改編の公開とConsumerが読む世代を、一つの「現在」にまとめない（2026-11-18）
+
+§10.17（同時Writer）、§10.24〜10.25（横断経路・Claim）と[複数成果物の世代整合§15](DECLARATIVE_RESULT_PROCESS_COMPOSITION_2026-11.md)、[実行モデルの因果カット§21](PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)を接合する。**所属・案件責任・集計をそれぞれ正しく更新できても、その組合せを一つの現在組織として読めるとは限らない**。新たなOrg世代Storeや分散Transaction Managerではなく、既存Data/Relation、Query、Process、Stage/Publish、Function Context、Consumerの実証可能な範囲を組み合わせる。
+
+#### 10.26.1 「時点」「更新」「公開」「読取」の異なる境界
+
+| 境界 | 固定・照合する事実 | それだけでは主張できないこと |
+| --- | --- | --- |
+| 業務上の組織像 | 受理されたMembership・Position・Case ResponsibilityのOccurrence/Assertion版、validAt・knownAt、組織軸、Rule/Meaning版 | 当時のHost Grant、別Sourceの同時観測 |
+| 入力のRead Cut | 各実ProviderのSnapshot/Transaction、実Query/SQL/引数、Scope/Coverage、Read Cohort | 複数DB/APIを時刻文字列だけで同一Snapshotにしたこと |
+| 導出結果の世代 | 所属一覧、Tree/Graph、FTE/人数、候補Resultそれぞれの粒度、入力依存、世代 | 個別Resultの合格による共同公開の成立 |
+| 公開された組 | 実Targetが支持するManifest／DB Snapshot等の固定・切替手段、部分失敗時の観測 | 複数Providerへの無条件な原子的公開 |
+| Consumerが読んだ組 | CLI/Studio/Web/SHOが実際に固定した参照、ページ、選択epoch、開示Scopeと受信結果 | 同じ日付の表示だから同世代という推定 |
+| 業務作用と引継ぎ | Case責任移管の判断、通知・ACK、現在Principal/Grant、Effect Fence・Receipt | 公開・描画・配信成功による移管完了や実行許可 |
+
+**一つのCutが必要なのは「同一世代の組」と明示したClaimの必要集合に限る。** 旧新比較画面では異なるCutを並べてよいが、各列にvalidAt/knownAt、Source/Meaning、Reader Snapshot、Scopeを残す。DB取得時刻とknownAtは別物であり、knownAtが同じでも実Read Snapshotが異なれば追加の整合証拠が必要。
+
+#### 10.26.2 r7で反証する：二つの正しい結果の誤った組合せ
+
+既存org-synthetic-r7のvalidAt=2027-06-15では、knownAt=2027-07-01の所属は **A1/A2/A3/A4の4件・FTE 3.0**、knownAt=2027-07-03では **A1/A3/A4の3件・FTE 2.4**（合成Referenceの独立Expected）。旧一覧4件＋旧FTE 3.0、新一覧3件＋新FTE 2.4は、それぞれ対応する組として正しい。一方、**新一覧3件＋旧FTE 3.0**を「同一時点の現行組織」として示すのは不適格。二時点比較として明示するなら別の用途として許容される。
+
+Person数はこの組合せから確定しない。PR #5210の同一Membership行・異Person世界では正式Person Relationが不足しており、公開世代が整合しても人物数Claimの不足は消えない。C1のhandlingUnit、責任移管、通知・ACKもMembershipの訂正・公開とは別の関係と業務判断である。
+
+#### 10.26.3 複数画面・ページ・Providerの最小受入
+
+1. **Stage/Publish**：辞令・変更集合の検査、新しい関係と集計結果の世代生成、公開を分離し、部分失敗で混在した現行組を公開しない。旧組維持または保留を実Targetで検証する（ORG-BEH-03、MG-02/03）。
+2. **Read Pin**：一覧→集計、ページ1→ページ2の間に公開版が切り替わる負例を置く。各HTTP要求が新しいread-only Transactionなら、**各要求の正しさは複数要求の同一Snapshotを証明しない**。固定可能な版・Cursor・Snapshotが実在しない場合、複数要求にまたがる全件Claimは保留（MG-04、#2506/#2514）。
+3. **Claimの粒度**：所属数、distinct Person、FTE、動的承認候補を分け、必要Relation/Rule/非出力依存・Coverage・Disclosureを確かめる。公開組の一致から人物同一性・単独決裁者・全件開示を推定しない（ORG-XD-02/04、MG-06）。
+4. **責任と現在Grant**：C1のD1→D2移管、旧新Reader、通知・ACK、現在Grant、Effectを別票で照合。組織図の新世代公開はCase変更やHost実行の代理証拠ではない（ORG-BEH-06、ORG-XD-03、ORG-TR）。
+5. **A→B→A**：表示値の復帰、遡及訂正、Source/Rule/Policy/Recipient変更、遅延Replyから旧Read Cohort・公開組・Pin・Grant・Receiptを自動復活させない（ORG-XD-05、MG-08、#2582）。
+
+main統合済み[PR #5431](https://github.com/hat47x/tei-platform/pull/5431)はWeb行別表示への実PostgreSQL Reader接続という限定的な前進。要求ごとのRead Transactionはページをまたぐ固定Snapshot、Org C1の正式二時点、二Consumerの共同公開や現在Grantの実証ではない。[Draft #5382](https://github.com/hat47x/tei-platform/pull/5382)のSQL/Relation Storageとcoversの照合は**Queryの取得範囲**の資格であり、Result世代群の組合せ・Consumer Pin・Person Link・Rule十分性とは別である。採用時は各PRのHEADと実際のテスト結果を再確認する。
+
+**引継ぎと優先順位**：先行P0の#2586（通常CLI実Provider→一Consumer）と#2831（Desktop Stage1→Stage2セルフビルド）を維持。最初は既存r7／MG-02/04を一枚のread-only比較票でつなぎ、#4490/#2514の独立Expectedへ渡す。実Targetの世代切替・Pinは#2482/#2622/#1130、Context/Consumerは#2506/#2516/#1124、Case/ACKは#1125/#1444、現在Grant/Effectは#1174/#2499が担当。通常組織Dataへの一律ACL、新Org Runtime、固定公開Schema、第二Expected正本、全Provider原子性の仮定は追加しない。
+
+**今回の資格**：設計・反例の接合のみ。Org新世代の実共同公開、複数HTTP要求の固定Snapshot、二Consumer実受領、Case実Handoff、Owner意味受理は **NOT RUN／NOT ACCEPTED**。
