@@ -58,10 +58,19 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 	return inner.ExecuteContractQuery(ctx, target, queryContract, parameters)
 }
 
-// newPostgresReadRunner returns the normal read runner with the header-detail
-// order-line read served by PostgreSQL. Browse and the customer reference keep
-// their existing executors, so the page still cannot show a read it did not
-// make: only the executor for the database-backed target is replaced.
+// newPostgresReadRunner returns the normal read runner with both the browse and
+// the header-detail order-line read served by PostgreSQL. The customer
+// reference keeps its existing executor, so the page still cannot show a read
+// it did not make.
+//
+// Browse is replaced together with the detail read, not left on the fixture.
+// The page selects one order from the browse rows and then shows that order's
+// detail rows; if browse stayed synthetic, the selected order could be an order
+// the database does not hold, or could carry header values the database does not
+// agree with, while the detail rows came from the database. Measured at
+// 43e6adc01: this builder replaced only the detail executor, and `main` passed
+// `wiring.browse` separately, so the two halves were assignable to different
+// sources. A database read now refuses rather than falling back.
 //
 // This mirrors how `tei view -environment` builds its registry: the executor is
 // chosen by the Workspace's declared binding, and the statement text comes from
@@ -88,6 +97,7 @@ func newPostgresReadRunner(world ir.World, db *sql.DB) (*referenceReadScenarioRu
 
 	runner := newReferenceReadScenarioRunner(world)
 	runner.contracts = overlayContractExecutors(added)
+	runner.browse = postgresBrowseExecutor{db: db}
 	return runner, nil
 }
 
