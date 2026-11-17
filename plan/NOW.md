@@ -17,7 +17,7 @@
 4. `tei validate`が通り、同じ明細を読み直すと、書き換えた規則の答えに変わる。
 5. 生成したWebの画面一つで、同じ答えが見える。
 
-入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。通常の`tei view -environment`による実PostgreSQLの明細取得・行ごとのRule評価は[#5300](https://github.com/hat47x/tei-platform/pull/5300)で製品入口へ入った。専用CIは受注3件、規則の変更前後6ケースを独立した期待と照合している。今回、同じ作業領域の`tei validate`を実DB読取りの直前に実行する検査も追加する。ただし受注全行を取得した証明はなく、一意性の「成立」は判定保留である。Web画面への表示もまだできていない。
+入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。通常の`tei view -environment`による実PostgreSQLの明細取得・行ごとのRule評価は[#5300](https://github.com/hat47x/tei-platform/pull/5300)で製品入口へ入った。専用CIは受注3件、規則の変更前後6ケースを独立した期待と照合している。実DB読取りの直前に、同じ作業領域へ`tei validate`を実行する検査もある。ただし受注全行を取得した証明はなく、一意性の「成立」は判定保留である。Web画面への表示もまだできていない。
 
 受入れは二つである。この五つを実際のPostgreSQLで実行し、実装から独立した期待と照合する試験が、CIで毎回走ること。五つを一ページで案内する手順書があり、その手順書のとおりに打てば通ること。
 
