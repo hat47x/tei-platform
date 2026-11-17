@@ -1149,6 +1149,16 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 
 Person Linkの同一性、訂正か再所属か、どの時間条件で人数を数えるかは#2386/#1126のOwnerが採否を判断する。S3の実DB反例はその判断を代行しない。#2831 Desktopセルフビルドは引き続き独立P0。
 
+
+<!-- org-claim-sufficiency-delivery-20261117 -->
+### 10.22 Claimの情報十分性を、通常CLI実受領から段階的に製品検収する
+
+[組織C1：観測の十分性から業務判断・Consumerへ進むための受入計画](ORGANIZATION_C1_CLAIM_SUFFICIENCY_DELIVERY_2026-11.md)に、§10.20〜10.21の次の実装順・判別ケース・停止条件をまとめた。PR #5155/#5210の隔離PostgreSQL局所PASSを基線とし、人物数の正式確定、二Consumer、業務Rule、Host Effectの合格とはしない。
+
+製品Exitは **G1 通常CLIのFunction→実Provider→一Consumer同一Attempt受領 → G2 Owner受理済みPerson Linkと正式二時点保存 → G3 人物数/FTE等のClaim別十分性 → G4 二Consumerと損失認識Projection → G5 業務候補・現在Grant・Effect** と分ける。G1とG2の準備、G4の独立Expectedは並行可能。G3の確定値は正式Linkと完全Readがそろうまでunknownにする。各Gateは既存Owner/Scenario/Expectedへ接続し、組織専用Runtimeや新しい意味正本を設けない。
+
+優先P0は引き続き #2586 の通常CLI実Readと #2831 のDesktopセルフビルド。上記G1〜G5は**本追補時点では計画であり未実行**。固定HEAD・実Provider・Consumer受領・Owner受理を別々に確認してから受入状態を更新する。
+
 <!-- org-claim-quantifier-handoff-20261117 -->
 ### 10.22 S3→S4のClaim判断を、量化と取得範囲ごとに検収する
 
