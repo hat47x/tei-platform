@@ -127,7 +127,7 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 					if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
 						t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
 					}
-					if !report.OK || report.Result.Coverage != "unverified" {
+					if !report.OK || report.Result.Coverage != "partial" {
 						t.Fatalf("CLI claimed complete coverage or failed: %+v", report)
 					}
 					want := expected.Orders[orderID]
