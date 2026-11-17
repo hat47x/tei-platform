@@ -39,7 +39,7 @@
 | XF200 単票保守 | 実装（参照） | `record`＋`command`（create/update/delete） | 例の order_create・submit_order・order_delete | 0件／複数件を1件要求として区別する扱い |
 | XF290 単票印刷 | 一部 | `record`＋出力投影（RenderPrintHTML） | print_test.go・print_fingerprint_test.go | 版面（余白・フォント・用紙）の宣言、PhraseのHEADER/PARAGRAPH分離、PDF生成そのもの（HTML投影まで） |
 | XF300 見出し明細表示 | 実装（参照） | `header-detail`＋`browse`（明細） | header_detail の投影試験、例の order_lines | 明細ごとの起動機能、StructureTable系の構造ツリー（F-12）、最大20タブ |
-| XF310 見出し明細保守 | 一部 | `header-detail`＋`command`（見出し・明細） | 例の order_lines＋line_create | 明細行の状態（CURRENT/NEW/削除予定）を一確定で振り分ける経路、行番号の再採番 |
+| XF310 見出し明細保守 | 一部 | `header-detail`＋`command`（見出し・明細） | 例の order_lines＋line_create | 一確定で見出しの更新と明細の追加・更新・削除を運ぶ経路は`saveunit`で実装（[記録](XTEA_LOWCODE_XF310_MIXED_CHANGES_2026-11.md)）。明細行の状態を宣言として持つ方法、行番号の再採番、他のStore実装の確認は未実装 |
 | XF390 見出し明細印刷 | 一部 | `header-detail`＋出力投影（RenderHeaderDetailPrintHTML） | print_test.go の従属明細試験 | 明細の繰返し範囲・合計（WITH_TOTAL）の宣言。**改ページの `Rows` と `repeat-header` は、どちらも受理・投影されるが実行時に効かない**（投影の明細行は実データではなく合成のプレースホルダ）（[記録](XTEA_LOWCODE_REPEAT_HEADER_INERT_2026-11.md)）。合計は未実装 |
 | XF000 起動処理 | 未実装 | `command`＋起動契機（構想） | なし | タイマー（TimerOptionのNOW/HH:MM/CONSOLE）、起動時Profile、休日実行の制御。実行先Profileの設計が前提 |
 
