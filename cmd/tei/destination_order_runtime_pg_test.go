@@ -298,6 +298,124 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 		}
 	})
 
+
+	// The ordinary CLI must resolve meaning from another Semantic Data and
+	// Relation, not merely accept a different Pattern spelling for order_lines.
+	// All changed declarations live in a disposable Workspace. SQL continues
+	// to read the same physical fixture table, so independently authored row
+	// expectations can be compared without adding a second fixture authority.
+	t.Run("different Semantic Data and Relation in a copied Workspace", func(t *testing.T) {
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+
+		ids := strings.NewReplacer(
+			"sales.order_line", "sales.invoice_line",
+			"sales.order", "sales.invoice",
+			"order_entry.order_lines", "order_entry.invoice_lines",
+		)
+		decls := strings.NewReplacer(
+			"type OrderLineId from", "type InvoiceLineId from",
+			"type OrderId from", "type InvoiceId from",
+			"type OrderStatus from", "type InvoiceStatus from",
+			"data OrderLine {", "data InvoiceLine {",
+			"data Order {", "data Invoice {",
+		)
+		var changed int
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || !(strings.HasSuffix(path, ".tei") || strings.HasSuffix(path, ".tei.md")) {
+				return nil
+			}
+			original, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			updated := ids.Replace(string(original))
+			if filepath.ToSlash(path) == filepath.ToSlash(filepath.Join(root, "semantic", "sales", "order.tei")) {
+				updated = decls.Replace(updated)
+			}
+			if updated == string(original) {
+				return nil
+			}
+			changed++
+			return os.WriteFile(path, []byte(updated), 0o644)
+		})
+		if err != nil || changed < 5 {
+			t.Fatalf("cannot construct a second Semantic model: changed=%d err=%v", changed, err)
+		}
+		validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", root)
+		if validated.code != 0 {
+			t.Fatalf("different Semantic model did not validate: code=%d stdout=%s stderr=%s",
+				validated.code, validated.stdout, validated.stderr)
+		}
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.invoice_lines", "-environment", "development",
+			"-input", "order_id=1002", "-format", "json",
+		)
+		var report struct {
+			OK bool `json:"ok"`
+			Result struct {
+				Pattern       string                       `json:"pattern"`
+				Relation      string                       `json:"relation"`
+				KeyAttributes []string                     `json:"keyAttributes"`
+				Coverage      string                       `json:"coverage"`
+				Rows          []struct {
+					Key    string                          `json:"key"`
+					Fields map[string]json.RawMessage      `json:"fields"`
+				} `json:"rows"`
+				PerRow             map[string]map[string]string `json:"perRow"`
+				PerRelation        map[string]string            `json:"perRelation"`
+				PerRelationUnknown map[string]string            `json:"perRelationUndecided"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil || got.code != 0 || !report.OK {
+			t.Fatalf("different Semantic model was not read via ordinary CLI: code=%d err=%v stdout=%s stderr=%s",
+				got.code, err, got.stdout, got.stderr)
+		}
+		if report.Result.Pattern != "order_entry.invoice_lines" ||
+			report.Result.Relation != "sales.invoice.lines" ||
+			report.Result.Coverage != "partial" ||
+			!reflect.DeepEqual(report.Result.KeyAttributes, []string{"sales.invoice_line.order_line_id"}) {
+			t.Fatalf("the CLI used an old Pattern, Relation, row identity or false completeness: %+v", report.Result)
+		}
+		originalExpected, err := os.ReadFile(filepath.Join(fixtures, "expected-before.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var expected struct {
+			Orders map[string]struct {
+				PerLine map[string]map[string]string `json:"perLine"`
+			} `json:"orders"`
+		}
+		// The Expected was authored independently of the CLI. Change only
+		// its declared Semantic IDs to reflect the copied Workspace.
+		if err := json.Unmarshal([]byte(ids.Replace(string(originalExpected))), &expected); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(report.Result.PerRow, expected.Orders["1002"].PerLine) {
+			t.Fatalf("different Semantic model changed the independent decisions: got=%v want=%v",
+				report.Result.PerRow, expected.Orders["1002"].PerLine)
+		}
+		if len(report.Result.Rows) != 2 {
+			t.Fatalf("different Semantic model read %d rows, expected 2", len(report.Result.Rows))
+		}
+		for _, row := range report.Result.Rows {
+			if _, ok := row.Fields["sales.invoice_line.quantity"]; !ok {
+				t.Fatalf("row %s did not retain the new Semantic attribute: %v", row.Key, row.Fields)
+			}
+			if _, old := row.Fields["sales.order_line.quantity"]; old {
+				t.Fatalf("row %s retained the old Semantic attribute", row.Key)
+			}
+		}
+		if report.Result.PerRelation["sales.invoice.lines.line_number_unique"] != "undecided" ||
+			report.Result.PerRelationUnknown["sales.invoice.lines.line_number_unique"] == "" {
+			t.Fatalf("partial Relation was treated as proven complete: %+v", report.Result)
+		}
+	})
+
 	t.Run("an input the Contract Query does not declare is refused", func(t *testing.T) {
 		got := runCLIProcessWithStreams(t, binary,
 			"view", "-workspace", filepath.Join("..", "..", "reference", "workspace"), "-application", "order_entry",
