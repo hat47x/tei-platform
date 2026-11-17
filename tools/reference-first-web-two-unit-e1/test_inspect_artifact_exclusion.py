@@ -246,6 +246,30 @@ class SymbolMatcherTests(unittest.TestCase):
         result = self.analyze(["type:.eq.tei/internal/brandnew.T"])
         self.assertIn("tei/internal/brandnew", result["unexpectedTeiPackages"])
 
+    def test_query_construction_and_typed_rule_reader_remain_runtime_only(self):
+        # The Browser/JSON API receives answers from validationread on the
+        # actual Contract Query result. This is runtime behavior, not a second
+        # Rule evaluator or an authoring compiler in the browser bundle.
+        for pkg in ("tei/internal/database/sqlgen",
+                    "tei/internal/driver/validationread"):
+            with self.subTest(pkg=pkg):
+                for profile in ("json-api", "frozen-world"):
+                    result = module.analyze_symbols(
+                        self.BASE + [pkg + ".Run"], profile)
+                    self.assertTrue(result["passed"], result["failures"])
+                    self.assertIn(pkg, result["runtimePackagesObserved"])
+                    self.assertNotIn(pkg, result["knownIntrusionAllowlisted"])
+        # The exception is exact, not a prefix that admits arbitrary
+        # new packages, build-time compilers, or design-time Workspace code.
+        for pkg in ("tei/internal/database/sqlgen/external",
+                    "tei/internal/driver/validationread/unknown"):
+            result = self.analyze([pkg + ".Run"])
+            self.assertIn(pkg, result["unexpectedTeiPackages"])
+            self.assertFalse(result["passed"])
+        forbidden = self.analyze(["go/parser.ParseFile"])
+        self.assertIn("go/parser", forbidden["forbiddenHits"])
+        self.assertFalse(forbidden["passed"])
+
     def test_empty_symbol_list_fails_as_no_symbols(self):
         result = module.analyze_symbols([])
         self.assertFalse(result["passed"])
