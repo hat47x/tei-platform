@@ -1,0 +1,13 @@
+Already pinned by existing tests, all passing:
+
+  internal/operations/validate_test.go
+    TestValidateWorkspaceCollectsSyntaxWithoutPartialWorld
+      three files, AdditionalDirect == 2, InspectionIncomplete true,
+      incomplete.reason == syntax-coverage-unverified
+  cmd/tei/validation_incomplete_output_test.go
+    TestTextOutputSaysTheRunIsIncomplete
+      asserts the note is present AND that "were not examined" is absent
+    TestTextOutputDoesNotClaimIncompletenessWhenClean
+    TestTextOutputDoesNotClaimIncompletenessForSemanticFindings
+
+So the question I set out to answer was already covered.
