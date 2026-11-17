@@ -16,7 +16,8 @@
     "canonical": "canonical",
     "worldFingerprint": "worldFingerprint",
     "sourceIndexFingerprint": "sourceIndexFingerprint",
-    "sourceStatus": "sourceStatus"
+    "sourceStatus": "sourceStatus",
+    "authorityLimits": "authorityLimits"
   },
   "catalog": {
     "worldFingerprint": "worldFingerprint",
@@ -29,6 +30,12 @@
     "stale": "STALE_MODEL_PROJECTION"
   },
   "projection": {
-    "missingSourceStatus": "unknown"
+    "sourceStatusRequirement": "required"
+  },
+  "requiredLimits": {
+    "readOnly": "inspection-is-a-derived-read-only-projection",
+    "meaning": "source-location-is-not-semantic-acceptance",
+    "write": "source-location-is-not-write-authority",
+    "disclosure": "local-read-is-not-disclosure-permission"
   }
 }

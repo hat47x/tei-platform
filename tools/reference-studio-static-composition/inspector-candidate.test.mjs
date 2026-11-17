@@ -5,18 +5,24 @@ import { createInspectorCandidate } from "./inspector-candidate.mjs";
 import { WORKBENCH_NATIVE_MAIN_BLOB, gitBlobSHA } from "./connect-workbench.mjs";
 
 const root = new URL("../../", import.meta.url);
+// The candidate predates the generated Reader adoption. Use immutable
+// historical source blobs, not a live production worktree whose revisions must
+// evolve as self-build progresses.
 const sourceFiles = [
-  "reference/tei-studio-workbench/main.ts",
-  "reference/tei-studio-workbench/presentation.ts",
+  "tools/reference-studio-static-composition/testdata/inspector-candidate-native/main.ts",
+  "tools/reference-studio-static-composition/testdata/inspector-candidate-native/presentation.ts",
   "reference/tei-studio-workbench/inspector-presentation.ts",
 ];
 
-async function currentSources() {
+async function historicSources() {
   return Promise.all(sourceFiles.map(path => readFile(new URL(path, root), "utf8")));
 }
 
 test("WEB-P1a-2 candidate connects only validated read-only Inspector display", async () => {
-  const [main, reader, presenter] = await currentSources();
+  const [main, reader, presenter] = await historicSources();
+  assert.equal(gitBlobSHA(main), WORKBENCH_NATIVE_MAIN_BLOB);
+  assert.equal(gitBlobSHA(reader), "034e983aa9ba85009cfacbd47d67239b12807c46");
+  assert.equal(gitBlobSHA(presenter), "14324071db2321fc8d557613b5a1779f45d6de9d");
   const a = createInspectorCandidate(main, reader, presenter);
   const b = createInspectorCandidate(main, reader, presenter);
   assert.equal(gitBlobSHA(main), WORKBENCH_NATIVE_MAIN_BLOB);
@@ -38,7 +44,7 @@ test("WEB-P1a-2 candidate connects only validated read-only Inspector display", 
 });
 
 test("WEB-P1a-2 candidate rejects any of the three altered source blobs", async () => {
-  const [main, reader, presenter] = await currentSources();
+  const [main, reader, presenter] = await historicSources();
   assert.throws(() => createInspectorCandidate(main + "\n", reader, presenter),
     /INSPECTOR_CANDIDATE_BASE_REVISION_MISMATCH/);
   assert.throws(() => createInspectorCandidate(main, reader + "\n", presenter),
@@ -50,7 +56,7 @@ test("WEB-P1a-2 candidate rejects any of the three altered source blobs", async 
 });
 
 test("WEB-P1a-2 candidate does not replace Source, Pin or Host execution", async () => {
-  const [main, reader, presenter] = await currentSources();
+  const [main, reader, presenter] = await historicSources();
   const result = createInspectorCandidate(main, reader, presenter);
   const region = str => str.slice(
     str.indexOf("async function inspect(subject: Subject)"),
