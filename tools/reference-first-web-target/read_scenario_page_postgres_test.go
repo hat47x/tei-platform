@@ -4,11 +4,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -144,6 +147,26 @@ func TestShippedWebPageShowsRealPostgresRowAnswers(t *testing.T) {
 	if !strings.Contains(page, "sales.order.lines.line_number_unique not-satisfied") {
 		t.Fatalf("the witnessed duplicate did not refute uniqueness on the page")
 	}
+	// This is a different qualification from the earlier HTTP-body assertion:
+	// an actual browser must receive the PostgreSQL-backed page and preserve
+	// the business row keys and Rule decisions in its DOM.
+	t.Run("chrome-dom", func(t *testing.T) {
+		dom := actualWebReadChromeDOM(t, address)
+		if !strings.Contains(dom, `id="read-result"`) ||
+			!strings.Contains(dom, `id="read-identity"`) ||
+			strings.Contains(dom, dsn) {
+			t.Fatal("Chrome did not receive the PostgreSQL-backed read or exposed the DSN")
+		}
+		lines := sectionBetween(dom, `id="order-lines"`, `id="read-identity"`)
+		if lines == "" {
+			t.Fatal("Chrome DOM did not contain the order-line read")
+		}
+		requireRenderedOrderLineAnswersByPrimaryKey(t, lines)
+		if !strings.Contains(dom, "sales.order.lines.line_number_unique not-satisfied") {
+			t.Fatal("Chrome DOM lost the witnessed duplicate's Relation decision")
+		}
+		t.Log("actual first Web HTTP Chrome DOM verified for order 1001")
+	})
 }
 
 // requireRenderedOrderLineAnswersByPrimaryKey checks the same HTML response
@@ -222,6 +245,46 @@ func requireRenderedOrderLineAnswersByPrimaryKey(t *testing.T, lines string) {
 	if len(seen) != len(expected) {
 		t.Fatalf("rendered %d distinct primary keys, want %d", len(seen), len(expected))
 	}
+}
+
+// actualWebReadChromeDOM opens a genuine Web Target HTTP form in headless Chrome.
+// The disposable bootstrap only submits the form; the final document is served
+// by the running first Web Target, backed by the real PostgreSQL read. A browser
+// opening a static CLI-generated file would not exercise this HTTP boundary.
+func actualWebReadChromeDOM(t *testing.T, address string) string {
+	t.Helper()
+	browser := os.Getenv("TEI_VIEW_BROWSER_BINARY")
+	if browser == "" {
+		t.Skip("TEI_VIEW_BROWSER_BINARY is unset; real Web Chrome DOM not run")
+	}
+	bootstrap := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = io.WriteString(w, fmt.Sprintf(`<!doctype html><html><body>
+<form id="bootstrap-post" method="post" action="http://%s/custom-submit">
+<input type="hidden" name="loginId" value="legacy-order-editor">
+<input type="hidden" name="credential" value="editor-secret">
+<input type="hidden" name="from" value="2026-09-01T00:00:00Z">
+<input type="hidden" name="row" value="0">
+</form><script>document.getElementById("bootstrap-post").submit()</script></body></html>`, address))
+	}))
+	defer bootstrap.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, browser,
+		"--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+		"--no-first-run", "--virtual-time-budget=7500",
+		"--user-data-dir="+t.TempDir(), "--dump-dom", bootstrap.URL)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Chrome failed to render the first Web Target HTTP page: %v", err)
+	}
+	dom := string(output)
+	if strings.Contains(dom, `id="bootstrap-post"`) ||
+		!strings.Contains(dom, `id="read-result"`) {
+		t.Fatal("Chrome did not navigate from the submission bootstrap to the Web Target result")
+	}
+	return dom
 }
 
 // webReadPostgresDSN reads the DSN the Web read tests use and refuses to run
