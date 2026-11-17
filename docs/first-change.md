@@ -15,14 +15,17 @@ export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータ�
 
 ## 0. 表を作り、明細を入れる
 
-定義から表を作るSQLを出すコマンドは、まだない。今は次のSQLを自分で実行する。列は参照用の作業領域の保存の定義に合わせてある。
+表を作るSQLは、保存の定義から出す。
 
 ```bash
-psql "$TEI_VIEW_PG_DSN" -c 'create table public.order_lines (
-  order_line_id bigint primary key, order_id bigint not null, line_number bigint not null,
-  item_code varchar not null, quantity numeric(12,3) not null, unit_price numeric(12,2) not null)'
+tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
+  | psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1
 psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 ```
+
+`-format sql`を省くと、同じ定義を列・型・主キーを持つJSONとして返す。どちらも同じ定義から出しているので、列・型・主キーの食い違いは起きない。
+
+**型の精度は定義されていない。** 保存の定義は`storage decimal`までしか言わないため、SQLは`numeric`になり、`numeric(12,3)`のような桁数は付かない。手で書いていた頃のSQLは桁数を持っていたので、同じ表にはならない。桁数が要る場合は定義側に足す必要があり、それはまだできない。
 
 受注1001に3行、1002に2行が入る。1003には明細がない。
 
@@ -99,6 +102,5 @@ rule sales.order_line.unit_price_positive:
 
 - 異なるData・Relationを持つ業務モデルで、同じ`tei view`を通すこと。現時点で実DBの試験が済んだ別名Patternは、受注明細と同じRelationを使っている。
 - 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
-- 定義から表を作ること。
-- JSON以外の読みやすい出力。
+- 列の桁数を定義すること。今は`numeric`までしか出せない。
 - Webの画面で同じ答えを見ること。
