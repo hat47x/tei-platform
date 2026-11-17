@@ -225,7 +225,7 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 	}
 	cases := []struct {
 		name, value, want, wantReadState string
-		missing, wantError              bool
+		missing, wantError               bool
 	}{
 		{"positive", "2.5", "satisfied", "present", false, false},
 		{"zero", "0", "not-satisfied", "present", false, false},
