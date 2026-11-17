@@ -39,6 +39,11 @@ const (
 	OpJoinStrings     Op = "join-strings"
 )
 
+// OpJoinArray joins an array of strings with a separator. join-strings takes a
+// fixed list of expressions, so a Source could not turn a declared list of any
+// length into text; this is the bounded counterpart over one array value.
+const OpJoinArray Op = "join-array"
+
 // Pure, bounded validation operations usable by TEI-owned Source.
 // The evaluator has no Plugin-specific materializer special case.
 const OpAssertCanonicalID Op = "assert-canonical-id"
@@ -396,6 +401,13 @@ func validateExpr(expr Expr, depth, maxDepth int) error {
 		}
 		if expr.Suffix == "" {
 			return fmt.Errorf("append-bytes suffix is required")
+		}
+	case OpJoinArray:
+		if err := rejectUnexpectedExprFields(expr, "from", "separator"); err != nil {
+			return err
+		}
+		if err := child(expr.From, "join-array source"); err != nil {
+			return err
 		}
 	case OpJoinStrings:
 		if err := rejectUnexpectedExprFields(expr, "values", "separator"); err != nil {

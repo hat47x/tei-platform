@@ -253,7 +253,7 @@ X-TEAの`getMSeqOfDate`（`D:Session.java L2371–2476`）は、締め日の設�
 | 月内締めの閉めの実行内容 | 状態遷移（`open`→`closing`→`closed`）・記録（`periods -advance`）・`close-requires`と`correction`の実行時検査（閉めと再開で別の能力）・訂正能力の閉塞拒否からの免除・`closed-rejects`との矛盾の宣言段階での報告・`view`への投影・例のWorkspaceでの宣言は実装したが、対象データの集計・繰越・帳票、訂正能力を走らせる経路は未実装 | 閉めを Command にするか、運用操作として分けるか |
 | 採番の例での規則行データ | **判断済み（行はテストフィクスチャに置く運用を正式化する）**。`.tei`に行リテラルの構文が無いことを確認したため、例へ行を置くには言語拡張かサイドカーが要る。例は宣言専用のままにする | [設計判断](../evidence/XTEA_LOWCODE_OPEN_DECISIONS_2026-11.md) |
 | 為替の粒度を宣言必須にするか | **判断済み（任意のまま。欠落の観測を足す）**。`ResolveTable`が宣言と行を照合し、空の表は拒否する。値を正本するのは行であり、宣言は複写の照合に留まるため、必須化しても「宣言が粒度を決める」形にならない | [設計判断](../evidence/XTEA_LOWCODE_OPEN_DECISIONS_2026-11.md)（覆す条件も記載） |
-| 番号のPostgreSQL実装 | **実装済み（未実行）**。`internal/numberingpostgres`が`CounterStore`を実装し、CI の使い捨て`postgres:16`で走る。**この環境にPostgreSQLが無く、試験は全件SKIP**（[記録](../evidence/XTEA_LOWCODE_NUMBERING_POSTGRES_2026-11.md)） | 実DBでの結果を確認する。多プロセス・多ホストの競合は未試験 |
+| 番号のPostgreSQL実装 | **実装済み（CIで実行・全件PASS）**。`internal/numberingpostgres`が`CounterStore`を条件付きUPDATEだけで実装し、CIの使い捨て`postgres:16`で6件すべてがPASSした（[記録](../evidence/XTEA_LOWCODE_NUMBERING_POSTGRES_2026-11.md)）。不変条件はSQLiteと同じで、仕組みは違う（接続制限ではなく版の条件） | 多プロセス・多ホストの競合、製品DBのスキーマ移行 |
 | 利用者設定の権限 | 変更履歴（`Table.ApplyAudited`・`AuditedStore.Entries`）は実装したが、「誰が変えられるか」と永続化・改ざん検出は未実装 | 設定更新をCommandにするか、運用操作として分けるか |
 
 実装が進んだことで、以前ここに挙げていた項目のうち次の3つは解消しました。

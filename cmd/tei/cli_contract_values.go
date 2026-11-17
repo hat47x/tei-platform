@@ -64,6 +64,11 @@ func argumentValueSets(name string) (map[string][]string, map[string]string) {
 		// apply, because applying is a separate qualified operation (#2550).
 		return map[string][]string{"action": operations.PlanActions()},
 			map[string]string{"action": "string"}
+	case "model ddl":
+		// The same closed set the operation accepts: sql (the DDL text) or json
+		// (the structured tables); both answers still carry result.ddl.
+		return map[string][]string{"format": {operations.ModelDDLFormatSQL, operations.ModelDDLFormatJSON}},
+			map[string]string{"format": "string"}
 	}
 	return nil, nil
 }
@@ -97,6 +102,10 @@ func argumentDefaults(name string) map[string]string {
 		}
 	case "view":
 		return map[string]string{"format": "text"}
+	case "model ddl":
+		// The same default the flag applies, so an advertised default cannot
+		// drift from the value an omitted -format uses.
+		return map[string]string{"format": operations.ModelDDLFormatSQL}
 	}
 	return nil
 }

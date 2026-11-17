@@ -47,6 +47,14 @@ const WORKBENCH_GENERATED_READER_CLOSURE = Object.freeze({
   'reference/tei-studio-workbench/inspection-reader.generated.ts': '5ae1d69a41cc71300d322ee95909640c70d2cb9e',
   'reference/tei-studio-workbench/inspection-limit-labels.ts': '0584b591ba6a48d72e355d2cf67b92abc5b040fe',
 });
+// Same main.ts, new generated Reader: the contract alone added a required
+// response field (#4583). The earlier pin keeps its exact closure and now
+// rejects this revision; this pin qualifies only the new generated part.
+export const WORKBENCH_REQUIRED_FIELDS_READER_HEAD = '1d442ce88c4b51240c53d92331064e8c8a039d1f';
+const WORKBENCH_REQUIRED_FIELDS_READER_CLOSURE = Object.freeze({
+  ...WORKBENCH_GENERATED_READER_CLOSURE,
+  'reference/tei-studio-workbench/inspection-reader.generated.ts': '2ea1ab908931101db1c439302235d57a9f18654e',
+});
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -78,6 +86,13 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_GENERATED_READER_CLOSURE}),
+  Object.freeze({head: WORKBENCH_REQUIRED_FIELDS_READER_HEAD,
+    mainBlob: WORKBENCH_GENERATED_READER_MAIN_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    closureBlobs: WORKBENCH_REQUIRED_FIELDS_READER_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
@@ -103,7 +118,9 @@ export function inspectWorkbenchImports(source) {
 }
 export function pinnedWorkbenchRevision(source) {
   const blob = gitBlobSHA(source);
-  const matched = WORKBENCH_PINS.find(pin => pin.mainBlob === blob);
+  // Several pins may share main.ts when only its closure changed; the newest
+  // qualified one is the candidate, and its closure is then checked exactly.
+  const matched = WORKBENCH_PINS.findLast(pin => pin.mainBlob === blob);
   if (!matched) throw new Error('workbench_revision_mismatch');
   return matched;
 }

@@ -470,6 +470,39 @@ func (e *evaluator) eval(expr Expr, env *evalEnv, depth int) (Value, error) {
 		out = append(out, source.Bytes...)
 		out = append(out, expr.Suffix...)
 		return bytesShared(out), nil
+	case OpJoinArray:
+		source, err := e.eval(*expr.From, env, depth+1)
+		if err != nil {
+			return Value{}, err
+		}
+		if source.Kind != ValueArray {
+			return Value{}, fmt.Errorf("join-array requires array, got %s", source.Kind)
+		}
+		if len(source.Array) > e.limits.MaxCollection {
+			return Value{}, fmt.Errorf("join-array collection exceeds maxCollection")
+		}
+		parts := make([]string, len(source.Array))
+		total := 0
+		for i, value := range source.Array {
+			if value.Kind != ValueString {
+				return Value{}, fmt.Errorf("join-array item %d requires string, got %s", i, value.Kind)
+			}
+			if len(value.String) > e.limits.MaxOutputBytes-total {
+				return Value{}, fmt.Errorf("join-array exceeds maxOutputBytes")
+			}
+			total += len(value.String)
+			if i > 0 {
+				if len(expr.Separator) > e.limits.MaxOutputBytes-total {
+					return Value{}, fmt.Errorf("join-array exceeds maxOutputBytes")
+				}
+				total += len(expr.Separator)
+			}
+			parts[i] = value.String
+		}
+		if err := e.consumeByteWork(total); err != nil {
+			return Value{}, err
+		}
+		return String(strings.Join(parts, expr.Separator)), nil
 	case OpJoinStrings:
 		parts := make([]string, len(expr.Values))
 		total := 0
