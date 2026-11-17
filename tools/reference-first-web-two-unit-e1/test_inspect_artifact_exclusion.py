@@ -270,12 +270,10 @@ class SymbolMatcherTests(unittest.TestCase):
         self.assertIn("tei/internal/brandnew", result["unexpectedTeiPackages"])
 
     def test_query_construction_and_typed_rule_reader_remain_runtime_only(self):
-        # The API uses runtime Query construction, Rule evaluation and a
-        # read-only Function Context projected from the same observation.
-        # None of these is permission to ship a design-time Source loader.
+        # Query construction and the typed Rule reader are runtime packages.
+        # Function Context has a narrower type-only linkage rule, tested below.
         for pkg in ("tei/internal/database/sqlgen",
-                    "tei/internal/driver/validationread",
-                    "tei/internal/functioncontext"):
+                    "tei/internal/driver/validationread"):
             with self.subTest(pkg=pkg):
                 for profile in ("json-api", "frozen-world"):
                     result = module.analyze_symbols(
