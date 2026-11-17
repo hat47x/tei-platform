@@ -229,3 +229,19 @@ Reader／Presenterの表示成功はHostの閲覧Grantではない。選択Subje
 したがって自己記述M1の三条件は、現行`required`表のままでは**実判定へのBindingが不足**した状態として管理し、既存Operator・型付きField条件を優先して最小能力を別Packetで検討する。新しいValidationKindや第二Meta InterpreterをStudioのために追加しない。M1で一条件を**TEI定義が実判定**し、M2で対応するGo分岐が削除され実Callerが採用したときだけ、自己置換の進捗に計上する。
 
 **直近の実装順**は、①生成Inspector Readerを唯一のReaderとして復旧、②**定義の必須項目を一つ追加し、生成器のコード差分がゼロのまま**生成・埋込byteを照合、③Stage1が実Buildを選択・起動したD1〜D3の同一Attemptを確認、④Stage2 Windows WebView2のInspectorで変更した項目を実表示（D4〜D5）。受注一件を実ProviderからWebへ届ける主線は[いま進めること](../NOW.md)の優先順位を維持し、Studioの成功で代替しない。
+
+## 16. 11月17日：実CLIと正規Studio Readerを基線に、次の実証を選ぶ
+
+§15の**Studioが次のStudioを作る一巡**をMVPの最優先とする。並行する受注明細の実Readは、この一巡の前提Gateにはしない。最新mainで統合された[#5300](https://github.com/hat47x/tei-platform/pull/5300)（明示Environmentで`tei view`から実PostgreSQL受注明細を読み、選択Ruleで判定）、[#5325](https://github.com/hat47x/tei-platform/pull/5325)（生成Inspector Readerを正規Workbench／Wails埋込へ接続）、[#5331](https://github.com/hat47x/tei-platform/pull/5331)（直後のHealth不具合修復）を、それぞれ**実CLIの局所受入、生成Readerの製品同梱、CI修復**として記録する。どれもStage2の実起動やWindows画面での自己変更受領を単独では証明しない。
+
+| 最初の独立Packet | 現在使える基線 | 次の一因子と反証 | 完了を主張しない範囲 |
+| --- | --- | --- | --- |
+| **S1：定義から正規Bundleまで** | #5325の生成Inspector Reader／正規`main.ts`／Wails embed、§15 D0〜D3 | Inspector応答の**必須項目を一つだけ**TEI定義へ追加。Generatorソースを変えず、Stage1が選んだSource byte・Generator版・実Builder入力と、新しいReader／Bundle byteを一試行で照合。古いReader、手書きFallback、別Sourceの同名IDを負例にする | CIが生成できたことだけでStage1の実Build選択・Stage2の実使用を認めない |
+| **S2：次世代の実受領** | §15 D4〜D5、既存のWebView2 Smoke／Inspector／Pin | S1のArtifactを**Stage2 Binaryとして起動**し、Windows WebView2で新必須項目を含む同じSubject／Revision／Scopeの表示を確認。古い応答、別Workspace、現在のGrant外Sourceを拒否 | Stage1の画面、既存PoC、参照セルフビルドの収束値をStage2と呼ばない |
+| **R1：実受注明細の全件性** | #5300の`tei view -environment`、`order_entry.order_lines`、`Detail.Decide` | 受注1001／1002／1003の独立Expected（明細3／2／0件）を業務IDで照合。Query Scope／Binding／絞込み／ページ終端／Snapshotから**全件性の根拠**を示す。部分Readで見つかった違反は確定、見つからないことによる成立は保留 | 現行CLIの`coverage: partial`を無根拠に`complete`へ昇格させず、生成Webの実受領も未達とする |
+| **R2：別Consumer** | #5300の実CLIと既存Rule／Source Index | 同じ選択Source／Rule／実Read IDと結果を生成Webの独立Consumerで照合。SQL列NULL・未取得・Decimal精度とAuthority／表示Scopeを分離 | Webの表示成功をProvider更新・公開Grant・業務Effectとしない |
+| **M1：自己記述の実判断** | 自己記述Dataと`GeneratePositive`の手書きShape拒否試験、[#5187](https://github.com/hat47x/tei-platform/pull/5187)の`required-if` | `semantic.Validation`の型付きインスタンスを選択済み宣言へ結ぶ。ID／Attribute非空またはpositiveでRelation指定禁止の**一条件**をTEI定義から判定し、旧Goと独立Expectedで比較。対応Go分岐の削除は次のM2 | `required=yes`を非空文字、`required=no`を禁止、業務レコードの`required-if`をMeta Shapeと読み替えない |
+
+**設計の共通境界**：三要素モデルのData／Function／Business、標準Graphの同名異IDと並行辺、型付きPluginのWhole／Field／Adapter、RuleのOperator署名は、同じ意味IDとSourceを別のProjectionで説明するために用いる。図面のEdgeやPlugin配線を、実Read、認可、業務Functionの実Effectへ自動昇格させない。Markdown原本への編集は現在のSource Span／Revisionを確かめた局所パッチとし、参照を壊す削除には診断と明示確認を要求する。
+
+**優先順位**：S1→S2をセルフビルドの主線、R1→R2を実データConsumerの主線、M1→M2を自己記述の独立改善とする。三本の成功を混ぜず、各Packetで実Source／実Builderまたは実Provider／実Consumer／独立Expectedを照合する。[#5324](https://github.com/hat47x/tei-platform/pull/5324)は並行統合で前提が古くなり競合したため未マージで閉じ、本節に最新mainで有効な判断だけを引き継いだ。
