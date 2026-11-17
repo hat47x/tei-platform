@@ -198,8 +198,12 @@ main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確
 | 経路 | mainで到達したこと | 次の一件で確かめること |
 | --- | --- | --- |
 | **A：TEI自身の判断を移す** | 自己記述DataをReaderが選択し、Source位置とCanonical IDを検査。正値Ruleの手書きShape拒否試験が残る | 型付き`semantic.Validation`の実インスタンスを宣言したFieldへ結び、非空文字・positiveにおけるRelation禁止のうち一条件を**TEI定義から実判定**する。旧Go側の拒否を独立Expectedとして保持し、M1の後にM2で該当分岐を削除 |
-| **B：実データからRuleを評価する** | `required-if`が[#5187](https://github.com/hat47x/tei-platform/pull/5187)で統合され、業務レコードの存在を条件付きで判定できる。既存`Detail.Decide`は参照Workspaceの受注明細Query→列Mapping→状態付きRule判断を局所試験で扱う | 同じ製品定義から**通常`tei` CLIの実Provider Read**を起動し、読取対象・対象範囲・Rule結果／不能理由を独立Consumerへ渡す。後述の行数・同一性を検証し、実Webの受領を別に照合 |
+| **B：実データからRuleを評価する** | `required-if`が[#5187](https://github.com/hat47x/tei-platform/pull/5187)で統合され、業務レコードの存在を条件付きで判定できる。既存`Detail.Decide`は参照Workspaceの受注明細Query→列Mapping→状態付きRule判断を局所試験で扱う | [#5300](https://github.com/hat47x/tei-platform/pull/5300)で通常`tei view -environment`→実PostgreSQL→行ごとのRule結果が実装済み。次はContract Query Bindingに全件取得の根拠を加え、Relation全体の判定を独立Expectedで検証し、生成Webへ同じRead結果を渡す |
 | **C：TEI Studioが自分自身の変更を使う** | 参照セルフビルドのCIと、CLI／Studio共通Inspectの基線が存在する | 生成器を変更せずに一つのTEI定義を変更し、Stage1の生成部品→TS/esbuild→Go embed→Stage2 Windows WebView2の**表示と実使用**まで同一Source版に束縛する |
+
+
+
+**製品CLIの最新到達点（#5300）**：専用CIは受注1001／1002／1003の変更前後6ケースを、このFixtureの独立Expectedで検査する。現状で実DBから読めることと、Relationを全件読んだと証明できることを混同しない。後者は未実装であり、欠けた行があり得る限り`coverage: partial`を保つ。
 
 **現状の区別**：main `3e7f8536c7ef2e536a86dd22847074b732e3eb07`の`reference-self-build`は成功したが、同HEADの`repository-health`は設計索引の重複で失敗した。その重複は[#5320](https://github.com/hat47x/tei-platform/pull/5320)で修正・統合された。ただし修正後HEADのHealth成功を、この段階で先取りしない。セルフビルドCIのGreenも、CのStage2実画面受領を意味しない。
 
@@ -222,9 +226,9 @@ M1が成立したら、同じ条件についてGo分岐を削除したM2を別PR
 | **B1：選択** | 同じWorkspace.Loadで対象Query、Rule、DB束縛、Source／Revisionを解決 | 別Workspace・別SQL・別Operatorを暗黙に採用したら停止 |
 | **B2：読取** | 実PostgreSQL Providerと、テスト用代役を**別の試行**で呼ぶ | 読取対象、列型、NULL／未取得、取得範囲が確定しなければ`unknown`を維持 |
 | **B3：判断** | 実Readから得た行に`Detail.Decide`を適用。行ごとのRuleとRelation全体のRuleを区別 | 空明細を「一件の規則が成立」と数えず、部分取得のまま一意／非重複の成立を断定しない |
-| **B4：受領** | 通常`tei` CLI→独立Consumer。続いて生成Webの同じ意味SubjectとRead結果を照合 | テストから内部関数を呼べたことを、公開済みCLI／Webの実受領に読み替えない |
+| **B4：受領** | 既存`tei view -environment`の実DB試験・6ケースの独立Expectedを維持し、次に生成Webで同じ意味Subject・Read結果を照合 | 既存CLIの成功を生成WebやStage2の実受領に読み替えない |
 
-最初に閉じるのはB1〜B3を**通常CLI入口から一試行で呼ぶ不足辺**である。ここができるまで、手動で実行されたPostgreSQL 16の試験、合成Executor、あるいはWindowsの既存SmokeでB4を代用しない。数量の`numeric(12,3)`は精度を落とさず扱い、`double precision`をDecimalとして受理しない。暦日Attributeへ`timestamptz`列が対応する場合の実行環境依存は、既存の保存型Validatorが拒否する範囲と、SQL realizationから返る列でなお検査できない範囲を別票にする。
+B1〜B3のうち通常CLIへの一往復は[#5300](https://github.com/hat47x/tei-platform/pull/5300)の専用CIで検証済みである。ただし現行CLIは`coverage: partial`を保ち、Relation全体の成立は未認定。次の不足辺は**全件取得のContract Bindingを宣言し、実SQLのScope・フィルタ・ページを反証してから受注単位の成立を判断すること**である。その後、CLIで検証した出力を生成Webへ渡してB4の別Consumerを確かめる。数量の`numeric(12,3)`は精度を落とさず扱い、`double precision`をDecimalとして受理しない。暦日Attributeへ`timestamptz`列が対応する場合の実行環境依存は、既存の保存型Validatorが拒否する範囲と、SQL realizationから返る列でなお検査できない範囲を別票にする。
 
 **並行P0**：Aの一条件自己置換、Bの通常CLI実Provider、CのStage2実使用は互いを前提Gateにせず進める。A〜Cを再編する理由は、三要素モデルの**定義・インスタンス・表示Projection**、標準型付き接続、実行経路のどこを確認したかを一つの票で説明するためである。図やSource位置を表示できても意味受理・実Read・更新Grantは別に必要となる。
 
