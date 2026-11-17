@@ -33,9 +33,11 @@ type destinationRow struct {
 	Fields      map[string]destinationField `json:"fields"`
 }
 
-// destinationRead is the first read-only runtime result of tei view. A rule
-// over the whole relation is never reported satisfied just because the query
-// returned no duplicate: the current binding does not certify completeness.
+// destinationRead is the first read-only runtime result of tei view.
+// Because the current Contract Query binding does not certify that every
+// relation row was fetched, it conservatively reports partial coverage.
+// A witnessed duplicate still invalidates uniqueness, but absence of
+// duplicates alone cannot establish it.
 type destinationRead struct {
 	Application       core.CanonicalID             `json:"application"`
 	Pattern           core.CanonicalID             `json:"pattern"`
@@ -166,9 +168,11 @@ func readDestinationOrderLines(
 		// put an unredacted driver error into the public JSON report.
 		return destinationRead{}, fmt.Errorf("Contract Query execution failed; check the environment binding and database")
 	}
-	// Neither the row count nor the SQL's lack of LIMIT proves complete
-	// relation coverage. The binding must say so before it can be used.
-	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, "")
+	// Neither row count nor an SQL query without LIMIT proves complete
+	// relation coverage. An unknown coverage string is rejected by Decide;
+	// until a binding certifies completeness, report the conservative partial
+	// state and preserve its undecided reasons.
+	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, validationeval.CoveragePartial)
 	if err != nil {
 		return destinationRead{}, err
 	}
@@ -181,7 +185,7 @@ func readDestinationOrderLines(
 		Application: appID,
 		Pattern:     patternID,
 		Environment: envID,
-		Coverage:    "unverified",
+		Coverage:    string(validationeval.CoveragePartial),
 		Rows:        make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
 		PerLine:     map[string]map[string]string{},
 		PerOrder:    map[string]string{},
