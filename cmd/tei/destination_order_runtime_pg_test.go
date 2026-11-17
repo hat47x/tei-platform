@@ -719,7 +719,6 @@ func assertDestinationHTMLFromPostgres(
 	}
 }
 
-
 // assertDestinationChromeDOMFromPostgres opens the HTML produced from the
 // actual PostgreSQL read in Chrome. It checks DOM receipt against independent
 // fixture expectations, not against the CLI's own JSON serialization.
