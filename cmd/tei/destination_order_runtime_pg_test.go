@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -213,6 +216,56 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 						if !strings.Contains(rendered.stdout, needle) {
 							t.Fatalf("HTML missing relation decision %s=%s", ruleID, answer)
 						}
+					}
+
+					// When CI requests a real Chrome run, parse the generated
+					// read-only HTML in a separate browser process. This is a
+					// DOM receipt, not proof of a Web Target/HTTP release.
+					if browser := os.Getenv("TEI_VIEW_BROWSER_BINARY"); browser != "" {
+						page := filepath.Join(t.TempDir(), "environment-rows.html")
+						if err := os.WriteFile(page, []byte(rendered.stdout), 0o600); err != nil {
+							t.Fatal(err)
+						}
+						ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+						defer cancel()
+						cmd := exec.CommandContext(ctx, browser,
+							"--headless", "--no-sandbox", "--disable-gpu",
+							"--disable-dev-shm-usage", "--no-first-run",
+							"--dump-dom", "file://"+filepath.ToSlash(page))
+						output, err := cmd.CombinedOutput()
+						if err != nil {
+							t.Fatalf("actual Chrome DOM read failed: %v (browser output: %s)", err, output)
+						}
+						dom := string(output)
+						if !strings.Contains(dom, "<html") ||
+							!strings.Contains(dom, `data-coverage="partial"`) {
+							t.Fatal("Chrome did not receive the generated HTML and its coverage state")
+						}
+						for key, decisions := range want.PerLine {
+							marker := `<tr data-row-key="` + key + `">`
+							start := strings.Index(dom, marker)
+							if start < 0 {
+								t.Fatalf("Chrome lost row key %s", key)
+							}
+							rest := dom[start+len(marker):]
+							end := strings.Index(rest, "</tr>")
+							if end < 0 {
+								t.Fatalf("Chrome did not close row %s", key)
+							}
+							for ruleID, answer := range decisions {
+								needle := `data-rule-id="` + ruleID + `" data-answer="` + answer + `"`
+								if !strings.Contains(rest[:end], needle) {
+									t.Fatalf("Chrome changed decision: row=%s rule=%s answer=%s", key, ruleID, answer)
+								}
+							}
+						}
+						for ruleID, answer := range report.Result.PerOrder {
+							needle := `data-rule-id="` + ruleID + `" data-answer="` + answer + `"`
+							if !strings.Contains(dom, needle) {
+								t.Fatalf("Chrome lost relation decision %s=%s", ruleID, answer)
+							}
+						}
+						t.Logf("actual Chrome DOM verified for order %s, stage %s", orderID, stage.name)
 					}
 				})
 			}
