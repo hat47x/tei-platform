@@ -13,7 +13,7 @@ import (
 // is how a declaration gets read as a measurement.
 func TestDestinationDeclarationFrom(t *testing.T) {
 	t.Run("undeclared binding reports nothing", func(t *testing.T) {
-		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{})
+		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{}, "sales.order.lines")
 		if err != nil {
 			t.Fatalf("undeclared binding refused: %v", err)
 		}
@@ -25,7 +25,7 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 	t.Run("covers every row, unchecked", func(t *testing.T) {
 		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversRelation: "sales.order.lines",
-		})
+		}, "sales.order.lines")
 		if err != nil {
 			t.Fatalf("a single declaration was refused: %v", err)
 		}
@@ -45,7 +45,7 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 	t.Run("covers some rows, unchecked", func(t *testing.T) {
 		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversSome: true,
-		})
+		}, "sales.order.lines")
 		if err != nil {
 			t.Fatalf("a single declaration was refused: %v", err)
 		}
@@ -65,13 +65,13 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 	t.Run("the two declarations differ", func(t *testing.T) {
 		all, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversRelation: core.CanonicalID("sales.order.lines"),
-		})
+		}, "sales.order.lines")
 		if err != nil {
 			t.Fatalf("all-rows declaration refused: %v", err)
 		}
 		some, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversSome: true,
-		})
+		}, "sales.order.lines")
 		if err != nil {
 			t.Fatalf("some-rows declaration refused: %v", err)
 		}
@@ -80,6 +80,40 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 		}
 		if all.CoversRelation == some.CoversRelation && all.CoversSome == some.CoversSome {
 			t.Fatalf("the two declarations became indistinguishable: %+v %+v", all, some)
+		}
+	})
+
+	// A declaration about another Relation is refused. The static validator
+	// reports it as HEADER_DETAIL_BINDING_COVERS_OTHER_RELATION and this path
+	// runs no validator; measured before this check existed, the view accepted
+	// and reported a declaration about a different Relation.
+	t.Run("a declaration about another Relation is refused", func(t *testing.T) {
+		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+			CoversRelation: "sales.order.customer",
+		}, "sales.order.lines")
+		if err == nil {
+			t.Fatalf("a declaration about another Relation was accepted: %+v", got)
+		}
+		if got != nil {
+			t.Fatalf("a declaration about another Relation was reported: %+v", got)
+		}
+		if !strings.Contains(err.Error(), "sales.order.customer") ||
+			!strings.Contains(err.Error(), "sales.order.lines") {
+			t.Fatalf("the refusal does not name both Relations: %v", err)
+		}
+	})
+
+	// A declaration naming exactly the Relation this read returns is accepted;
+	// the refusal above must not reject the matching case.
+	t.Run("a declaration about this Relation is accepted", func(t *testing.T) {
+		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+			CoversRelation: "sales.order.lines",
+		}, "sales.order.lines")
+		if err != nil {
+			t.Fatalf("the matching Relation was refused: %v", err)
+		}
+		if got == nil || got.CoversRelation != "sales.order.lines" {
+			t.Fatalf("the matching declaration was dropped: %+v", got)
 		}
 	})
 
@@ -92,7 +126,7 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversRelation: "sales.order.lines",
 			CoversSome:     true,
-		})
+		}, "sales.order.lines")
 		if err == nil {
 			t.Fatalf("a contradictory binding was accepted: %+v", got)
 		}
