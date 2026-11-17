@@ -153,6 +153,56 @@ func TestRejectedSources(t *testing.T) {
 	}
 }
 
+// R4 cannot be accepted merely because a changed contract produces a new
+// digest. The present generator uses named template slots; a newly required
+// response field would otherwise be ignored while its digest changes.
+func TestUnknownReaderRequirementsAreRejectedBeforeWritingAnArtifact(t *testing.T) {
+	contract := read(t, contractFile)
+	transformRaw := read(t, transformFile)
+	cases := map[string][]byte{
+		"new response field": edit(t, contract,
+			`"sourceStatus": "sourceStatus",`,
+			`"sourceStatus": "sourceStatus", "requiredExtra": "schemaVersion",`),
+		"new requirement section": edit(t, contract,
+			`"requiredLimits": {`,
+			`"newRequiredResponse": {"schema": "schemaVersion"}, "requiredLimits": {`),
+		"extra projection rule": edit(t, contract,
+			`"sourceStatusRequirement": "required"`,
+			`"sourceStatusRequirement": "required", "extraRequired": "schemaVersion"`),
+		"extra required limit": edit(t, contract,
+			`"disclosure": "local-read-is-not-disclosure-permission"`,
+			`"disclosure": "local-read-is-not-disclosure-permission", "newRule": "extra-evidence"`),
+	}
+	for name, changed := range cases {
+		t.Run(name, func(t *testing.T) {
+			part, _, err := generate(transformRaw, changed)
+			if err == nil || !strings.Contains(err.Error(), "not implemented by Generator Source") {
+				t.Fatalf("unknown requirement must fail closed, got part=%d bytes err=%v", len(part), err)
+			}
+			if part != nil {
+				t.Fatal("failed admission returned a part")
+			}
+
+			sourcePath := filepath.Join(t.TempDir(), "changed-contract.json")
+			out := filepath.Join(t.TempDir(), "generated.ts")
+			if err := os.WriteFile(sourcePath, changed, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			err = run([]string{
+				"-transform", transformFile,
+				"-contract", sourcePath,
+				"-artifact-out", out,
+			}, &bytes.Buffer{})
+			if err == nil || !strings.Contains(err.Error(), "not implemented by Generator Source") {
+				t.Fatalf("child should reject unknown requirement: %v", err)
+			}
+			if _, err := os.Stat(out); !os.IsNotExist(err) {
+				t.Fatalf("rejected definition left an artifact: %v", err)
+			}
+		})
+	}
+}
+
 func TestChildWritesOnceAndReportsWhatItWrote(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "part.ts")

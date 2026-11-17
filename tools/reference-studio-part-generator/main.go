@@ -86,6 +86,58 @@ func admitContract(value transform.Value, path string) error {
 	return nil
 }
 
+// supportedInspectorContractSections describes what this specific generator
+// currently implements. Unknown declarations must not make a new-looking
+// artifact by changing only its contract digest: that would claim a Source
+// requirement the generated Reader never enforces. This is a closed admission
+// boundary until the generator implements a data-driven required-field rule.
+var supportedInspectorContractSections = map[string]map[string]bool{
+	"part": {
+		"id": true, "version": true,
+	},
+	"operation": {
+		"bridge": true, "effect": true,
+	},
+	"response": {
+		"effect": true, "subject": true, "subjectKind": true, "subjectId": true,
+		"canonical": true, "worldFingerprint": true, "sourceIndexFingerprint": true,
+		"sourceStatus": true, "authorityLimits": true,
+	},
+	"catalog": {
+		"worldFingerprint": true, "sourceIndexFingerprint": true,
+	},
+	"failures": {
+		"response": true, "subject": true, "inspection": true, "stale": true,
+	},
+	"projection": {
+		"sourceStatusRequirement": true,
+	},
+	"requiredLimits": {
+		"readOnly": true, "meaning": true, "write": true, "disclosure": true,
+	},
+}
+
+func admitImplementedInspectorContract(contract transform.Value) error {
+	for _, section := range contract.Object {
+		if section.Name == "formatVersion" {
+			continue
+		}
+		fields, known := supportedInspectorContractSections[section.Name]
+		if !known {
+			return fmt.Errorf("contract section %q is not implemented by Generator Source", section.Name)
+		}
+		if section.Value.Kind != transform.ValueObject {
+			return fmt.Errorf("contract section %q must be an object", section.Name)
+		}
+		for _, field := range section.Value.Object {
+			if !fields[field.Name] {
+				return fmt.Errorf("contract %s.%s is not implemented by Generator Source", section.Name, field.Name)
+			}
+		}
+	}
+	return nil
+}
+
 // ContractCanonicalDigest is the identity a generated part carries. It is
 // computed here independently of the transform so a consumer can check the
 // part against the Source without trusting the part's own text.
@@ -132,6 +184,12 @@ func generate(transformRaw, contractRaw []byte) ([]byte, report, error) {
 	}
 	result, err := transform.Evaluate(source, map[string]transform.Value{contractInput: contract})
 	if err != nil {
+		return nil, report{}, err
+	}
+	// The current transform references named fields rather than iterating
+	// arbitrary declarations. Require a generator change for any new meaning.
+	// Otherwise only contractDigest would change and falsely look qualified.
+	if err := admitImplementedInspectorContract(contract); err != nil {
 		return nil, report{}, err
 	}
 	if result.Output.Kind != transform.ValueString {
