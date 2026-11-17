@@ -727,3 +727,26 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 **最初の対象選定**：X-TEAの既存Function移行例を優先する。ただし`sales.order.submit`等の既存合成経路を正式なDB commit／実Effectの証明へ読み替えない。旧システムのSource位置と業務Functionの対応が未特定ならM-01〜M-04で停止し、先に出典の照合を進める。REAの外部Graphを補助に使う場合も、実際に受け取った版のRaw Evidenceと型付きReceiptだけを証拠とし、テスト用Fixtureを実ツールの実績に数えない。
 
 **計画上の扱い**：M-01〜M-04は設計復元・移行準備の局所受入、M-05〜M-07は製品P0と独立Expectedの実行受入、M-08は任意Providerの方式選定である。各Gateの結果は`passed / blocked / unknown / not-run`で個別に記録し、一つの成功を後続Gateの成功へ自動昇格させない。業務REAのResource／Event／Agentは必要な業務領域でのみ専門Roleとして投影する。
+
+## 37. 最初の一Functionを選ぶための実行順序と棄却条件（2026-11-17）
+
+§36のM-01〜M-08は検収の全体像であり、実装着手の順番ではない。初回は**原本と旧実行結果を同じ対象として照合できるFunction**を選ぶ。X-TEAの`sales.order.submit`は既存合成試験の入口としては有用だが、現時点で旧KouseiKanri原典と正式`order_entry.submit_order`／`sales.order.submit`の対応、DB commit、重複副作用防止が未確認である。このままM-05以降の成功例に据えない。
+
+**着手の三段階**
+
+1. **対象を確定する（M-01／M-02）**。旧Functionの名前ではなく、原本の所在・原文範囲・取得Revision・操作入口・対象Dataを一件ずつ示す。旧システムのSourceと現行TEIのQualified Function IDは別列に置き、対応が未確定なら`mapping-pending`とする。二種類の独立出典がない場合は不足を明示する。既存Source Indexの現在の読取能力を使い、外部REAのGraphだけで出典照合を代行しない。
+2. **設計の読み取りを成立させる（M-03／M-04）**。三要素のData／Function／Businessを原本に結び、Functionが参照するData・SQL・外部APIを候補として表示する。型付きGraph／Node FlowのPortやAdapterはDataの形と変換を説明するが、線の接続だけで実Read、書込み、トランザクション、業務Eventを確定しない。実行記録がない場合は`effect-not-observed`で止める。
+3. **実動作を別の試行で受理する（M-05〜M-07）**。通常`tei` CLIのFunction→Query→実Provider→一Consumerという同一AttemptのReadと、旧新結果の独立Expected比較を先に検査する。生成Goが実際に呼ばれたか、NULLと未取得、複合キー、取得範囲、権限、Effectを個別に確認する。Windows Studio Stage1→Stage2は同じ意味モデルを使う別Consumerとして受け入れる。実PG Readが成功してもStudioやWriteの合格にはならない。
+
+| 初回試行の記録欄 | 必須内容 | 初期判定 |
+| --- | --- | --- |
+| 旧Function原本 | リポジトリ／ファイル・Range・Revision／取得状態 | 未特定なら`blocked` |
+| 旧Dataと操作入口 | Data原本、SQL／画面／API入口、対象レコードの識別 | 未特定なら`blocked` |
+| TEI側候補 | Qualified Function／Data ID、候補の根拠、未受理の意味 | `unknown`から開始 |
+| 実Read／Effect | 実Provider・旧実行のAttempt、結果、Effect receipt、独立Expected | 未実行なら`not-run` |
+| 受理責任 | Owner、判断対象、採用したSource版、保留事項 | 未判断なら`pending` |
+| Consumer | CLI実受領、Studio Native実受領を別々に記録 | 未実行なら`not-run` |
+
+**最初のPRの範囲**は旧Functionの原本とDataを一件ずつ特定し、Source Indexによる読取結果と三要素Reviewを同じ検証票へ出すところまでとする。原本を特定できなければ、実装を広げずSource所在の調査をIssueに戻す。対象選定のために新しい汎用Parser、Meaning Engine、Host、Graph Storeを追加しない。既存Reader／Source Index／`reacandidate`のReview／三要素図を再利用し、生成器の実消費や実DB Callは後続の独立受入へ渡す。
+
+**優先順位**：通常CLI実PG Function Read（#2586）とWindows Studio Stage1→Stage2（#2831）を妨げない。外部REA（Reverse Engineer Anything）の追加解析はM-08の任意選択であり、業務REA（Resource–Event–Agent）は必要な業務モデルでOwnerが受理する意味表現として扱う。
