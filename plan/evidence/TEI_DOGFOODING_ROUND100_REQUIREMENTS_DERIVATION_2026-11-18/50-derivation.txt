@@ -1,0 +1,9 @@
+For equip_app with `realize equip.loan_register with custom go`:
+
+  no environment binding    -> requirements 6, none mention equip
+  + bind equip_app.equipment -> requirements 8, and one is
+      staging/build/toolchain: go
+        introducedBy=custom-go:equip.loan_register
+        reason=build custom Go realization
+
+So a declaration becomes a requirement, and the entry says which declaration.
