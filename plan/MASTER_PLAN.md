@@ -2,6 +2,8 @@
 
 ## 目的
 
+- [組織改編の整合した公開とConsumerの読取Cut](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)：§10.26で、業務上のvalid/known・入力Read Snapshot・所属/集計のResult世代・公開した組・CLI/Studio/Web/SHOの実Pin・Case責任/Host Grantを分離する。r7の旧4所属/FTE 3.0と新3所属/FTE 2.4を正しい組として固定し、新所属＋旧集計の混在を拒否。Batch MG-02/04とORG-BEH-03・ORG-XDを既存#2514へ引継ぎ、Webの各要求Readが別Transactionならページ横断の同一Snapshotを証明できない問題も含める。main済み#5431の実Web Reader、Draft #5382のCoverageとは検収資格を分け、#2586の通常CLI実Readと#2831のStudio Stage1→Stage2のP0を維持（設計のみ、組の実共同公開・二Consumer Pin・Owner受理はNOT RUN）。
+
 - [組織C1：実Readと業務判断の証拠を分ける](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md#1025-実readから業務判断へ渡す証拠を問いごとに閉じる2026-11-18)：G1〜G5／ORG-XD-01〜05を再利用し、実SQL・Scope・RowsetのCoverage、Membership/Personの同一性、Claimの量化、Consumer受領、現在Grant/Effectを一つの成功状態へ畳まない。complete/partialの0/1/2所属で存在・不存在・高々1件の真偽と保留を独立Expectedへ照合する。#5382のCoverage候補、#5431のWeb実Readは未統合の別資格として扱い、通常CLIの実Provider→一Consumer #2586とStudio Stage1→Stage2 #2831の並行P0を変えない（計画追補のみ・新しい製品試験はNOT RUN）。
 
 - [ノードモデル導入：定義・出現・配線・表示を分ける最小契約](design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md#13-ノードモデル導入の最小契約定義出現配線表示を分ける2026-11-17)：標準Data／Graph／Operation／Process／PluginとSource Indexを正本とし、Node Viewは**定義ID・Node出現ID・Port束縛・独立Edge ID・表示IDを区別する投影**として導入する。同名二Node／平行Edge／一Operationの複数出現、Whole／Field／Adapterの情報損失、Layout変更とA→B→Aの失効をNM-01〜04で検収する。Result-first／Node-firstは同じ意味定義へ接続し、実現方式P（直接解釈）／G（Go生成）／D（DB・外部Provider委譲）と、Source・Builder・実Call・Effectを別資格として扱う。最初の差分は既存Reader／CLIを使うread-only N0と実現N2への必要辺であり、新Node DSL／Graph Runtime／Host／第二意味正本は作らない。#2497/#2506/#2620/#1124/#4198/#2514へ分担し、**通常CLI→実Provider→独立ConsumerとStudio Stage1→Stage2 Windows実再入の並行P0は変更しない**（設計統合、追加の製品試験は未実施）。
