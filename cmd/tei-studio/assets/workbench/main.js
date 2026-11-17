@@ -18765,7 +18765,7 @@ var inspectionReaderProvenance = Object.freeze({
   part: "tei.studio.inspection_reader",
   version: "1.0.0",
   operation: "main.StudioBridge.InspectSubject",
-  contractDigest: "sha256:0a65d341992bee8ab44f9e767321536a7c8e0d13bc4c60a2ddba34a18bf1359b"
+  contractDigest: "sha256:94d0ec5f223c614e25a1d722544cd394c0a552e780859c505354c122e3228efb"
 });
 function record2(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -18794,10 +18794,11 @@ var REQUIRED_INSPECTION_LIMITS = [
   "source-location-is-not-write-authority",
   "local-read-is-not-disclosure-permission"
 ];
+var REQUIRED_RESPONSE_FIELDS = [];
 function readInspection(raw, expected, catalog) {
   const v = record2(raw), limits = v["authorityLimits"];
   const world = v["worldFingerprint"], index = v["sourceIndexFingerprint"];
-  if (v["effect"] !== "read-only" || key(subject(v["subject"])) !== key(expected) || !Object.hasOwn(v, "canonical") || typeof world !== "string" || typeof index !== "string" || typeof v["sourceStatus"] !== "string" || !Array.isArray(limits) || !limits.every((limit) => typeof limit === "string") || !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit)))
+  if (v["effect"] !== "read-only" || key(subject(v["subject"])) !== key(expected) || !Object.hasOwn(v, "canonical") || typeof world !== "string" || typeof index !== "string" || typeof v["sourceStatus"] !== "string" || !Array.isArray(limits) || !limits.every((limit) => typeof limit === "string") || !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit)) || !REQUIRED_RESPONSE_FIELDS.every(([name2, type]) => type === "present" ? Object.hasOwn(v, name2) : typeof v[name2] === type))
     throw Error("INVALID_INSPECTION_RESPONSE");
   if (!catalog || world !== catalog["worldFingerprint"] || index !== catalog["sourceIndexFingerprint"])
     throw Error("STALE_MODEL_PROJECTION");

@@ -32,6 +32,7 @@
   "projection": {
     "sourceStatusRequirement": "required"
   },
+  "requiredResponseFields": [],
   "requiredLimits": {
     "readOnly": "inspection-is-a-derived-read-only-projection",
     "meaning": "source-location-is-not-semantic-acceptance",
