@@ -30,6 +30,7 @@ func semanticKindReference(kind string) (string, bool) {
 func fromIndexReference(d index.Derived, scope string) Projection {
 	p := Projection{Graph: modelref.Graph{Schema: "tei.modelref.v0", Nodes: []modelref.Node{}, Edges: []modelref.Edge{}}, AuthorityLimits: []string{
 		"derived-index-is-not-authoritative-world", "business-procedure-not-in-current-world", "source-evidence-not-bound",
+		"edge-identity-is-from-relation-to-so-same-payload-outcomes-collapse",
 	}}
 	if scope == "" {
 		p.Unresolved = append(p.Unresolved, "scope-required")

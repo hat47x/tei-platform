@@ -796,6 +796,12 @@ func writeViewText(out io.Writer, view applicationview.View) (int, error) {
 			if hook.Scope != "" {
 				line += fmt.Sprintf(" scope %s", hook.Scope)
 			}
+			// The row source is printed beside the scope: a row-scoped hook without
+			// one is a declaration whose supplier nobody named, and that is exactly
+			// what a reader needs to see.
+			if hook.Rows != nil {
+				line += fmt.Sprintf(" rows from query %s", hook.Rows.Query)
+			}
 			if len(hook.Reads) > 0 {
 				line += fmt.Sprintf(" reads %s", joinIDs(hook.Reads))
 			}

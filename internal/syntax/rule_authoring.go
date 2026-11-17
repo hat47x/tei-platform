@@ -90,10 +90,15 @@ type OperatorAuthoring struct {
 	ID        core.CanonicalID
 	Symbol    string
 	Input     OperatorInputWord
+	// InputName is the name written before the type, as in
+	// `takes low: number`. It is empty for the single-input form
+	// `takes number`, which names its one input "value" when it is read.
+	InputName string
 
 	DeclarationSpan Anchor
 	IDSpan          Anchor
 	InputSpan       Anchor
+	InputNameSpan   Anchor
 }
 
 // rulePredicates lists every accepted predicate word in source order. A word
@@ -118,6 +123,16 @@ type RuleReference struct {
 	Anchor Anchor
 }
 
+// RuleInputAssignment is one `name: value` written after an operator
+// reference. The value is either a complete attribute id or a constant; which
+// one it is stays the reader's decision, so both are kept as authored text.
+type RuleInputAssignment struct {
+	Name      string
+	Value     string
+	NameSpan  Anchor
+	ValueSpan Anchor
+}
+
 // RuleAuthoring is one parsed `rule` declaration. Spans are UTF-8 byte offsets
 // into the original source; they survive into diagnostics and Source Index.
 type RuleAuthoring struct {
@@ -135,6 +150,10 @@ type RuleAuthoring struct {
 	// Operator is set only when the predicate is a qualified operator
 	// reference. It is the authored text; resolving it is the validator's job.
 	Operator *RuleReference
+	// Inputs are the named assignments written after the operator reference,
+	// as in `is sales.within low: 0 high: 100`. The subject is the operator's
+	// first input and is not repeated here. Empty when none were written.
+	Inputs []RuleInputAssignment
 	// Scope is set only when the source wrote `per <relation>`. A nil pointer
 	// means the source did not state a scope; it is never defaulted.
 	Scope *RuleReference
@@ -284,13 +303,42 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		}
 		return OperatorAuthoring{}, p.errAt(at, "expected what the operator takes; accepted inputs are number")
 	}
-	if OperatorInputWord(inputTok.Text) != OperatorInputNumberWord {
-		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
-			"unknown operator input %q; accepted inputs are number", inputTok.Text))
-	}
+	// `takes low: number` names the input; `takes number` does not, and keeps
+	// reading as the one input named "value". The design's lexical rule puts
+	// the name before the ':' and the type word after it, so a name is
+	// recognised by the colon that follows it.
+	var inputName string
+	var inputNameSpan Anchor
 	nt, err := p.peek()
 	if err != nil {
 		return OperatorAuthoring{}, err
+	}
+	if nt.Kind == TokenColon {
+		inputName = inputTok.Text
+		inputNameSpan = tokenAnchor(inputTok)
+		if _, err := p.next(); err != nil {
+			return OperatorAuthoring{}, err
+		}
+		typeTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if typeTok.Kind != TokenIdent {
+			at := typeTok
+			if typeTok.Kind == TokenEOF {
+				at = inputTok
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected the type of input %q after \":\"; accepted types are number")
+		}
+		inputTok = typeTok
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+	}
+	if OperatorInputWord(inputTok.Text) != OperatorInputNumberWord {
+		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
+			"unknown operator input %q; accepted inputs are number", inputTok.Text))
 	}
 	if !ruleAuthoringDeclarationEnds(nt) {
 		return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
@@ -301,9 +349,11 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		ID:              id,
 		Symbol:          symbol,
 		Input:           OperatorInputWord(inputTok.Text),
+		InputName:       inputName,
 		DeclarationSpan: Anchor{Start: keyword.Start, End: inputTok.End},
 		IDSpan:          tokenAnchor(nameTok),
 		InputSpan:       tokenAnchor(inputTok),
+		InputNameSpan:   inputNameSpan,
 	}, nil
 }
 
@@ -394,6 +444,7 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 	}
 	predicate := RulePredicate(predTok.Text)
 	var operator *RuleReference
+	var inputs []RuleInputAssignment
 	var compared *RuleReference
 	ifPresent := false
 	lastTok := predTok
@@ -461,6 +512,50 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		// is resolved against the whole Workspace by the validator.
 		predicate = RulePredicateOperator
 		operator = &RuleReference{Text: predTok.Text, Anchor: tokenAnchor(predTok)}
+		// `low: 0 high: 100` assigns the operator's remaining inputs. The
+		// subject is the first input and is not repeated.
+		for {
+			next, err := p.peek()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if next.Kind != TokenIdent {
+				break
+			}
+			after, err := p.peek2()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if after.Kind != TokenColon {
+				break
+			}
+			nameTok, err := p.next()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if _, err := p.next(); err != nil { // the colon
+				return RuleAuthoring{}, err
+			}
+			valueTok, err := p.next()
+			if err != nil {
+				return RuleAuthoring{}, err
+			}
+			if valueTok.Kind != TokenIdent {
+				at := valueTok
+				if valueTok.Kind == TokenEOF {
+					at = nameTok
+				}
+				return RuleAuthoring{}, p.errAt(at, fmt.Sprintf(
+					"expected the value of input %q after \":\"; write an attribute id or a constant", nameTok.Text))
+			}
+			inputs = append(inputs, RuleInputAssignment{
+				Name:      nameTok.Text,
+				Value:     valueTok.Text,
+				NameSpan:  tokenAnchor(nameTok),
+				ValueSpan: tokenAnchor(valueTok),
+			})
+			lastTok = valueTok
+		}
 	} else if predTok.Text == "required" {
 		// `required if <attribute>`.
 		ifTok, err := p.next()
@@ -501,6 +596,7 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		Subject:         RuleReference{Text: subjectTok.Text, Anchor: tokenAnchor(subjectTok)},
 		Predicate:       predicate,
 		Operator:        operator,
+		Inputs:          inputs,
 		Compared:        compared,
 		IfPresent:       ifPresent,
 		PeriodEnd:       periodEnd,

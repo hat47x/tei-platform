@@ -105,11 +105,27 @@ type Hook struct {
 	// and a hook that decided per record were told apart only by reading the script.
 	// An empty scope means the pattern's own unit, which is the row for a browse or
 	// record pattern and the header for a header-detail pattern.
-	Scope    string             `json:"scope,omitempty"`
+	Scope string `json:"scope,omitempty"`
+	// Rows names where the row set a row-scoped hook decides on comes from. A
+	// record pattern could declare `scope row`, but nothing said which rows: the
+	// declaration was admitted and the reference execution skipped it for want of
+	// a supplier. The source makes the supplier a part of the declaration instead
+	// of an assumption about the host.
+	Rows     *HookRowSource     `json:"rows,omitempty"`
 	Reads    []core.CanonicalID `json:"reads,omitempty"`
 	Uses     []core.CanonicalID `json:"uses,omitempty"`
 	Produces []core.CanonicalID `json:"produces,omitempty"`
 	Failure  string             `json:"failure,omitempty"`
+}
+
+// HookRowSourceは、行スコープのフックが判定する行集合の出所である。
+//
+// 現時点で出所はQueryだけである。Relation Queryの結果も行集合になるが、その実行
+// 経路をこの境界に繋いでいないため、語彙へ先回りして入れない（宣言できて供給
+// できない語を増やすと、通るのに走らない宣言ができる）。
+type HookRowSource struct {
+	// Queryは、行を返すApplication QueryのCanonical IDである。
+	Query core.CanonicalID `json:"query"`
 }
 
 // CommandInputBindingは、Commandの入力を対話の項目へ結びつける。
@@ -144,7 +160,12 @@ type Layout struct {
 	Order []core.CanonicalID `json:"order,omitempty"`
 }
 
-// PageBreakは、header-detailの印刷で1ページに収める明細行数と、見出しの繰返しを宣言する。
+// PageBreakは、header-detailの印刷で明細を何行ごとに面へ分けるかと、見出しの繰返しを宣言する。
+//
+// It is a split unit, not a row count: the view has no real detail rows yet, so the
+// rows drawn are placeholders and Rows only decides how they are grouped into
+// pages. A declaration that reads as "this many rows per page" is therefore only
+// true once real rows arrive (plan/evidence/XTEA_LOWCODE_REPEAT_HEADER_INERT_2026-11.md).
 type PageBreak struct {
 	Rows         int  `json:"rows"`
 	RepeatHeader bool `json:"repeatHeader,omitempty"`

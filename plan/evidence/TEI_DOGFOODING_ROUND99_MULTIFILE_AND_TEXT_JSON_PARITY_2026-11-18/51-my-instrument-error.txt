@@ -1,0 +1,19 @@
+I first read "text 2 lines, json 5 diagnostics" and suspected the two modes
+disagreed. They do not; my grep was wrong.
+
+  grep -E "error|warning"      matches either word anywhere in a line, not only
+                                at the beginning. It is not a diagnostic counter.
+  Some diagnostic lines        do not contain either literal word in the
+                                rendered text, so this grep omits them.
+
+Reading the raw tab-separated output:
+
+  [$1] [warning] HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED
+  [$1] [error]   UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE
+  [$1] [APPLICATION_RELEASE_CONTRACT_NOT_CURRENT] ...
+  [$1] [DATABASE_RELEASE_CONTRACT_NOT_CURRENT] ... (2)
+
+  5 text lines / 5 json diagnostics -> they agree.
+
+Both modes call operations.ValidateWorkspace and share
+WorkspaceValidationReportFrom (#3420), so a count mismatch was unlikely by design.

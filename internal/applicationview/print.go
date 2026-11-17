@@ -26,7 +26,7 @@ footer{margin-top:6mm;font-size:.75rem;color:#444;border-top:1px solid #999;padd
 <table>
 {{range .Items}}<tr><th>{{.Label}}</th><td></td></tr>
 {{end}}</table>
-{{if .Hooks}}<section><h2>フック</h2><ul>{{range .Hooks}}<li>{{.Phase}}:{{range .Reads}} reads {{.}}{{end}}{{range .Uses}} uses {{.}}{{end}}{{range .Produces}} produces {{.}}{{end}}{{if .Failure}} on-failure {{.Failure}}{{end}}</li>{{end}}</ul></section>{{end}}
+{{if .Hooks}}<section><h2>フック</h2><ul>{{range .Hooks}}<li>{{.Phase}}:{{if .Scope}} scope {{.Scope}}{{end}}{{if .Rows}} rows from query {{.Rows.Query}}{{end}}{{range .Reads}} reads {{.}}{{end}}{{range .Uses}} uses {{.}}{{end}}{{range .Produces}} produces {{.}}{{end}}{{if .Failure}} on-failure {{.Failure}}{{end}}</li>{{end}}</ul></section>{{end}}
 <footer>pattern: {{.Pattern}} / semantics: {{.SemanticFingerprint}} / format: tei.print/v0{{if .PrintTemplate}} template: {{.PrintTemplate}}{{end}}</footer>
 </body>
 </html>
@@ -56,7 +56,7 @@ th{background:#eee;font-weight:600}
 {{range .HeaderItems}}<tr><th>{{.Label}}</th><td></td></tr>
 {{end}}</table>
 <h2>明細</h2>
-{{if .PageBreak}}<p>{{.PageBreak.Rows}}行/ページ{{if .PageBreak.RepeatHeader}}、見出し繰返し{{end}}</p>{{end}}
+{{if .PageBreak}}<p>{{.PageBreak.Rows}}行ごとに面を分ける{{if .PageBreak.RepeatHeader}}、各面で見出し繰返し{{end}}</p>{{end}}
 {{range .DetailPages}}<table class="detail" data-page="{{.Number}}">
 {{if .RepeatHeader}}<thead><tr>{{range $.DetailColumns}}<th>{{.Label}}</th>{{end}}</tr></thead>
 {{end}}<tbody>

@@ -1,0 +1,16 @@
+Two independent files, each with a syntax error:
+
+  a.tei:8:22  error PARSE_ERROR unexpected token "}"
+  b.tei:4:31  error PARSE_ERROR expected attribute, relation, candidate-key, ...
+  note VALIDATION_INCOMPLETE 2件の構文の指摘を同じ読み込みで集めました …
+
+The old sentence "files other than that one were not examined" is gone.
+The note now counts what was collected.
+
+Control experiment on syntax-vs-semantic:
+  a.tei broken (syntax) + b.tei broken (semantic) -> only PARSE_ERROR, note says
+    semantic validation did not run
+  fix a.tei -> UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE appears
+So the note is literally true, and JSON says the same thing in
+incomplete.reason = syntax-coverage-unverified.
+A healthy workspace has no incomplete key at all.

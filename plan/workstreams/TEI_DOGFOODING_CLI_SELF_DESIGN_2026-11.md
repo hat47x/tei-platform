@@ -3492,3 +3492,189 @@ capability equip.loan_register {
 ### 位置付け
 
 **「2つのコマンドが同じ対象について違う数を言う」を見つけた回**である。どちらも正しく、**辺の同一性の定義が違う**だけだった。**私は数を合わせるのではなく、どちらが何を数えているかを確定させて起票した。**
+
+## 97. 第96ラウンド（2026-11-18）: #5426 を解消 — 辺の同一性の限界を、数を返す場所で明文化した
+
+前ラウンドは A（同一性キーに名前）/ B（明文化）/ C（件数）を所有者判断として起票した。**本ラウンドは既定の自律方針に従い、可逆な B を選んだ。** 生出力は[第96ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND96_EDGE_IDENTITY_STATEMENT_2026-11-18/README.md)にある。
+
+### 何を足したか
+
+固定文を1つ `edge-identity-is-from-relation-to-so-same-payload-outcomes-collapse` とし、**数を返す2箇所**（trace の projection と knowledge-context）に置いた。**既存の文は1つも消していない**（trace 3→4件、context 4→5件）。
+
+### 実測（CLI）
+
+両コマンドの `authorityLimits` に同じ文が出る。**数（2 vs 3）は変わっていない。変わったのは説明だけ**であり、A が変えてしまう「正当な宣言の表現力」には触れていない。
+
+### 途中で3件、自分が壊した
+
+| 症状 | 原因 | 対処 |
+| --- | --- | --- |
+| `Projection{}` では limits が空 | limits は `FromIndex` が組み立てる | `FromIndex(index.Derived{}, "full")` を呼ぶ |
+| `Build(ir.World{}, nil, ...)` がビルド不能 | 第3引数は `sourceindex.Index` | 引数を修正 |
+| derivedbridge の順序テスト3件が FAIL | **同じ limits を `projection_order_test.go` の参照実装が複製** | 参照実装も同じ並びに更新 |
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | projection の文を削る | FAIL `does not state the edge identity limit` |
+| M2 | **既存**の context 文を1つ削る | FAIL `the existing limit ... was dropped` |
+
+**M2 が重要**である。追加だけを検査すると「既存を消して追加した」場合に通ってしまう。
+
+### golden の基準も更新した（CI で検出）
+
+CI の `repository-health` が `TestGoldenOutputUnchangedFromBaseline` で落ちた。**原因を確認したところ私の追加そのものだった**（無関係な赤ではなかった）。`tools/reference-cli-trace-benchmark` が trace 出力の digest を固定しており、`authorityLimits` を1件足したので trace を含む**10キー**が変わった。
+
+**対照実験**: 追加した1文だけを外すと golden は通る。**差分は私の追加に完全に由来する。**
+
+**更新後に確認**: キー数 14→14（増減なし）、変化は trace 系10件のみ、**`sourceIndex` の2キーは不変**。これは意図した影響範囲（応答文だけ）と一致する。
+
+### 残したもの
+
+**固定文のリストは5ファイルに複製がある。** 単一の出所にすべきかは別の設計判断なので、本ラウンドでは触っていない。
+
+### 位置付け
+
+**前ラウンドで「判断が要る」と返したものを、挙動を変えない案で自分で閉じた回**である。**数を返すロジックには一切触れず、その数の意味だけを書いた。**
+
+## 98. 第97ラウンド（2026-11-18）: business-procedure で自分の capability が解決でき、realization の拒否が有効値を言わない
+
+目的文の「再びドッグフーディングに戻る」を実行し、**自分の equip ドメインを business procedure に組み込み、宣言した capability が本当に解決されるか**を確かめた。生出力は[第97ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND97_BUSINESS_PROCEDURE_2026-11-18/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `json: unknown field "identityStatus"` | `DisallowUnknownFields`。推測したフィールドは通らない |
+| 2 | `procedure schemaVersion ... is not "business-procedure-model-reference-v0"` | **正しい版を名指ししてくれた** |
+| 3 | `BUSINESS_STEP_REALIZATION_UNKNOWN` ほか | realization の語が違う |
+| 4 | `ok`、診断0件、**function 解決** | `realization: "application"` |
+
+**Attempt 2 は模範的**だった。**期待値をそのまま述べている**ので次の試行で当てられた。
+
+### 解決の実測
+
+```text
+function: {kind: capability, id: equip.loan_register,
+           subject: semantic-capability:equip.loan_register,
+           artifact: semantic/equip/desk.tei, line: 3, column: 12,
+           role: definition, fingerprint: sha256:dd57c0f5...}
+unresolvedFunction: None
+```
+
+**宣言した capability が、Source の位置と fingerprint まで含めて解決された。** 境界も確かめた: 存在しない capability は `unresolvedFunction` に残り `BUSINESS_REFERENCE_UNRESOLVED`（**推測しない**）、**別アプリ配下の capability は解決される**（resolver は application で絞らない）。
+
+### 見つけた穴: 有効値を言わない拒否
+
+```text
+step "L-01" declares unknown realization "application-use"
+```
+
+`Realization` は**3語の閉じた集合**（`manual`・`application`・`system`）で `Valid()` がそのリストを回しているのに、**拒否文は一語も挙げない**。私は `application-use` と書いて落ち、**次の正解を推測する必要があった**。
+
+### 修正
+
+同じリストから文言を組み立て、**3語を名指しする**ようにした。**受理する集合は変えていない**（変えたのは説明だけ）。
+
+```text
+AFTER   step "L-01" declares unknown realization "application-use";
+        valid values are manual, application, system
+```
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 旧文言に戻す | FAIL `the refusal omits "manual"` |
+| M2 | 文言が3語のうち2語しか挙げない | FAIL `realizationNames lists 2 of 3` |
+
+**M2 は最初、`strings.Join` の外に文を足す形で書いてビルドを壊した。** 変異が壊れているのは証拠にならないので、`realizations[:2]` に変える形へ組み立て直した。
+
+### 位置付け
+
+**「要求はするが、従い方が書いていない」の5例目**である。ただし今回は**同じコマンドが直前の試行で正しい版を名指ししてくれた**（Attempt 2）。**できる時とできない時の差**が、この欠陥類型の実態である。
+
+## 99. 第98ラウンド（2026-11-18）: 宣言した Application は本当に実行でき、実行結果は自分の限界を自分で言う
+
+目的文の「再びドッグフーディングに戻る」を実行し、**宣言した Application が本当に実行できるか**を実利用者が最後に問う形で確かめた。生出力は[第98ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND98_EXECUTE_SURFACE_2026-11-18/README.md)にある。
+
+### 体系的走査を先に行った（新規欠陥ゼロ）
+
+前ラウンドまでの「閉じた語彙なのに有効値を言わない」類型を**網羅的に走査**した。
+
+```text
+'valid values are' 非テストコード        -> 21 件（良い形）
+'unknown ...' 値リストなし               -> 3 件
+```
+
+3件のうち `UNKNOWN_APPLICATION_PACKAGE_REQUIREMENT` は**パーサ側が既に値を名指ししていた**（`"package requires semantic or relation"`）。残る2件は threeelement の graph 参照で**語彙が閉じていない**。**この類型は打ち止め**だった。
+
+### 実行の経路は成立した
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | 診断なし | `pattern X command { capability ... }` |
+| 2 | `UNBOUND_*` | 環境束縛が要る |
+| 3 | `VIEW_FAILED: capability <pattern id>がありません` | **`-command` は capability id** |
+| 4 | `INVALID_COMMAND_INPUT: missing inputs: [loan]` | `-input loan=...` |
+| 5 | **成功** | `mode: reference` / `committed: true` / `persisted: false` |
+
+### 出力は自分の限界を自分で述べていた（重要な確認）
+
+```text
+mode: reference (no durable effects)
+committed: true (reference unit of work)
+persisted: false (persistence: not-applicable, durability: none)
+difference-check: not observed (this executor does not enumerate its operations)
+```
+
+**`committed: true` だけを読むと「永続化された」と誤読しうる**が、同じ出力が `persisted: false`・`durability: none` を**並べて**いる。JSON 側も `appliedUnobserved: true` を持つ。**私はこれを欠陥と呼ばない。**
+
+### 直さなかったもの（記録）
+
+| 観察 | 判断 |
+| --- | --- |
+| `-command` に pattern id を渡すと `capability <id>がありません` | **その id は実際に capability でない**ので記述は正確。flag help が種別を書いている |
+| 一部のエラー文が日本語（JSON API 内） | 非テスト Go に **108 件**あり、リポジトリの文書言語と一致する。**方針の判断なしに一括変換しない** |
+
+**どちらも起票しない。**
+
+### 位置付け
+
+**「実行できるか」を最後に問うた回**であり、答えは**成立する**だった。同時に、**出力が自分の限界を自分で述べている**ことを確認した。**欠陥を作らなかったことと、直さないと決めた理由を記録するのも成果**である。
+
+## 100. 第99ラウンド（2026-11-18）: 2ファイルの構文エラーは両方reportされ、text と json は5件で一致する
+
+目的文の「再びドッグフーディングに戻る」を実行し、**2つの独立ファイルがそれぞれ構文エラーを持つとき、両方が報告されるか**を確かめた。古い記録に「そのファイル以外は調べていない」という文があり、**それが今も真か**を検証したかった。生出力は[第99ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND99_MULTIFILE_AND_TEXT_JSON_PARITY_2026-11-18/README.md)にある。
+
+### 実測: 両方reportされた
+
+```text
+semantic/probe/a.tei:8:22  error PARSE_ERROR unexpected token "}"
+semantic/probe/b.tei:4:31  error PARSE_ERROR expected attribute, relation, candidate-key, ...
+note VALIDATION_INCOMPLETE 2件の構文の指摘を同じ読み込みで集めました。…
+```
+
+**古い文（"files other than that one were not examined"）はもう出ない。** 代わりに「2件を集めた」と**件数まで言う**。
+
+### 構文エラーは意味検証を止める — そして正直に書かれている
+
+| 手順 | 結果 |
+| --- | --- |
+| a.tei に構文エラー、b.tei に意味エラー | **PARSE_ERROR 1件のみ**、`意味検証は実行していません` |
+| a.tei の構文エラーを直す | **`UNKNOWN_SEMANTIC_ATTRIBUTE_TYPE` が現れる** |
+
+**対照実験で、note の文が文字通り真であることを確認した。** JSON 側も `incomplete.reason = syntax-coverage-unverified` で同じ事実を持つ。健康なワークスペースでは `incomplete` は**現れない**。
+
+### 自分が誤った計器を使った（訂正）
+
+「text は2件、json は5件」と読み、**モード間で件数が食い違う**と疑った。実際には `grep -E "error|warning"` はその文字列を含む行だけを抽出するため、表示上どちらの語も含まない診断を取りこぼしていた。`grep -E` は行頭一致ではない。生の出力をタブ区切りで読み直すと **text 5行 / json 5件で一致**。実装は同じ `operations.ValidateWorkspace` を共有しており（`#3420`）、**私の数え方が誤っていた。**
+
+### 既存のテストが既に守っていた
+
+`TestValidateWorkspaceCollectsSyntaxWithoutPartialWorld`（**3ファイル**・`AdditionalDirect` 2件・`incomplete.reason`）、`TestTextOutputSaysTheRunIsIncomplete`（`were not examined` を**出さないこと**を明示検査）ほか。**すべて PASS。私が確かめたかったことは既に固定されていた。**
+
+### 位置付け
+
+**「古い記録の文が今も真か」を測った回**であり、答えは**偽（改善済み）**だった。同時に**私は計器を誤り、「モード間で食い違う」と一瞬疑った**。生データを読み直して訂正した。**既存テストが既に守っていたことも確認した**ので、起票しない。

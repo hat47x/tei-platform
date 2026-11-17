@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -17,7 +18,14 @@ import (
 	"tei/internal/driver"
 	"tei/internal/sourceacceptance"
 	"tei/internal/workspace"
+	"tei/tools/internal/postgresdb"
 )
+
+// readDSNEnv names the environment variable that carries the PostgreSQL
+// connection string for the Web read. It is the same variable the PostgreSQL
+// suite already exports for this target, and it is deliberately not a flag
+// value: a connection string on argv is visible in process listings and logs.
+const readDSNEnv = "TEI_WEB_READ_PG_DSN"
 
 func main() {
 	// The shipped CLI injects no Reader. A Source Reader is selected only by
@@ -63,6 +71,37 @@ type webHostWiring struct {
 	// wrapCommandRead wraps the read the submit Command validates. Tests use
 	// it to present a changed synthetic fixture row; it is not a Provider.
 	wrapCommandRead func(readScenarioRunner) readScenarioRunner
+	// readDatabase serves the order-line read from a real PostgreSQL instance,
+	// using the Workspace's own accepted SQL realization inside a read-only
+	// transaction per execution. nil keeps the fixture rows, which is what the
+	// shipped CLI does because it cannot select a database.
+	readDatabase *sql.DB
+	// readDatabaseError is set when a database was requested but the read could
+	// not be built. Publishing HTTP with a fixture in its place would show a page
+	// that claims a read it did not make, so the host refuses instead.
+	readDatabaseError error
+}
+
+// bindCommandToSelectedRead gives the HTTP read and Command validation the
+// same selected runner. Row indices only identify positions within each Run;
+// sharing a runner prevents a different fixture/provider from being silently
+// chosen for Submit. It does not make two separate Run calls one DB snapshot.
+func bindCommandToSelectedRead(
+	command *referenceCommandScenarioRunner,
+	selected readScenarioRunner,
+	wrap func(readScenarioRunner) readScenarioRunner,
+) error {
+	if command == nil || selected == nil {
+		return fmt.Errorf("selected Web read and Command are required")
+	}
+	if wrap != nil {
+		selected = wrap(selected)
+		if selected == nil {
+			return fmt.Errorf("Command read wrapper removed the selected Web read")
+		}
+	}
+	command.read = selected
+	return nil
 }
 
 // runCombinedWebTargetWithHost is runCombinedWebTargetWithEffectGrant plus the
@@ -78,13 +117,19 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		legacyUsers   = flags.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
 		legacyAuthz   = flags.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
 		listen        = flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
-		scopedRoutes  = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
-		diagnostic    = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
-		storeDir      = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
-		trustPath     = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
-		provGrant     = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
-		provTrust     = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
-		provAck       = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
+		// The read source is selected explicitly, and the connection string is
+		// read from the environment rather than argv: plan/NOW.md keeps a
+		// connection secret out of process arguments and out of logs. Without
+		// this flag the shipped fixture rows stay, so a page cannot claim a
+		// database it was not given.
+		serveReadFromDB = flags.Bool("serve-read-from-db", false, "serve the order-line read from the PostgreSQL DSN in "+readDSNEnv+" (otherwise the fixture rows stay)")
+		scopedRoutes    = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		diagnostic      = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
+		storeDir        = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
+		trustPath       = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
+		provGrant       = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
+		provTrust       = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
+		provAck         = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -128,6 +173,30 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	if provisionalReader != nil {
 		effectReader = provisionalReader
 	}
+	// A requested database either serves the read or refuses to publish. Leaving
+	// the fixture rows in place would show a page that claims a read it did not
+	// make, which is what today's synthetic rows already must not be read as.
+	if *serveReadFromDB {
+		if wiring.readDatabase != nil {
+			return fmt.Errorf("WEB_READ_DATABASE_CONFLICT: the embedding Host already supplied a read database")
+		}
+		dsn := os.Getenv(readDSNEnv)
+		if dsn == "" {
+			return fmt.Errorf("WEB_READ_DATABASE_UNCONFIGURED: -serve-read-from-db requires %s", readDSNEnv)
+		}
+		db, openErr := postgresdb.OpenSQL(dsn)
+		if openErr != nil {
+			// The error deliberately carries no connection-string fragment.
+			return fmt.Errorf("WEB_READ_DATABASE_UNUSABLE: %w", openErr)
+		}
+		if pingErr := db.PingContext(ctx); pingErr != nil {
+			_ = db.Close()
+			return fmt.Errorf("WEB_READ_DATABASE_UNREACHABLE: the requested database did not answer")
+		}
+		wiring.readDatabase = db
+		defer func() { _ = db.Close() }()
+	}
+
 	var loaded workspace.Result
 	var acceptedWorkspace sourceacceptance.VerifiedWorkspace
 	if *diagnostic {
@@ -162,6 +231,15 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	switch appID {
 	case core.MustCanonicalID("order_entry"):
 		orderRead := newReferenceReadScenarioRunner(loaded.World)
+		if wiring.readDatabaseError != nil {
+			return wiring.readDatabaseError
+		}
+		if wiring.readDatabase != nil {
+			var err error
+			if orderRead, err = newPostgresReadRunner(loaded.World, wiring.readDatabase); err != nil {
+				return err
+			}
+		}
 		if wiring.browse != nil {
 			orderRead.browse = wiring.browse
 		}
@@ -197,11 +275,11 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 			}
 		}
 		command.submitStore = submitStore
-		if wiring.browse != nil {
-			command.read = orderRead
-		}
-		if wiring.wrapCommandRead != nil {
-			command.read = wiring.wrapCommandRead(command.read)
+		// The read endpoint and the Command's validation must use the same
+		// selected read source. A future PostgreSQL-backed read must never
+		// leave the Command silently evaluating a synthetic fixture instead.
+		if err := bindCommandToSelectedRead(command, orderRead, wiring.wrapCommandRead); err != nil {
+			return err
 		}
 		commandScenario = command
 	case core.MustCanonicalID("repair_intake"):

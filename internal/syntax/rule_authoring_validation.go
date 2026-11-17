@@ -65,8 +65,12 @@ func RuleValidationKind(predicate RulePredicate) (semantic.ValidationKind, bool)
 func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversionIssue) {
 	out := semantic.Namespace{ID: file.Namespace}
 	var issues []RuleConversionIssue
+	// The declarations are indexed before the rules are converted: a rule that
+	// names an input no operator declares must be diagnosed, and that check
+	// needs the declarations.
+	declaredInputs := declaredOperatorInputNames(file.Operators)
 	for _, rule := range file.Rules {
-		validation, issue := ruleToValidation(rule)
+		validation, issue := ruleToValidationWithInputs(rule, declaredInputs)
 		if issue != nil {
 			issues = append(issues, *issue)
 			continue
@@ -82,8 +86,13 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			})
 			continue
 		}
+		// InputName is what the author wrote, and nothing more. Leaving it empty
+		// for the unnamed form keeps an undeclared name out of the contract; a
+		// reader that needs a name for the single input applies "value", which
+		// is the same reading the surface already had.
 		out.Operators = append(out.Operators, semantic.Operator{
 			ID: operator.ID, Symbol: operator.Symbol, Input: input,
+			InputName: operator.InputName,
 		})
 	}
 	return out, issues
@@ -96,6 +105,80 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 		return semantic.OperatorInputNumber, true
 	}
 	return "", false
+}
+
+// declaredOperatorInputNames indexes the input names each declaration gives,
+// keyed by operator id. Every declared operator gets an entry, so an operator
+// that declares no name is distinguishable from one that is not declared at all.
+func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.CanonicalID][]string {
+	names := make(map[core.CanonicalID][]string, len(operators))
+	for _, operator := range operators {
+		entry := names[operator.ID]
+		names[operator.ID] = entry
+		if operator.InputName != "" {
+			names[operator.ID] = append(entry, operator.InputName)
+		}
+	}
+	return names
+}
+
+// ruleToValidationWithInputs refuses an assignment that names an input the
+// referenced operator does not declare.
+//
+// An operator that is not declared in this source is left to the Workspace-wide
+// resolution rather than refused here: this surface does not know whether it is
+// declared elsewhere, and reporting it twice would state the same thing in two
+// places.
+func ruleToValidationWithInputs(
+	rule RuleAuthoring,
+	declaredInputs map[core.CanonicalID][]string,
+) (semantic.Validation, *RuleConversionIssue) {
+	if rule.Operator == nil || len(rule.Inputs) == 0 {
+		return ruleToValidation(rule)
+	}
+	declared, known := declaredInputs[core.CanonicalID(rule.Operator.Text)]
+	if !known {
+		// The operator is not declared in this source, so its input names are
+		// unknown here; only the value check applies.
+		return refuseAssignedInputs(rule)
+	}
+	for _, assignment := range rule.Inputs {
+		if !inputNameDeclared(declared, assignment.Name) {
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: assignment.NameSpan,
+				Msg: fmt.Sprintf(
+					"operator %s declares no input named %q; a rule cannot assign an input the operator does not take",
+					rule.Operator.Text, assignment.Name),
+			}
+		}
+	}
+	// An assignment that survives the name check still has nowhere to go:
+	// semantic.Validation carries the operator and its subject, not the input
+	// values. Converting anyway would produce a rule that reads as the
+	// single-input operator and silently ignores the assignment.
+	return refuseAssignedInputs(rule)
+}
+
+// refuseAssignedInputs refuses a rule that assigns an operator input. The
+// meaning has no field for the value yet, so converting would drop it.
+func refuseAssignedInputs(rule RuleAuthoring) (semantic.Validation, *RuleConversionIssue) {
+	if len(rule.Inputs) == 0 {
+		return ruleToValidation(rule)
+	}
+	return semantic.Validation{}, &RuleConversionIssue{
+		RuleID: rule.ID, Span: rule.Inputs[0].NameSpan,
+		Msg: "the meaning has no place for an operator input value yet; " +
+			"a rule that assigns an input cannot be converted until the normalization carries it",
+	}
+}
+
+func inputNameDeclared(names []string, name string) bool {
+	for _, declared := range names {
+		if declared == name {
+			return true
+		}
+	}
+	return false
 }
 
 func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionIssue) {

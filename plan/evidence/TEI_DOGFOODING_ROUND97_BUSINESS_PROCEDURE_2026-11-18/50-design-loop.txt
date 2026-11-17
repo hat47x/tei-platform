@@ -1,0 +1,9 @@
+CLI-only wiring of the equip domain into a business procedure:
+
+  1 identityStatus field                         -> json: unknown field
+  2 business-procedure-reference-v0              -> NAMES the right value
+  3 realization "application-use"                -> BUSINESS_STEP_REALIZATION_UNKNOWN
+  4 realization "application"                    -> ok, 0 diagnostics, function resolved
+
+Attempt 2 is the model case: the refusal printed the expected value verbatim.
+Attempt 3 is the gap: three accepted words exist and none were printed.

@@ -32,6 +32,9 @@ func FromIndex(d index.Derived, scope string) Projection {
 		Edges:  make([]modelref.Edge, 0, len(d.SemanticDependencies)+len(d.DeclaredDependencies)),
 	}, AuthorityLimits: []string{
 		"derived-index-is-not-authoritative-world", "business-procedure-not-in-current-world", "source-evidence-not-bound",
+		// Two named outcomes that name the same payload are one edge here,
+		// because an edge is identified by its endpoints and relation only.
+		"edge-identity-is-from-relation-to-so-same-payload-outcomes-collapse",
 	}}
 	if scope == "" {
 		p.Unresolved = append(p.Unresolved, "scope-required")

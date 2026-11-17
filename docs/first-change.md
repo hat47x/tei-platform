@@ -2,7 +2,7 @@
 
 受注明細を実際のPostgreSQLから読み、設計文書へ規則を一つ足して、答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の到達点の1〜4に当たる。
 
-2026年11月17日に、main `3ae3507c`とPostgreSQL 16で、この順に打って通ることを確かめた。Webの画面で同じ答えを見る手順（到達点の5）は、まだない。
+2026年11月17日に、main `3ae3507c`とPostgreSQL 16で、この順に打って通ることを確かめた。**Webの画面で同じ答えを見る手順（到達点の5）も、下の5に書いた。**
 
 ## 用意するもの
 
@@ -98,9 +98,40 @@ rule sales.order_line.unit_price_positive:
 
 期待する答えの全体は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。
 
+## 5. Webの画面で同じ答えを見る
+
+`tei view -environment` と同じReadを、第一Web TargetのHTTP画面でも見る。
+接続文字列は**環境変数**から渡し、作業領域へ書かない。
+
+```bash
+export TEI_WEB_READ_PG_DSN="$TEI_VIEW_PG_DSN"
+go run ./tools/reference-first-web-target \
+  -serve-read-from-db \
+  -workspace reference/workspace -application order_entry \
+  -baseline-id B -baseline-revision "$(git rev-parse HEAD)" \
+  -target-revision "$(git rev-parse HEAD)" \
+  -listen 127.0.0.1:8080
+```
+
+ブラウザで `http://127.0.0.1:8080/custom-submit` を開き、`from` に
+`2026-09-01T00:00:00Z`、`row` に `0` を入れて送る。**明細の行ごとの答え**が出る。
+
+- 受注1001の3行のうち、**数量0の1行だけ**が `not-satisfied` になる。
+- `sales.order.lines.line_number_unique` は、束縛が `covers` を宣言していない間は
+  **`undecided`＋理由**のままである（宣言だけでは全件取得の証拠にならない）。
+- 画面は「**この答えが属するRead**」を表示する。選択した受注・実行したContract Query・
+  行数が出る。**別のReadの答えを混ぜると、画面は描画せずに拒否する。**
+
+`-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
+起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
+
+この手順はCIでも毎回走る。`TestShippedWebPageShowsRealPostgresRowAnswers` が
+**出荷するのと同じ起動関数**を通し、実PostgreSQLの行に対する答えを独立した期待と
+照合する。
+
 ## まだできないこと
 
 - 異なる属性集合を持つ**さらに別の**業務モデル。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/`・`cmd/tei/destination_order_alternate_pg_case_test.go`・#5362）。
 - 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
 
-- Webの画面で同じ答えを見ること。
+

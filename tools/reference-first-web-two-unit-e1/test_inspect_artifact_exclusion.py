@@ -236,6 +236,29 @@ class SymbolMatcherTests(unittest.TestCase):
             with self.subTest(symbol=symbol):
                 self.assertIn(ident, self.analyze([symbol])["forbiddenHits"])
 
+    def test_functioncontext_type_only_linkage_is_counted_not_executed(self):
+        # postgresquery.Runner links the postgresquery Go package; that package
+        # declares other acquisition methods whose *types* refer to functioncontext.
+        # The Web read does not exercise those methods, so this is a narrow
+        # type-only exception, not another blanket runtime/authoring allowance.
+        pkg = "tei/internal/functioncontext"
+        for symbol in ("type:.eq." + pkg + ".AcquisitionObservation",
+                       "type:.hash." + pkg + ".ConnectionObservation"):
+            with self.subTest(symbol=symbol):
+                report = self.analyze([symbol])
+                self.assertTrue(report["passed"], report["failures"])
+                self.assertEqual(report["knownIntrusionAllowlisted"][pkg], 1)
+                self.assertNotIn(pkg, report["runtimePackagesObserved"])
+                frozen = module.analyze_symbols(self.BASE + [symbol], "frozen-world")
+                self.assertFalse(frozen["passed"])
+        for symbol in (pkg + ".From", pkg + ".Observe",
+                       "type:.eq." + pkg + "/extra.T"):
+            with self.subTest(symbol=symbol):
+                report = self.analyze([symbol])
+                self.assertIn(pkg if "/extra" not in symbol else pkg + "/extra",
+                              report["unexpectedTeiPackages"])
+                self.assertFalse(report["passed"])
+
     def test_type_only_runtime_packages_are_expected_but_new_ones_are_not(self):
         for pkg in ("tei/internal/query", "tei/internal/semantic", "tei/internal/resource",
                     "tei/internal/environment", "tei/internal/application",
@@ -247,8 +270,8 @@ class SymbolMatcherTests(unittest.TestCase):
         self.assertIn("tei/internal/brandnew", result["unexpectedTeiPackages"])
 
     def test_query_construction_and_typed_rule_reader_remain_runtime_only(self):
-        # Read decisions in the API use the same runtime query and Rule reader
-        # as the CLI. They must not be counted as a design-time exception.
+        # Query construction and the typed Rule reader are runtime packages.
+        # Function Context has a narrower type-only linkage rule, tested below.
         for pkg in ("tei/internal/database/sqlgen",
                     "tei/internal/driver/validationread"):
             with self.subTest(pkg=pkg):
@@ -261,7 +284,8 @@ class SymbolMatcherTests(unittest.TestCase):
         # These names are exact, not a prefix-based waiver for new
         # executors, authoring code, or arbitrary linked dependencies.
         for pkg in ("tei/internal/database/sqlgen/external",
-                    "tei/internal/driver/validationread/unknown"):
+                    "tei/internal/driver/validationread/unknown",
+                    "tei/internal/functioncontext/unknown"):
             result = self.analyze([pkg + ".Run"])
             self.assertIn(pkg, result["unexpectedTeiPackages"])
             self.assertFalse(result["passed"])

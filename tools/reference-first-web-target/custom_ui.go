@@ -100,8 +100,16 @@ func (s *webTargetServer) renderCustomSubmit(
 	// Reject malformed projections before sending a success response or any
 	// row content; html/template's index expression cannot check this contract.
 	if data.Result != nil && data.Result.Read != nil {
-		if err := requireReadRowAnswerAlignment(data.Result.Read.OrderLineRows, data.Result.Read.RowAnswers); err != nil {
+		read := data.Result.Read
+		if err := requireReadRowAnswerAlignment(read.OrderLineRows, read.RowAnswers); err != nil {
 			http.Error(w, "cannot render row answers: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		// Alignment alone cannot tell this read from another read of the same
+		// shape. The identity is what the answers are attributed to, so refuse
+		// to render when it is incomplete or does not describe these rows.
+		if err := requireAnswersBelongToRead(read.ReadIdentity, read.RowAnswers, read.RelationAnswers); err != nil {
+			http.Error(w, "cannot attribute row answers: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -268,6 +276,17 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 {{else}}<p class="muted">No order-line rows.</p>{{end}}
 </article>
 {{if .Result.Read.RelationAnswers}}
+{{with .Result.Read.ReadIdentity}}
+<article class="subcard" id="read-identity">
+<h3>Which read these answers belong to</h3>
+<table>
+<tr><th>Selected order</th><td>{{.SelectedOrderKey}}</td></tr>
+<tr><th>Environment</th><td>{{.Environment}}</td></tr>
+<tr><th>Contract Query</th><td><code>{{.Database}}/{{.Contract}}/{{.Query}}</code></td></tr>
+<tr><th>Row count</th><td>{{.RowCount}}</td></tr>
+</table>
+</article>
+{{end}}
 <article class="subcard" id="relation-answers">
 <h3>Answers about the whole relation</h3>
 {{range .Result.Read.RelationAnswers}}<p class="status-line"><code>{{.}}</code></p>{{end}}

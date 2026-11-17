@@ -23,9 +23,10 @@ import (
 // tableRuleParitySource captures the logical Read even when a wrong attribute
 // happens to return the same test value. It is not a database or a Provider.
 type tableRuleParitySource struct {
-	value   string
-	missing bool
-	reads   []core.CanonicalID
+	value     string
+	missing   bool
+	reads     []core.CanonicalID
+	readState string
 }
 
 func (s *tableRuleParitySource) Number(id core.CanonicalID) (*big.Rat, error) {
@@ -37,11 +38,14 @@ func (s *tableRuleParitySource) Number(id core.CanonicalID) (*big.Rat, error) {
 		return nil, errors.New("unexpected Attribute read")
 	}
 	if s.missing {
+		s.readState = "not-fetched"
 		return nil, errors.New("source was not obtained")
 	}
 	if s.value == "" {
+		s.readState = "null"
 		return nil, nil
 	}
+	s.readState = "present"
 	n, ok := new(big.Rat).SetString(s.value)
 	if !ok {
 		return nil, errors.New("invalid numeric test input")
@@ -198,12 +202,14 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		t.Fatalf("generated Go binary failed: %v stderr=%q stdout=%q", err, stderr.String(), stdout.String())
 	}
 	type actual struct {
+		CaseID    string
 		Mode      string
 		Name      string
 		Result    string
 		Error     bool
 		Reads     int
 		Attribute string
+		ReadState string
 	}
 	records := map[string]actual{}
 	for _, line := range bytes.Split(bytes.TrimSpace(stdout.Bytes()), []byte("\n")) {
@@ -218,15 +224,15 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		records[key] = got
 	}
 	cases := []struct {
-		name, value, want  string
-		missing, wantError bool
+		name, value, want, wantReadState string
+		missing, wantError               bool
 	}{
-		{"positive", "2.5", "satisfied", false, false},
-		{"zero", "0", "not-satisfied", false, false},
-		{"negative", "-1", "not-satisfied", false, false},
-		{"negative-zero", "-0", "not-satisfied", false, false},
-		{"null", "", "", false, true},
-		{"not-obtained", "", "", true, true},
+		{"positive", "2.5", "satisfied", "present", false, false},
+		{"zero", "0", "not-satisfied", "present", false, false},
+		{"negative", "-1", "not-satisfied", "present", false, false},
+		{"negative-zero", "-0", "not-satisfied", "present", false, false},
+		{"null", "", "", "null", false, true},
+		{"not-obtained", "", "", "not-fetched", true, true},
 	}
 	if len(records) != len(cases)*3 {
 		t.Fatalf("binary returned %d records, want %d", len(records), len(cases)*3)
@@ -237,27 +243,35 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 			source := &tableRuleParitySource{value: tc.value, missing: tc.missing}
 			direct, err := validationeval.Evaluate(rule, source)
 			if string(direct) != tc.want || (err != nil) != tc.wantError ||
-				len(source.reads) != 1 || source.reads[0] != core.CanonicalID(attributeID) {
+				len(source.reads) != 1 || source.reads[0] != core.CanonicalID(attributeID) ||
+				source.readState != tc.wantReadState {
 				t.Fatalf("P did not match the fixed Law/Read: %q %v %v", direct, err, source.reads)
 			}
+			// Test identity belongs to the chosen Rule and case, not the
+			// generated Go entry symbol. The observed reading state must survive
+			// the P/G boundary even when both missing inputs produce an error.
+			caseID := ruleID + "/" + tc.name
 			got := records["generated/"+tc.name]
-			if got.Mode != "generated" || got.Name != tc.name ||
+			if got.CaseID != caseID || got.Mode != "generated" || got.Name != tc.name ||
 				got.Result != tc.want || got.Error != tc.wantError ||
-				got.Reads != 1 || got.Attribute != attributeID {
+				got.Reads != 1 || got.Attribute != attributeID ||
+				got.ReadState != tc.wantReadState {
 				t.Fatalf("G outcome or Read disagrees with independent P contract: %+v", got)
 			}
 			// Identical semantic subject, judgment, and Read remain valid when
 			// a regenerated Target uses a different Go method name.
 			renamedGot := records["renamed/"+tc.name]
-			if renamedGot.Mode != "renamed" || renamedGot.Name != tc.name ||
+			if renamedGot.CaseID != caseID || renamedGot.Mode != "renamed" || renamedGot.Name != tc.name ||
 				renamedGot.Result != tc.want || renamedGot.Error != tc.wantError ||
-				renamedGot.Reads != 1 || renamedGot.Attribute != attributeID {
+				renamedGot.Reads != 1 || renamedGot.Attribute != attributeID ||
+				renamedGot.ReadState != tc.wantReadState {
 				t.Fatalf("Target symbol rename changed the semantic Rule outcome or Read: %+v", renamedGot)
 			}
 			wrong := records["misbound/"+tc.name]
-			if wrong.Mode != "misbound" || wrong.Name != tc.name ||
+			if wrong.CaseID != caseID || wrong.Mode != "misbound" || wrong.Name != tc.name ||
 				wrong.Result != tc.want || wrong.Error != tc.wantError ||
-				wrong.Reads != 1 || wrong.Attribute != otherAttribute {
+				wrong.Reads != 1 || wrong.Attribute != otherAttribute ||
+				wrong.ReadState != tc.wantReadState {
 				t.Fatalf("same-value wrong-Read negative did not execute: %+v", wrong)
 			}
 			if wrong.Attribute == got.Attribute {
@@ -283,9 +297,10 @@ import (
 )
 
 type probe struct {
-	value   string
-	missing bool
-	reads   []string
+	value     string
+	missing   bool
+	reads     []string
+	readState string
 }
 func (p *probe) Number(id core.CanonicalID) (*big.Rat,error) {
 	p.reads=append(p.reads,string(id))
@@ -293,8 +308,9 @@ func (p *probe) Number(id core.CanonicalID) (*big.Rat,error) {
 	case "organization.transfer_request.allocation", "organization.transfer_request.person_id":
 	default: return nil,errors.New("unexpected read")
 	}
-	if p.missing { return nil,errors.New("not obtained") }
-	if p.value=="" { return nil,nil }
+	if p.missing { p.readState="not-fetched"; return nil,errors.New("not obtained") }
+	if p.value=="" { p.readState="null"; return nil,nil }
+	p.readState="present"
 	n,ok:=new(big.Rat).SetString(p.value)
 	if !ok { return nil,errors.New("bad input") }
 	return n,nil
@@ -303,12 +319,14 @@ func (p *probe) RelationKeys(relation, attribute core.CanonicalID)([]string,erro
 	return nil,errors.New("unexpected relation")
 }
 type result struct {
+	CaseID string
 	Mode string
 	Name string
 	Result string
 	Error bool
 	Reads int
 	Attribute string
+	ReadState string
 }
 func main(){
 	cases:=[]struct{name,value string; missing bool}{
@@ -326,7 +344,8 @@ func main(){
 			var got validationeval.Result
 			var err error
 			if mode=="generated" {got,err=EvaluateSelected(src)} else if mode=="renamed" {got,err=EvaluateRenamed(src)} else {got,err=EvaluateMisbound(src)}
-			record:=result{Mode:mode,Name:tc.name,Result:string(got),Error:err!=nil,Reads:len(src.reads)}
+			// This ID is attached to the Rule/case, never to the Go method.
+			record:=result{CaseID:"organization.transfer_request.allocation_positive/"+tc.name,Mode:mode,Name:tc.name,Result:string(got),Error:err!=nil,Reads:len(src.reads),ReadState:src.readState}
 			if len(src.reads)>0 {record.Attribute=src.reads[0]}
 			if err:=enc.Encode(record);err!=nil{panic(err)}
 		}

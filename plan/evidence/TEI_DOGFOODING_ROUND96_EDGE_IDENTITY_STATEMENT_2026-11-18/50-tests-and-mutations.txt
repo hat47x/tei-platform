@@ -1,0 +1,15 @@
+Added:
+  internal/modelref/derivedbridge/projection_authority_limits_test.go
+  internal/knowledgecontext/context_authority_limits_test.go
+
+Each asserts:
+  1. the fixed statement is present where the count is answered
+  2. (context) all four PRE-EXISTING statements are still there
+
+Mutations:
+  M1 drop the projection statement
+     -> FAIL the projection does not state the edge identity limit
+  M2 drop one pre-existing context statement
+     -> FAIL the existing limit was dropped
+
+M2 catches the "add one, lose one" case that an add-only test would pass.

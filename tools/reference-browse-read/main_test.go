@@ -367,7 +367,8 @@ func TestBrowseReadAgainstDisposablePostgreSQL(t *testing.T) {
 		if !reflect.DeepEqual(rowsOf(r), independentRead(t, db, time.Date(2026, 11, 7, 10, 5, 0, 0, time.UTC))) {
 			t.Fatal("NULL rendering differs from the independent reader")
 		}
-		if r.Context.NullOrigin != "unestablished" {
+		// The NULL sits in the declared column of the declared table, read by a single scan.
+		if r.Context.NullOrigin != "stored" {
 			t.Fatalf("nullOrigin=%s", r.Context.NullOrigin)
 		}
 		mustExec(t, db, `ALTER TABLE public.orders DROP COLUMN total_amount`)

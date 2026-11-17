@@ -1,0 +1,12 @@
+Resolution measured:
+
+  capability equip.loan_register
+    -> function: {subject semantic-capability:equip.loan_register,
+                  artifact semantic/equip/desk.tei, line 3, column 12,
+                  role definition, fingerprint sha256:dd57c0f5...}
+
+  capability equip.no_such_capability
+    -> unresolvedFunction kept, BUSINESS_REFERENCE_UNRESOLVED (not inferred)
+
+  capability other.thing_create (declared under another application)
+    -> resolved. The resolver does not filter by the procedure's application.

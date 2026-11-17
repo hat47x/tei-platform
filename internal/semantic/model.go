@@ -244,6 +244,10 @@ type Operator struct {
 	ID     core.CanonicalID `json:"id"`
 	Symbol string           `json:"symbol"`
 	Input  OperatorInput    `json:"input"`
+	// InputName is the name the author gave the input, as in `takes low: number`.
+	// The single-input form `takes number` names it "value", which is what the
+	// rule surface already assumes when a rule writes no name.
+	InputName string `json:"inputName,omitempty"`
 	// Cases are the examples the contract states. An implementation that
 	// answers any of them differently does not implement this operator.
 	Cases []OperatorCase `json:"cases,omitempty"`

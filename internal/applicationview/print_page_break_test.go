@@ -56,22 +56,22 @@ func TestHeaderDetailPrintRepeatsHeaderOnEveryPage(t *testing.T) {
 	if tables != 2 || theads != 2 {
 		t.Fatalf("tables=%d theads=%d, want 2 and 2: %s", tables, theads, html)
 	}
-	if !strings.Contains(html, `<p>3行/ページ、見出し繰返し</p>`) {
+	if !strings.Contains(html, `<p>3行ごとに面を分ける、各面で見出し繰返し</p>`) {
 		t.Fatalf("print html lost the page-break note: %s", html)
 	}
 }
 
-// TestHeaderDetailPrintKeepsOneTableWithoutRepeatHeaderは、分割しても
+// TestHeaderDetailPrintSplitsWithoutRepeatingTheHeaderは、分割しても
 // repeat-headerを宣言していない場合は2面目に見出しを描かないことを確かめる。
 // 宣言していない繰り返しが見た目に出れば、宣言と描画が食い違う。
-func TestHeaderDetailPrintKeepsOneTableWithoutRepeatHeader(t *testing.T) {
+func TestHeaderDetailPrintSplitsWithoutRepeatingTheHeader(t *testing.T) {
 	html := renderHeaderDetailPrint(t, &application.PageBreak{Rows: 3})
 	tables := strings.Count(html, `<table class="detail"`)
 	theads := strings.Count(html, "<thead>")
 	if tables != 2 || theads != 1 {
 		t.Fatalf("tables=%d theads=%d, want 2 and 1: %s", tables, theads, html)
 	}
-	if strings.Contains(html, "見出し繰返し") {
+	if strings.Contains(html, "各面で見出し繰返し") {
 		t.Fatalf("print html claims a repeated header that was not declared: %s", html)
 	}
 }
@@ -102,7 +102,7 @@ func TestHeaderDetailPrintWithoutPageBreak(t *testing.T) {
 	if tables != 1 || theads != 1 {
 		t.Fatalf("tables=%d theads=%d, want 1 and 1: %s", tables, theads, html)
 	}
-	if strings.Contains(html, "行/ページ") {
+	if strings.Contains(html, "行ごとに面を分ける") {
 		t.Fatalf("print html invents a page-break that was not declared: %s", html)
 	}
 }

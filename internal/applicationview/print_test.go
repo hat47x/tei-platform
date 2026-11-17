@@ -52,7 +52,7 @@ func TestRenderHeaderDetailPrintHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"@page", "明細", "<thead>", "数量", "集計", "3行/ページ", "format: tei.print/v0"} {
+	for _, want := range []string{"@page", "明細", "<thead>", "数量", "集計", "3行ごとに面を分ける", "format: tei.print/v0"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("print html does not contain %q: %s", want, html)
 		}
