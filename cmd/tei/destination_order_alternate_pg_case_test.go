@@ -91,6 +91,16 @@ func checkDestinationAlternateModel(t *testing.T, db *sql.DB, binary, dsn string
 			return err
 		}
 		updated := string(raw)
+		// Only rewrite sources that belong to this second model. Broad
+		// replacements such as "quantity" must not touch unrelated Rules.
+		if !strings.Contains(updated, "sales.order_line") &&
+			!strings.Contains(updated, "sales.order.lines") &&
+			!strings.Contains(updated, "sales_core.order_line") &&
+			!strings.Contains(updated, "public.order_lines") &&
+			!strings.Contains(updated, "data OrderLine") &&
+			!strings.Contains(updated, "order_entry.order_lines") {
+			return nil
+		}
 		for i, pair := range model.Replacements {
 			count := strings.Count(updated, pair[0])
 			seen[i] += count
