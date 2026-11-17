@@ -213,6 +213,7 @@
 | [`DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md`](DOCUMENT_DRAFT_CITATION_AND_OCCURRENCE_ID_2026-11.md) | Draft 引用の解決（`recorded-not-resolved` のまま）と Occurrence ID の永続性（snapshot-local のまま）の代行決定と根拠・撤回条件 |
 | [`TEI_MD_READ_SIDE_DESIGN_2026-11.md`](TEI_MD_READ_SIDE_DESIGN_2026-11.md) | SHO 保存物（`*.tei.md`）の TEI 側読み取り設計。読み取り側が答えるべき4つ（R-01〜04）・Parser完了後も変えない境界・Parser 入出力契約。実装は Parser（#3346）完了後（設計のみ） |
 | [`TEI_MD_RULE_READER_AND_CORE_STRUCTURE_DECISION_2026-11.md`](TEI_MD_RULE_READER_AND_CORE_STRUCTURE_DECISION_2026-11.md) | `*.tei.md`の`rule`を製品Loadで読む経路の設計判断。言語の選択、読む領域、位置の得方、既存Validationへの変換と、その代替案・見直す条件。Role・型・Operator・Contractの区別、ほかの分野で足りない能力、反証の結果、引継ぎ（提案。実装はmain統合済み） |
+| [`RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md`](RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md) | 規則を「宣言したOperator一つを名前付きの入力へ当てたもの」と定め、規則の種別を増やす進め方を終える判断。Operatorの署名、評価の入口の一本化、全件かどうかの束縛への宣言、暦日、例の表、式の入れ子・組織・移行候補の方針と、受入れ条件（決定。実装は未着手） |
 | [`AI_GENERATOR_AUTHORING_STANDARD_2026-11.md`](AI_GENERATOR_AUTHORING_STANDARD_2026-11.md) | 生成AIがコードジェネレータを作るときの標準方式の設計案（未採用）。Transform Source・外部Generator・Generator Definitionの3方式の比較、共通の最小契約、停止条件、決定性と生成AI過程の分離、メタ生成の境界、検証手順。最小実証は[`tools/reference-generator-selection/`](../../tools/reference-generator-selection/README.md)の`validation`契約（[#4553](https://github.com/hat47x/tei-platform/issues/4553)） |
 
 ## 関連する参照事例と評価
