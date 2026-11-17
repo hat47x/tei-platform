@@ -252,4 +252,92 @@ FROM changed ORDER BY line_number, order_line_id`
 			t.Fatalf("the writable control did not roll back: before=%s after=%s err=%v", before, after, err)
 		}
 	})
+
+
+	// A Contract Query can return fewer than the rows a rule needs. The
+	// reader must not infer relation completeness from a successful SELECT,
+	// whether that SELECT returns unique-looking rows or no rows at all.
+	// The same observed duplicate, however, is enough to refute uniqueness.
+	for _, tc := range []struct {
+		name       string
+		filter     string
+		wantIDs    []string
+		wantAnswer string
+	}{
+		{
+			name:       "a filter hides the second duplicate",
+			filter:     " AND order_line_id <> 3",
+			wantIDs:    []string{"1", "2"},
+			wantAnswer: "undecided",
+		},
+		{
+			name:       "a filter keeps a witnessed duplicate",
+			filter:     " AND order_line_id IN (2, 3)",
+			wantIDs:    []string{"2", "3"},
+			wantAnswer: "not-satisfied",
+		},
+		{
+			name:       "an empty result is not proof of uniqueness",
+			filter:     " AND 1 = 0",
+			wantIDs:    []string{},
+			wantAnswer: "undecided",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+			sourcePath := filepath.Join(root, "databases", "sales-core", "query-realizations", "order-line-find-by-order.sql")
+			source, err := os.ReadFile(sourcePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			const predicate = "WHERE order_id = :order_id"
+			if strings.Count(string(source), predicate) != 1 {
+				t.Fatalf("the reference Query's parent predicate changed: %s", source)
+			}
+			limited := strings.Replace(string(source), predicate, predicate+tc.filter, 1)
+			if err := os.WriteFile(sourcePath, []byte(limited), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got := runCLIProcessWithStreams(t, binary,
+				"view", "-workspace", root, "-application", "order_entry",
+				"-pattern", "order_entry.order_lines", "-environment", "development",
+				"-input", "order_id=1001", "-format", "json",
+			)
+			if got.code != 0 || strings.Contains(got.stdout+got.stderr, dsn) {
+				t.Fatalf("narrowed Query failed or exposed the DSN: exit=%d stdout=%s stderr=%s", got.code, got.stdout, got.stderr)
+			}
+			var report struct {
+				OK     bool `json:"ok"`
+				Result struct {
+					Coverage string `json:"coverage"`
+					Rows     []struct {
+						OrderLineID string `json:"orderLineId"`
+					} `json:"rows"`
+					PerLine           map[string]map[string]string `json:"perLine"`
+					PerOrder          map[string]string            `json:"perOrder"`
+					PerOrderUndecided map[string]string            `json:"perOrderUndecided"`
+				} `json:"result"`
+			}
+			if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
+				t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
+			}
+			observedIDs := make([]string, 0, len(report.Result.Rows))
+			for _, row := range report.Result.Rows {
+				observedIDs = append(observedIDs, row.OrderLineID)
+			}
+			if !report.OK || report.Result.Coverage != "partial" ||
+				!reflect.DeepEqual(observedIDs, tc.wantIDs) || len(report.Result.PerLine) != len(tc.wantIDs) {
+				t.Fatalf("Query returned the wrong observed range: ok=%v coverage=%s IDs=%v perLine=%v, want IDs=%v",
+					report.OK, report.Result.Coverage, observedIDs, report.Result.PerLine, tc.wantIDs)
+			}
+			const uniqueness = "sales.order.lines.line_number_unique"
+			answer := report.Result.PerOrder[uniqueness]
+			reason := report.Result.PerOrderUndecided[uniqueness]
+			if answer != tc.wantAnswer || (answer == "undecided" && !strings.Contains(reason, "relation-partially-read")) ||
+				(answer == "not-satisfied" && reason != "") {
+				t.Fatalf("the filtered Query changed uniqueness improperly: answer=%q reason=%q, want %q", answer, reason, tc.wantAnswer)
+			}
+		})
+	}
 }
