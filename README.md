@@ -24,7 +24,8 @@ TEIでは、案件固有のデータモデルを含む分野固有の知識（�
 - [現在の実装状況](docs/status.md)
 - [設計原則](product/principles/TEI_PRODUCT_PRINCIPLES.md)
 - [製品要求](requirements/TEI_PRODUCT_REQUIREMENTS.md)
-- [開発全体の計画](plan/MASTER_PLAN.md)
+- [いま進めること](plan/NOW.md)
+- [開発全体の計画（経緯の記録）](plan/MASTER_PLAN.md)
 
 ## ソース構成と開発
 
