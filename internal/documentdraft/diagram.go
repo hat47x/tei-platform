@@ -362,11 +362,7 @@ func diagramCRUDs(model threeelement.ThreeElementModel) []DiagramCRUD {
 	for _, row := range table {
 		byPair[[2]string{row.FunctionID, row.DataID}] = row
 	}
-	declared := map[[2]string]bool{}
-	for _, crud := range model.CRUDDefinitions {
-		declared[[2]string{crud.FunctionID, crud.DataID}] = true
-	}
-	cruds := make([]DiagramCRUD, 0, len(table))
+	cruds := make([]DiagramCRUD, 0, len(model.CRUDDefinitions))
 	for _, crud := range model.CRUDDefinitions {
 		cell := DiagramCRUD{
 			ID: crud.ID, FunctionID: crud.FunctionID, DataID: crud.DataID,
@@ -378,40 +374,8 @@ func diagramCRUDs(model threeelement.ThreeElementModel) []DiagramCRUD {
 		}
 		cruds = append(cruds, cell)
 	}
-	// A pair declared only in Function.Operations has no CRUDDefinition, but a
-	// conflict on it still belongs in the diagram: leaving it out would hide the
-	// contradiction behind an absent row.
-	for _, row := range table {
-		key := [2]string{row.FunctionID, row.DataID}
-		if declared[key] || !row.ConflictingDeclarations {
-			continue
-		}
-		cruds = append(cruds, DiagramCRUD{
-			ID: row.FunctionID + "/" + row.DataID, FunctionID: row.FunctionID,
-			DataID: row.DataID, Operations: crudOperationsFromTable(row),
-			DerivedOperations: row.DerivedOperations, ConflictingDeclarations: true,
-		})
-	}
 	sort.SliceStable(cruds, func(i, j int) bool { return cruds[i].ID < cruds[j].ID })
 	return cruds
-}
-
-// crudOperationsFromTable names the projected letters in the fixed CRUD order.
-func crudOperationsFromTable(row threeelement.CRUDTable) string {
-	var letters []string
-	if row.Create {
-		letters = append(letters, "C")
-	}
-	if row.Read {
-		letters = append(letters, "R")
-	}
-	if row.Update {
-		letters = append(letters, "U")
-	}
-	if row.Delete {
-		letters = append(letters, "D")
-	}
-	return strings.Join(letters, "")
 }
 
 // crudOperations names the declared letters in a fixed order, so the same

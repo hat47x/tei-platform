@@ -192,10 +192,11 @@ func TestThreeElementDiagramComputesDiagnosticsInsteadOfEchoingThem(t *testing.T
 	}
 }
 
-// A pair declared only through Function.Operations has no CRUDDefinition. If it
-// opposes a declaration, the diagram must still name the contradiction rather
-// than hiding it behind an absent row.
-func TestThreeElementDiagramReportsConflictWithoutADeclaredRow(t *testing.T) {
+// The diagram lists declared CRUD mappings. A pair that exists only through
+// Function.Operations is not a declaration and must not be invented as a cell,
+// but a contradiction on a declared pair must still be made visible. This pins
+// both halves: no phantom cell, and no lost finding.
+func TestThreeElementDiagramShowsOnlyDeclaredCellsButKeepsTheFinding(t *testing.T) {
 	path := writeDiagramModel(t, "derived-only.json", map[string]any{
 		"modelId": "derived-only-model",
 		"name":    "Derived only model",
@@ -204,18 +205,57 @@ func TestThreeElementDiagramReportsConflictWithoutADeclaredRow(t *testing.T) {
 			{"id": "invoice", "name": "Invoice"},
 		},
 		"functionElements": []map[string]any{
-			// Set order: contradicts the declaration below.
+			// submit/order: the declaration below opposes this intent.
 			{"id": "submit", "name": "Submit",
 				"operations": []map[string]any{{"dataId": "order", "operations": "U"}}},
-			// Set invoice: declared only through the CRUD definition, no conflict.
-			{"id": "bill", "name": "Bill"},
+			// bill/invoice: derived only, never declared as a CRUD mapping.
+			{"id": "bill", "name": "Bill",
+				"operations": []map[string]any{{"dataId": "invoice", "operations": "R"}}},
 		},
 		"businessElements": []map[string]any{},
 		"crudDefinitions": []map[string]any{
 			{"id": "order-declared", "functionId": "submit", "dataId": "order",
 				"delete": true, "source": "declared"},
-			{"id": "invoice-declared", "functionId": "bill", "dataId": "invoice",
-				"read": true, "source": "declared"},
+		},
+	})
+	draft, err := Build(Request{DocumentKind: DocumentKindThreeElementDiagram, ModelPath: path})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	diagram := draft.Occurrences[0].Content.Diagram
+	// Exactly one declared cell: bill/invoice must not appear.
+	if len(diagram.CRUDs) != 1 || diagram.CRUDs[0].ID != "order-declared" {
+		t.Fatalf("cruds=%+v want only the declared cell order-declared", diagram.CRUDs)
+	}
+	if !diagram.CRUDs[0].ConflictingDeclarations {
+		t.Fatalf("the opposing pair was not flagged: %+v", diagram.CRUDs[0])
+	}
+	if diagram.CRUDs[0].DerivedOperations != "U" {
+		t.Fatalf("derivedOperations=%q want U", diagram.CRUDs[0].DerivedOperations)
+	}
+	if len(diagram.OpposingCRUDPairs) != 1 || diagram.OpposingCRUDPairs[0] != "submit/order" {
+		t.Fatalf("opposingCrudPairs=%v want [submit/order]", diagram.OpposingCRUDPairs)
+	}
+	if diagram.CRUDConflictStatus != "conflicts-require-review" {
+		t.Fatalf("crudConflictStatus=%q want conflicts-require-review", diagram.CRUDConflictStatus)
+	}
+}
+
+// Two contradictory explicit declarations for one pair are a finding too. Both
+// source records are kept as separate cells, and the contradiction reaches the
+// status even though it is not a structural diagnostic.
+func TestThreeElementDiagramFlagsTwoContradictoryDeclarations(t *testing.T) {
+	path := writeDiagramModel(t, "two-defs.json", map[string]any{
+		"modelId":          "two-defs-model",
+		"name":             "Two definitions model",
+		"dataElements":     []map[string]any{{"id": "order", "name": "Order"}},
+		"functionElements": []map[string]any{{"id": "submit", "name": "Submit"}},
+		"businessElements": []map[string]any{},
+		"crudDefinitions": []map[string]any{
+			{"id": "first", "functionId": "submit", "dataId": "order",
+				"create": true, "source": "declared"},
+			{"id": "second", "functionId": "submit", "dataId": "order",
+				"delete": true, "source": "declared"},
 		},
 	})
 	draft, err := Build(Request{DocumentKind: DocumentKindThreeElementDiagram, ModelPath: path})
@@ -224,19 +264,16 @@ func TestThreeElementDiagramReportsConflictWithoutADeclaredRow(t *testing.T) {
 	}
 	diagram := draft.Occurrences[0].Content.Diagram
 	if len(diagram.CRUDs) != 2 {
-		t.Fatalf("cruds=%+v want the two declared cells", diagram.CRUDs)
+		t.Fatalf("cruds=%+v want both source records kept", diagram.CRUDs)
 	}
-	flagged := map[string]bool{}
 	for _, cell := range diagram.CRUDs {
-		flagged[cell.ID] = cell.ConflictingDeclarations
+		if !cell.ConflictingDeclarations {
+			t.Fatalf("cell %s lost the contradiction mark: %+v", cell.ID, cell)
+		}
 	}
-	if !flagged["order-declared"] {
-		t.Fatalf("the opposing pair was not flagged: %+v", diagram.CRUDs)
-	}
-	if flagged["invoice-declared"] {
-		t.Fatalf("a distinct pair was flagged: %+v", diagram.CRUDs)
-	}
-	if len(diagram.OpposingCRUDPairs) != 1 || diagram.OpposingCRUDPairs[0] != "submit/order" {
-		t.Fatalf("opposingCrudPairs=%v want [submit/order]", diagram.OpposingCRUDPairs)
+	// The contradiction is not a structural diagnostic, so a reader that only
+	// inspects diagnostics would see none. The status must carry it.
+	if diagram.CRUDConflictStatus != "conflicts-require-review" {
+		t.Fatalf("crudConflictStatus=%q want conflicts-require-review", diagram.CRUDConflictStatus)
 	}
 }
