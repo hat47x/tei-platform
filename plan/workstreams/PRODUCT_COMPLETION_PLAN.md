@@ -933,6 +933,10 @@ A〜Dは新たな検査Engineの階層ではなく、既存Parser・Validator・
 
 [REA一Function縦断設計§35](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)に基づき、外部Reverse Engineer Anythingを製品の実行基盤・必須解析入口とはしない。主な移行対象はソース・SQL/DB Schema・業務モデル・画面／帳票・設定・API・実入出力であり、これらを既存Reader／Source Index／三要素／Process／標準GraphへEvidence付きで投影して、Owner Review→生成Go／実Provider→独立Consumerの順に検証する。REAのNode/RelationやPartial/Unknown、元byte・版・出典の保持方法は共通規律として採用する一方、Ghidra/Hopper/IDA等の深いバイナリ解析は、ソースがなく代替できない証拠が必要な例外に限る。既存REAの互換回帰を維持し、解析器の機能数拡大をP0とはしない。通常CLI実PG Function ReadとStudio Stage1→Stage2 Windowsは最優先のままとする。
 
+### 外部REAなしでも成立する一Function移行の製品検収（2026-11-17）
+
+[REA縦断設計§36](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)のM-01〜M-08を移行ベンチマークの受入票とする。出典二種類の独立Source Byte/Range/Revision照合、Qualified Data/Function候補の三要素図面化、旧Functionの実Read/WriteとOwner判断を分けてから、生成Go・通常CLI実Provider Read・旧新の入力/結果/Effect比較・Windows Studio独立Consumerを別Gateで検証する。REAのGraphだけでは正式な業務意味を受理せず、REAを使わずに同等の証拠が揃えば成功と数える。M-01〜04の設計復元とM-05〜07の製品P0を混同せず、M-08の外部Analyzer採否は必要性と維持費で判断する。
+
 ### REAの一Relation質問と現在Sourceへの対応を分けて検証する（2026-11-17）
 
 [REA一Function縦断設計§34](../design/REA_ONE_FUNCTION_EVIDENCE_TO_DESIGN_VERTICAL_SLICE_2026-11.md)をD0の再検収条件へ反映する。#5180はmain統合済みだが当時の専用`relation-review`は整形差分で止まっており、機能配置とGoテスト完了は別に記録する。固定HEADの局所CIで整形・正負試験を確認し、同じProducer Edge IDが別Attempt／別Source Digestで再出現してもEvidence ID／候補集合Fingerprint／Source Revisionを分けるRQ-09を加える。続くR1-Aは既存Source Indexによる独立Byte/Range確認、Owner指定の正式Data/Function候補、入力・出力・Effectの実観測を別票で扱う。main #5212のSource位置表示、#5179の状態付きData/Rule、#5156のField投影、#5190のCRUD矛盾拒否を再利用し、見かけのGraph関係やNodeラベルを実Function Readや業務REA Eventに変換しない。通常CLI実PG ReadとStudio Stage1→Stage2のP0は不変。

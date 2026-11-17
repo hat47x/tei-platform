@@ -708,3 +708,22 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 **最小ベンチマーク（提案）**：一つの既存業務Functionを対象に、ソース／SQL／画面／資料のうち実在する二種類の出典からData・処理・外部依存の候補を生成し、①同名別Identityと方向、②欠けたSource・部分取得、③設計と実動作の差、④Owner受理前後の資格、⑤生成Goと通常CLI実Readの結果を、既存Expectedで検査する。外部REAを使わず成立した場合はそのまま成功と数え、REA利用を必須の合格条件にしない。逆にソースがなくREAしか関係を観測できない案件が現れた場合だけ、既存Adapterの候補として比較する。
 
 外部逆解析REAと、業務意味としての`Resource–Event–Agent`（経済REA）は引き続き別概念であり、後者のモデル化・組織／責任・状態遷移の受入を外部解析Toolの選定に従属させない。
+
+## 36. 外部REAに依存しない一Function移行の受入票（2026-11-17）
+
+§35の方式判断を、外部Analyzerの採否に左右されない**一つの移行試行**として検証する。対象は旧業務Function一件と、そのFunctionが扱うData一件。最初に旧ソース／SQL／設定／設計文書から実在する二種類の出典を選び、出典が一種類しかない場合はその不足を記録する。三要素分析法は復元された設計を説明するために用い、外部解析GraphのNodeやRelationを正式なData／Function／Businessへ直接昇格させない。
+
+| Gate | 実行する問い | 合格の証拠と停止条件 |
+| --- | --- | --- |
+| M-01 出典 | 旧FunctionとDataの候補はどの原本に存在するか | Source Indexで原本Byte、Range、Revision、取得状態、Source位置を独立確認。欠損／Partial／権限不足なら未確認とする |
+| M-02 同一性 | 同名・並行・逆向きの関係を混同していないか | Qualified ID、外部Occurrence ID、方向、多重度、Source Revisionを別々に表示。IDだけの一致、A→B→Aの見かけの一致は受理しない |
+| M-03 三要素 | Data／Function／Businessのどこまで説明できるか | 既存の三要素図・インスタンス表記でDataと関係候補をReview。Functionの入力／出力、Businessの責任・状態は原典不足ならUnknownを維持 |
+| M-04 業務意味 | 旧FunctionはDataを読む／更新するか | Sourceの静的依存、実SQL、旧環境の観測、Owner判断を別票に記録。単なる`imports`／`loads`をRead／Writeの実績としない |
+| M-05 生成・実行 | 受理された設計がTEIで実際に使われたか | 正式Builder／生成Go／通常`tei` CLIの実Provider Callを、独立Expectedで検証。delegateだけのGo実装や合成Fixtureのみでは不合格 |
+| M-06 旧新比較 | 段階移行後も入力・結果・副作用が一致するか | NULL／欠損、複合キー、取得範囲、順序、権限、トランザクションとEffectを区別して比較。未観測の項目は「同等」としない |
+| M-07 利用経路 | HeadlessとStudioで同じ受理済み設計を確認できるか | CLIとWindows Studio Stage1→Stage2の独立Consumerを別々に検証。StudioのSource位置表示をファイル閲覧権限とみなさない |
+| M-08 外部REAの採否 | REAを使うことで欠けた証拠が実際に補われるか | 既存Readerで十分ならREAなしで合格。追加Evidenceが必要ならTool版、費用、再現性、代替手段、Provider Unknownを比較し、利用は任意とする |
+
+**最初の対象選定**：X-TEAの既存Function移行例を優先する。ただし`sales.order.submit`等の既存合成経路を正式なDB commit／実Effectの証明へ読み替えない。旧システムのSource位置と業務Functionの対応が未特定ならM-01〜M-04で停止し、先に出典の照合を進める。REAの外部Graphを補助に使う場合も、実際に受け取った版のRaw Evidenceと型付きReceiptだけを証拠とし、テスト用Fixtureを実ツールの実績に数えない。
+
+**計画上の扱い**：M-01〜M-04は設計復元・移行準備の局所受入、M-05〜M-07は製品P0と独立Expectedの実行受入、M-08は任意Providerの方式選定である。各Gateの結果は`passed / blocked / unknown / not-run`で個別に記録し、一つの成功を後続Gateの成功へ自動昇格させない。業務REAのResource／Event／Agentは必要な業務領域でのみ専門Roleとして投影する。
