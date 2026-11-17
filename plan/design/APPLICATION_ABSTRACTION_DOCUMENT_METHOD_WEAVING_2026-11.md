@@ -186,3 +186,62 @@ Markdownの原文順、列揃え、注釈、フェンス、空白はAuthoring So
 **実装順は二経路に分ける。** 製品CLIで確認できるDW-11／12／14は、既存MarkdownのReader・Inspector・Source Indexへ一因子の負例を追加する。DW-13は前節の正値Ruleの汎用評価・生成Go比較から始め、Target変更は後続へ残す。DW-15／16は既存のGraph・Plugin選択のOwnerが持つ試験に渡す。すべてを満たす新しい横断Runnerや共通Gateは作らない。
 
 文書・業務・Graphの異質な三題材を比較して、`Shape`、`Law`、`Binding`が有効な問いとして保てるか確かめる。結果が揃わなければ、標準データ構造を増やす前に**どの意味を失ったために合成できなかったか**を説明できる状態へ戻す。現時点の受入済み機能を広げる根拠は、設計書の増加ではなく、反例を検出できる実装と独立Expectedである。
+
+## 11. 抽象経路をテストの契約として扱う（2026-11-17追補）
+
+アプリケーション抽象は、設計や実装の再利用だけでなく、**特定の条件で通るべき意味上の経路を通り、その間に保つべき状態が保持されたか**を検査する際にも役立つ。この用途では、生成されたGoの関数名、テストメソッド名、Nodeの表示名を検査対象の識別子にしない。
+
+先行する[因果的な実行経路の検収§48〜61](PROCESS_EXECUTION_CAUSAL_PROJECTIONS_2026-11.md)では、静的な到達可能性、実際の通過、不変条件、Consumerの受領を分け、さらにRead ID・値の状態・Coverage・Scopeの不足を明らかにした。本書はその設計を複製するのではなく、**文書から選んだ意味定義を、複数の実現方式へ移した後も同じテスト義務で検査できるか**に対象を絞る。
+
+### 11.1 一つのテストに必要な四つの識別
+
+| 対象 | 保持するもの | 同一と推測しないもの |
+| --- | --- | --- |
+| **テストの義務** | 保存・受理されたDriver ScenarioのTest ID、独立Expected、対象Qualified Subjectと適用条件 | 言語別のテストメソッド名、実行順で振られた通番 |
+| **意味上の通過点** | 必須Read／Guard／Rule／Operation、各点で保つ値の状態・粒度・Identity・Scope | Goの関数境界、UIの線、同じ名前の別Relation |
+| **一回の観測** | Source・選択実装・Attempt、実ReadのID・状態・Coverage、Result、必要なEffect／Receipt | 別AttemptのRead、Fixtureの値、選択済みだが未呼出しのProvider |
+| **実装上の位置** | 生成関数名、Goのテスト名、Artifact内の位置など、対象へ辿るためのLocator | Test ID、受理済みMeaning、現在のBuild／実行資格 |
+
+実装がインライン化・関数分割・改名されても、対象Meaningと観測すべき条件が変わらない限り、テストの義務は変更しない。一方、同じCase IDを表示できても、実際に読んだ属性や状態が違えば不合格とする。**識別子の一致は、経路の正しさを証明しない。**
+
+抽象経路を検査する際は、すべての内部処理を一列に固定せず、必要な通過点と因果的な前後関係、途中で保持すべき条件、禁止された作用を指定する。独立したpureな処理の順序が変わることは許し、認可前のCommitや、確定前の通知のような意味を持つ順序の破綻は拒否する。ただし、禁止作用が**起きなかった**と主張するには、その作用を観測できる範囲が閉じていることを別途確かめる。
+
+### 11.2 正値Ruleの実Binaryで「結果だけでは不足」を検査する
+
+現行mainの[実Go生成と汎用評価の対照](../../internal/operations/inspect_markdown_data_table_rule_binary_parity_test.go)（#5118／#5132）には、同じRuleから生成した`EvaluateSelected`、名前だけ変えた`EvaluateRenamed`、参照先を取り違えた`EvaluateMisbound`の三つを、別Processの実Binaryで検査する足場がある。
+
+今回の最小差分では、この試験に**試験内のCase ID**と**観測したRead State**を加える。六入力（正値、0、負値、負の0、NULL、未取得）について、三実装それぞれで次の内容を突き合わせる。
+
+- Rule IDと入力条件からなるCase ID。Go関数名を変えても同じIDを返すこと。
+- 独立に固定したResult／Errorと、実ReadのQualified Attribute ID・回数。
+- 読取時に観測した`present`／`null`／`not-fetched`。NULLと未取得が従来のP/G入口ではともにエラーになっても、**読取状態そのものを同一視しない**こと。
+
+適格な関数名変更は、出力値とRead ID・状態を保つ。一方、誤った属性を読んで同じ値・同じ状態・同じCase IDを返しても、その実装は不適格である。これを独立Expectedと実Binaryの記録で検査する。
+
+今回のCase IDは既存Go回帰内の**比較用識別子**であり、正式なDriver Scenario保存形式や一般Test ID生成器を実装したものではない。Read Stateも試験用Sourceが実際に受けた読取を記録したもので、実DBの全件性・Snapshot・現在Grantの証拠ではない。既存の`Evaluate`／生成GoがNULL・未取得についてエラーを返す範囲と、状態付き`Decide`が理由付き`undecided`を返す範囲も、**同じ実装資格にまとめない**。
+
+### 11.3 一つの結果では判断できないケースを、異なるDomainへ渡す
+
+| 検収候補 | 入力条件・一因子の変更 | 必要な結論とOwner |
+| --- | --- | --- |
+| **DW-17：関数名の変更** | 同じRule／入力／Readのまま生成Goの関数名だけ変更 | Case IDは不変、実Artifact byteの再資格化は別。#1121／#4544／#2514 |
+| **DW-18：値の状態** | NULLと未取得を入替。両方の最終Errorは一致 | Read Stateの違いを保持。現在のLegacy P/G結果を状態付き`Decide`の同値証明としない。#988／#1180 |
+| **DW-19：誤った参照先** | 読取先だけ別のAttributeへ変更し、Fixtureから同じ数値を返す | 同じCase ID・結果・回数でもRead ID違いで不合格。#2621／#2514 |
+| **DW-20：範囲を変えた関係判断** | 同じGroupの期間重複Ruleで、確定した重複Witnessは残し、Coverageだけcomplete→partialへ | 観測済み重複の不成立は保持。ただし重複を観測しないpartialから全件正常を推測しない。#4198／#2514 |
+| **DW-21：実行許可と作用** | 意味上の経路とResultを固定し、Providerの選択／Grant・Commit確認を変更 | Readerや実Goの局所成功から現在の実Call・EffectやConsumer受領へ飛躍しない。#951／#1174／#4495 |
+
+DW-17〜19は今回のGo試験で扱う限定的な範囲、DW-20は現行`validationeval.Decide`の期間・関係の既存Fixtureを再利用する後続の横断検収、DW-21は実Provider／Effect／Consumerの別実験へ引き渡す候補とする。**すべてを追加した製品テストが合格した、という意味ではない。**
+
+## 12. 文書とテストを接続する順序
+
+文書には、定義表、説明、実例、期待値を近接して置ける。現行mainの#5143は印のある記録例と期待結果を`CheckRuleExamples`で照合できるようにし、#5146／#5148では日付の前後や関係行の期間重複へRuleの対象を広げた。これを、説明表から任意のTest IDや業務Meaningを自動受理できることと取り違えない。
+
+次の順序は、新しいTest RunnerやScenario正本を増やさずに実施する。
+
+1. **選ぶ**：明示されたLanguage ReaderとSource Indexから定義・例・期待位置を識別し、曖昧な表を業務Ruleへ昇格させない。
+2. **検査義務を確定する**：既存Driver ScenarioにStable Test IDと独立Expectedを置き、対象Qualified Subject、適用条件、必須通過点、不変条件を固定する。文書の例を候補として使う場合も、実装と独立に受理する。
+3. **複数方式で実行する**：まず同じRuleをP（直接評価）とG（Go生成）で試し、実Read ID・状態・ResultとTarget別の実装位置を別欄にする。D（外部Provider委譲）は実Call／Scope／Grantの観測があるときに限る。
+4. **不足を残して提示する**：未観測の中間状態・Provider／DB全件性・Effect不在は`not-proven`として残す。確定違反のWitnessがあれば、その部分だけ不成立と判定する。
+5. **変更に耐えるか確かめる**：関数名・図の配置・説明文の変更と、Read ID・RuleのLaw・実装選択・Source byteの変更で、必要な再資格化が異なることを確認する。
+
+実装優先度は既存のP0（通常CLIの実Provider／独立Consumer、正式Source→Builder、Studio Stage1→Stage2実Windows）を変更しない。設計が検証すべき対象を増やすほど、**追加するのは新しい共通実行機構ではなく、既存Scenarioの一因子反例と正しい観測範囲**である。
