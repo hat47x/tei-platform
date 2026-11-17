@@ -71,6 +71,29 @@ $ tei knowledge-context -workspace W -subject-kind semantic-capability -subject-
 | `./internal/knowledgecontext` | ok |
 | `./cmd/tei`（knowledge-context 系） | ok |
 
+### 6.1 golden の基準も更新した（CI で検出）
+
+CI の `repository-health` が `TestGoldenOutputUnchangedFromBaseline` で落ちた。
+**原因を確認したところ、私の追加そのものだった**（無関係な赤ではなかった）。
+
+`tools/reference-cli-trace-benchmark` は trace 出力の digest を `testdata/golden.json`
+に固定している。`authorityLimits` を1件足したので、**trace を含む10キーが変わった**。
+
+**対照実験で切り分けた**: 追加した1文だけを外すと golden は通る。
+→ **差分は私の追加に完全に由来する。**
+
+**更新後に確認したこと:**
+
+| 確認 | 結果 |
+| --- | --- |
+| キー数 | 14 → 14（増減なし） |
+| 変化したキー | trace 系10件のみ |
+| `sourceIndex` の2キー | **不変** |
+| 更新後の golden | PASS |
+
+**`sourceIndex` が動いていないことが重要**である。動いていれば、私は意図しない副作用を
+入れていたことになる。**動いていないので、影響は trace/knowledge-context の応答文だけ**である。
+
 ## 7. 残したもの・残るもの
 
 **固定文のリストは5ファイルに複製がある**（`context.go`・`context_authority_limits_test.go`・`disclosure_test.go`・`knowledge_context_test.go`・`tools/reference-semantic-extension-catalog/subject_context_test.go`）。**単一の出所にすべきかは別の設計判断**なので、本ラウンドでは触っていない。

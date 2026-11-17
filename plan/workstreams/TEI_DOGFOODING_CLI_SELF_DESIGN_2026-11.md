@@ -3522,6 +3522,14 @@ capability equip.loan_register {
 
 **M2 が重要**である。追加だけを検査すると「既存を消して追加した」場合に通ってしまう。
 
+### golden の基準も更新した（CI で検出）
+
+CI の `repository-health` が `TestGoldenOutputUnchangedFromBaseline` で落ちた。**原因を確認したところ私の追加そのものだった**（無関係な赤ではなかった）。`tools/reference-cli-trace-benchmark` が trace 出力の digest を固定しており、`authorityLimits` を1件足したので trace を含む**10キー**が変わった。
+
+**対照実験**: 追加した1文だけを外すと golden は通る。**差分は私の追加に完全に由来する。**
+
+**更新後に確認**: キー数 14→14（増減なし）、変化は trace 系10件のみ、**`sourceIndex` の2キーは不変**。これは意図した影響範囲（応答文だけ）と一致する。
+
 ### 残したもの
 
 **固定文のリストは5ファイルに複製がある。** 単一の出所にすべきかは別の設計判断なので、本ラウンドでは触っていない。
