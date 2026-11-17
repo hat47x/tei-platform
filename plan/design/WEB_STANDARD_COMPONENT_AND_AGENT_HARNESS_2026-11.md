@@ -470,3 +470,34 @@ PR #5303の対象HEADでは、Node24の`npm test`／`typecheck`／`build`と埋�
 今回のPRで変更していない`cmd/tei-studio/embedded_generated_part_test.go`、`assets/workbench/main.js`、`inspection-reader.generated.ts`、`main.ts`、`build.mjs`は、分岐元mainとGit blobがすべて一致している。したがってこの不合格を今回の純粋Presenterの変更に帰属させない。ただし、独立した製品障害として残し、**このチェックが失敗している限り生成Readerの埋込／実Consumerの資格は未受理**とする。
 
 WEB-P1a-2では、契約Source→既存生成器→`inspection-reader.generated.ts`→実Workbench import／呼出し→正規esbuild→埋込JSを同一HEADで追う。生成Readerが**一つだけ**含まれ、契約Digestが現在のSourceと一致し、手書き`readInspection`との二重定義がなく、実利用記録を保持することを既存Goテストで確認する。生成物へ固定文字列だけを追記したり、旧Pinの指紋を置換したり、Goテストを緩めたりして通してはならない。次に通常・生成Workbenchと実WindowsのConsumerへ引き渡す。これは生成部品の組込み資格であり、Providerの実CallやStage1→Stage2セルフビルドの成功とは別である。
+
+## 22. 正規Workbenchを保持したまま新Presenter候補を生成する（2026-11-17、WEB-P1a-2の前段）
+
+### 22.1 歴史的なPinを変更せず、候補を別のSourceとして組み立てる
+
+WEB-P1a-1で新設した `inspector-presentation.ts` をWorkbenchへ導入するとき、単に `main.ts` を編集してから既存の生成Desktop試験を実行すると、過去に受領された `WORKBENCH_NATIVE_CLOSURE` の正確なSource版が変わる。旧Pinの指紋だけを書き換えることは、歴史的に検証した成果を別のソースへ付け替える操作になる。
+
+このため `tools/reference-studio-static-composition/inspector-candidate.mjs` を、**現行Workbenchの正規Sourceを変更しない、候補の導出専用処理**として設けた。入力を一つの固定した現行 `main.ts`、その `presentation.ts` と新 `inspector-presentation.ts` のGit blobに限定する。歴史的Pinが有効であることを既存 `pinnedWorkbenchRevision`／`inspectPinnedDependencies` で確認してから、成功時の検証・表示を、一つの入口である `readInspectorPresentation` に切り替える。Catalog資格とqualified Subjectを検証から表示まで同じ引数で渡す。Catalogの一意性検査、`responses.run("inspection")`、Hostの実Read、エラー処理とFocus／Pinの分離には手を加えない。
+
+導出結果は `reference/tei-studio-workbench/main.inspector-candidate.ts` に新規作成し、すでに同名ファイルがあれば上書きせず失敗させる。入力が変更された場合も、古い改変規則を推測適用しない。候補には元の三つのGit blobと導出後のblobを記録する。ただし、この記録は**Source候補の資格**であって、正式Build Intent、配布Asset、Windows Consumerの証明ではない。
+
+### 22.2 ビルドの可否と配布済み成果物の同一性を別々に検査する
+
+[Workbench埋込Bundle CI](../../.github/workflows/tei-studio-workbench-embed-ci.yml)では、従来どおり `npm ci`・既存試験・型検査・正規 `build.mjs` を実行し、既存 `main.ts` から生成されたJS／HTML／CSS／第三者通知とWails埋込Assetのbyte一致を確認する。これに加え、候補導出の独立試験を実行し、一時生成した `main.inspector-candidate.ts` を再び型検査して、同じesbuildを使いRunnerの一時領域へ**候補のJSだけ**を生成する。
+
+候補Bundleには `inspector-presentation.ts` が実importとして含まれ、呼出しが残ることを確認する。旧埋込JSと同一になってしまう候補は失敗として扱う。生成した候補ファイルは処理終了時に片付け、正規 `main.ts` と `cmd/tei-studio/assets/workbench/main.js` は更新しない。別ビルドの生成結果が通常Workbenchへ暗黙に混ざることを避ける。
+
+ここで得られるのは **「固定した三Source→候補導出→型検査→候補esbuild」** の限定的な検証である。候補のBuildが成功しても、正式なSource Closureの全要素やGenerator資格、Wailsへの埋込、Desktopでの表示、外部APIへの開示、実Windows WebView2受領を合格へ加算しない。
+
+### 22.3 正式接続へ進む際の分岐点
+
+| 次の段階 | 最小の変更 | 独立した終了条件 |
+| --- | --- | --- |
+| **WEB-P1a-2a：候補ビルド** | 固定Sourceから成功時の一体型read-only検証・表示を差し替え、別JSを生成する | 元ファイル／旧Bundle不変、三つのSource指紋が一致しない場合の拒否、現行Catalog資格とResponse laneを維持、候補が実Bundleに含まれる |
+| **WEB-P1a-2b：正規Workbenchへ接続** | 候補の表示契約を正式 `main.ts` に受理し、正規Bundle・Embedと新Source Closureを再生成する。過去の受領版は保存する | 新HEADのJS／HTML／CSS／第三者通知のbyte一致、固定Closureの再資格化、通常Studioと生成Studioで独立に受領を確認 |
+| **WEB-P1b：非同期・編集状態** | main済み#5168の独立Expectedを使い、Focus／Pin／Dirty Buffer・A→B→Aを実DOMまで比較 | 後着応答がEditor／Graphを汚さない。Pinの閲覧結果からHost GrantやMeaning受理を推定しない |
+| **S-LOC／WEB-P2** | main済み#5212のSource位置用Presenterを表示へ接続し、別段でSource Open／公開APIを扱う | 元byteの再読込・Workspace許可・Audience／Disclosure・開示先Consumerはそれぞれ現在資格を再確認 |
+
+この段階分割によって、候補を生成する技術的な可否と製品がその候補を採用する判断を分離できる。主線は引き続き、非Plugin StudioのStage1→Stage2セルフビルド（#2831／#4583）と、通常CLIの実Provider Readから独立Consumerへの受領（#2586／#4495）。Candidate専用Runtime、別Host、UI Registry、第二のSource正本、独立Test Runnerは導入しない。
+
+**既存の生成Inspector Readerは別の停止線である。** 直前の§21.3が記録した`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`の失敗（契約Digestを持つ生成Readerが埋込JSにない問題）は、この候補生成だけでは解決しない。候補の型検査・bundle成功を、生成Readerの実利用や正式Build Intent／Consumer受領へ昇格させない。次のWEB-P1a-2bは既存生成器によるReader組込みと新Presenterの利用をそれぞれ観測し、同一HEADで成立させる。

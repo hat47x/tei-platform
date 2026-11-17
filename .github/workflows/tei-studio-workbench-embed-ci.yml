@@ -50,6 +50,49 @@ jobs:
           npm run typecheck
           npm run build
 
+      - name: Qualify a separate Inspector candidate bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tools/reference-studio-static-composition/inspector-candidate.test.mjs
+          candidate=reference/tei-studio-workbench/main.inspector-candidate.ts
+          trap 'rm -f "$candidate"' EXIT
+          node tools/reference-studio-static-composition/inspector-candidate.mjs
+          (cd reference/tei-studio-workbench && npm run typecheck)
+          # Build only in the runner's temp area. The committed Wails bundle
+          # remains the historically qualified result of main.ts, not this candidate.
+          node --input-type=module <<'NODE'
+          import { createHash } from "node:crypto";
+          import { readFile } from "node:fs/promises";
+          import { createRequire } from "node:module";
+          import { resolve } from "node:path";
+          const dir = resolve("reference/tei-studio-workbench");
+          const { build } = createRequire(resolve(dir, "package.json"))("esbuild");
+          const output = resolve(process.env.RUNNER_TEMP, "tei-p1a2-inspector-candidate.js");
+          const result = await build({
+            absWorkingDir: dir,
+            entryPoints: [resolve(dir, "main.inspector-candidate.ts")],
+            outfile: output, bundle: true, format: "esm", platform: "browser",
+            target: "es2022", nodePaths: [resolve(dir, "node_modules")],
+            metafile: true,
+          });
+          const inputs = Object.keys(result.metafile.inputs);
+          if (!inputs.some(path => path.endsWith("inspector-presentation.ts")))
+            throw Error("INSPECTOR_CANDIDATE_PRESENTER_NOT_BUNDLED");
+          const bytes = await readFile(output);
+          if (!bytes.toString("utf8").includes("presentInspection"))
+            throw Error("INSPECTOR_CANDIDATE_PRESENTATION_NOT_USED");
+          const historical = await readFile(resolve("cmd/tei-studio/assets/workbench/main.js"));
+          if (bytes.equals(historical))
+            throw Error("INSPECTOR_CANDIDATE_INCORRECTLY_EQUATED_WITH_HISTORICAL_ASSET");
+          console.log(JSON.stringify({
+            status: "candidate-bundle-only",
+            blob: createHash("sha256").update(bytes).digest("hex"),
+            target: "es2022",
+            consumerEvidence: "not-run",
+          }));
+          NODE
+
       - name: Compare build output with Wails embedded files
         shell: bash
         run: |
