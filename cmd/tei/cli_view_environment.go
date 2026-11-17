@@ -94,15 +94,28 @@ type destinationRead struct {
 //
 // An undeclared binding yields nil, which is distinct from a declaration that
 // was made and not checked.
-func destinationDeclarationFrom(binding realization.HeaderDetailContractQueryBinding) *destinationDeclaration {
+//
+// A binding that states both "every row of this Relation" and "only some rows"
+// is refused instead of reported. The static validator rejects it
+// (HEADER_DETAIL_BINDING_COVERAGE_CONFLICT), but this read path runs no
+// validator, so refusing here is the only place the contradiction can stop the
+// read. Labelling it and continuing would answer rules against a binding that
+// contradicts itself about the very thing the rule depends on.
+func destinationDeclarationFrom(binding realization.HeaderDetailContractQueryBinding) (*destinationDeclaration, error) {
+	if binding.CoversRelation != "" && binding.CoversSome {
+		return nil, fmt.Errorf(
+			"the header-detail Contract Query binding states both that it returns every row of %s and that it returns only some rows; this read cannot be taken as either",
+			binding.CoversRelation,
+		)
+	}
 	if binding.CoversRelation == "" && !binding.CoversSome {
-		return nil
+		return nil, nil
 	}
 	return &destinationDeclaration{
 		CoversRelation: binding.CoversRelation,
 		CoversSome:     binding.CoversSome,
 		Checked:        false,
-	}
+	}, nil
 }
 
 func destinationDecision(d validationeval.Decision) (answer, reason string) {
@@ -228,6 +241,11 @@ func readEnvironmentRows(
 		return destinationRead{}, err
 	}
 
+	declaration, declarationErr := destinationDeclarationFrom(prepared.Binding)
+	if declarationErr != nil {
+		return destinationRead{}, declarationErr
+	}
+
 	result := destinationRead{
 		Application:   appID,
 		Pattern:       patternID,
@@ -235,10 +253,11 @@ func readEnvironmentRows(
 		Relation:      prepared.Relation.Relation.ID,
 		KeyAttributes: keyAttributes,
 		Coverage:      string(validationeval.CoveragePartial),
-		Declaration:   destinationDeclarationFrom(prepared.Binding),
-		Rows:          make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
-		PerRow:        map[string]map[string]string{},
-		PerRelation:   map[string]string{},
+		Declaration:   declaration,
+
+		Rows:        make([]destinationRow, 0, len(execution.Execution.Result.Rows)),
+		PerRow:      map[string]map[string]string{},
+		PerRelation: map[string]string{},
 	}
 	ids := make([]string, 0, len(execution.Execution.Result.Rows))
 	for _, row := range execution.Execution.Result.Rows {
