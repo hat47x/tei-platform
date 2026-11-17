@@ -1,9 +1,10 @@
 I first read "text 2 lines, json 5 diagnostics" and suspected the two modes
 disagreed. They do not; my grep was wrong.
 
-  grep -E "error|warning"      only matches lines that START with the severity.
-  Subject-less diagnostics      print with severity FIRST? No -- they print with
-                                the CODE in field 2, so `$2` is not the severity.
+  grep -E "error|warning"      matches either word anywhere in a line, not only
+                                at the beginning. It is not a diagnostic counter.
+  Some diagnostic lines        do not contain either literal word in the
+                                rendered text, so this grep omits them.
 
 Reading the raw tab-separated output:
 
