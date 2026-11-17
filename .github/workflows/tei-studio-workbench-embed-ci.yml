@@ -84,19 +84,3 @@ jobs:
           test ! -e cmd/tei-studio/assets/workbench/dependencies.json
 
 
-      # Temporary diagnostics for the current entrypoint's exact canonical JS.
-      - name: Capture canonical build when asset is stale
-        if: failure()
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import base64, hashlib, pathlib
-          p = pathlib.Path("reference/tei-studio-workbench/dist/main.js")
-          if p.exists():
-              data = p.read_bytes()
-              print("TEI_BUILT_JS_SHA256 " + hashlib.sha256(data).hexdigest())
-              encoded = base64.b64encode(data).decode("ascii")
-              for i in range(0, len(encoded), 4000):
-                  print("TEI_BUILT_JS_PART " + encoded[i:i + 4000])
-              print("TEI_BUILT_JS_END")
-          PY
