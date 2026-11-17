@@ -138,6 +138,13 @@ RUNTIME_EXPECTED = (
     "tei/internal/resource",
     "tei/internal/semantic",
     "tei/internal/driver",
+    # The API-only profile answers the same read the browser profile does,
+    # so it links the row reader and the SQL generator those answers need.
+    # Both are runtime coverage the json-api profile already claims, not
+    # presentation; they are listed here rather than in KNOWN_INTRUSION
+    # because they are part of the same read the API must serve.
+    "tei/internal/driver/validationread",
+    "tei/internal/database/sqlgen",
     "tei/internal/driver/queryresult",
     "tei/internal/permission",
     "tei/internal/plugin",
