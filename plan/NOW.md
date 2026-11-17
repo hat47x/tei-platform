@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | 1 | **異なる構造の業務モデルでも同じ読取入口を通す。** 別のData・Relation・実テーブルを使う試験は通った。次は、列構成・主キー・Query入力も異なるモデルを、同じ`tei view`と独立した期待で検証する | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
 | 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
-| 3 | 束縛へ全件の宣言を書き、明細番号の一意に「成立」と答える。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
+| 3 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
 | 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
 | 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
