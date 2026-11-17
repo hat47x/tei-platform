@@ -781,3 +781,37 @@ TEI自己記述側の例示GraphやX-TEAのTask→TaskAction→TaskFunctionIO→
 **実装・試験の順序**：最初にMR-01／02／05／06を一つの原文Rangeで固定し、既存Source Indexの返す実際の資格を観察する。次にMR-03／04を既存`internal/threeelement`のCRUD・相互参照へ接続し、同名別Kindや明示／派生の矛盾を表示する。MR-07は既存`reacandidate`の読取専用Reviewを再利用する。MR-08〜10は旧実行／Provider／Host／Studioの実証を要するので、設計上のExpectedを定義しただけでPASSにしない。
 
 **Ownerへの引継ぎ**：選択した旧原典の実Source Revision、候補のQualified ID、採用対象のFunction–Data関係、未解決のRead／Write／Business責任を一枚のReview Packetで示す。ただしPacketは閲覧用であり、Ownerが受理した正式モデルへの変更や現在の実行権限を自動的に発生させない。実行受入は通常CLI実PG Read #2586、Studio Stage1→Stage2 #2831、独立Expected #1180／#2514に分離する。
+## 40. 解析原本・Receipt・候補の受入境界を、現行mainの実装に合わせて固定する（2026-11-17）
+
+§31〜34のREA実ツール検証と§36〜39の一Function移行Reviewをつなぐ前に、**Fixtureの役割とCLI入口の資格を分離する**。internal/externalanalysis/testdataは配送Protocol・Receiptの合成例、cmd/tei/testdataとinternal/studiohost/testdataのCaptured Evidenceは有向Graphの選択を検査する例である。いずれも実案件の旧Functionや現在の業務Sourceを証明するものではない。
+
+### 40.1 現在のコードで確認した範囲
+
+| 入力・入口 | 現行Sourceで確認できたこと | その結果から言えないこと |
+| --- | --- | --- |
+| internal/externalanalysis/testdata/rea-6.8.0/analysis.json | 829 byteのUTF-8 Receipt向け合成Evidence。manifest.jsonは現在829 byte／対応SHA-256を申告する | 本物の78KB Captured Delivery、Semantic Graph、候補の網羅 |
+| cmd/tei/testdata/rea-6.8.0/analysis.json | UTF-16LE BOM付きのGraph-bearing Captured Delivery。TestREADualEntryCapturedInputAndIdentityBoundariesは原Byteと派生UTF-8を別ファイル・別Digestで扱う | テスト用の原本が旧業務Sourceの最新版であること |
+| internal/studiohost/testdata/rea-6.8.0/analysis.json | Studio HostのRead-only Reader用にCaptured Deliveryを分離済み | Windows Native JSから実際に呼び、受領したこと |
+| tei external-candidates | 同一EvidenceのSemantic Graphから指定Observationと有向Relationを選ぶ | Application GraphのEdge IDや正式Function–Data CRUDとの同一性 |
+| tei three-element rea-intake | DecodeAttemptEvidence → GenerateCandidates → BuildReviewPacketによってApplication Graphの候補を作る現行コードを確認 | Accepted Meaning、実Read/Write Effect、別Consumerの製品成功 |
+
+同じProducer Evidence IDであっても、jsrg_relation_*（Semantic Graph）とjag_edge_*（Application Graph）を対応付け済みとみなさない。Raw ByteをUTF-16LEからUTF-8へ変換した場合は、論理的なEvidence IDが保存されても**Received Digestは別**であり、原本の検証と派生変換を同じAttemptの一つの観測として上書きしない。
+
+過去の障害報告[#5176](https://github.com/hat47x/tei-platform/issues/5176)、[#5248](https://github.com/hat47x/tei-platform/issues/5248)、[#5266](https://github.com/hat47x/tei-platform/issues/5266)は、Receipt専用fixtureとGraph-bearing fixtureの混同、rea-intakeのプレースホルダ化、UTF-16LE前提テストの破損を報告していた。**現行mainの静的readbackでは**、解析原本のテスト専用分離、GenerateCandidates復元、synthetic manifestの829 byte更新を確認できる。ただし、Issueの未完了部分や**同じHEADのrepository-health全体成功**は、この静的照合だけでは確定しない。履歴の失敗を現在の失敗とみなすことも、ソース修正をCI成功とみなすこともしない。
+
+### 40.2 次の独立Expectedと実装単位
+
+| Case | 実行する検査 | 拒否・保留すべき誤認 |
+| --- | --- | --- |
+| **RF-01** | Synthetic Receiptのmanifest.jsonにあるbyte数・SHA-256と、実ファイルのRaw byteを照合する | Digestが合わないのに「同じEvidence IDだから正常」と判定 |
+| **RF-02** | Captured 78KB Rawと派生UTF-8のReceived Digestを別に採り、二入口が参照するGraph種別とEdge/Node IDを明示する | Semantic Relation IDとApplication Edge IDを無条件に同一視 |
+| **RF-03** | 同名・同端点・同ラベルの二本のApplication Edgeを別候補にし、acceptedMeaning=falseとOwner pendingを保持する | 並行辺を一つに統合、または描画IDを正式Relationへ昇格 |
+| **RF-04** | ReceiptにGraphがない入力を、Graph-bearing Candidateの成功例として流用しない | 空の候補集合を「完全に解析した結果、関係はゼロ」と解釈 |
+| **RF-05** | 同一SourceのA→B→A／Raw digest復帰後もSource履歴・Current Grant・Tool再資格を個別検査する | Byte一致で以前の閲覧・生成・実行資格を自動回復 |
+| **RF-06** | 通常CLIの子Process受領とWindows Native JSの実Invocation/Receiveを別記録する | Go Readerの局所成功を#4661 R3-Cの第二Consumer成功とする |
+
+最初に必要なのは**RF-01／02の現在のFixtureとReaderに限った回帰**である。続いて既存の並行Relation回帰を同じHEADで再検収し、その結果を#3394と#1180/#2514のExpectedへ引き渡す。検査がまだ存在しない部分はNOT RUNと明示し、既存のCLIを複製する新しいAnalyzer／Host／Candidate Registryは作らない。Sourceの所在と意味Mappingが確定した時点で初めて§37〜39のMR-01以降へ進める。
+
+**業務モデルへの帰結**：外部Reverse Engineer Anythingの受領Graphは観測の根拠であって、経済REA（Resource–Event–Agent）のEvent発生・Resource増減・Agent責任や、三要素分析法のFunction Read/Writeを直接立証しない。これらはSourceと実動作の根拠に基づいてOwnerが受理する専門Role／Function／Businessであり、外部解析Providerの利用有無から独立させる。
+
+この追補は**既存コードの静的再確認と独立Expectedの具体化**である。新たなGoテスト、GitHub Actions、Native Studio、実PostgreSQL、旧新Effectは実行していない。P0の通常tei CLI実Provider #2586と非Plugin Studio Stage1→Stage2実Windows #2831/#4583は維持する。
