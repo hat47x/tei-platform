@@ -82,7 +82,7 @@ func TestServeReadFromDBUnusableDoesNotLeakTheDSN(t *testing.T) {
 			"-serve-read-from-db",
 		})
 	if err == nil {
-		t.Skip("the driver accepted this DSN; the leak check needs one it rejects")
+		t.Fatal("an intentionally invalid PostgreSQL DSN was accepted instead of being refused")
 	}
 	if !strings.Contains(err.Error(), "WEB_READ_DATABASE_UNUSABLE") {
 		t.Fatalf("error=%q", err)
