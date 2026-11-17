@@ -1,0 +1,9 @@
+  git merge-base --is-ancestor 9ba441278 origin/main  -> yes
+  9ba441278 feat(validate): collect independent source syntax errors
+  PR #4400 (merged)
+
+That commit added:
+  cmd/tei/validate_multiple_syntax_test.go
+  internal/operations/validate_test.go
+
+The collection is pinned by tests; round 99 confirmed they pass.
