@@ -153,6 +153,69 @@ jobs:
           CGO_ENABLED=0 go build -mod=readonly -tags server -o "$RUNNER_TEMP/tei-studio-server" .
           CGO_ENABLED=0 go vet -mod=readonly -tags server ./...
 
+      # A separate real Wails Server is required here: httptest only proves
+      # the adapter, not whether the Wails service route is actually mounted.
+      - name: 認証付きread-only Inspectの実Wails HTTP一往復
+        working-directory: cmd/tei-studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          api_token='test-only-0123456789abcdef0123456789abcdef'
+          TEI_STUDIO_READ_ONLY_API_TOKEN="$api_token" "$RUNNER_TEMP/tei-studio-server" \
+            -workspace ../../internal/workspace/testdata/tei-md-rule -port 43131 \
+            > "$RUNNER_TEMP/tei-studio-inspect-http.log" 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          healthy=0
+          for _ in {1..30}; do
+            if curl -fsS --max-time 2 http://127.0.0.1:43131/health > "$RUNNER_TEMP/tei-studio-inspect-health.json"; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$healthy" != 1 ]; then
+            cat "$RUNNER_TEMP/tei-studio-inspect-http.log" >&2
+            exit 1
+          fi
+          inspect_url='http://127.0.0.1:43131/tei/read-only/v0/inspect?workspace=workspace-1&kind=semantic-validation&subject=sales.order_line.quantity_positive'
+          curl -fsS --max-time 5 -H "Authorization: Bearer $api_token" "$inspect_url" \
+            > "$RUNNER_TEMP/tei-studio-inspect-authorized.json"
+          python3 - "$RUNNER_TEMP/tei-studio-inspect-authorized.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as response_file:
+              response = json.load(response_file)
+          assert response.get("ok") is True, response
+          value = response.get("value", {})
+          assert value.get("subject", {}).get("id") == "sales.order_line.quantity_positive", value
+          assert value.get("effect") == "read-only", value
+          PY
+          unauthorized=$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "$inspect_url")
+          test "$unauthorized" = 401
+          denied=$(curl -sS --max-time 5 -o "$RUNNER_TEMP/tei-studio-inspect-denied.json" -w '%{http_code}' \
+            -H "Authorization: Bearer $api_token" \
+            'http://127.0.0.1:43131/tei/read-only/v0/inspect?workspace=workspace-2&kind=semantic-validation&subject=sales.order_line.quantity_positive')
+          test "$denied" = 403
+          python3 - "$RUNNER_TEMP/tei-studio-inspect-denied.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as response_file:
+              response = json.load(response_file)
+          assert response.get("ok") is False, response
+          failure = response.get("failure", {})
+          assert failure.get("code") == "WORKSPACE_NOT_ALLOWED", failure
+          assert failure.get("effectUnknown") is not True, failure
+          PY
+          origin_denied=$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $api_token" -H 'Origin: https://attacker.example' "$inspect_url")
+          test "$origin_denied" = 403
+          mutation_denied=$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' \
+            -X POST -H "Authorization: Bearer $api_token" "$inspect_url")
+          test "$mutation_denied" = 405
+
       - name: 実ブラウザー用Playwrightを準備
         shell: bash
         run: |
