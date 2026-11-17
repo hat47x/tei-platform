@@ -33,16 +33,16 @@ type destinationHTMLRelationRule struct {
 }
 
 type destinationHTMLPage struct {
-	Application string
-	Pattern     string
-	Environment string
-	Relation string
+	Application   string
+	Pattern       string
+	Environment   string
+	Relation      string
 	KeyAttributes []string
-	Coverage    string
-	FieldIDs    []string
-	RuleIDs     []string
-	Rows        []destinationHTMLRow
-	RelationRules  []destinationHTMLRelationRule
+	Coverage      string
+	FieldIDs      []string
+	RuleIDs       []string
+	Rows          []destinationHTMLRow
+	RelationRules []destinationHTMLRelationRule
 }
 
 var destinationHTMLTemplate = template.Must(template.New("environment-rows").
