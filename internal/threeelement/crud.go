@@ -47,6 +47,9 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 	for _, fn := range model.FunctionElements {
 		for _, op := range fn.Operations {
 			key := pair{fn.ID, op.DataID}
+			if seen[key] {
+				continue // One Function/Data cell even if several operations mention it.
+			}
 			row := CRUDTable{
 				FunctionID:              fn.ID,
 				FunctionName:            fn.Name,
@@ -73,7 +76,9 @@ func GenerateCRUDTable(model ThreeElementModel) []CRUDTable {
 					row.ConflictingDeclarations = true
 				}
 			} else {
-				for _, ch := range strings.ToUpper(op.Operations) {
+				// Preserve the full declared intent for this pair, not just the
+				// first FunctionOperation encountered in the source.
+				for _, ch := range derived[[2]string{fn.ID, op.DataID}] {
 					switch ch {
 					case 'C':
 						row.Create = true
@@ -205,7 +210,7 @@ func GenerateFunctionDataCrossReference(model ThreeElementModel) []FunctionDataC
 				FunctionName:            fn.Name,
 				DataID:                  op.DataID,
 				DataName:                dataByID[op.DataID].Name,
-				Operations:              strings.ToUpper(op.Operations),
+				Operations:              derived[[2]string{fn.ID, op.DataID}],
 				Source:                  "derived",
 				ConflictingDeclarations: conflicting[[2]string{fn.ID, op.DataID}],
 			}
