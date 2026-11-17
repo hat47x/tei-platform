@@ -37,7 +37,7 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 	"plugin-plan":         {"workspace", "world", "environment", "action", "plugin", "plugin-lock", "target-lock", "source-index"},
 	"external-candidates": {"evidence-path", "tool-version", "observation-id", "relation-id", "expected-evidence-id", "expected-received-digest", "expected-source-revision"},
 	"inspect":             {"workspace", "subject-kind", "subject-id", "expected-fingerprint"},
-	"view":                {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation", "lifecycle-takeover"},
+	"view":                {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation", "lifecycle-takeover", "environment"},
 	"trace": {
 		"workspace", "scope", "subject-kind", "subject-id",
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
