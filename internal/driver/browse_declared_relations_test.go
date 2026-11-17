@@ -22,6 +22,14 @@ func TestDeclaredBrowseRelationsComesFromThePersistenceMappingOnly(t *testing.T)
 	if len(got.PrimaryKey) != 1 || got.PrimaryKey[0] != "sales.order.order_id" {
 		t.Fatalf("primary key=%v", got.PrimaryKey)
 	}
+	// The declared physical column of each attribute, as the Persistence Mapping states it.
+	physical := map[string]string{}
+	for _, column := range got.Columns {
+		physical[string(column.Attribute)] = column.Column
+	}
+	if physical["sales.order.order_id"] != "order_id" || physical["sales.order.total"] != "total_amount" || physical["sales.order.ordered_at"] != "ordered_at" {
+		t.Fatalf("declared columns=%v", physical)
+	}
 }
 
 func TestDeclaredBrowseRelationsIsNeverGuessedWhenTheMappingIsMissingOrAmbiguous(t *testing.T) {

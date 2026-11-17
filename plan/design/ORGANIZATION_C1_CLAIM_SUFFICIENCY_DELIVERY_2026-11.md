@@ -65,3 +65,24 @@ G1とG2のOwner作業は並行可能。G3は必要な正式Linkが整ってか�
 **停止条件**：正式Person Linkがないまま人物数を確定する、異なるScope/Attemptを結合する、候補を現在Grantに昇格する、表示/AI/SHOの成功を業務受理にする、局所PG PASSを製品E2Eと呼ぶ、またはS1の簡単な組織利用へ専用Runtimeを強制する場合は該当Claimを未受理へ戻す。
 
 **本書の状態**：設計・実装計画。ここに記した新Gate/判別ケースは実行済みではない。上記既存CIの限定的な実測と区別する。
+
+## 7. 同一Readを「業務判断に使える」と認めるための検収（2026-11-18）
+
+[高度組織モデリング段階計画§10.25](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md#1025-実readから業務判断へ渡す証拠を問いごとに閉じる2026-11-18)を、既存G1〜G5の検査手順へ接続する。Providerが返した行の範囲と、Consumerがその行から導く結論の十分性は別の資格である。
+
+- **G1／Read**：実際のFunction・Query・SQL/引数・時点・Scopeと、Rowset→Context→一Consumerの受領を同一Attemptで確認する。`covers`の宣言、実SQLの保存関係との照合、実行したQueryの一致はそれぞれ別に記録する。
+- **G3／Claim**：Membershipを対象とするEXISTS／NOT EXISTS／高々1件は、同一時点・Scopeのcomplete/partial 0・1・2件で真・偽・未判定がどう変わるかを既存ORG-BEH-02／#2514の独立Expectedと比較する。観測行が対象集合へ属するという証拠がない限り、partialの正例も確定しない。
+- **G2→G3／Identity**：同じ4所属からPerson 3人／4人となる二世界の反例を保持する。Person Relationの正式受理、実取得、QueryのCoverageが揃わないうちは、人物数・唯一決裁者はunknown。r7のFTE 3.0→2.4はknownAtの違う世界として扱う。
+- **G4→G5／用途・実行**：二Consumerの受信・公開範囲、Case責任と異動、承認候補と現在Grant、通知とACK／実Effectを混同しない。Rule・Scope・Source・Policy・Recipient・Selection epoch変更後の旧結果再利用を拒否する。
+
+### 最初の小PRに必要な検収票
+
+| 列 | 比較する内容 |
+| --- | --- |
+| Required | 問い、量化、母集団／粒度、必要Relation・Field・Rule・非出力依存、validAt/knownAt |
+| Actual Read | exact HEAD／Attempt、Function/Query、実SQL/params、Provider、Snapshot、Scope、取得行Identity、Coverageの根拠と欠落 |
+| Claim | 真／偽／未判定、成立側の証人・反例、必要な同一性Linkと受理版、独立Expected |
+| Delivery | Contextの受領Consumer・用途・公開Slice、Source/Selection/Policy/Recipient版、Host側はGrant／Receipt／ACKを独立記録 |
+| Verdict | 確認できた局所事実、依然NOT RUNの製品接続、Owner未受理事項、停止理由 |
+
+第一候補は#2586の通常CLI一Function・一Query・一Consumerへの読取受渡しで、対象はまず既存の合成受注とする。組織C1のPerson Linkや新しいRuntimeを先行条件にしない。並行中の[PR #5382](https://github.com/hat47x/tei-platform/pull/5382)のCoverage実装、[PR #5431](https://github.com/hat47x/tei-platform/pull/5431)のWeb受信は、各々の実行資格と統合状態を確認してから使用する。**本節は設計のみ。実Provider→Org Rule→二Consumer・Hostの合格は未実証。**
