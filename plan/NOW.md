@@ -17,7 +17,7 @@
 4. `tei validate`が通り、同じ明細を読み直すと、書き換えた規則の答えに変わる。
 5. 生成したWebの画面一つで、同じ答えが見える。
 
-入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。**1〜4は動く。** `tei view -environment`が実際のPostgreSQLから明細を読み、行ごとの規則の答えを返す（[#5300](https://github.com/hat47x/tei-platform/pull/5300)）。専用のCIが変更の前後を期待と照合している。別に用意したPostgreSQLで[手順書](../docs/first-change.md)のとおりに打ち、行ごとの答えが期待とすべて一致することも確かめた。**5も、出荷するのと同じ起動関数を通すCI試験で実PostgreSQLの行から読む**（手順は[手順書](../docs/first-change.md)の5）。
+入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。**1〜4は動く。** `tei view -environment`が実PostgreSQLの明細を読み、設計文書の規則を変更した前後の答えを独立した期待と照合する。5も、出荷するのと同じ起動関数に`-serve-read-from-db`を渡し、実PostgreSQLの明細と行別Ruleの判定を第一WebのHTTP画面へ返すところまで動く。ただし、**規則変更の前後を第一Webで比べる一連のCIと、その実HTTP画面をChrome DOMで受領する検証はまだない**。
 
 受入れは二つである。この五つを実際のPostgreSQLで実行し、実装から独立した期待と照合する試験が、CIで毎回走ること。五つを一ページで案内する手順書があり、その手順書のとおりに打てば通ること。
 
@@ -30,16 +30,16 @@
 | 順 | 作業 | 担当先 |
 | --- | --- | --- |
 | 1 | ~~異なる構造の業務モデルでも同じ読取入口を通す~~ **動く。** 別のData・Relation・実テーブルに加え、別の属性・Query入力（`batch_key`）・複合主キー（`entry_id, slot`）を持つ独立モデルを、同じ`tei view`と独立した期待で実DBから読む試験がCIで走る（[#5362](https://github.com/hat47x/tei-platform/pull/5362)） | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
-| 2 | **動く（CLIからの限定経路）：** 実PostgreSQLの明細と行別Ruleを同じ読取結果からHTMLに投影し、実ChromeのDOMで主キー別の独立した期待と照合する（[#5408](https://github.com/hat47x/tei-platform/pull/5408)・[#5416](https://github.com/hat47x/tei-platform/pull/5416)・[#5425](https://github.com/hat47x/tei-platform/pull/5425)）。**試験だけ（第一Web Target）：** 合成Queryの回答を表示し、行と回答の位置ずれを拒否する（[#5390](https://github.com/hat47x/tei-platform/pull/5390)・[#5424](https://github.com/hat47x/tei-platform/pull/5424)）。**動く：** 第一Web Targetが実Providerから同じ明細と回答を読み、HTTP経由の実画面へ届ける（`-serve-read-from-db`＋`TEI_WEB_READ_PG_DSN`。CIの`TestShippedWebPageShowsRealPostgresRowAnswers`が、出荷するのと同じ起動関数で実PostgreSQLの行を読む） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 2 | **動く（CLI）：** 実PostgreSQL→`tei view -environment`→静的HTML→実Chrome DOMで、主キーごとのRule三値を独立Expectedと照合する（[#5425](https://github.com/hat47x/tei-platform/pull/5425)）。**動く（第一Web TargetのHTTP）：** `-serve-read-from-db`と`TEI_WEB_READ_PG_DSN`で選択した実Providerの明細と判定を同じReaderから返す（[#5431](https://github.com/hat47x/tei-platform/pull/5431)・[#5439](https://github.com/hat47x/tei-platform/pull/5439)）。HTTP画面の明細は、行番号ではなく業務主キー・値・Rule回答で照合する。**試験だけ：** 合成Queryの画面試験。**未実装：** 実DBからの第一Web HTTP応答をChrome DOMで受け、規則変更前後を同じ経路で照合する一続きの受入 | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
 | 3 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
 | 4 | **動く：** `tei desired-schema -format sql`によるDDL生成（[#5385](https://github.com/hat47x/tei-platform/pull/5385)）、`storage decimal(12,3)`の精度指定とDDL反映（[#5411](https://github.com/hat47x/tei-platform/pull/5411)）、生成DDLの実PostgreSQL適用から同じCLIによる読取・独立期待との照合（[#5422](https://github.com/hat47x/tei-platform/pull/5422)）、`tei view -environment -format text`の行別表示（[#5372](https://github.com/hat47x/tei-platform/pull/5372)）。**動く：** 精度を指定した列が実DBでその桁数で作られ、その列から読んだ行のRuleの答えが独立した期待と一致する（`TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack`） | #2586 |
 | 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
 道の1は[#5327](https://github.com/hat47x/tei-platform/pull/5327)（固定名の決め打ちを外す）、[#5339](https://github.com/hat47x/tei-platform/pull/5339)（Data・Relationの意味IDと参照テーブルを変える）、[#5362](https://github.com/hat47x/tei-platform/pull/5362)（別の属性・Query入力・複合主キーを持つ独立モデル）で通った。#5362は`checkDestinationAlternateModel`を`TestDestinationOrderChangeReadViaCLIFromPostgres`の中から呼び、CIが実PostgreSQLで走らせる。
 
-次は道の2の未接続部分である。実PostgreSQL→通常CLI→静的HTML→実Chrome DOMの経路は検証できた。しかし、第一Web TargetのHTTP実行先は合成Queryを使っており、同じ実DB Readを渡していない。二つの経路がそれぞれ動くことを、全体が一続きに動いた証拠としない。
+道の2は、実PostgreSQLのQueryを第一Web TargetのHTTP画面へ渡すところまで進んだ。CLIの静的HTMLをChromeが受領した実績と、第一WebのHTTPで実DBの行を返した実績は、**それぞれ別の検査**である。両方を足して「第一Webの実DB画面をChromeで受領した」とは言わない。
 
-**道の2で守る対応関係**：行別Ruleの答えと明細行は、同じ実Read・親Scope・Query入力に属することを確認して結び付ける。現在のWebで使う配列位置は表示上の順番であり、業務キーやノードの意味IDではない。[#5424](https://github.com/hat47x/tei-platform/pull/5424)で行数・位置の不一致はJSON／HTMLで拒否するようになったが、別Readの混在までは防げない。**次のコード変更**は`tools/reference-first-web-target/read_scenario.go`と`reference_contract_query_fixture.go`を対象に、既存のDriver／Query実装を通した選択Providerの実Readへ接続し、主キー・行別Rule・Relation全体の判定を同じ読取からHTTPへ渡す。その結果を実Chrome DOMと既存の独立Expectedで照合する。取得が不完全なときは理由付きの「判定できない」を保持し、実Readが確認できるまで新しいNode ViewやRuntimeを前提にしない。
+**道の2で守る対応関係**：表示行番号は読取時の位置であり、業務キーやノードの意味IDではない。行別Ruleの回答は実際の明細行と同じReadから作る（[#5424](https://github.com/hat47x/tei-platform/pull/5424)）。Readの対象Query・親Scope・入力と実行Providerを区別し、画面とCommandが同じ選択済Readerを使う（[#5439](https://github.com/hat47x/tei-platform/pull/5439)）。ただし、二つのHTTP要求やReadが同一スナップショットであるとの証拠にはしない。実DBのHTTP画面では主キー`order_line_id`ごとに値とRule三値を独立Expectedで検査し、同じ`line_number`の二行を混同しない。**次のコード変更**は`tools/reference-first-web-target/read_scenario_page_postgres_test.go`で実PostgreSQLのHTTP応答を実Chrome DOMでも受け、`*.tei.md`のRule変更前後の期待を同一Web経路で照合する。取得範囲を証明できない全体Ruleは、理由付きの「判定できない」を保つ。標準Graphや新しいRuntimeは前提にしない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
