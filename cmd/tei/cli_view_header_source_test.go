@@ -1,12 +1,14 @@
 package main
 
 import (
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"tei/internal/core"
 	"tei/internal/realization"
+	"tei/internal/workspace"
 )
 
 func TestRuntimeHeaderSourceUsesDeclaredInputAndSemanticAttribute(t *testing.T) {
@@ -67,5 +69,36 @@ func TestRuntimeHeaderSourceRejectsUnboundOrMalformedInputs(t *testing.T) {
 				t.Fatalf("expected error containing %q, got %v", tc.errorHas, err)
 			}
 		})
+	}
+}
+
+func TestRuntimeHeaderBindingIsCheckedBeforeDatabaseConnection(t *testing.T) {
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	world := loaded.World
+	found := false
+	for i := range world.HeaderDetailContractQueryBindings {
+		binding := &world.HeaderDetailContractQueryBindings[i]
+		if binding.Application == "order_entry" && binding.Pattern == "order_entry.order_lines" {
+			if len(binding.Inputs) != 1 {
+				t.Fatalf("expected one declared header input: %+v", binding.Inputs)
+			}
+			binding.Inputs[0].SourceAttribute = "sales.order.no_such_attribute"
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("reference Workspace has no header-detail Query binding")
+	}
+	t.Setenv("TEI_VIEW_PG_DSN", "")
+	_, err = readDestinationOrderLines(world, "order_entry", "order_entry.order_lines", "development",
+		map[string]string{"order_id": "1001"})
+	if err == nil || !strings.Contains(err.Error(), "sales.order.no_such_attribute") {
+		t.Fatalf("malformed Semantic binding was not rejected: %v", err)
+	}
+	if strings.Contains(err.Error(), "TEI_VIEW_PG_DSN") {
+		t.Fatalf("database connection was required before validating the source binding: %v", err)
 	}
 }
