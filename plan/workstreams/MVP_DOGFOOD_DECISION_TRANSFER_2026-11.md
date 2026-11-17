@@ -193,7 +193,7 @@ main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確
 
 ## 15. MVPをStudioの一回の自己再入へ収束させる（2026-11-17）
 
-当面はショーケースの追加と研究文書の増補を停止し、**Studioが次のStudioを実際に生成し、次のStudioで同じ検査対象を開く一巡**に作業を集中する。§1〜14のM1〜M3や業務Ruleの研究は否定せず、今回のStudio P0の直列前提にはしない。M1の検査一条件移管と通常CLI→実Provider Readは、別Ownerの独立した作業として維持する。
+優先順位の正本は[いま進めること](../NOW.md)に置く。全体の第一目標は受注一件の**実PostgreSQL→Rule変更→生成Web画面**であり、Studioの自己再入はそこに認められた**唯一の並行作業**である。Studio側ではショーケースや研究文書を追加せず、**Studioで定義の必須項目を一つ増やし、生成器の実装に手を入れず、Studio自身が作った次のStudioのWindows画面へその変更を出す**一巡に集中する。§1〜14のM1〜M3は否定しないが、今回のStudio P0の直列前提にはしない。
 
 前回の[PR #5215](https://github.com/hat47x/tei-platform/pull/5215)は**closed／unmerged**であり、そこに記載した到達点をmainの実装と扱わない。これに対しmainには、[PR #5188](https://github.com/hat47x/tei-platform/pull/5188)による実CLI／Studio Hostの共通Inspect、[PR #5303](https://github.com/hat47x/tei-platform/pull/5303)による選択Subjectと検証済みInspector表示の一体化、[PR #5306](https://github.com/hat47x/tei-platform/pull/5306)による**候補**Workbenchの一時生成と型検査が取り込まれている。候補がビルドできることと、製品の`main.ts`／Wails埋込Assetに実採用されたことは別である。
 
@@ -201,11 +201,11 @@ main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確
 
 ### 15.1 一巡で変えるもの、変えないもの
 
-一巡の固定題材は、選択された既存TEI Ruleを一つの`Workspace`から`Inspect`する操作とする。同じRuleの正規Subject、Source fingerprint・byte範囲、InspectorのAuthority LimitsをStage1／Stage2で追う。三要素分析によるData／Function／Businessの図面や型付きインスタンスの表示は、この同じ意味を読み直す**表現**として扱い、図面専用の第二Meaningや新しいGUI Runtimeは作らない。
+一巡の対象は、既存Inspectorの**応答定義に必須項目を一つ加える変更**とする。変更前と変更後の定義Source・生成Reader・画面の差を固定し、元のInspectorが選んだ正規Subject、Source fingerprint・byte範囲、Authority LimitsをStage1／Stage2で追う。増やした必須項目は、生成器を改修せず新定義から生成され、Stage2画面で読めなければ不合格。三要素分析の図面や型付きインスタンスの表示は別の表現であり、今回の改修対象にしない。
 
 | 境界 | この一巡で必要な実物 | 今回は増やさないもの |
 | --- | --- | --- |
-| **D0：入力と独立Expected** | 選択済みSource／Reader／意味ID／Source Revision、同名異ID・別Workspace・後着応答という負例 | ショーケース題材、業務DSL、Sourceから派生したExpected正本 |
+| **D0：定義の変更と独立Expected** | StudioでInspector応答の必須項目を一つ増やす前後の定義byteと期待する表示差分。正規Subject／Source Revision、同名異ID・別Workspace・後着応答の負例 | 生成器の改修、別の業務DSL、生成器自身が出したExpected正本 |
 | **D1：生成対象と入力** | Stage1が解決した非Plugin StudioのBuildIntent、選択したGeneratorとToolchain、正規Workbench／生成ReaderのSource Closure | Wails固有の業務意味、説明用の仮想Builder |
 | **D2：実Builder** | Stage1の実Processが指定したBuilder／Invokerの選択と実Call。Stage1自身が起動した因果関係 | CI Shellが二回`go build`したことだけを「自己再入」と呼ぶ扱い |
 | **D3：実Artifact** | Stage2の実ImageとBundle、元Source・生成TS／Go・正規esbuild・Go embedに対応するArtifact revision／byte | 候補Bundle、古い固定Closure、同じ見た目の別Artifactによる代替 |
@@ -216,7 +216,7 @@ main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確
 
 ### 15.2 最初のコード変更は生成Inspector Readerの正式収録
 
-最初に閉じる断線は、[Web設計§21〜22](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)のWEB-P1a-2bである。現行mainの`readInspectorPresentation(raw, {workspaceId, selected, catalog})`と候補`main.inspector-candidate.ts`を確認し、歴史的`main.ts`の選択・Pin・応答laneを保ったまま、**契約Source→生成Reader→正規`main.ts`での実import・呼出し→esbuild→Wails埋込JS**へ接続する。
+最初に閉じる断線は、[Web設計§21〜22](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)のWEB-P1a-2bである。**第一段は生成Readerを唯一のReaderとして製品へ復旧**する。現行mainの`readInspectorPresentation(raw, {workspaceId, selected, catalog})`と候補`main.inspector-candidate.ts`を確認し、歴史的`main.ts`の選択・Pin・応答laneを保ったまま、**契約Source→生成Reader→正規`main.ts`での実import・呼出し→esbuild→Wails埋込JS**へ接続する。**第二段は、必須項目を一つ足した定義だけを更新して同じ生成器を再実行**し、Stage2画面に差が現れることを確かめる。
 
 実装PRの合格条件は、生成ReaderがBundle内に一つだけ存在し、現在の契約Digestに一致すること、手書きの代替Readerが並存しないこと、埋込JS／HTML／CSS／第三者通知が**同一HEADの正規Build**と一致すること。既存の`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`を緩めず、生成Desktopの実WebView2でもReader使用を観測する。過去のPinを新しいSourceと偽って更新せず、**新しいSource Closureを新しい版として検収**する。
 
@@ -228,4 +228,4 @@ Reader／Presenterの表示成功はHostの閲覧Grantではない。選択Subje
 
 したがって自己記述M1の三条件は、現行`required`表のままでは**実判定へのBindingが不足**した状態として管理し、既存Operator・型付きField条件を優先して最小能力を別Packetで検討する。新しいValidationKindや第二Meta InterpreterをStudioのために追加しない。M1で一条件を**TEI定義が実判定**し、M2で対応するGo分岐が削除され実Callerが採用したときだけ、自己置換の進捗に計上する。
 
-**直近の実装順**は、①WEB-P1a-2bの正規Reader収録と生成／埋込byte整合、②同一AttemptのD1→D3、③Stage1自身からStage2を生成して起動（D4）、④生成Stage2のWindows WebView2でInspect／Pinを受領（D5）。CLI実Provider Read #2586は別P0で並行し、Studioの実利用資格を代替しない。
+**直近の実装順**は、①生成Inspector Readerを唯一のReaderとして復旧、②**定義の必須項目を一つ追加し、生成器のコード差分がゼロのまま**生成・埋込byteを照合、③Stage1が実Buildを選択・起動したD1〜D3の同一Attemptを確認、④Stage2 Windows WebView2のInspectorで変更した項目を実表示（D4〜D5）。受注一件を実ProviderからWebへ届ける主線は[いま進めること](../NOW.md)の優先順位を維持し、Studioの成功で代替しない。
