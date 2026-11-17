@@ -265,12 +265,12 @@ func TestDestinationOrderChangeReadViaCLIFromPostgres(t *testing.T) {
 			"-input", "order_id=1002", "-format", "json",
 		)
 		var report struct {
-			OK bool `json:"ok"`
+			OK     bool `json:"ok"`
 			Result struct {
-				Pattern core.CanonicalID `json:"pattern"`
-				Relation core.CanonicalID `json:"relation"`
-				Coverage string `json:"coverage"`
-				PerRow map[string]map[string]string `json:"perRow"`
+				Pattern  string                       `json:"pattern"`
+				Relation string                       `json:"relation"`
+				Coverage string                       `json:"coverage"`
+				PerRow   map[string]map[string]string `json:"perRow"`
 			} `json:"result"`
 		}
 		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil || got.code != 0 || !report.OK {
