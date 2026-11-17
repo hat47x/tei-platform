@@ -27,7 +27,9 @@ func TestIndependentWarehouseDataFormThroughProductView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
 	var actual string
 	if err := db.QueryRow("select current_database()").Scan(&actual); err != nil || actual != databaseName {
 		t.Fatalf("expected disposable database %q, got %q: %v", databaseName, actual, err)
