@@ -1,0 +1,5 @@
+  1 command pattern declared, validate silent       -> pattern X command { capability ... }
+  2 UNBOUND_DATASOURCE / UNBOUND_DATABASE_REQUIREMENT -> bind in an environment
+  3 VIEW_FAILED capability <pattern id>がありません  -> -command takes a CAPABILITY id
+  4 INVALID_COMMAND_INPUT missing inputs: [loan]      -> -input loan=LOAN-1
+  5 ok                                               -> executed

@@ -3594,3 +3594,52 @@ AFTER   step "L-01" declares unknown realization "application-use";
 ### 位置付け
 
 **「要求はするが、従い方が書いていない」の5例目**である。ただし今回は**同じコマンドが直前の試行で正しい版を名指ししてくれた**（Attempt 2）。**できる時とできない時の差**が、この欠陥類型の実態である。
+
+## 99. 第98ラウンド（2026-11-18）: 宣言した Application は本当に実行でき、実行結果は自分の限界を自分で言う
+
+目的文の「再びドッグフーディングに戻る」を実行し、**宣言した Application が本当に実行できるか**を実利用者が最後に問う形で確かめた。生出力は[第98ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND98_EXECUTE_SURFACE_2026-11-18/README.md)にある。
+
+### 体系的走査を先に行った（新規欠陥ゼロ）
+
+前ラウンドまでの「閉じた語彙なのに有効値を言わない」類型を**網羅的に走査**した。
+
+```text
+'valid values are' 非テストコード        -> 21 件（良い形）
+'unknown ...' 値リストなし               -> 3 件
+```
+
+3件のうち `UNKNOWN_APPLICATION_PACKAGE_REQUIREMENT` は**パーサ側が既に値を名指ししていた**（`"package requires semantic or relation"`）。残る2件は threeelement の graph 参照で**語彙が閉じていない**。**この類型は打ち止め**だった。
+
+### 実行の経路は成立した
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | 診断なし | `pattern X command { capability ... }` |
+| 2 | `UNBOUND_*` | 環境束縛が要る |
+| 3 | `VIEW_FAILED: capability <pattern id>がありません` | **`-command` は capability id** |
+| 4 | `INVALID_COMMAND_INPUT: missing inputs: [loan]` | `-input loan=...` |
+| 5 | **成功** | `mode: reference` / `committed: true` / `persisted: false` |
+
+### 出力は自分の限界を自分で述べていた（重要な確認）
+
+```text
+mode: reference (no durable effects)
+committed: true (reference unit of work)
+persisted: false (persistence: not-applicable, durability: none)
+difference-check: not observed (this executor does not enumerate its operations)
+```
+
+**`committed: true` だけを読むと「永続化された」と誤読しうる**が、同じ出力が `persisted: false`・`durability: none` を**並べて**いる。JSON 側も `appliedUnobserved: true` を持つ。**私はこれを欠陥と呼ばない。**
+
+### 直さなかったもの（記録）
+
+| 観察 | 判断 |
+| --- | --- |
+| `-command` に pattern id を渡すと `capability <id>がありません` | **その id は実際に capability でない**ので記述は正確。flag help が種別を書いている |
+| 一部のエラー文が日本語（JSON API 内） | 非テスト Go に **108 件**あり、リポジトリの文書言語と一致する。**方針の判断なしに一括変換しない** |
+
+**どちらも起票しない。**
+
+### 位置付け
+
+**「実行できるか」を最後に問うた回**であり、答えは**成立する**だった。同時に、**出力が自分の限界を自分で述べている**ことを確認した。**欠陥を作らなかったことと、直さないと決めた理由を記録するのも成果**である。
