@@ -201,6 +201,7 @@ func TestDesiredSchemaSQLCreatesTheTableTheReadNeeds(t *testing.T) {
 					} `json:"rows"`
 					PerLine  map[string]map[string]string `json:"perRow"`
 					PerOrder map[string]string            `json:"perRelation"`
+					PerOrderUndecided map[string]string `json:"perRelationUndecided"`
 				} `json:"result"`
 			}
 			if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
@@ -217,10 +218,25 @@ func TestDesiredSchemaSQLCreatesTheTableTheReadNeeds(t *testing.T) {
 			if len(report.Result.Rows) != len(want.PerLine) {
 				t.Fatalf("order=%s rows=%d, want=%d", orderID, len(report.Result.Rows), len(want.PerLine))
 			}
+			seen := map[string]bool{}
+			for _, row := range report.Result.Rows {
+				if _, expectedRow := want.PerLine[row.Key]; !expectedRow || seen[row.Key] {
+					t.Fatalf("order=%s: missing, unexpected or duplicate row key %q", orderID, row.Key)
+				}
+				seen[row.Key] = true
+			}
 			for rule, answer := range want.PerOrder {
 				gotAnswer := report.Result.PerOrder[rule]
-				if answer == "not-satisfied" && gotAnswer != answer {
-					t.Fatalf("order=%s rule=%s: %s, want %s", orderID, rule, gotAnswer, answer)
+				if answer == "not-satisfied" {
+					// A duplicate already observed remains decisive even with partial coverage.
+					if gotAnswer != answer {
+						t.Fatalf("order=%s rule=%s: %s, want %s", orderID, rule, gotAnswer, answer)
+					}
+				} else if gotAnswer != "undecided" || report.Result.PerOrderUndecided[rule] == "" {
+					// Without a qualified complete read, absence of observed duplicates
+					// is not proof of uniqueness; preserve the undecided reason.
+					t.Fatalf("order=%s rule=%s: unproven completeness yielded %q (reason %q)",
+						orderID, rule, gotAnswer, report.Result.PerOrderUndecided[rule])
 				}
 			}
 		})
