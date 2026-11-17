@@ -14,8 +14,15 @@ const catalog = (fp = "w1", index = "s1") => ({
 const reply = (subject = A, sourceStatus = "indexed", world = "w1") => ({
   ok: true,
   value: {
+    schemaVersion: "tei.operations.inspect/v0",
     effect: "read-only", subject, canonical: { id: subject.id },
     worldFingerprint: world, sourceIndexFingerprint: "s1", sourceStatus,
+    authorityLimits: [
+      "inspection-is-a-derived-read-only-projection",
+      "source-location-is-not-semantic-acceptance",
+      "source-location-is-not-write-authority",
+      "local-read-is-not-disclosure-permission",
+    ],
   },
 });
 function deferred() {
