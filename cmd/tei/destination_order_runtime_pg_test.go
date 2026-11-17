@@ -205,7 +205,7 @@ FROM changed ORDER BY line_number, order_line_id`
 			t.Fatalf("edited SQL was accepted or exposed the DSN: exit=%d stdout=%s stderr=%s", got.code, got.stdout, got.stderr)
 		}
 		var report struct {
-			OK bool `json:"ok"`
+			OK    bool `json:"ok"`
 			Error struct {
 				Code string `json:"code"`
 			} `json:"error"`
