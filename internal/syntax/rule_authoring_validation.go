@@ -82,8 +82,13 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			})
 			continue
 		}
+		// InputName is what the author wrote, and nothing more. Leaving it empty
+		// for the unnamed form keeps an undeclared name out of the contract; a
+		// reader that needs a name for the single input applies "value", which
+		// is the same reading the surface already had.
 		out.Operators = append(out.Operators, semantic.Operator{
 			ID: operator.ID, Symbol: operator.Symbol, Input: input,
+			InputName: operator.InputName,
 		})
 	}
 	return out, issues

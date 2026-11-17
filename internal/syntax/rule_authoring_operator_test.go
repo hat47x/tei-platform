@@ -31,6 +31,9 @@ func TestRuleAuthoringReadsAnOperatorDeclarationAndItsUse(t *testing.T) {
 		t.Fatalf("conversion issues: %v", anchored.Issues)
 	}
 
+	// `takes number` is the unnamed single-input form, so the parsed contract
+	// carries no name. The surface keeps reading it as the input named "value",
+	// but nothing is declared, so nothing is stored.
 	wantOperators := []semantic.Operator{{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber}}
 	if len(anchored.Value.Operators) != 1 || !reflect.DeepEqual(anchored.Value.Operators[0], wantOperators[0]) {
 		t.Fatalf("operators=%+v, want %+v", anchored.Value.Operators, wantOperators)
