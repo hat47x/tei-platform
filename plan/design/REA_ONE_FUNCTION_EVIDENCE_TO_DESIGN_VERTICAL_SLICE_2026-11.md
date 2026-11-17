@@ -750,3 +750,13 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 **最初のPRの範囲**は旧Functionの原本とDataを一件ずつ特定し、Source Indexによる読取結果と三要素Reviewを同じ検証票へ出すところまでとする。原本を特定できなければ、実装を広げずSource所在の調査をIssueに戻す。対象選定のために新しい汎用Parser、Meaning Engine、Host、Graph Storeを追加しない。既存Reader／Source Index／`reacandidate`のReview／三要素図を再利用し、生成器の実消費や実DB Callは後続の独立受入へ渡す。
 
 **優先順位**：通常CLI実PG Function Read（#2586）とWindows Studio Stage1→Stage2（#2831）を妨げない。外部REA（Reverse Engineer Anything）の追加解析はM-08の任意選択であり、業務REA（Resource–Event–Agent）は必要な業務モデルでOwnerが受理する意味表現として扱う。
+
+## 38. 一Function移行の三要素ReviewをTEI自己記述の第一縦断と接続する（2026-11-17）
+
+[TEI自己記述の第一縦断](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md)で整理した「要求索引→三要素モデル定義→型付きインスタンス→図面→Source→独立Expected」の順序を、§37のM-01〜M-04の**レビュー手順**として再利用する。これにより、旧システムの移行用に専用の三要素図エンジンを増やさず、TEI自身の要件・実装を説明する同じ標準データ構造と表現型を使う。
+
+初回レビューでは、①原典のFunction・Data・操作入口のSource位置、②TEI側のQualified ID候補、③同名別Node・並行Relationの独立IDと向き、④Function→DataのCRUDが原典の明示記録なのか推論なのか、⑤不明な入力・出力・Effect、⑥Owner未受理、を**一つのレビュー対象**として並べる。ただし、表示上は一画面であってもSourceの証拠、図面の同一性、業務意味、実Providerの受領は別の判定票にする。
+
+TEI自己記述側の例示GraphやX-TEAのTask→TaskAction→TaskFunctionIO→Function→IOTableの関係図は、検証する**構造の形**を示す。実在する旧原本のByte/Range/Revisionと対応が取れない限りM-01は`blocked`、Function-level CRUDと実行Effectを結ぶ観測がない限りM-04は`unknown`のままにする。これらを同じモデルに載せることは、外部REAの`imports`等の関係を実Read/Writeへ昇格させる根拠にはならない。
+
+**次の小さな実装候補**：既存Source Indexの一つの原文Rangeから、原典ID・Source版・三要素候補・不明理由を読取専用で表示し、原典が未特定／改版／部分取得の場合は正式IDへの自動対応付けを拒否する負例を作る。Ownerが原典を選定するまでは新規ReaderやGeneratorを追加しない。#2586の実PG Function Readと#2831のWindows Studioセルフビルドは別P0として継続する。
