@@ -72,7 +72,6 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 		"model catalog": true, "model locate": true, "model overview": true,
 		"model document-draft": true, "model document-reconcile": true,
 		"model search":  true,
-		"model ddl":     true,
 		"three-element": true, "business-procedure": true,
 	}
 	for _, record := range commandCatalog().Commands {
@@ -102,7 +101,6 @@ func TestSelfParsedFlagNames(t *testing.T) {
 		"model search":             {[]string{"workspace"}, []string{"term", "kind", "limit", "offset"}},
 		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application", "frozen", "section", "model"}},
 		"model document-reconcile": {[]string{"workspace", "draft"}, nil},
-		"model ddl":                {[]string{"workspace", "world"}, []string{"format", "subject-kind", "subject-id"}},
 		"three-element":            {nil, nil},
 		"business-procedure":       {[]string{"workspace", "procedure"}, nil},
 	}
