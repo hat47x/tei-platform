@@ -97,21 +97,22 @@ func TestWebReadAndCLIReadAgreeOverRealPostgres(t *testing.T) {
 			len(orderExpectation.PerLine), len(result.RowAnswers))
 	}
 
-	// Compare by the line number the row itself carries, not by position: the
-	// fixture's key is order_line_id, and the expectation is written per line
-	// number. A mismatch means the Web is showing an answer for another row.
+	// Compare by the row's own key, not by position. expected-before.json's
+	// perLine is keyed by the detail's order_line_id (its README says so), and
+	// two different rows can share a line number, so a line-number join would
+	// compare one row's answer against another row's expectation.
 	for _, row := range result.RowAnswers {
-		lineNumber := lineNumberOf(t, result.OrderLineRows[row.RowIndex])
+		lineNumber := orderLineIDOf(t, result.OrderLineRows[row.RowIndex])
 		want, ok := orderExpectation.PerLine[lineNumber]
 		if !ok {
-			t.Fatalf("the read observed line %q, which the expectation does not list", lineNumber)
+			t.Fatalf("the read observed order_line_id %q, which the expectation does not list", lineNumber)
 		}
 		if len(row.Answers) != len(want) {
-			t.Fatalf("line %s: %d answers, expected %d rules", lineNumber, len(row.Answers), len(want))
+			t.Fatalf("order_line_id %s: %d answers, expected %d rules", lineNumber, len(row.Answers), len(want))
 		}
 		for _, answer := range row.Answers {
 			if expectedAnswer, ok := want[answer.Rule]; ok && answer.Result != expectedAnswer {
-				t.Fatalf("line %s rule %s: Web read says %q, the independent expectation says %q",
+				t.Fatalf("order_line_id %s rule %s: Web read says %q, the independent expectation says %q",
 					lineNumber, answer.Rule, answer.Result, expectedAnswer)
 			}
 		}
@@ -178,12 +179,14 @@ INSERT INTO public.orders VALUES
 	return db
 }
 
-// lineNumberOf reads the line number a row carries. The expectation keys are
-// line numbers, so this is the join the comparison uses instead of a position.
-func lineNumberOf(t *testing.T, row semanticRowProjection) string {
+// orderLineIDOf reads the order_line_id a row carries. expected-before.json's
+// perLine is keyed by this identity, so it is the join the comparison uses
+// instead of a position. Two rows may share a line number, which is why the
+// line number is not the key here.
+func orderLineIDOf(t *testing.T, row semanticRowProjection) string {
 	t.Helper()
 	for _, attribute := range row.Attributes {
-		if attribute.Attribute != "sales.order_line.line_number" {
+		if attribute.Attribute != "sales.order_line.order_line_id" {
 			continue
 		}
 		switch value := attribute.Value.(type) {
@@ -195,7 +198,7 @@ func lineNumberOf(t *testing.T, row semanticRowProjection) string {
 			return value
 		}
 	}
-	t.Fatalf("the observed row carries no line number: %+v", row)
+	t.Fatalf("the observed row carries no order_line_id: %+v", row)
 	return ""
 }
 
