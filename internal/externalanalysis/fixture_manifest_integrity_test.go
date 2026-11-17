@@ -36,8 +36,10 @@ func TestSyntheticFixtureManifestRawIntegrity(t *testing.T) {
 		t.Fatal("synthetic fixture manifest is empty")
 	}
 	seen := make(map[string]bool, len(manifest.Runs))
+	covered := make(map[string]bool, len(manifest.Runs))
 	for _, entry := range manifest.Runs {
 		entry := entry
+		covered[entry.Version+"/"+entry.Kind] = true
 		t.Run(entry.Version+"/"+entry.Kind, func(t *testing.T) {
 			rel := filepath.Clean(entry.Stdout)
 			if rel == "." || filepath.IsAbs(rel) || rel == ".." ||
@@ -78,5 +80,12 @@ func TestSyntheticFixtureManifestRawIntegrity(t *testing.T) {
 				}
 			}
 		})
+	}
+	// A manifest cannot hide a missing baseline by dropping its own row.
+	required := []string{"6.7.0/analyze", "6.7.0/view", "6.8.0/analyze", "6.8.0/view"}
+	for _, key := range required {
+		if !covered[key] {
+			t.Errorf("baseline synthetic fixture missing from manifest: %s", key)
+		}
 	}
 }
