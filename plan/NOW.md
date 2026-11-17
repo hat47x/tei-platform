@@ -17,6 +17,8 @@
 4. `tei validate`が通り、同じ明細を読み直すと、書き換えた規則の答えに変わる。
 5. 生成したWebの画面一つで、同じ答えが見える。
 
+入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。3と4のうち設計文書の変更は、今のmainで動く。
+
 受入れは二つである。この五つを実際のPostgreSQLで実行し、実装から独立した期待と照合する試験が、CIで毎回走ること。五つを一ページで案内する手順書があり、その手順書のとおりに打てば通ること。
 
 この五つが通ったら、同じ変更を通常の開発で行った場合と、触ったファイルの数と手数を比べる。TEIの価値はその比較で述べる。
@@ -65,7 +67,7 @@ tei view -workspace reference/workspace -application order_entry -pattern order_
 | --- | --- |
 | DB | サーバーはPostgreSQL、手元はSQLite |
 | 実装の言語 | GoとTypeScript |
-| 設計文書 | `*.tei.md`の`tei`フェンスと、印を付けた表 |
+| 設計文書 | `*.tei.md`の`tei`フェンスと、印を付けた表。言語は`tei.authoring/v1`一つ。`tei.rule-authoring/v0`へ機能を足さない |
 | 値の受渡し | 型の情報を持つJSON。十進数は文字で渡す |
 | Studio | Wailsの一体型。画面は標準のWeb ComponentsとCodeMirror |
 | 生成するWebの画面 | 標準のHTML、CSS、Web Components |
