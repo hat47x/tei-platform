@@ -95,15 +95,10 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 // single-page template. An index labels this read's display position, not a
 // business key; a different read or a reorder needs a new pairing contract.
 func validateCustomReadRowAlignment(read *readScenarioResult) error {
-	if len(read.OrderLineRows) != len(read.RowAnswers) {
-		return fmt.Errorf("row answers do not match displayed rows: rows=%d answers=%d", len(read.OrderLineRows), len(read.RowAnswers))
-	}
-	for index, answer := range read.RowAnswers {
-		if answer.RowIndex != index {
-			return fmt.Errorf("row answers are not aligned at display position %d: answer row=%d", index, answer.RowIndex)
-		}
-	}
-	return nil
+	// The producer and the HTML consumer must enforce the same row/answer
+	// correspondence. Preserve the second check at the rendering boundary,
+	// but do not maintain a second definition of the invariant.
+	return requireReadRowAnswerAlignment(read.OrderLineRows, read.RowAnswers)
 }
 
 func (s *webTargetServer) renderCustomSubmit(
