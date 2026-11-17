@@ -32,20 +32,22 @@
 | 1 | ~~異なる構造の業務モデルでも同じ読取入口を通す~~ **動く。** 別のData・Relation・実テーブルに加え、別の属性・Query入力（`batch_key`）・複合主キー（`entry_id, slot`）を持つ独立モデルを、同じ`tei view`と独立した期待で実DBから読む試験がCIで走る（[#5362](https://github.com/hat47x/tei-platform/pull/5362)） | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
 | 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5）。**未実装** | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
 | 3 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
-| 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
+| 4 | **動く：** `tei desired-schema -format sql`で定義からDDLを出す（[#5385](https://github.com/hat47x/tei-platform/pull/5385)）。`tei view -environment -format text`で取得行と判定を表示する（[#5372](https://github.com/hat47x/tei-platform/pull/5372)）。**未実装：** 生成DDLの実PostgreSQL適用を独立した期待と照合し、列の桁数など定義にない情報を補わず手順書の制限を整理する | #2586 |
 | 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
 道の1は[#5327](https://github.com/hat47x/tei-platform/pull/5327)（固定名の決め打ちを外す）、[#5339](https://github.com/hat47x/tei-platform/pull/5339)（Data・Relationの意味IDと参照テーブルを変える）、[#5362](https://github.com/hat47x/tei-platform/pull/5362)（別の属性・Query入力・複合主キーを持つ独立モデル）で通った。#5362は`checkDestinationAlternateModel`を`TestDestinationOrderChangeReadViaCLIFromPostgres`の中から呼び、CIが実PostgreSQLで走らせる。
 
 次は道の2である。Webの画面一つで、行ごとの答え（成立・不成立・判定できない）を表示する。`tei view -environment`が返す答えを、生成したWebの画面へ届ける経路がまだ無い。
 
+**道の2で守る対応関係**：行ごとの答えは、実際に読んだ行へ結び付けて表示する。最初のWebで同じReadの配列順を利用するなら、行数・順序・対象Readの一致を検査し、画面上の行番号を業務上のキーやノードの意味IDとして扱わない。並べ替え・絞り込み後に旧位置で結合したり、別のReadの答えを流用したりしない。行ごとの判定とRelation全体の判定を分け、取得範囲が未確認なら「判定できない」と理由を残す。まず[#5390](https://github.com/hat47x/tei-platform/pull/5390)のWeb応答・表示・負例で確かめる。標準Graph・Node Viewの実装を道の2の新たな前提にはしない。
+
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
 並行して進めてよいのは一本だけである。**Studioが次の自分を作る一巡**（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）。完了の条件は一文にする。Studioで定義を一つ変え、**生成器には触れずに**、Studio自身が作った次のStudioがWindowsで起動し、その変更が画面に出ること。
 
-「生成器には触れずに」が要である。生成した読み手は、34行の定義と689行の生成の手続きから66行のコードを作っていた。応答へ項目を一つ足す変更は、手書きなら十数行で済むのに、生成の手続きを書き換える必要があった。その変更は手書きで行われ、生成した読み手は11月15日にmainから外れた（[#4583の報告](https://github.com/hat47x/tei-platform/issues/4583#issuecomment-6937391216)）。定義を直すほうが手書きより高くつく間は、誰も定義を直さない。
+「生成器には触れずに」が要である。当初は34行の契約からReader一つを作るために約690行の生成手続きを要し、必須項目一つの追加にも生成器の改修が必要だった。現在は[#5325](https://github.com/hat47x/tei-platform/pull/5325)で生成Readerを製品の唯一のReaderへ戻し、[#5365](https://github.com/hat47x/tei-platform/pull/5365)で未対応の宣言を拒否した。[#5389](https://github.com/hat47x/tei-platform/pull/5389)ではJSON契約の`requiredResponseFields`へ`schemaVersion`を足すだけでReaderの必須性・型検査が変わり、生成器の実装byteを変えずに正規Bundleと実Windows WebView2で使用された。**ただし、JSON契約はTEIのData・Ruleから導かれておらず、変更後の契約でStage1がStage2を構築したわけでもない。**
 
-進め方は二段にする。まず復旧する。試験は緩めず、生成した読み手を唯一の読み手に戻す。次に、同じ変更（必須の項目を一つ足す）を定義だけで行えるようにする。応答の形は到達点と同じ書き方（Dataの項目と規則）で書き、読み手はその定義から作る。部品ごとに生成の手続きを書く方式は、これ以上広げない。
+**次のコード変更は[#4583](https://github.com/hat47x/tei-platform/issues/4583)で一巡を閉じる。** 既存の`tei.authoring/v1`で記述したData項目・Ruleから必須応答項目を取り出し、同じReader契約と生成経路へ渡す。定義変更の前後を独立した期待と照合し、**生成器本体の差分ゼロ、古いReaderの拒否、生成Readerの動作変更**を確認する。その変更をStage1の実Build・実Builder呼出しからStage2の新しいWindows実行物へ結び、画面で変更後のReaderが使われたことまで同一の実行単位で確かめる。[#5373](https://github.com/hat47x/tei-platform/pull/5373)のStage2実起動の限定実測は変更前の契約による別の記録であり、今回の完了には足し合わせない。第二の言語・Host・生成器は増やさない。
 
 ## 到達点まで止めるもの
 

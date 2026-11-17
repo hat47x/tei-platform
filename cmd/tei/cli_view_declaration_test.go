@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -12,16 +13,22 @@ import (
 // is how a declaration gets read as a measurement.
 func TestDestinationDeclarationFrom(t *testing.T) {
 	t.Run("undeclared binding reports nothing", func(t *testing.T) {
-		got := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{})
+		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{})
+		if err != nil {
+			t.Fatalf("undeclared binding refused: %v", err)
+		}
 		if got != nil {
 			t.Fatalf("undeclared binding produced %+v", got)
 		}
 	})
 
 	t.Run("covers every row, unchecked", func(t *testing.T) {
-		got := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversRelation: "sales.order.lines",
 		})
+		if err != nil {
+			t.Fatalf("a single declaration was refused: %v", err)
+		}
 		if got == nil {
 			t.Fatal("a declaration was dropped")
 		}
@@ -36,9 +43,12 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 	})
 
 	t.Run("covers some rows, unchecked", func(t *testing.T) {
-		got := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversSome: true,
 		})
+		if err != nil {
+			t.Fatalf("a single declaration was refused: %v", err)
+		}
 		if got == nil {
 			t.Fatal("a declaration was dropped")
 		}
@@ -53,17 +63,44 @@ func TestDestinationDeclarationFrom(t *testing.T) {
 	// The two declared states must stay distinguishable in the report, because
 	// "covers every row" and "covers some" license different conclusions.
 	t.Run("the two declarations differ", func(t *testing.T) {
-		all := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+		all, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversRelation: core.CanonicalID("sales.order.lines"),
 		})
-		some := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+		if err != nil {
+			t.Fatalf("all-rows declaration refused: %v", err)
+		}
+		some, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
 			CoversSome: true,
 		})
+		if err != nil {
+			t.Fatalf("some-rows declaration refused: %v", err)
+		}
 		if all == nil || some == nil {
 			t.Fatal("a declaration was dropped")
 		}
 		if all.CoversRelation == some.CoversRelation && all.CoversSome == some.CoversSome {
 			t.Fatalf("the two declarations became indistinguishable: %+v %+v", all, some)
+		}
+	})
+
+	// Both fields can be set at once on the struct even though the static
+	// validator rejects the combination, and the view path runs no validator.
+	// The read is refused rather than answered: labelling the contradiction and
+	// continuing would decide rules against a binding that contradicts itself
+	// about the very scope the rule is asked over.
+	t.Run("both stated is refused", func(t *testing.T) {
+		got, err := destinationDeclarationFrom(realization.HeaderDetailContractQueryBinding{
+			CoversRelation: "sales.order.lines",
+			CoversSome:     true,
+		})
+		if err == nil {
+			t.Fatalf("a contradictory binding was accepted: %+v", got)
+		}
+		if got != nil {
+			t.Fatalf("a contradictory binding produced a declaration anyway: %+v", got)
+		}
+		if !strings.Contains(err.Error(), "sales.order.lines") {
+			t.Fatalf("the refusal does not name the Relation it contradicts: %v", err)
 		}
 	})
 }

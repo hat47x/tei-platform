@@ -24,6 +24,7 @@
 - [X-TEA固定版 NotNull／Relationship任意性／DDL・Web認証の静的対照](XTEA_NOTNULL_RELATION_WEB_AUTH_STATIC_CROSSCHECK_20261026.md)（旧実装の比較証拠。Accepted Meaning・本番適格性の実証ではない）
 - [TEI Studio PoCの証拠採取手順](TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md)
 - [Studioの部品一つをTEIのSourceから生成し、実Desktopで使われたことを観測した](TEI_STUDIO_SELF_BUILD_S1_INSPECTION_READER_2026-11-13.md)（Inspector readerを契約Sourceから既存transformで生成。実Windows WebView2で使用を観測し、生成前bundleでは同じ確認だけが失敗。Stage1のTEI実プロセスによる再生成も一致。bundlingとWails BuildはBuild graphの外、CIは未実行）
+- [Inspect応答の必須項目を、契約の定義だけで一つ足した](TEI_STUDIO_READER_REQUIRED_FIELD_BY_DEFINITION_2026-11-17.md)（transform実行機構に有界の`join-array`を加え、Generator Sourceが契約の`requiredResponseFields`を読む汎用規則を持つ。`schemaVersion`の追加はGenerator Source・生成tool・実行機構の差分0で、旧部品・digest付け替えは拒否され、実Windows WebView2で新契約のReaderが使われた。他の規則はまだ名前付きスロット）
 - [E1合成証拠の索引（JSON）](TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json)と、その原本[`tei-e1-synthetic-38267656696/`](tei-e1-synthetic-38267656696/)（試験用証拠。製品Gateは未資格。バイト列で照合するため[`.gitattributes`](../../.gitattributes)で改行変換を除外している）
 - [E2a-1実PostgreSQL先行証拠の受領記録（JSON）](TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json)（上の保全文書が参照する原本。製品G2は未資格）
 - [#1803 新規作成DDLの実PostgreSQL実行の記録（JSON）](POSTGRES_DDL_ENTRY_REAL_DB_20261020.json)（上の説明文書が参照する、生の結果）
@@ -538,3 +539,4 @@
 - [legacy .teiはno-overlapを要求するのに書く手段が無かった](TEI_DOGFOODING_ROUND90_LEGACY_SURFACE_DEAD_END_2026-11-17/README.md)（装備貸出の重なり禁止をCLIだけで設計し、periodは期間ではなく状態・締めだと判明。tei本体はattribute/relationの2語しか受け付けずCompared/GroupByを設定しないため、no-overlap・not-after・operatorは表現不能なのに受理され意味層で落ちていた。パース時に断り書く場所を案内するよう修正。第83ラウンドの自分のテストの誤りも訂正）
 - [38コマンドが発見面から欠落は誤報だった](TEI_DOGFOODING_ROUND91_DISCOVERY_SCOPE_FALSE_ALARM_2026-11-17/README.md)（前ラウンドのno-overlap回避経路を検証し、宣言・読み返し・評価器35subtests・製品呼出しのすべてが成立していることを確認。tei commandsと正準一覧の差38件を発見可能性の欠陥としかけたが、Scope:'selected-read-only-commands'が範囲を明示しており設計文書も不掲載を未実装に昇格させないと明記していたため起票せず。発見面は既存3テストで保護済み）
 - [Functionを書きたいと思ったらそれは著面の語ではなかった](TEI_DOGFOODING_ROUND92_FUNCTION_NOT_A_KEYWORD_2026-11-17/README.md)（Functionは投影が指す既存の正体（capability/validation/application-pattern/data）の総称で、著面の宣言種別ではないと確定。代わりにdata+rule+capabilityの合成を作り3主体すべて読み返した。綴り違いを提案しないのは設計方針と確認。自身が-jsonの入れ子（diagnostics[].diagnostic）を2回読み誤ったことも記録）
+- [SQLで参照されていないがどの書き方なら参照されるかを言わない](TEI_DOGFOODING_ROUND93_SQL_PLACEHOLDER_MESSAGE_2026-11-17/README.md)（ApplicationをCLIだけで設計し、$1を書くとQUERY_INPUT_NOT_REFERENCEDが出ることを検出。検査は名前付き(:name/$name/@name)しか一致せず、driverのコメントも:nameが正規と明記しているのに、警告文が正しい書き方を教えていなかった。検査範囲は変えず説明だけを直した。変異2件で捕捉）

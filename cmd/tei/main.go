@@ -682,7 +682,7 @@ func main() {
 			s = s.Normalize()
 			snap = &s
 		}
-		p, err := postgres.NormalizeExplainJSON(core.MustCanonicalID(*queryID), core.MustCanonicalID(*databaseID), raw, snap)
+		p, err := postgres.NormalizeExplainJSON(canonicalOrExit("query", *queryID), canonicalOrExit("database", *databaseID), raw, snap)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(2)
@@ -812,7 +812,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "unsupported concrete database provider %q\n", pid)
 			os.Exit(2)
 		}
-		if _, ok := findDatabase(w, core.MustCanonicalID(*databaseID)); !ok {
+		if _, ok := findDatabase(w, canonicalOrExit("database", *databaseID)); !ok {
 			fmt.Fprintf(os.Stderr, "unknown database %s\n", *databaseID)
 			os.Exit(2)
 		}
@@ -844,7 +844,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-database, -provider, -actual and -version are required")
 			os.Exit(2)
 		}
-		dbid := core.MustCanonicalID(*databaseID)
+		dbid := canonicalOrExit("database", *databaseID)
 		db, ok := findDatabase(w, dbid)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown database %s\n", dbid)
@@ -886,7 +886,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-database and -version are required")
 			os.Exit(2)
 		}
-		dbid := core.MustCanonicalID(*databaseID)
+		dbid := canonicalOrExit("database", *databaseID)
 		m, ok := findMigration(w, dbid, *migrationVersion)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown migration %s for database %s\n", *migrationVersion, dbid)
@@ -904,7 +904,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-database, -provider, -actual and -history are required")
 			os.Exit(2)
 		}
-		dbid := core.MustCanonicalID(*databaseID)
+		dbid := canonicalOrExit("database", *databaseID)
 		pid := environment.DatabaseProvider(*providerName)
 		if !pid.Known() || pid == environment.ProviderGeneric {
 			fmt.Fprintf(os.Stderr, "unsupported concrete database provider %q\n", pid)
@@ -942,7 +942,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-application is required")
 			os.Exit(2)
 		}
-		app, ok := findApplication(w, core.MustCanonicalID(*applicationID))
+		app, ok := findApplication(w, canonicalOrExit("application", *applicationID))
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown application %s\n", *applicationID)
 			os.Exit(2)
@@ -974,7 +974,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-application and -version are required")
 			os.Exit(2)
 		}
-		ar, ok := findApplicationRelease(w, core.MustCanonicalID(*applicationID), *migrationVersion)
+		ar, ok := findApplicationRelease(w, canonicalOrExit("application", *applicationID), *migrationVersion)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown application release %s@%s\n", *applicationID, *migrationVersion)
 			os.Exit(2)
@@ -1010,7 +1010,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-solution and -version are required")
 			os.Exit(2)
 		}
-		sr, ok := findSolutionRelease(w, core.MustCanonicalID(*solutionID), *migrationVersion)
+		sr, ok := findSolutionRelease(w, canonicalOrExit("solution", *solutionID), *migrationVersion)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown solution release %s@%s\n", *solutionID, *migrationVersion)
 			os.Exit(2)
@@ -1032,7 +1032,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-solution, -version, -deployment, -run-id and -plugin-lock are required")
 			os.Exit(2)
 		}
-		sr, ok := findSolutionRelease(w, core.MustCanonicalID(*solutionID), *migrationVersion)
+		sr, ok := findSolutionRelease(w, canonicalOrExit("solution", *solutionID), *migrationVersion)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown solution release %s@%s\n", *solutionID, *migrationVersion)
 			os.Exit(2)
@@ -1261,7 +1261,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-solution, -version, -deployment and -run are required")
 			os.Exit(2)
 		}
-		sr, ok := findSolutionRelease(w, core.MustCanonicalID(*solutionID), *migrationVersion)
+		sr, ok := findSolutionRelease(w, canonicalOrExit("solution", *solutionID), *migrationVersion)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown solution release %s@%s\n", *solutionID, *migrationVersion)
 			os.Exit(2)
@@ -1315,7 +1315,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-solution, -version and -deployment are required")
 			os.Exit(2)
 		}
-		sr, ok := findSolutionRelease(w, core.MustCanonicalID(*solutionID), *migrationVersion)
+		sr, ok := findSolutionRelease(w, canonicalOrExit("solution", *solutionID), *migrationVersion)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown solution release %s@%s\n", *solutionID, *migrationVersion)
 			os.Exit(2)
@@ -1334,7 +1334,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "-database, -version and -deployment are required")
 			os.Exit(2)
 		}
-		target, ok := findDatabaseRelease(w, core.MustCanonicalID(*databaseID), *migrationVersion)
+		target, ok := findDatabaseRelease(w, canonicalOrExit("database", *databaseID), *migrationVersion)
 		if !ok {
 			fmt.Fprintf(os.Stderr, "unknown database release %s@%s\n", *databaseID, *migrationVersion)
 			os.Exit(2)
@@ -1364,7 +1364,13 @@ func loadCheckedDeploymentRun(w ir.World, runPath, solutionID, version string, e
 	if runPath == "" || solutionID == "" || version == "" {
 		return deploymentdurable.Run{}, releaseplan.Definition{}, releaseplan.Compiled{}, fmt.Errorf("-run, -solution and -version are required")
 	}
-	sr, ok := findSolutionRelease(w, core.MustCanonicalID(solutionID), version)
+	// This runs after argument parsing but still reports by error, so a mistyped
+	// solution ID is a failure value here rather than a panic.
+	solution, idErr := core.ParseCanonicalID(solutionID)
+	if idErr != nil {
+		return deploymentdurable.Run{}, releaseplan.Definition{}, releaseplan.Compiled{}, fmt.Errorf("invalid -solution: %w", idErr)
+	}
+	sr, ok := findSolutionRelease(w, solution, version)
 	if !ok {
 		return deploymentdurable.Run{}, releaseplan.Definition{}, releaseplan.Compiled{}, fmt.Errorf("unknown solution release %s@%s", solutionID, version)
 	}

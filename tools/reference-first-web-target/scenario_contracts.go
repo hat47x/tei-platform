@@ -14,18 +14,24 @@ type readScenarioInput struct {
 }
 
 type readScenarioResult struct {
-	ScenarioID       string                     `json:"scenarioId"`
-	Environment      string                     `json:"environment"`
-	ApplicationID    string                     `json:"applicationId"`
-	From             string                     `json:"from"`
-	SelectedRowIndex int                        `json:"selectedRowIndex"`
-	BrowseRows       []semanticRowProjection    `json:"browseRows"`
-	SelectedOrder    semanticRowProjection      `json:"selectedOrder"`
-	CustomerRows     []semanticRowProjection    `json:"customerRows"`
-	OrderLineRows    []semanticRowProjection    `json:"orderLineRows"`
-	RuntimeBindings  []runtimeBindingProjection `json:"runtimeBindings"`
-	AuthorityLimits  []string                   `json:"authorityLimits"`
-	Unresolved       []string                   `json:"unresolved"`
+	ScenarioID       string                  `json:"scenarioId"`
+	Environment      string                  `json:"environment"`
+	ApplicationID    string                  `json:"applicationId"`
+	From             string                  `json:"from"`
+	SelectedRowIndex int                     `json:"selectedRowIndex"`
+	BrowseRows       []semanticRowProjection `json:"browseRows"`
+	SelectedOrder    semanticRowProjection   `json:"selectedOrder"`
+	CustomerRows     []semanticRowProjection `json:"customerRows"`
+	OrderLineRows    []semanticRowProjection `json:"orderLineRows"`
+	// RowAnswers is the answer of every declared rule for each order line that
+	// was read, in the order of OrderLineRows. RelationAnswers holds the answers
+	// of rules about the whole relation. Both are the same three-valued answers
+	// `tei view -environment` reports, not a new judgement.
+	RowAnswers      []rowAnswerProjection      `json:"rowAnswers"`
+	RelationAnswers []string                   `json:"relationAnswers"`
+	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
+	AuthorityLimits []string                   `json:"authorityLimits"`
+	Unresolved      []string                   `json:"unresolved"`
 }
 
 type readScenarioRunner interface {

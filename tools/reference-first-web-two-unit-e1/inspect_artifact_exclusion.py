@@ -125,6 +125,10 @@ RUNTIME_EXPECTED = (
     "tei/internal/application/release",
     "tei/internal/releaseplan",
     "tei/internal/database",
+    # Relation Query SQL is built at runtime by the PostgreSQL and SQLite
+    # executors (internal/driver/queryruntime/*/executor.go ->
+    # driver.RelationQuerySQL -> sqlgen). It arrived here in 41de7910a (#4415).
+    "tei/internal/database/sqlgen",
     "tei/internal/database/migration",
     "tei/internal/database/persistence",
     "tei/internal/database/physical",
@@ -134,6 +138,13 @@ RUNTIME_EXPECTED = (
     "tei/internal/resource",
     "tei/internal/semantic",
     "tei/internal/driver",
+    # The API-only profile answers the same read the browser profile does,
+    # so it links the row reader and the SQL generator those answers need.
+    # Both are runtime coverage the json-api profile already claims, not
+    # presentation; they are listed here rather than in KNOWN_INTRUSION
+    # because they are part of the same read the API must serve.
+    "tei/internal/driver/validationread",
+    "tei/internal/database/sqlgen",
     "tei/internal/driver/queryresult",
     "tei/internal/permission",
     "tei/internal/plugin",
