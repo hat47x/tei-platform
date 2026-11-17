@@ -1,0 +1,12 @@
+Four self-inflicted problems, all recorded:
+
+1 Projection{} carries no limits; they are assembled by FromIndex.
+  -> the test now calls FromIndex(index.Derived{}, "full").
+2 Build(ir.World{}, nil, ...) does not compile; the third argument is
+  sourceindex.Index, not a pointer.
+3 Three derivedbridge ORDER tests failed because projection_order_test.go
+  keeps its own copy of the reference limit list.
+  -> updated that copy to the same order. This is a real duplication worth
+     naming, not something I hid by loosening the tests.
+4 My Python replacement missed because I included a literal \t}}\n that the
+  file does not contain that way; reading the bytes and matching exactly fixed it.
