@@ -26,3 +26,8 @@ coverage.out
 # Python test / launcher bytecode is local derived state, not TEI build input
 __pycache__/
 *.py[cod]
+
+# リポジトリの直下に作った実行ファイル。誤って登録しない。
+/tei
+/tei.exe
+/reference-build-plan-authoring

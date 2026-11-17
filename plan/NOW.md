@@ -17,7 +17,7 @@
 4. `tei validate`が通り、同じ明細を読み直すと、書き換えた規則の答えに変わる。
 5. 生成したWebの画面一つで、同じ答えが見える。
 
-入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。通常の`tei view -environment`による実PostgreSQLの明細取得・行ごとのRule評価は[#5300](https://github.com/hat47x/tei-platform/pull/5300)で製品入口へ入った。専用CIは受注3件、規則の変更前後6ケースを独立した期待と照合している。実DB読取りの直前に、同じ作業領域へ`tei validate`を実行する検査もある。ただし受注全行を取得した証明はなく、一意性の「成立」は判定保留である。Web画面への表示もまだできていない。
+入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。**1〜4は動く。** `tei view -environment`が実際のPostgreSQLから明細を読み、行ごとの規則の答えを返す（[#5300](https://github.com/hat47x/tei-platform/pull/5300)）。専用のCIが変更の前後を期待と照合している。別に用意したPostgreSQLで[手順書](../docs/first-change.md)のとおりに打ち、行ごとの答えが期待とすべて一致することも確かめた。5はまだない。
 
 受入れは二つである。この五つを実際のPostgreSQLで実行し、実装から独立した期待と照合する試験が、CIで毎回走ること。五つを一ページで案内する手順書があり、その手順書のとおりに打てば通ること。
 
@@ -29,19 +29,15 @@
 
 | 順 | 作業 | 担当先 |
 | --- | --- | --- |
-| 1 | 機能一つを実際のDBから読んで、CLIで受け取る（上の1） | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
-| 2 | 規則の正規形とOperatorの署名。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の作業1〜5（上の2〜4の土台） | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
-| 3 | 読んだ行へ規則を当てる入口を、既存のコマンドへつなぐ（上の2） | #2586 |
-| 4 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
-| 5 | 五つを通す試験と、一ページの手順書 | #1119 |
+| 1 | **入口から参照用の作業領域の名前を外す。** 今の入口は`order_entry.order_lines`と`development`をコードに書いて受け付けている。別の作業領域の別のPatternを一つ、コードを変えずに同じコマンドで読めること | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
+| 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 3 | 束縛へ全件の宣言を書き、明細番号の一意に「成立」と答える。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
+| 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
+| 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
-入口は増やさない。上の1、2、4は、既にある`tei view`へ、実行先を選ぶ指定（`-environment`）を足して通す。
+道の1を最初に置く。到達点の価値は、定義を書けばどの機能も同じ道を通ることにある。受注明細だけが通る入口は、その証拠にならない。製品のコードが参照用の作業領域のIDを名指ししないことを、試験で確かめる。
 
-```text
-tei view -workspace reference/workspace -application order_entry -pattern order_entry.order_lines -environment development -input order_id=<受注> -format json
-```
-
-返すのは、読んだ行、行ごと項目ごとの値の状態、行ごとの規則の答えである。接続の秘密は環境変数から受け取り、作業領域へ書かない。
+入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
 並行して進めてよいのは一本だけである。**Studioが次の自分を作る一巡**（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）。完了の条件は一文にする。Studioで定義を一つ変え、**生成器には触れずに**、Studio自身が作った次のStudioがWindowsで起動し、その変更が画面に出ること。
 
