@@ -34,6 +34,10 @@ func (e *ParseError) Error() string { return fmt.Sprintf("%d:%d: %s", e.Pos.Line
 type Parser struct {
 	lx     *Lexer
 	peeked *Token
+	// peeked2 holds the token after peeked. Two tokens are buffered because a
+	// few surfaces decide by the token after the one being looked at: an
+	// operator input is named only when a colon follows the name.
+	peeked2 *Token
 }
 
 func NewParser(src string) *Parser { return &Parser{lx: NewLexer(src)} }
@@ -2480,11 +2484,31 @@ func parseVersion(s string) (database.ContractVersion, error) {
 func (p *Parser) next() (Token, error) {
 	if p.peeked != nil {
 		t := *p.peeked
-		p.peeked = nil
+		p.peeked = p.peeked2
+		p.peeked2 = nil
 		return t, nil
 	}
 	return p.lx.Next()
 }
+
+// peek2 returns the token after the one peek returns, without consuming it.
+// It fills the same buffer peek uses, so the two stay consistent.
+func (p *Parser) peek2() (Token, error) {
+	if _, err := p.peek(); err != nil {
+		return Token{}, err
+	}
+	if p.peeked2 != nil {
+		return *p.peeked2, nil
+	}
+	// p.peeked is set by peek, so the lexer is positioned after it.
+	t, err := p.lx.Next()
+	if err != nil {
+		return Token{}, err
+	}
+	p.peeked2 = &t
+	return t, nil
+}
+
 func (p *Parser) peek() (Token, error) {
 	if p.peeked != nil {
 		return *p.peeked, nil
