@@ -192,7 +192,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^(TestDestinationOrderChangeReadViaCLIFromPostgres|TestIndependentWarehouseDataFormThroughProductView) | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^(TestDestinationOrderChangeReadViaCLIFromPostgres|TestIndependentWarehouseDataFormThroughProductView)$' ./cmd/tei | tee -a "$log"
 
       - name: SKIPとFAILの検証
         shell: bash
