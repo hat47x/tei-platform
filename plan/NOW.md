@@ -37,9 +37,9 @@
 
 道の1は[#5327](https://github.com/hat47x/tei-platform/pull/5327)（固定名の決め打ちを外す）、[#5339](https://github.com/hat47x/tei-platform/pull/5339)（Data・Relationの意味IDと参照テーブルを変える）、[#5362](https://github.com/hat47x/tei-platform/pull/5362)（別の属性・Query入力・複合主キーを持つ独立モデル）で通った。#5362は`checkDestinationAlternateModel`を`TestDestinationOrderChangeReadViaCLIFromPostgres`の中から呼び、CIが実PostgreSQLで走らせる。
 
-次は道の2の未接続部分である。実PostgreSQL→通常CLI→静的HTML→実Chrome DOMの経路は検証できた。しかし、第一Web TargetのHTTP実行先は合成Queryを使っており、同じ実DB Readを渡していない。二つの経路がそれぞれ動くことを、全体が一続きに動いた証拠としない。
+道の2は、実PostgreSQLから通常CLIの静的HTMLを経て実Chrome DOMに届く経路（[#5425](https://github.com/hat47x/tei-platform/pull/5425)）と、実PostgreSQLの受注明細・Rule判定を第一Web TargetのHTTP本文へ届ける経路（[#5431](https://github.com/hat47x/tei-platform/pull/5431)・[#5454](https://github.com/hat47x/tei-platform/pull/5454)・[#5467](https://github.com/hat47x/tei-platform/pull/5467)）まで実装した。**前者のChrome検査と後者のHTTP本文検査は別の試行であり、実DBのHTTP配信画面を実Chrome DOMで検収したことにはならない。** 後者の受注一覧と顧客参照はなお合成データなので、業務画面の全データが実DB由来とも言わない。
 
-**道の2で守る対応関係**：行別Ruleの答えと明細行は、同じ実Read・親Scope・Query入力に属することを確認して結び付ける。現在のWebで使う配列位置は表示上の順番であり、業務キーやノードの意味IDではない。[#5424](https://github.com/hat47x/tei-platform/pull/5424)で行数・位置の不一致はJSON／HTMLで拒否するようになったが、別Readの混在までは防げない。**次のコード変更**は`tools/reference-first-web-target/read_scenario.go`と`reference_contract_query_fixture.go`を対象に、既存のDriver／Query実装を通した選択Providerの実Readへ接続し、主キー・行別Rule・Relation全体の判定を同じ読取からHTTPへ渡す。その結果を実Chrome DOMと既存の独立Expectedで照合する。取得が不完全なときは理由付きの「判定できない」を保持し、実Readが確認できるまで新しいNode ViewやRuntimeを前提にしない。
+**道の2で守る対応関係**：行別Ruleの答えと明細行は、同じ実Read・親Scope・Query入力に属するものだけを結び付ける。配列位置は表示順であり、業務キーやNodeの意味IDではない。[#5424](https://github.com/hat47x/tei-platform/pull/5424)は行数・位置の不一致をJSON／HTMLで拒否し、[#5444](https://github.com/hat47x/tei-platform/pull/5444)は選択受注キー・Query target・入力・行数をRead Identityとして表示する。ただし表示したIdentityは、別Read由来の回答が混ざらないことの独立した証明ではない。**次のコード変更**は`tools/reference-first-web-target/read_scenario_page_postgres_test.go`と実PostgreSQL専用CIを対象に、`-serve-read-from-db`でHTTP配信した画面を実Chrome DOMで開き、主キー別の行値・Rule三値・Relation全体の結果・判定保留理由を手書きExpectedと照合する。実DB明細と合成の一覧・顧客参照の出所を区別し、取得が不完全でも観測した違反は「不成立」、違反を観測しないだけなら理由付き「判定できない」を保持する。新しいHost・Rule評価器・Node Viewを前提にしない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
