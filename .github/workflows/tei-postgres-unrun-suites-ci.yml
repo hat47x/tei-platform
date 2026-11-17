@@ -12,8 +12,9 @@ on:
       - 'internal/command/lifecyclepg/**'
       - 'internal/driver/**'
       - 'cmd/tei/cli_view.go'
-      - 'cmd/tei/cli_view_order_lines.go'
-      - 'cmd/tei/cli_view_order_lines_test.go'
+      - 'cmd/tei/cli_view_environment.go'
+      - 'cmd/tei/cli_view_environment_test.go'
+      - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -34,8 +35,9 @@ on:
       - 'internal/command/lifecyclepg/**'
       - 'internal/driver/**'
       - 'cmd/tei/cli_view.go'
-      - 'cmd/tei/cli_view_order_lines.go'
-      - 'cmd/tei/cli_view_order_lines_test.go'
+      - 'cmd/tei/cli_view_environment.go'
+      - 'cmd/tei/cli_view_environment_test.go'
+      - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -128,8 +130,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gofmt -d cmd/tei/cli_view.go cmd/tei/cli_view_order_lines.go \
-            cmd/tei/cli_view_order_lines_test.go cmd/tei/destination_order_runtime_pg_test.go \
+          gofmt -d cmd/tei/cli_view.go cmd/tei/cli_view_environment.go \
+            cmd/tei/cli_view_environment_test.go cmd/tei/destination_order_runtime_pg_test.go \
             | tee "$RUNNER_TEMP/destination-order-gofmt.diff"
           test ! -s "$RUNNER_TEMP/destination-order-gofmt.diff"
 

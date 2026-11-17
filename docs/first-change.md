@@ -42,7 +42,7 @@ cp -r reference/workspace /tmp/my-workspace
   -input order_id=1001 -format json
 ```
 
-`result.rows`に読んだ3行が、`result.perLine`に行ごとの規則の答えが出る。数量が0の明細（`orderLineId` 2）は、`sales.order_line.quantity_positive`が`not-satisfied`になる。`result.perOrder`は受注一件の明細すべてに一度尋ねる規則の答えで、明細番号が重なっているので`not-satisfied`になる。
+`result.rows`に読んだ3行が、`result.perRow`に行ごとの規則の答えが出る。行は`key`（明細の主キー）で指す。数量が0の明細（`key` 2）は、`sales.order_line.quantity_positive`が`not-satisfied`になる。`result.perRelation`は受注一件の明細すべてに一度尋ねる規則の答えで、明細番号が重なっているので`not-satisfied`になる。
 
 受注1002では、明細番号の一意が`undecided`になる。読んだ2行に重なりはないが、Queryが受注の明細をすべて返したと、どこにも宣言していないためである。宣言の書き方は決めてあり、実装はこれからである。
 
@@ -91,14 +91,14 @@ rule sales.order_line.unit_price_positive:
 
 `ok`で終わる。参照用の作業領域が元から持つ警告が一件出るが、この変更とは関係がない。例の表の`not-satisfied`を`satisfied`へ書き換えてもう一度実行すると、`RULE_EXAMPLE_MISMATCH`で止まる。例と規則が食い違っていることを、文書の段階で見つけている。
 
-手順2と同じコマンドをもう一度打つ。同じ行に対して、単価が0の明細（`orderLineId` 3）に`sales.order_line.unit_price_positive: not-satisfied`が増えている。データベースもプログラムも変えていない。
+手順2と同じコマンドをもう一度打つ。同じ行に対して、単価が0の明細（`key` 3）に`sales.order_line.unit_price_positive: not-satisfied`が増えている。データベースもプログラムも変えていない。
 
 期待する答えの全体は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。
 
 ## まだできないこと
 
+- 異なるData・Relationを持つ業務モデルで、同じ`tei view`を通すこと。現時点で実DBの試験が済んだ別名Patternは、受注明細と同じRelationを使っている。
 - 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
 - 定義から表を作ること。
 - JSON以外の読みやすい出力。
-- ほかのPatternを同じコマンドで読むこと。今の入口は、受注明細と`development`だけを受け付ける。
 - Webの画面で同じ答えを見ること。
