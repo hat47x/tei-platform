@@ -29,9 +29,29 @@ type readScenarioResult struct {
 	// `tei view -environment` reports, not a new judgement.
 	RowAnswers      []rowAnswerProjection      `json:"rowAnswers"`
 	RelationAnswers []string                   `json:"relationAnswers"`
+	// ReadIdentity names the read this page shows: the selected order, the
+	// header-detail Contract Query target, and the inputs that Query was
+	// executed with. The answers are bound to it, so a list produced by a
+	// different read is refused instead of rendered under these rows.
+	ReadIdentity readIdentityProjection `json:"readIdentity"`
 	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
 	AuthorityLimits []string                   `json:"authorityLimits"`
 	Unresolved      []string                   `json:"unresolved"`
+}
+
+// readIdentityProjection is what makes a row answer locatable: which order was
+// selected, which Contract Query was executed for its lines, and with which
+// input. It is not a business key of the page, and no display position is
+// derived from it.
+type readIdentityProjection struct {
+	SelectedOrderKey string `json:"selectedOrderKey"`
+	Environment      string `json:"environment"`
+	Pattern          string `json:"pattern"`
+	Database         string `json:"database"`
+	Contract         string `json:"contract"`
+	Query            string `json:"query"`
+	InputOrderID     string `json:"inputOrderId"`
+	RowCount         int    `json:"rowCount"`
 }
 
 type readScenarioRunner interface {
