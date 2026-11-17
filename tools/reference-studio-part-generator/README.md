@@ -87,10 +87,33 @@ python3 tools/reference-studio-part-generator/stage_reentry.py \
 
 実測は[証拠記録](../../plan/evidence/TEI_STUDIO_SELF_BUILD_S1_INSPECTION_READER_2026-11-13.md)にあります。
 
+### Stage2でStudio Desktopそのものを構築し、新しいプロセスとして使う（Windows）
+
+```powershell
+python -B tools/reference-studio-part-generator/stage_reentry.py `
+  --repo . --supply "$(go env GOMODCACHE)\cache\download" --work <新しいディレクトリ> --desktop-smoke
+```
+
+`--studio-desktop`を付けると、各段のTEIが同じGo build childで**nested moduleの`cmd/tei-studio`（Wails Desktop）**も構築します。`--desktop-smoke`はさらに、**Stage2で構築されたDesktop実行ファイル**を既存の`desktop_webview_smoke.py`で新しいプロセスとして起動し、実WebView2で生成Inspector readerが現在の契約で2回以上使われたことを確かめます。WindowsではWails DesktopがCGOなしで構築できるため、どちらもWindows専用です。
+
+追加の判定です。
+
+| 判定 | 意味 |
+| --- | --- |
+| `studioDesktopsEqual` | Stage1とStage2のDesktop実行ファイルが一致 |
+| `stage2DesktopEmbedsCommittedBundle` | Stage2のDesktop実行ファイルの**byte列に**、コミット済みbundleがちょうど一回含まれる（`go:embed`は内容をそのまま格納する） |
+| `committedBundleCarriesRegeneratedPart` | そのbundleが、Stage2で再生成した部品と同じ契約digestを持つ |
+| `stage2DesktopUsedGeneratedReaderInNewProcess` | smokeが起動した実行ファイルのdigestがStage2の成果物と一致し、WebView2で観測した契約digestが再生成部品と一致し、Inspectが2回以上その部品を通った |
+
+`--self-test`は、bundleを含まないDesktop・別契約のbundle・別契約のreader・別の実行ファイル（例：CIの通常build）でのsmoke・1回だけの使用・smoke失敗・Stage0のTEIが作ったDesktopを、いずれも不成立と判定することを確かめます。
+
+実測は[Stage2 Desktopの記録](../../plan/evidence/TEI_STUDIO_SELF_BUILD_STAGE2_DESKTOP_2026-11-17.md)にあります。
+
 ## 主張しないこと
 
 - **Studio全体の生成**ではありません。生成したのは純関数一つです。
-- **Node/esbuildのbundlingとWailsのBuildは、TEIのBuild graphの外**です。`tei self-build`の計画（Build Intent・catalog）に生成工程は載っておらず、`l2b`の五条件は主張しません。使ったのは起動と記録だけを行うprimitive形式です。
+- **Node/esbuildのbundlingはTEIのBuild graphの外**です。Desktopはコミット済みbundleを埋め込み、判定はそれがコミット済みのbundleそのものであり、再生成部品と同じ契約を名指すことまでを確かめます。TEIがbundleを作り直したことは主張しません。
+- Desktopを含む各Buildは`tei self-build`のprimitive形式（起動と記録）で、計画（Build Intent・catalog）は使っていません。`l2b`の五条件は主張しません。
 - Stage2で使うGo build child（`reference-go-build-with-supply`）は両段ともStage0のseedが作ったものです。Seed Trust、受理、Runtime Authorityは主張しません。
 - `studio_generated`タグの生成Goサービス（PoC B）とは別の経路です。そちらは`main`に生成物が無く、このtoolは触れていません。
 - G1（生成AIによるGenerator生成規約）は扱いません。Generator Sourceは人が書いた既存IRです。
