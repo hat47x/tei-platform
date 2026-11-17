@@ -21,6 +21,12 @@ import (
 	"tei/tools/internal/postgresdb"
 )
 
+// readDSNEnv names the environment variable that carries the PostgreSQL
+// connection string for the Web read. It is the same variable the PostgreSQL
+// suite already exports for this target, and it is deliberately not a flag
+// value: a connection string on argv is visible in process listings and logs.
+const readDSNEnv = "TEI_WEB_READ_PG_DSN"
+
 func main() {
 	// The shipped CLI injects no Reader. A Source Reader is selected only by
 	// -host-acceptance-store with -host-acceptance-trust (signed Decisions,
@@ -111,17 +117,19 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 		legacyUsers   = flags.String("legacy-users", "reference/legacy-auth/users.json", "Legacy authentication fixture")
 		legacyAuthz   = flags.String("legacy-authorization", "reference/legacy-auth/authorization.json", "Legacy authorization fixture")
 		listen        = flags.String("listen", "127.0.0.1:8080", "HTTP listen address")
-		// The read source is selected explicitly. The shipped CLI reads no
-		// environment variable for it, so a page cannot start claiming a
-		// database it was not given; empty keeps the shipped fixture rows.
-		readPGDSN    = flags.String("read-pg-dsn", "", "PostgreSQL DSN serving the order-line read (empty keeps the fixture rows)")
-		scopedRoutes = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
-		diagnostic   = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
-		storeDir     = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
-		trustPath    = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
-		provGrant    = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
-		provTrust    = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
-		provAck      = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
+		// The read source is selected explicitly, and the connection string is
+		// read from the environment rather than argv: plan/NOW.md keeps a
+		// connection secret out of process arguments and out of logs. Without
+		// this flag the shipped fixture rows stay, so a page cannot claim a
+		// database it was not given.
+		serveReadFromDB = flags.Bool("serve-read-from-db", false, "serve the order-line read from the PostgreSQL DSN in "+readDSNEnv+" (otherwise the fixture rows stay)")
+		scopedRoutes    = flags.Bool("scoped-routes", false, "diagnostic: expose only the selected Application's HTTP routes")
+		diagnostic      = flags.Bool("diagnostic-unaccepted-source", false, "test-only: load unaccepted Reference Source without a Host witness")
+		storeDir        = flags.String("host-acceptance-store", "", "existing Host Acceptance Store directory (requires -host-acceptance-trust)")
+		trustPath       = flags.String("host-acceptance-trust", "", "Host trust file listing issuer public keys (requires -host-acceptance-store)")
+		provGrant       = flags.String("provisional-effect-grant", "", "DEVELOPMENT ONLY (D8): signed provisional effect Grant file (requires the two flags below)")
+		provTrust       = flags.String("provisional-effect-grant-trust", "", "DEVELOPMENT ONLY (D8): trust file for provisional effect Grant issuers")
+		provAck         = flags.Bool("provisional-effect-grant-development-only", false, "acknowledge that the provisional effect Grant is development/verification only, not a production permission, and not G2 evidence")
 	)
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -168,11 +176,15 @@ func runCombinedWebTargetWithHost(ctx context.Context, reader sourceacceptance.R
 	// A requested database either serves the read or refuses to publish. Leaving
 	// the fixture rows in place would show a page that claims a read it did not
 	// make, which is what today's synthetic rows already must not be read as.
-	if *readPGDSN != "" {
+	if *serveReadFromDB {
 		if wiring.readDatabase != nil {
 			return fmt.Errorf("WEB_READ_DATABASE_CONFLICT: the embedding Host already supplied a read database")
 		}
-		db, openErr := postgresdb.OpenSQL(*readPGDSN)
+		dsn := os.Getenv(readDSNEnv)
+		if dsn == "" {
+			return fmt.Errorf("WEB_READ_DATABASE_UNCONFIGURED: -serve-read-from-db requires %s", readDSNEnv)
+		}
+		db, openErr := postgresdb.OpenSQL(dsn)
 		if openErr != nil {
 			// The error deliberately carries no connection-string fragment.
 			return fmt.Errorf("WEB_READ_DATABASE_UNUSABLE: %w", openErr)
