@@ -2308,6 +2308,19 @@ func (p *Parser) parseSemanticCapability(namespace core.CanonicalID) (semantic.C
 	return c, nil
 }
 
+// legacySurfaceNeeds names what a kind requires beyond this surface's
+// `attribute`/`relation` body. An empty result means the kind fits.
+func legacySurfaceNeeds(kind semantic.ValidationKind) string {
+	switch kind {
+	case semantic.ValidationNotAfter, semantic.ValidationNoOverlap:
+		return "a second attribute (the date it is compared with)"
+	case semantic.ValidationOperator:
+		return "a declared operator"
+	default:
+		return ""
+	}
+}
+
 func (p *Parser) parseSemanticValidation(namespace core.CanonicalID) (semantic.Validation, error) {
 	_, _ = p.next() // validation
 	idTok, err := p.expect(TokenIdent)
@@ -2349,6 +2362,16 @@ func (p *Parser) parseSemanticValidation(namespace core.CanonicalID) (semantic.V
 		return v, p.errAt(kindTok, fmt.Sprintf(
 			"unsupported semantic validation kind %q; valid values are %s",
 			kindTok.Text, strings.Join(words, ", ")))
+	}
+	// This surface carries a body of `attribute` and `relation` only. Kinds that
+	// need another attribute, a grouping, or a declared operator cannot be
+	// expressed here, so refuse them now instead of letting the semantic layer
+	// reject the result with "requires the attribute that ends the period" -
+	// a message the author cannot act on from this file.
+	if needs := legacySurfaceNeeds(v.Kind); needs != "" {
+		return v, p.errAt(kindTok, fmt.Sprintf(
+			"semantic validation kind %q cannot be declared in a legacy .tei file: it needs %s, which this surface cannot carry; declare it in a selected tei.authoring/v1 or tei.rule-authoring/v0 .tei.md source instead",
+			kindTok.Text, needs))
 	}
 	if _, err := p.expect(TokenLBrace); err != nil {
 		return v, err

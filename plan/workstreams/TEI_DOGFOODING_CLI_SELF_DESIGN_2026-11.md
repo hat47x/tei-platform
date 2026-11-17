@@ -3201,3 +3201,51 @@ main は回帰テストに**専用の捕捉**（`cmd/tei/testdata/rea-6.8.0/`、
 ### 位置付け
 
 **「同じ問題を main が別解で先に解いていた」回**である。私は重複する仕組みを作りかけたが、**main の設計の方が良い**（テストが自分の入力を同梱し README で説明する）と判断して取り下げた。**残ったのは manifest の訂正**で、これは main の変更でも直っていなかった自己矛盾である。
+
+## 91. 第90ラウンド（2026-11-17）: legacy `.tei` は no-overlap を要求するのに、書く手段が無かった
+
+目的文の「再びドッグフーディングに戻る」を実行し、**装備貸出（期間が重ならないこと）**を CLI のフィードバックだけで設計した。生出力は[第90ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND90_LEGACY_SURFACE_DEAD_END_2026-11-17/README.md)にある。
+
+### 設計の経過（CLI のみ）
+
+| Attempt | 応答 | 学んだこと |
+| --- | --- | --- |
+| 1 | `ok` | `std.date` はそのまま使える |
+| 2 | `expected data, business-date, calendar, states, ...` | `period` は**期間ではなく状態・締め** |
+| 3 | `expected attribute or relation` | validation の本体は2語だけ |
+| 4 | `predicate "not overlapping" requires "per <relation>"` | 行の出所は推論されない |
+| 5 | `expected "to"` → `invalid canonical id "Loan"` → `unexpected token "}"` | `relation <name> to <target> <cardinality>` |
+| 6 | `UNKNOWN_SEMANTIC_VALIDATION_RELATION equip.loans` | relation の id は `equip.loan.loans` |
+| 7 | **`ok`** ＋ 読み返しで `kind=no-overlap / compared / groupBy / relation` | 完成 |
+
+**診断は毎回正確だった。** 私の前提（`period` が期間、`starts`/`ends` がある）が間違っていた。
+
+### 見つけた穴: 表現できない kind を、できないと言わない
+
+`.tei` の validation 本体は **`attribute` と `relation` の2語しか受け付けない**のに、`no-overlap`・`not-after` は `Compared` を、`operator` は `Operator` を**必須**とする。しかも legacy パーサはそれらを一度も設定しない（実測: `grep 'v.Compared\|v.GroupBy'` が空）。
+
+```text
+error SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED
+  no-overlap semantic validation equip.no_ovl requires the attribute that ends the period
+```
+
+**「必要だ」と言うが、この面には書く手段が無い。** 5種を受け付けながら表現できるのは2種だけ、という**行き止まり**だった。
+
+### 修正
+
+パース時点で断り、**代わりにどこへ書けばよいかを言う**。語彙一覧（第83ラウンド）はそのまま残るので、**どの kind があるか**と**どれがこの面で書けるか**の両方が分かる。
+
+### 自分のテストが間違っていた
+
+第83ラウンドで私が書いた `TestKnownValidationKindIsAccepted` は「**5種すべてが `.tei` で解析できる**」と主張していた。**それが誤りだった。** 3種は元から表現不能で、パーサが受理して意味層が落としていた。テストを実態に合わせた。
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 拒否を削る | FAIL `kind "no-overlap" was accepted although this surface cannot express it` |
+| M2 | 拒否を過剰にする（`positive` も拒否） | FAIL `kind "positive" was refused although this surface can express it` |
+
+### 位置付け
+
+**「要求はするが、書く手段が無い」を見つけた回**である。診断は正しかったが、**その指示に従う方法がその面に存在しなかった**。私はまず自分のテストの誤りを認め、そのうえで**不可能を不可能と言う**ようにした。
