@@ -230,7 +230,12 @@ jobs:
           # Road item 2's remaining half: the page a browser opens must carry
           # the same answers from the same database. Kept separate so its PASS
           # line is required by name below.
-          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers
+          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$' \
+            ./tools/reference-first-web-target | tee -a "$log"
+          # Refusal paths must be tested even without a database fixture.
+          go test -count=1 -v -timeout 10m -run '^TestServeReadFromDB' \
+            ./tools/reference-first-web-target | tee -a "$log"
+
       - name: SKIPとFAILの検証
         shell: bash
         run: |
@@ -284,82 +289,6 @@ jobs:
             'TestServeReadFromDBRefusesAHostSuppliedDatabase'
             'TestServeReadFromDBRequiresTheEnvironmentDSN'
             'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
-          )
-          for name in "${required[@]}"; do
-            grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
-          done
-          # Before/after x three orders. Chrome must actually receive the DOM;
-          # simply installing a browser or skipping the optional test is not PASS.
-          browser_count="$(grep -Fc 'actual Chrome DOM verified for order' "$log" || true)"
-          test "$browser_count" -eq 6 || {
-            echo "Chrome DOM receipts: $browser_count; expected six" >&2
-            exit 1
-          }
-
-      - name: 検証後の変更を検出
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
- \
-            ./tools/reference-first-web-target | tee -a "$log"
-          # The -serve-read-from-db flag's refusals. These need no database, but
-          # they are required here too so a change that drops them is visible.
-          go test -count=1 -v -timeout 10m -run 'TestServeReadFromDB' \
-            ./tools/reference-first-web-target | tee -a "$log"
-
-      - name: SKIPとFAILの検証
-        shell: bash
-        run: |
-          set -euo pipefail
-          log="$RUNNER_TEMP/go-test.log"
-          # The DSN-gated tests are the reason this workflow exists: a SKIP that
-          # names the DSN means the environment did not reach the test.
-          if grep -Eq -- '^[[:space:]]*--- SKIP: .*(PostgreSQL|PG_DSN|tenant PostgreSQL)' "$log"; then
-            echo "a DSN-gated test skipped although the DSNs are set:" >&2
-            grep -E -- '^[[:space:]]*--- SKIP:' "$log" >&2
-            exit 1
-          fi
-          if grep -Eq -- '^[[:space:]]*--- FAIL:' "$log"; then
-            echo "unexpected FAIL in the real-PostgreSQL run:" >&2
-            grep -E -- '^[[:space:]]*--- FAIL:' "$log" >&2
-            exit 1
-          fi
-          # Name the tests so a rename or a removed call cannot turn this job
-          # green by running nothing.
-          required=(
-            'TestStorePersistsStagesAcrossReconnect'
-            'TestRowLockBlocksASecondWriter'
-            'TestTwoProcessesCannotBothDispatch'
-            'TestTwoProcessesCannotBothTakeOver'
-            'TestStandardCRUDUpdateAgainstIsolatedPostgres'
-            'TestPGConflictIsABusinessResultAndKeepsTheFirstUpdate'
-            'TestPGTwoConnectionsApplyExactlyOneUpdate'
-            'TestPGCommitAcknowledgementLossOverSocket'
-            'TestPGRuntimeStageUnknownTakeoverEndToEnd'
-            'TestScopedPostgresAgainstIsolatedDatabase'
-            'TestScopedTenantPostgresAgainstIsolatedDatabase'
-            'TestPostgresStoreStartsAtZero'
-            'TestPostgresRefusesAStaleVersion'
-            'TestPostgresReservesAcrossReopen'
-            'TestPostgresRefusesAForeignFirstWrite'
-            'TestPostgresRefusesANegativeCounter'
-            'TestPostgresLoadRequiresARuleID'
-            'TestScopedPostgresDefaultOrderRevealsUnpublishedOrderedAt'
-            'TestScopedTenantPostgresDefaultOrderRevealsUnpublishedOrderedAt'
-            'TestOrgAxisAsOfActualPostgresOptIn'
-            'TestOrgAxisAsOfRevisionKeyCandidateOptIn'
-            'TestOrgAxisAsOfBitemporalRectangleCandidateOptIn'
-            'TestOrgAxisAsOfExclusionConstraintCandidateOptIn'
-            'TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn'
-            'TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs'
-            'TestDestinationOrderChangeReadViaCLIFromPostgres'
-            'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
-            'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
-            'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
-            'TestShippedWebPageShowsRealPostgresRowAnswers'
           )
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
