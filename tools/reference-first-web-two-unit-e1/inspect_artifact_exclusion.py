@@ -151,10 +151,6 @@ RUNTIME_EXPECTED = (
     # presentation; they are listed here rather than in KNOWN_INTRUSION
     # because they are part of the same read the API must serve.
     "tei/internal/driver/validationread",
-    # One observed browse Query is projected into a Function Data Context at
-    # runtime. This package consumes an execution result; it neither loads
-    # authoring Source nor grants Owner acceptance or write authority.
-    "tei/internal/functioncontext",
     "tei/internal/database/sqlgen",
     "tei/internal/driver/queryresult",
     "tei/internal/permission",
