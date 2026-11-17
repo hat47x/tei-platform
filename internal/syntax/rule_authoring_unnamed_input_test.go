@@ -9,13 +9,14 @@ import (
 
 // One operator signature must read the same whichever way it is written. The
 // unnamed single-input form `takes number` is the contract the surface already
-// calls "value", so a rule may address that input as `value:`. Before this
-// check it was refused as undeclared, while the identical contract written as
-// `takes value: number` accepted it (#4362).
+// calls "value", so `value:` is a recognized name rather than an undeclared
+// input. The current semantic normalization cannot carry ANY operator input
+// value, however: both the unnamed and explicitly named form must reach that
+// explicit refusal instead of silently dropping the assignment (#4362).
 //
-// The expected verdicts below are written from the two spellings of one
-// signature, not from the conversion code.
-func TestRuleAuthoringReadsTheUnnamedInputAsValue(t *testing.T) {
+// The expected diagnostic is different for a known input name and an
+// undeclared one. Neither can emit a validation until value transport exists.
+func TestRuleAuthoringNormalizesUnnamedInputBeforeRefusal(t *testing.T) {
 	cases := []struct {
 		name       string
 		operator   string
@@ -23,14 +24,16 @@ func TestRuleAuthoringReadsTheUnnamedInputAsValue(t *testing.T) {
 		wantIssue  string
 	}{
 		{
-			name:       "the unnamed form accepts value:",
+			name:       "the unnamed form recognizes value before rejecting unsupported value transport",
 			operator:   "operator probe.non_negative: takes number",
 			assignment: "value: 0",
+			wantIssue:  "the meaning has no place for an operator input value yet",
 		},
 		{
-			name:       "the named form accepts value:",
+			name:       "the named form recognizes value before rejecting unsupported value transport",
 			operator:   "operator probe.non_negative: takes value: number",
 			assignment: "value: 0",
+			wantIssue:  "the meaning has no place for an operator input value yet",
 		},
 		{
 			name:       "the unnamed form still refuses another name",
@@ -50,9 +53,7 @@ func TestRuleAuthoringReadsTheUnnamedInputAsValue(t *testing.T) {
 			src := "namespace probe\n\n" + tc.operator + "\n\nrule probe.r: probe.x is probe.non_negative " + tc.assignment + "\n"
 			// The operator a rule names must match the one declared, so the
 			// named-form cases rename the predicate's operator reference.
-			operatorID := "probe.non_negative"
 			if strings.Contains(tc.operator, "probe.within") {
-				operatorID = "probe.within"
 				src = "namespace probe\n\n" + tc.operator + "\n\nrule probe.r: probe.x is probe.within " + tc.assignment + "\n"
 			}
 			file, err := syntax.ParseRuleAuthoringFile(src)
@@ -69,14 +70,8 @@ func TestRuleAuthoringReadsTheUnnamedInputAsValue(t *testing.T) {
 				}
 				return
 			}
-			if len(issues) != 0 {
-				t.Fatalf("%q was refused: %+v", tc.name, issues)
-			}
-			if len(namespace.Validations) != 1 {
-				t.Fatalf("validations=%+v", namespace.Validations)
-			}
-			if string(namespace.Validations[0].Operator) != operatorID {
-				t.Fatalf("operator=%q", namespace.Validations[0].Operator)
+			if len(issues) == 0 {
+				t.Fatal("assignment was silently accepted despite an absent semantic value transport")
 			}
 		})
 	}
@@ -92,8 +87,11 @@ func TestRuleAuthoringDoesNotDeclareValueForTheUnnamedForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	namespace, issues := syntax.RuleNamespace(file)
-	if len(issues) != 0 {
-		t.Fatalf("issues=%+v", issues)
+	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "the meaning has no place for an operator input value yet") {
+		t.Fatalf("expected the explicit value-transport refusal, issues=%+v", issues)
+	}
+	if len(namespace.Validations) != 0 {
+		t.Fatalf("rejected assignment unexpectedly produced validations: %+v", namespace.Validations)
 	}
 	if len(namespace.Operators) != 1 {
 		t.Fatalf("operators=%+v", namespace.Operators)
