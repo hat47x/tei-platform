@@ -440,3 +440,25 @@ WEB-P1a-1でmainへ入った `inspector-presentation.ts` は、`readInspection` 
 WEB-P1a-1の新Presenterは実画面にはまだ未接続である。新WEB-P1a-2のSource・Closure・Bundle・実Consumerを検査していない限り、**過去のBundle一致・Windows成功は新Presenterの画面受領を証明しない**。新しいテストでは、同名異Kind・別Workspaceの表示ID、明示NULL、`partial`／`unfetched`、制限文の保持を、既存Readerと新Presenterの組合せで直接確かめる。WEB-P1bは既存#5168のFocus／Pin回帰へ接続し、WEB-P2/P3の公開・Target受領は別のOwnerに残す。
 
 この追補によってP0の順序は変更しない。最優先は非Plugin StudioのStage1→Stage2実Windows（#2831／#4583）と通常CLIの実Provider Read→独立Consumer（#2586／#4495）。WEB-P1a-2はその生成・Consumer検収の共通手法を具体化するP1であり、独立の新Hard Gateではない。
+
+## 21. Inspectorの検証と表示先を一件の契約にまとめる（2026-11-17、WEB-P1aの補強）
+
+### 21.1 検証後にSubjectを取り違える余地をなくす
+
+WEB-P1a-1の`presentInspection(view, workspaceId, selected)`は、Hostで検証した結果を安全な表示値に変換する。しかし`view`は元のqualified Subjectを保持せず、引数の`selected`と照合できない。個別に`readInspection`した後で別のSubjectを渡す配線は、表示用IDだけを誤った相手に付け替えられる。Source／意味／表示のIdentityを分離するTEIでは、この境界も明示的に扱う。
+
+そこで既存Readerを変更せず、`inspector-presentation.ts`に`readInspectorPresentation(raw, { workspaceId, selected, catalog })`を追加する。最初にCatalogでSubjectの**存在と一意性**を確認し、同じ`selected`で`readInspection`のread-only／Host Authority Limits／World・Source Index fingerprintを検証してから、既存`presentInspection`で表示値を作る。途中で別Subjectを挿入する引数は持たない。同じ表示IDでも異Kindを混同せず、Catalogにない対象や曖昧な対象はHost返信が正しそうでも拒否する。
+
+`workspaceId`は**画面の表示先**であり、Hostが認可したWorkspaceの証拠ではない。現行Inspect応答自体にWorkspace IDがないため、この純粋関数だけでは認可・現在のAudience・Disclosure・Host呼出先が正しいか確かめられない。Workspaceの切替・A→B→A・Pin AとFocus Bの応答が交錯する場合は、既存`responses.run`と[PR #5168](https://github.com/hat47x/tei-platform/pull/5168)の応答lane契約で現在要求かどうかを**先に**判断する。Presenterへ渡したという事実を、認可、元Sourceの存在、実Provider、公開の許可へ昇格させない。
+
+### 21.2 受入を三つの境界に分ける
+
+| 境界 | 合格とする最小事実 | まだ合格ではないこと |
+| --- | --- | --- |
+| **WEB-P1a-1b：型付き表示投影** | 同名異Kind・別WorkspaceのSubjectを区別し、Catalog不在／曖昧・異Subject応答・旧Source Index・非read-only・Authority Limits欠落を拒否する。明示NULL、`partial`、`unfetched`は表示上も保持する | 実ブラウザへの反映、元Sourceの全件性、Source Open、編集・業務意味受理 |
+| **WEB-P1a-2：画面と配布** | 既存Readerと新Presenterを**現在の選択lane**に接続し、旧Pin／旧固定Closureを改版せずに新Source→正規生成→Wails埋込byte→通常／生成Consumerまで再資格化する | Source／Toolchainが変わった旧Evidenceの流用、正式Stage1→Stage2セルフビルドの代替 |
+| **WEB-P2／SL-2：公開・実原文** | CLI direct／Studio Host／HTTPの共通Operationと、Audience別Disclosure、Source OwnerによるRoot・byte・Occurrence再照合をそれぞれ独立に確認する | Studioローカルの検証済みJSONを公開できるという推論 |
+
+他チャットでmainへ統合された[Source位置の読み取り専用表示 PR #5212](https://github.com/hat47x/tei-platform/pull/5212)も同じ境界に属する。位置・Role・byte offsetを表示できることと、原文を開けることは別である。NodeのPort配線、Wails、SUI Canvas、B2C公開Headを横断しても、この境界を緩めない。
+
+今回の新しいコードと回帰は`inspector-presentation.ts`と既存`presentation.test.mjs`のみ。歴史的`main.ts`、`presentation.ts`、固定Closure、Wails埋込Bundleを変更しない。次の画面接続では現行`main.ts`の成功時コールバックを新しい入口に置換してから、Node24／正規生成・埋込Bundle／実Consumerを**同一HEAD**で検収する。全体P0は非Plugin StudioのStage1→Stage2実Windowsと、通常CLI実Provider Readを引き続き優先する。
