@@ -102,6 +102,19 @@ func (e *ExecutionError) Error() string { return e.Code + ": " + e.Message }
 // The second return value is the message without the "CODE: " prefix, so a
 // caller that reads code and message separately does not see the code twice.
 func ReportedFailure(err error) (string, string, bool) {
+	// "Only part of the work was applied" is checked before "the effect may be
+	// unknown", because it says more: unknown means nothing is known, while a
+	// partial success means some effects certainly landed. A caller that reads
+	// unknown alone has to ask the provider anyway; a caller that reads partial
+	// knows the remaining work is what is left, not the whole request.
+	//
+	// The retry policy is unchanged: a partial result is still looked up before it
+	// is sent again (Failure.Retryable), so this ordering does not invite a blind
+	// resend. X-TEA's bulk update had no way to say "partly done" at all (knowledge
+	// inventory F-14), so this is the meaning it lacked, expressed at the boundary.
+	if isPartialSuccess(err) {
+		return "COMMAND_PARTIAL_SUCCESS", err.Error(), true
+	}
 	// "The effect may already be applied" dominates the specific code, because
 	// it changes what the caller must do: a blind retry can apply the change
 	// twice. Any ExecutionError can carry the flag, and so can a wrapped error
@@ -477,4 +490,18 @@ func (i Invoker) execute(ctx context.Context, request Request, plan applicationv
 		}
 	}
 	return result, nil
+}
+
+// isPartialSuccess reports whether err, or a cause it wraps, says that only part of
+// the work was applied.
+//
+// failure.AsFailure stops at the first Failure, which for an ExecutionError is the
+// ExecutionError itself. Its Kind is derived from its own code and is never
+// PartialSuccess, so a PartialError underneath it is invisible to
+// failure.IsPartialSuccess. This walks the chain for the specific type instead,
+// because "partly applied" is exactly the case where hiding the cause costs a blind
+// resend.
+func isPartialSuccess(err error) bool {
+	var partial *failure.PartialError
+	return errors.As(err, &partial)
 }

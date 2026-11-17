@@ -50,7 +50,7 @@
 
 - **目的**：Data/Function/Businessの**構造記述**（node/edge identity・方向・多重度・出典）をDraft化する。レイアウト・色・形状は持たない（[THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)と同じ扱い）。
 - **依存**：段階2。[#1124](https://github.com/hat47x/tei-platform/issues/1124)・[#3263](https://github.com/hat47x/tei-platform/issues/3263)の受入条件。`internal/threeelement` は main に存在し、`-model <path>` で読む。
-- **形**：`-document-kind three-element-diagram -model <path>`。**Workspaceは読まない**（`-workspace` も不要）。nodes＝Data/Function/Business要素、edges＝宣言されたCrossReference、cruds＝宣言されたCRUD定義、diagnostics＝モデルが持つ所見。SHO側は`diagram`を**構造記述として保存するだけ**（画像は一切生成しない）。
+- **形**：`-document-kind three-element-diagram -model <path>`。**Workspaceは読まない**（`-workspace` も不要）。nodes＝Data/Function/Business要素、edges＝宣言されたCrossReference、cruds＝宣言されたCRUD定義（`derivedOperations`・`conflictingDeclarations` で上書きされた派生意図と要レビューを併記）、diagnostics＝**モデルから都度計算した**所見（保存済み `model.diagnostics` の写しではない）、`crudConflictStatus`・`opposingCrudPairs`＝宣言と派生のCRUDが相反する組の有無。SHO側は`diagram`を**構造記述として保存するだけ**（画像は一切生成しない）。
 - **独立Expected（実装済み）**：
   - S3-a 平行edge（同じfrom/to・別relation identity）を縮約しない。
   - S3-b 未解決targetは`unresolved`のまま（推測で接続しない）。`unresolvedEdges` に名前を残し、端点はnodeにならない。

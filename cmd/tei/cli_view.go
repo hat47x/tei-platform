@@ -449,9 +449,6 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	// This is the first product CLI read of the existing header-detail Contract
 	// Query. No query, mapping, or validation is reconstructed in this entry.
 	if *environmentID != "" {
-		if *format != "json" {
-			return fail("INVALID_ARGUMENT", "view -environment currently requires -format json", 2)
-		}
 		values, err := parseInputPairs(inputPairs)
 		if err != nil {
 			return fail("INVALID_ARGUMENT", err.Error(), 2)
@@ -468,7 +465,10 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		report.OK = true
 		report.Result = result
-		return writeViewReport(out, report, 0)
+		if *format == "json" {
+			return writeViewReport(out, report, 0)
+		}
+		return writeDestinationReadText(out, result)
 	}
 	kind, err := applicationview.PatternKind(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
 	if err != nil {
@@ -553,6 +553,108 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		return 2, fmt.Errorf("unhandled view result %T", result)
 	}
+}
+
+// writeDestinationReadText renders a `view -environment` read for a person:
+// one block per observed row, with every rule answer for that row, then the
+// relation-level answers. It prints the same decisions the JSON carries and
+// never invents a value the query did not return.
+func writeDestinationReadText(out io.Writer, read destinationRead) (int, error) {
+	if _, err := fmt.Fprintf(out, "application %s\n", read.Application); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "pattern %s\n", read.Pattern); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "environment %s\n", read.Environment); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "relation %s\n", read.Relation); err != nil {
+		return 2, err
+	}
+	if _, err := fmt.Fprintf(out, "coverage %s\n", read.Coverage); err != nil {
+		return 2, err
+	}
+	if len(read.KeyAttributes) > 0 {
+		keys := make([]string, 0, len(read.KeyAttributes))
+		for _, key := range read.KeyAttributes {
+			keys = append(keys, string(key))
+		}
+		if _, err := fmt.Fprintf(out, "key %s\n", strings.Join(keys, ", ")); err != nil {
+			return 2, err
+		}
+	}
+	if _, err := fmt.Fprintf(out, "rows %d\n", len(read.Rows)); err != nil {
+		return 2, err
+	}
+	for _, row := range read.Rows {
+		if _, err := fmt.Fprintf(out, "row %s\n", row.Key); err != nil {
+			return 2, err
+		}
+		// A rule that is only undecided for this row lives in PerRowUndecided,
+		// not in PerRow, so both maps must contribute to the printed set.
+		seen := make(map[string]bool, len(read.PerRow[row.Key])+len(read.PerRowUndecided[row.Key]))
+		rules := make([]string, 0, len(read.PerRow[row.Key])+len(read.PerRowUndecided[row.Key]))
+		for rule := range read.PerRow[row.Key] {
+			if !seen[string(rule)] {
+				seen[string(rule)] = true
+				rules = append(rules, string(rule))
+			}
+		}
+		for rule := range read.PerRowUndecided[row.Key] {
+			if !seen[string(rule)] {
+				seen[string(rule)] = true
+				rules = append(rules, string(rule))
+			}
+		}
+		sort.Strings(rules)
+		for _, rule := range rules {
+			answer := read.PerRow[row.Key][rule]
+			reason := read.PerRowUndecided[row.Key][rule]
+			if answer == "" && reason != "" {
+				// The rule is recorded only as undecided for this row; the
+				// reason is what makes it undecided, so name it as such.
+				answer = "undecided"
+			}
+			line := fmt.Sprintf("  %s %s", rule, answer)
+			if reason != "" {
+				line += " (" + reason + ")"
+			}
+			if _, err := fmt.Fprintf(out, "%s\n", line); err != nil {
+				return 2, err
+			}
+		}
+	}
+	relSeen := make(map[string]bool, len(read.PerRelation)+len(read.PerRelationUndecided))
+	relationRules := make([]string, 0, len(read.PerRelation)+len(read.PerRelationUndecided))
+	for rule := range read.PerRelation {
+		if !relSeen[string(rule)] {
+			relSeen[string(rule)] = true
+			relationRules = append(relationRules, string(rule))
+		}
+	}
+	for rule := range read.PerRelationUndecided {
+		if !relSeen[string(rule)] {
+			relSeen[string(rule)] = true
+			relationRules = append(relationRules, string(rule))
+		}
+	}
+	sort.Strings(relationRules)
+	for _, rule := range relationRules {
+		answer := read.PerRelation[rule]
+		reason := read.PerRelationUndecided[rule]
+		if answer == "" && reason != "" {
+			answer = "undecided"
+		}
+		line := fmt.Sprintf("%s %s", rule, answer)
+		if reason != "" {
+			line += " (" + reason + ")"
+		}
+		if _, err := fmt.Fprintf(out, "%s\n", line); err != nil {
+			return 2, err
+		}
+	}
+	return 0, nil
 }
 
 func writeViewReport(out io.Writer, report cliViewReport, exitCode int) (int, error) {

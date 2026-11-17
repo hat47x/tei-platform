@@ -1,0 +1,8 @@
+The deferred question from round 90: can no-overlap actually be used?
+
+  declare (.tei.md):   compared + group by + or open   -> ok
+  read back:           kind=no-overlap reused compared=... groupBy=... openEnded=true
+  evaluate:            validationeval  35 subtests PASS
+  products call it:    tools/reference-first-web-target, cmd/tei/scenario.go
+
+Answer: yes. The .tei refusal from round 90 is correct and there is a working path.

@@ -119,9 +119,17 @@ func TestContractDocumentNamesEveryCommandExecutionCode(t *testing.T) {
 	}
 }
 
-// The document must not claim the effect-unknown override the wrong way round:
-// a failure whose effect may be applied is reported as COMMAND_EFFECT_UNKNOWN
-// even when the underlying execution error has its own code.
+// The document must not claim the effect reporting the wrong way round. Two rules
+// exist now, in this order:
+//
+//   - a partial success is reported as COMMAND_PARTIAL_SUCCESS, because it says
+//     more than "unknown": some effects certainly landed;
+//   - otherwise a failure whose effect may be applied is reported as
+//     COMMAND_EFFECT_UNKNOWN even when the underlying execution error has its own
+//     code.
+//
+// The document has to say both, and say which comes first, or a reader would take
+// the older single rule as complete.
 func TestContractDocumentNamesTheEffectUnknownOverride(t *testing.T) {
 	row := contractDocRow(t, "view")
 	if !strings.Contains(row, "COMMAND_EFFECT_UNKNOWN") {
@@ -129,5 +137,13 @@ func TestContractDocumentNamesTheEffectUnknownOverride(t *testing.T) {
 	}
 	if !strings.Contains(row, "優先") {
 		t.Fatalf("the view row does not say COMMAND_EFFECT_UNKNOWN takes precedence: %s", row)
+	}
+	// A partial success is named, and the row says it is reported before the
+	// effect-unknown override.
+	if !strings.Contains(row, "COMMAND_PARTIAL_SUCCESS") {
+		t.Fatalf("the view row does not name COMMAND_PARTIAL_SUCCESS: %s", row)
+	}
+	if !strings.Contains(row, "先に報告") {
+		t.Fatalf("the view row does not say a partial success is reported first: %s", row)
 	}
 }

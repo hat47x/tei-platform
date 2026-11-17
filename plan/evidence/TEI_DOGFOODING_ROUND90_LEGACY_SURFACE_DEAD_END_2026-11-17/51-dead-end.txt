@@ -1,0 +1,18 @@
+The legacy .tei validation body accepts exactly two words:
+
+  case "attribute":
+  case "relation":
+
+But semantic.Validation also has Compared and GroupBy, and the semantic layer
+requires them for no-overlap and not-after:
+
+  SEMANTIC_VALIDATION_COMPARED_ATTRIBUTE_REQUIRED
+    no-overlap semantic validation ... requires the attribute that ends the period
+
+and nothing in the legacy parser ever sets them:
+
+  $ grep -n 'v\.Compared\|v\.GroupBy' internal/syntax/parser.go
+  (none)
+
+So five kinds were accepted and only two were expressible. The author was told
+what was missing, in a file that has no way to supply it.

@@ -1,0 +1,13 @@
+CLI-only design of "equipment loan periods must not overlap":
+
+  1  data Loan { ... std.date ... }                  -> ok
+  2  period LoanPeriod { ... }                       -> expected data, business-date, ...
+  3  validation ... no-overlap { compared ... }      -> expected attribute or relation
+  4  rule ... is not overlapping                      -> requires "per <relation>"
+  5  relation loans many / to Loan / to equip.loan   -> expected "to" / invalid canonical id
+  6  relation loans to equip.loan many               -> UNKNOWN_SEMANTIC_VALIDATION_RELATION
+  7  per equip.loan.loans                            -> ok
+     inspect: kind=no-overlap compared=... groupBy=... relation=equip.loan.loans
+
+Every diagnostic was accurate. My premises were wrong: `period` is about states
+and closure, and a date range is expressed by the rule, not by `period`.

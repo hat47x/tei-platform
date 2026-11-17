@@ -106,7 +106,7 @@ func (a *MemoryStoreAdapter) ApplyChanges(ctx context.Context, unit *SaveUnit, t
 // Release is a no-op for the memory adapter.
 func (a *MemoryStoreAdapter) Release() {}
 
-func applyMemoryEntity(_ context.Context, app, pattern core.CanonicalID, adapter *MemoryStoreAdapter, change EntityChange, applied *[]AppliedChange) error {
+func applyMemoryEntity(ctx context.Context, app, pattern core.CanonicalID, adapter *MemoryStoreAdapter, change EntityChange, applied *[]AppliedChange) error {
 	if adapter.Store == nil {
 		return errors.New("saveunit: memory store is nil")
 	}
@@ -140,6 +140,23 @@ func applyMemoryEntity(_ context.Context, app, pattern core.CanonicalID, adapter
 		return &SaveError{Code: "SAVE_UNKNOWN_KIND", Message: fmt.Sprintf("unsupported change kind: %s", change.Kind)}
 	}
 	*applied = append(*applied, AppliedChange{Data: change.Data, Key: change.Key, Kind: change.Kind})
+	// A header-detail confirmation carries the header and its rows in one unit
+	// (knowledge inventory F-21: CURRENT/NEW/delete rows all resolved at confirm
+	// time). The children and relation targets are part of the same entity, so
+	// applying only the top level would report a successful confirm while the rows
+	// were never written. Recurse into both, in declaration order.
+	for _, child := range change.Children {
+		if err := applyMemoryEntity(ctx, app, pattern, adapter, child, applied); err != nil {
+			return err
+		}
+	}
+	for _, relation := range change.Relations {
+		for _, child := range relation.Children {
+			if err := applyMemoryEntity(ctx, app, pattern, adapter, child, applied); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
