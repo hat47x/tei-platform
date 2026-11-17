@@ -1,0 +1,22 @@
+  capability equip.loan_register {
+      input loan equip.loan
+      outcome created equip.loan        # same payload
+      outcome overlapping equip.loan
+      effect create equip.loan
+  }
+
+  trace -mode full         total=2  rows=2
+  knowledge-context        outgoing=3
+
+Discriminating experiment:
+
+  outcome 2 (same payload)   trace 2   context 3
+  outcome 1 (same payload)   trace 2   context 2
+
+Removing one outcome does not change trace, so trace collapses two outcomes
+that share a payload into one edge.
+
+projection.go:118 defines edge identity as (from, relation, to) only:
+
+  // A repeat is the same statement, not a second one.
+  identity := fromKind \x00 fromID \x00 relation \x00 toKind \x00 toID

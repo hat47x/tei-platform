@@ -3437,3 +3437,58 @@ error INVALID_ARGUMENT
 ### 位置付け
 
 **「要求はするが、従い方が書いていない」の4例目**である。今度は**私が既に従っていた**ので、文言が**私の argv と矛盾**した。**拒否の範囲を変えず、理由だけを分けた。**
+
+## 96. 第95ラウンド（2026-11-18）: trace と knowledge-context が、同じ capability で違う本数を返す
+
+目的文の「再びドッグフーディングに戻る」を実行し、**設計の問い面**（`trace`・`knowledge-context`）で「この能力はなぜ在り、何に支えられているか」を訊いた。生出力は[第95ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND95_TRACE_VS_CONTEXT_2026-11-18/README.md)にある。起票は [#5426](https://github.com/hat47x/tei-platform/issues/5426)。
+
+### 動いたこと（先に確認）
+
+`trace` は出典（`semantic/equip/desk.tei` の行・列・artifact fingerprint）を返し、`-mode full` は辺を `relation: input` / `outcome` として並べる。存在しない主体は `SUBJECT_NOT_FOUND`。`knowledge-context` は `outgoing`・`references`・`authorityLimits` 4件を返す。**どちらも読める。**
+
+### 見つけた差: 同じ主体で本数が違う
+
+```text
+capability equip.loan_register {
+    input loan equip.loan
+    outcome created equip.loan        # 2つの outcome が同じ payload
+    outcome overlapping equip.loan
+    effect create equip.loan
+}
+```
+
+| コマンド | 返り値 |
+| --- | --- |
+| `trace -mode full` | `total=2`（rows 2） |
+| `knowledge-context` | `outgoing=3` |
+
+### 切り分け実験
+
+| 宣言 | trace total | context outgoing |
+| --- | --- | --- |
+| outcome 2つ（同じ payload） | **2** | **3** |
+| outcome 1つ（同じ payload） | 2 | 2 |
+
+**outcome を1つ減らしても trace の本数は変わらない。** trace が**同じ payload を指す2つの outcome を1本に潰している**ことが確定した。
+
+### 原因
+
+`internal/modelref/derivedbridge/projection.go:118` が**辺の同一性を (from, relation, to) だけで決めて**いる。`internal/index/index.go:339` は outcome ごとに依存を積むので index は3本、trace は2本。
+
+### 何が失われるか
+
+`inspect` は outcome 名を保っている（`['created', 'overlapping']`）。**trace では、その2つが別々の業務結果であることが読めない。** 呼び手は `total=2` を「outcome は1つ」と受け取る。
+
+### なぜ私が直さないか
+
+| 案 | 内容 | 判断 |
+| --- | --- | --- |
+| A | 同一性キーに outcome 名を含める | **正当な宣言の表現力を変える** |
+| B | 「payload が同じ outcome は1本に潰す」と明文化する | 挙動不変・最小だが**契約の変更** |
+| C | 辺に代表件数を持たせる | スキーマ拡張 |
+
+**A も C も採らない。** B が妥当に見えるが明文化は契約変更なので所有者判断として起票した。**テストで固定されていない**（outcome の重複除去を検査するテストは0件）ことも記録した。
+
+### 位置付け
+
+**「2つのコマンドが同じ対象について違う数を言う」を見つけた回**である。どちらも正しく、**辺の同一性の定義が違う**だけだった。**私は数を合わせるのではなく、どちらが何を数えているかを確定させて起票した。**

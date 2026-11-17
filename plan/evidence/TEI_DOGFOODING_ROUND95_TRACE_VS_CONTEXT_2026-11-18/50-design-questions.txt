@@ -1,0 +1,8 @@
+Design-question surface, built on the equip domain:
+
+  trace -mode summary        -> source artifact, line/column, artifact fingerprint
+  trace -mode full           -> rows with relation input / outcome
+  trace nonexistent subject  -> SUBJECT_NOT_FOUND
+  knowledge-context          -> outgoing, references, 4 authorityLimits
+
+Both answer. Then the same subject gave two different counts.
