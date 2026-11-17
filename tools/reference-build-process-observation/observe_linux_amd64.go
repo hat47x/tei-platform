@@ -305,18 +305,36 @@ type pendingCall struct {
 	opens bool
 	// read and write are paths the call touches when it succeeds without
 	// returning a descriptor (rename, link, unlink, truncate).
-	read, write []string
-	path        string
-	flags       uint64
+	read, write, remove []string
+	path                string
+	flags               uint64
 }
 
 func (o *observation) syscallStop(pid int, state *tracee) {
 	var info syscallInfo
 	if _, _, errno := syscall.Syscall6(syscall.SYS_PTRACE, ptraceGetSyscallInfo, uintptr(pid),
 		unsafe.Sizeof(info), uintptr(unsafe.Pointer(&info)), 0, 0); errno != 0 {
+		if errno == syscall.ESRCH {
+			// The task was killed between its stop and this query (another
+			// thread called exit_group). If it was inside an open, whether the
+			// open succeeded is unknown; it is counted as if it did.
+			if call := state.pending; call != nil {
+				o.limits.OutcomeUnknown++
+				if state.image == "" {
+					state.image = "(task exited)"
+				}
+				for _, path := range append(append(append([]string{call.path}, call.read...), call.write...), call.remove...) {
+					if path != "" {
+						o.use(path, state).Read++
+					}
+				}
+				state.pending = nil
+			}
+			return
+		}
 		// An old kernel or a restricted sandbox refuses the query. Staying
 		// silent would leave an empty record that looks like a clean one.
-		o.limits.TraceFailures++
+		o.traceFailure("the kernel refused PTRACE_GET_SYSCALL_INFO: " + errno.Error())
 		return
 	}
 	switch info.Op {
@@ -332,7 +350,7 @@ func (o *observation) syscallStop(pid int, state *tracee) {
 		text := func(i int) string {
 			value, ok := readString(pid, arg(i))
 			if !ok {
-				o.limits.TraceFailures++
+				o.traceFailure(fmt.Sprintf("syscall %d: path argument %d at %#x could not be read", info.Words[0], i, arg(i)))
 			}
 			return value
 		}
@@ -348,10 +366,12 @@ func (o *observation) syscallStop(pid int, state *tracee) {
 		case sysOpenat2:
 			// The flags are the first field of the struct open_how argument.
 			state.pending = &pendingCall{opens: true, path: at(0, 1), flags: readWord(pid, arg(2))}
-		case sysTruncate, sysUnlink:
+		case sysTruncate:
 			state.pending = &pendingCall{write: []string{here(0)}}
+		case sysUnlink:
+			state.pending = &pendingCall{remove: []string{here(0)}}
 		case sysUnlinkat:
-			state.pending = &pendingCall{write: []string{at(0, 1)}}
+			state.pending = &pendingCall{remove: []string{at(0, 1)}}
 		case sysRename:
 			state.pending = &pendingCall{write: []string{here(0), here(1)}}
 		case sysRenameat, sysRenameat2:
@@ -408,6 +428,9 @@ func (o *observation) syscallStop(pid int, state *tracee) {
 			for _, path := range call.write {
 				o.use(path, state).Write++
 			}
+			for _, path := range call.remove {
+				o.use(path, state).Remove++
+			}
 			return
 		}
 		if result < 0 {
@@ -440,6 +463,13 @@ func (o *observation) use(path string, state *tracee) *FileUse {
 		o.uses[key] = use
 	}
 	return use
+}
+
+func (o *observation) traceFailure(what string) {
+	o.limits.TraceFailures++
+	if len(o.limits.TraceFailureSamples) < 5 {
+		o.limits.TraceFailureSamples = append(o.limits.TraceFailureSamples, what)
+	}
 }
 
 func (o *observation) unobservable(name string) {
@@ -485,18 +515,32 @@ func readWord(pid int, addr uint64) uint64 {
 	return binary.LittleEndian.Uint64(buf[:])
 }
 
+// readString reads a NUL-terminated path from the tracee. It reads page by
+// page: a read that runs past the end of a mapping fails as a whole, and a
+// path near the end of one would be lost.
 func readString(pid int, addr uint64) (string, bool) {
+	if addr == 0 {
+		return "", false
+	}
 	mem, err := os.Open("/proc/" + strconv.Itoa(pid) + "/mem")
 	if err != nil {
 		return "", false
 	}
 	defer mem.Close()
-	buf := make([]byte, 4096)
-	n, _ := mem.ReadAt(buf, int64(addr))
-	for i := 0; i < n; i++ {
-		if buf[i] == 0 {
-			return string(buf[:i]), true
+	const page, limit = 4096, 8192
+	var text []byte
+	for len(text) < limit {
+		chunk := make([]byte, page-int((addr+uint64(len(text)))%page))
+		n, _ := mem.ReadAt(chunk, int64(addr)+int64(len(text)))
+		if n == 0 {
+			return "", false
 		}
+		for i := 0; i < n; i++ {
+			if chunk[i] == 0 {
+				return string(append(text, chunk[:i]...)), true
+			}
+		}
+		text = append(text, chunk[:n]...)
 	}
 	return "", false
 }

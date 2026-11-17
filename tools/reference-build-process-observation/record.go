@@ -32,9 +32,13 @@ type FileUse struct {
 	Image string `json:"image"`
 	// Step is the direct child of the command under which the open happened;
 	// 0 means the command itself opened the path.
-	Step   int `json:"step"`
-	Read   int `json:"read"`
-	Write  int `json:"write"`
+	Step  int `json:"step"`
+	Read  int `json:"read"`
+	Write int `json:"write"`
+	// Remove counts removals of the path (unlink). It is kept apart from Write
+	// because a command that cleans up after its steps is not interfering
+	// with them.
+	Remove int `json:"remove,omitempty"`
 	Failed int `json:"failed"`
 }
 
@@ -62,6 +66,12 @@ type Limits struct {
 	// TraceFailures counts stops the observer could not read: the kernel
 	// refused the query, or a path argument could not be fetched.
 	TraceFailures int `json:"traceFailures"`
+	// TraceFailureSamples describes the first few of them.
+	TraceFailureSamples []string `json:"traceFailureSamples,omitempty"`
+	// OutcomeUnknown counts calls whose task was killed before the result
+	// could be read. Their paths are recorded as if the call succeeded, so
+	// this does not make the record incomplete.
+	OutcomeUnknown int `json:"outcomeUnknown"`
 	// UnattributedTasks counts tasks whose origin could not be found, so their
 	// opens cannot be assigned to a step.
 	UnattributedTasks int `json:"unattributedTasks"`

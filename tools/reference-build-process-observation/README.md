@@ -46,7 +46,7 @@ go build -o observe ./tools/reference-build-process-observation
 | `execs[]` | 成功した`execve`の列。実行ファイルのパス、**そのファイルのsha256**、引数、作業ディレクトリ、環境変数の名前 |
 | `execs[].parentSeq` | そのプロセスが直前に動かしていたプログラム。観測対象のコマンド自身は`seq 0` |
 | `execs[].step` | コマンドが直接起動した子のうち、どの子の配下か。一つの子が起動したものは同じstepになる |
-| `files[]` | 開いたパスごとの回数。読取り、書込み、失敗を分け、開いたプログラムとstepを持つ |
+| `files[]` | 開いたパスごとの回数。読取り、書込み、削除、失敗を分け、開いたプログラムとstepを持つ |
 | `limits` | 観測器が出会ったが読めなかったもの。一件でもあれば、記録は不完全である |
 | `notObserved` | 観測していない範囲。**常に空でない** |
 
@@ -54,7 +54,7 @@ go build -o observe ./tools/reference-build-process-observation
 
 開いたファイルのパスも、要求された文字列ではなく、**カーネルが実際に開いたファイル**のパスです（返ってきた記述子を`/proc/<pid>/fd/<n>`で読みます）。シンボリックリンク、`..`、`/proc/self/root`を経由した要求は、すべて実体のパスとして記録されます。
 
-追跡する呼出しは、`open`・`openat`・`openat2`・`creat`と、`rename`・`link`・`symlink`・`unlink`・`truncate`の各系統です。名前の変更や削除は、対象パスへの書込みとして数えます。
+追跡する呼出しは、`open`・`openat`・`openat2`・`creat`と、`rename`・`link`・`symlink`・`unlink`・`truncate`の各系統です。名前の変更は両方のパスへの書込みとして数え、削除は書込みと分けて数えます。
 
 | `limits`の欄 | 数えるもの |
 | --- | --- |
@@ -62,6 +62,8 @@ go build -o observe ./tools/reference-build-process-observation
 | `unobservableCalls` | パスを追えない開き方（`open_by_handle_at`、`io_uring_setup`）、パスの意味を変える操作（`unshare`、`setns`、`mount`、`chroot`、`pivot_root`）、追跡から外れる`clone`（`CLONE_UNTRACED`） |
 | `traceFailures` | カーネルが問合せを拒否した停止、読めなかったパス引数 |
 | `unattributedTasks` | 起動元を特定できなかったタスク |
+
+`limits.outcomeUnknown`は別の扱いです。呼出しの途中でタスクが終了し、結果を読めなかった件数を数えます。そのパスは開けたものとして記録するので、記録は不完全になりません。
 
 ## 宣言範囲と、その出どころ
 
@@ -93,7 +95,7 @@ toolchainなどの閉包と`os-interface`は読取り専用として扱います
 | `execs.undeclared` | どの宣言済みdigestとも一致せず、どの宣言済み閉包の下にもない実行 |
 | `files.byRole` | 開いたパスを役割ごとに数えたもの |
 | `files.undeclared` | 範囲の外で成功した読み書き |
-| `files.crossStep` | 別のstepが持つ領域への読み書き。二回のBuildがstateを共有した場合はここに出る |
+| `files.crossStep` | 別のstepが持つ領域への読み書き。二回のBuildがstateを共有した場合はここに出る。観測したコマンド自身（step 0）は、stepが持つ領域を読むことと削除することができる。検査と後片付けをするのはコマンドだからである。コマンドがそこへ書き込めば、ここに出る |
 | `files.writeToReadOnly` | 読取り用に宣言した領域への書込み |
 | `files.probesOutsideScope` | 範囲の外で失敗した読取り。入力ではないが、後からそこへファイルが置かれると入力になる |
 | `boundedAbsence.state` | `holds`または`not-proven` |
@@ -103,7 +105,7 @@ toolchainなどの閉包と`os-interface`は読取り専用として扱います
 - パスを追跡した観測であり、少なくとも一件の読み書きが記録されている
 - 範囲外の実行、範囲外の読み書き、step越え、読取り専用領域への書込みが一件もない
 - Build自身の申告だけに基づく閉包の下で動いたプログラムがない
-- `limits`のどの欄も0である
+- `limits`の`foreignAbiSyscalls`・`unobservableCalls`・`traceFailures`・`unattributedTasks`がすべて0である
 
 ## 言えること、言えないこと
 

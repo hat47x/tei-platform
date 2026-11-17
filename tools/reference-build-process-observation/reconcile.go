@@ -104,9 +104,10 @@ type ExecFinding struct {
 }
 
 type RoleUse struct {
-	Paths int `json:"paths"`
-	Read  int `json:"read"`
-	Write int `json:"write"`
+	Paths  int `json:"paths"`
+	Read   int `json:"read"`
+	Write  int `json:"write"`
+	Remove int `json:"remove,omitempty"`
 }
 
 type LedgerFiles struct {
@@ -126,12 +127,13 @@ type LedgerFiles struct {
 }
 
 type FileFinding struct {
-	Path  string `json:"path"`
-	Step  int    `json:"step"`
-	Image string `json:"image"`
-	Read  int    `json:"read"`
-	Write int    `json:"write"`
-	Role  string `json:"role,omitempty"`
+	Path   string `json:"path"`
+	Step   int    `json:"step"`
+	Image  string `json:"image"`
+	Read   int    `json:"read"`
+	Write  int    `json:"write"`
+	Remove int    `json:"remove,omitempty"`
+	Role   string `json:"role,omitempty"`
 }
 
 type LedgerAbsence struct {
@@ -278,9 +280,9 @@ func Reconcile(record Record, scope Scope) (Ledger, error) {
 	seenPath := map[string]map[string]bool{}
 	for _, use := range record.Files {
 		step := ordinalOf[use.Step]
-		finding := FileFinding{Path: use.Path, Step: step, Image: use.Image, Read: use.Read, Write: use.Write}
+		finding := FileFinding{Path: use.Path, Step: step, Image: use.Image, Read: use.Read, Write: use.Write, Remove: use.Remove}
 		role, covering := classifyPath(use.Path, paths, scope)
-		opened := use.Read+use.Write > 0
+		opened := use.Read+use.Write+use.Remove > 0
 		if role == roleUndeclared {
 			if !opened {
 				ledger.Files.ProbesOutsideScope += use.Failed
@@ -304,13 +306,17 @@ func Reconcile(record Record, scope Scope) (Ledger, error) {
 		}
 		total.Read += use.Read
 		total.Write += use.Write
+		total.Remove += use.Remove
 		ledger.Files.ByRole[role] = total
+		if role == roleUndeclared {
+			continue
+		}
 		finding.Role = role
 		if covering == nil {
 			// Closures and operating-system paths are read-only by nature: a
 			// build that writes a program into its own toolchain and then runs
 			// it must not be covered by that toolchain.
-			if use.Write > 0 && use.Path != "/dev/null" {
+			if use.Write+use.Remove > 0 && use.Path != "/dev/null" {
 				ledger.Files.WriteToReadOnlyTotal++
 				if len(ledger.Files.WriteToReadOnly) < findingLimit {
 					ledger.Files.WriteToReadOnly = append(ledger.Files.WriteToReadOnly, finding)
@@ -318,8 +324,9 @@ func Reconcile(record Record, scope Scope) (Ledger, error) {
 			}
 			continue
 		}
-		// Step 0 is the command itself: it may read what its steps own, because
-		// it is the one that checks them, but it may not write there.
+		// Step 0 is the command itself. It may read what its steps own, because
+		// it is the one that checks them, and remove it, because it cleans up
+		// after them; it may not write there.
 		foreign := covering.OwnerStep != 0 && step != covering.OwnerStep && (step != 0 || use.Write > 0)
 		if foreign {
 			ledger.Files.CrossStepTotal++
@@ -327,7 +334,7 @@ func Reconcile(record Record, scope Scope) (Ledger, error) {
 				ledger.Files.CrossStep = append(ledger.Files.CrossStep, finding)
 			}
 		}
-		if use.Write > 0 && !covering.Write {
+		if use.Write+use.Remove > 0 && !covering.Write {
 			ledger.Files.WriteToReadOnlyTotal++
 			if len(ledger.Files.WriteToReadOnly) < findingLimit {
 				ledger.Files.WriteToReadOnly = append(ledger.Files.WriteToReadOnly, finding)

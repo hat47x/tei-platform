@@ -240,10 +240,11 @@ func TestObserveRecordsTheOpenedFileNotTheRequestedSpelling(t *testing.T) {
 	if err := json.Unmarshal(raw, &record); err != nil {
 		t.Fatal(err)
 	}
-	reads, writes := map[string]int{}, map[string]int{}
+	reads, writes, removes := map[string]int{}, map[string]int{}, map[string]int{}
 	for _, use := range record.Files {
 		reads[use.Path] += use.Read
 		writes[use.Path] += use.Write
+		removes[use.Path] += use.Remove
 	}
 	// All three spellings are one file outside the directory.
 	if reads[secret] != 3 {
@@ -256,11 +257,12 @@ func TestObserveRecordsTheOpenedFileNotTheRequestedSpelling(t *testing.T) {
 		t.Errorf("the process's own /proc entry was not recorded as /proc/self: %d", reads["/proc/self/maps"])
 	}
 	// Creating a, renaming it to b and removing b: a is written twice (created,
-	// renamed away), b twice (renamed to, removed).
-	if writes[filepath.Join(dir, "a")] != 2 || writes[filepath.Join(dir, "b")] != 2 {
-		t.Errorf("writes a=%d b=%d, want 2 and 2", writes[filepath.Join(dir, "a")], writes[filepath.Join(dir, "b")])
+	// renamed away), b once (renamed to) and removed once.
+	a, b := filepath.Join(dir, "a"), filepath.Join(dir, "b")
+	if writes[a] != 2 || writes[b] != 1 || removes[b] != 1 || removes[a] != 0 {
+		t.Errorf("writes a=%d b=%d removes a=%d b=%d, want 2, 1, 0, 1", writes[a], writes[b], removes[a], removes[b])
 	}
-	if record.Limits.ForeignABISyscalls != 0 || len(record.Limits.UnobservableCalls) != 0 {
+	if record.Limits.ForeignABISyscalls != 0 || len(record.Limits.UnobservableCalls) != 0 || record.Limits.TraceFailures != 0 {
 		t.Errorf("limits were hit by a plain program: %+v", record.Limits)
 	}
 }

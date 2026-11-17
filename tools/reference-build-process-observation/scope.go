@@ -69,6 +69,10 @@ type selfBuildReport struct {
 		NamedByPlan bool `json:"namedByPlan"`
 		MatchesPlan bool `json:"matchesPlan"`
 	} `json:"toolchainObservation"`
+	PlanHandover *struct {
+		State    string `json:"state"`
+		PlanPath string `json:"planPath"`
+	} `json:"planHandover"`
 	ArtifactReproducibility *struct {
 		SecondStateDir string `json:"secondStateDir"`
 	} `json:"artifactReproducibility"`
@@ -173,6 +177,11 @@ func ScopeFromSelfBuild(report selfBuildReport) (Scope, error) {
 	add("output", report.Output, true, 1, sourceEntryReport)
 	if report.ChildIsolation != nil {
 		add("isolated-tree", report.ChildIsolation.Root, true, 1, sourceBuilderReport)
+	}
+	if h := report.PlanHandover; h != nil && h.State == "handed-over" {
+		// The entry wrote this file itself and pointed the child at it.
+		// It sits alone in a directory the entry made for it and removes.
+		add("plan", filepath.ToSlash(filepath.Dir(h.PlanPath)), true, 0, sourceDerivedFromRun)
 	}
 	if r := report.ArtifactReproducibility; r != nil && r.SecondStateDir != "" {
 		add("state", r.SecondStateDir, true, 2, sourceEntryReport)

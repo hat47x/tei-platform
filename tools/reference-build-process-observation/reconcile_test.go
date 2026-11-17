@@ -218,6 +218,7 @@ func TestScopeFromSelfBuildKeepsDeclaredAndReportedApart(t *testing.T) {
 	 "childIsolation":{"root":"/tmp/tree1"},
 	 "builderBinding":{"declaredBuilderDigest":"sha256:b0"},
 	 "toolchainObservation":{"reported":{"goRoot":"/toolchain"},"namedByPlan":false},
+	 "planHandover":{"state":"handed-over","planPath":"/tmp/plan-1/plan.json"},
 	 "artifactReproducibility":{"secondStateDir":"/tmp/rb/state"}}`
 	if err := json.Unmarshal([]byte(raw), &report); err != nil {
 		t.Fatal(err)
@@ -232,6 +233,9 @@ func TestScopeFromSelfBuildKeepsDeclaredAndReportedApart(t *testing.T) {
 	owners := map[string]int{}
 	for _, p := range scope.Paths {
 		owners[p.Root] = p.OwnerStep
+	}
+	if _, named := owners["/tmp/plan-1"]; !named {
+		t.Fatalf("the handed-over plan is not in the scope: %v", owners)
 	}
 	if owners["/r/state"] != 1 || owners["/tmp/rb/state"] != 2 || owners["/tmp/tree1"] != 1 {
 		t.Fatalf("owners = %v", owners)
@@ -332,4 +336,34 @@ func TestTracingThatRecordedNothingNeverHolds(t *testing.T) {
 	record = cleanRecord()
 	record.Limits.UnattributedTasks = 1
 	assertNotProven(t, mustReconcile(t, record, testScope()), "traced back")
+}
+
+// The command removes the directories of its steps when it is done. That is
+// not interference; writing into them is.
+func TestCommandMayRemoveWhatItsStepsOwn(t *testing.T) {
+	record := cleanRecord()
+	record.Files = append(record.Files, FileUse{Path: "/run/state2/x", Image: "/bin/tei", Step: 0, Remove: 1})
+	if ledger := mustReconcile(t, record, testScope()); ledger.Absence.State != absenceHolds {
+		t.Fatalf("cleanup by the command broke the claim: %v", ledger.Absence.Reasons)
+	}
+	// A step removing a file of another step is interference.
+	record.Files = append(record.Files, FileUse{Path: "/run/state1/x", Image: "/toolchain/bin/go", Step: 3, Remove: 1})
+	assertNotProven(t, mustReconcile(t, record, testScope()), "owned by another step")
+}
+
+// An open the scope does not cover is reported once, as undeclared, and not a
+// second time as a write to a read-only root.
+func TestUndeclaredWriteIsNotAlsoAReadOnlyViolation(t *testing.T) {
+	record := cleanRecord()
+	record.Files = append(record.Files, FileUse{Path: "/elsewhere/out", Image: "/run/builder", Step: 1, Write: 1})
+	ledger := mustReconcile(t, record, testScope())
+	if ledger.Files.UndeclaredTotal != 1 || ledger.Files.WriteToReadOnlyTotal != 0 {
+		t.Fatalf("undeclared %d writeToReadOnly %d, want 1 and 0", ledger.Files.UndeclaredTotal, ledger.Files.WriteToReadOnlyTotal)
+	}
+}
+
+func TestRemovingUnderAReadRootIsReported(t *testing.T) {
+	record := cleanRecord()
+	record.Files = append(record.Files, FileUse{Path: "/repo/a.go", Image: "/run/builder", Step: 1, Remove: 1})
+	assertNotProven(t, mustReconcile(t, record, testScope()), "declared for reading")
 }
