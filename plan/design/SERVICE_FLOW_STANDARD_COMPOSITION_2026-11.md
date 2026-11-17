@@ -629,7 +629,7 @@ DPC-01〜15を置き換えず、次の一因子反証を追加する。いずれ
 | Semantic edge occurrence | どの二つのPort／出現を、何の関係で結ぶか | **独立したEdge ID**、向き、Role、多重性、Source／Revision | 同端点・同labelの二辺を重複として消す |
 | View glyph／segment | Canvas上の箱、線分、折り畳み、グループ | View内の表示ID、Layout、Projection版、損失情報 | 座標や表示IDをMeaning ID・Writer Targetに転用する |
 
-上表は**既存の標準Graph・Subject・Source Index・契約情報の投影を検収するための項目**である。新しいCoreの\`Node\`型、共通ID採番器、Graph Registry、独自Compilerの採用案ではない。Source側に安定出現ID／Edge IDが存在しない場合は「未確定」として表示専用に留める。描画時の一時IDを恒久IDへ偽装しない。
+上表は**既存の標準Graph・Subject・Source Index・契約情報の投影を検収するための項目**である。新しいCoreの`Node`型、共通ID採番器、Graph Registry、独自Compilerの採用案ではない。Source側に安定出現ID／Edge IDが存在しない場合は「未確定」として表示専用に留める。描画時の一時IDを恒久IDへ偽装しない。
 
 ### 13.2 同じグラフを三つの問いに使う
 
@@ -645,13 +645,13 @@ Whole Recordをつなぐ場合、Field単位につなぐ場合、明示Adapter�
 
 | 出力項目 | 何を示すか | 不足した場合 |
 | --- | --- | --- |
-| \`graphRef\`・\`subjectRef\`・\`selection\` | 読み取ったGraph／SubjectとSource／Reader／Selection版 | 別版への合流や現在性を推測しない |
-| \`nodes\`（出現ID・定義参照・Source locator） | 表示する個々の出現とその出典 | 同名ノードを併合しない。位置不明なら逆編集不可 |
-| \`ports\`（出現・契約・Path・要求／保証） | 接続点と型付き関係、明示された必要条件 | 未指定を\`any\`や\`complete\`に補わない |
-| \`edges\`（独立ID・両端・向き・Role） | 多重Edgeを含む実際の関係 | ID重複は診断、ID未確定は編集対象外 |
-| \`qualifications\`・\`losses\`・\`diagnostics\` | Source読取、意味候補、構造適合、実利用、開示・編集可否と失われた情報 | 不明をPASSと表示しない |
+| `graphRef`・`subjectRef`・`selection` | 読み取ったGraph／SubjectとSource／Reader／Selection版 | 別版への合流や現在性を推測しない |
+| `nodes`（出現ID・定義参照・Source locator） | 表示する個々の出現とその出典 | 同名ノードを併合しない。位置不明なら逆編集不可 |
+| `ports`（出現・契約・Path・要求／保証） | 接続点と型付き関係、明示された必要条件 | 未指定を`any`や`complete`に補わない |
+| `edges`（独立ID・両端・向き・Role） | 多重Edgeを含む実際の関係 | ID重複は診断、ID未確定は編集対象外 |
+| `qualifications`・`losses`・`diagnostics` | Source読取、意味候補、構造適合、実利用、開示・編集可否と失われた情報 | 不明をPASSと表示しない |
 
-上記のJSON項目名は**read-only応答の検討用ラベル**であり、公開API schemaとして固定しない。既存の\`InspectSubject\`、Source Index、Data Context、Plugin Lock、RunPlan／Traceのどこで情報が確認できるかを先に採取し、不足項目だけを元Ownerへ返す。一般的な情報が得られない場合でも、部分的なNode Viewは作れる。ただし当該Graph全体を読み終えたと宣言しない。
+上記のJSON項目名は**read-only応答の検討用ラベル**であり、公開API schemaとして固定しない。既存の`InspectSubject`、Source Index、Data Context、Plugin Lock、RunPlan／Traceのどこで情報が確認できるかを先に採取し、不足項目だけを元Ownerへ返す。一般的な情報が得られない場合でも、部分的なNode Viewは作れる。ただし当該Graph全体を読み終えたと宣言しない。
 
 ### 13.4 四つの最小反例と編集の停止線
 
