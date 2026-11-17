@@ -7,13 +7,7 @@
       "tags": "server",
       "env": {
         "CGO_ENABLED": "0"
-      },
-      "knownFailures": [
-        {
-          "test": "TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader",
-          "reason": "the committed Wails bundle predates the generated Inspector reader, so this fails on the base independently of the module scope (#4583). Remove this entry when the bundle is rebuilt from the current Workbench sources."
-        }
-      ]
+      }
     },
     {
       "path": "tools/reference-plugin-registry",
