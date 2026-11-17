@@ -1,0 +1,18 @@
+{
+  "modules": [
+    {
+      "path": "cmd/tei-studio",
+      "verify": true,
+      "reason": "Studio is a separate build unit that replaces the root module with ../.., so a root change can break it without any root check failing. The desktop host also needs CGO disabled.",
+      "tags": "server",
+      "env": {
+        "CGO_ENABLED": "0"
+      }
+    },
+    {
+      "path": "tools/reference-plugin-registry",
+      "verify": true,
+      "reason": "a plugin-side module that declares no dependency on the product module; verifying it here shows a plugin is checkable without being linked into tei."
+    }
+  ]
+}

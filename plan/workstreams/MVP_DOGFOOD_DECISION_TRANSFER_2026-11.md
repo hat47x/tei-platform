@@ -190,3 +190,42 @@ main `dc3f310ed52e652efbda2c8736a2f45d6f4b8a6a` の実GitHub Actionsログを確
 併せてHealthには`gofmt -l . is empty`の失敗や、Web API scoped Driver、Reference CRUDの特徴付け試験の失敗も観測された。これらは別Ownerの修正案件とし、M1実験のGoコード変更へ混ぜない。
 
 **統合Gate**：`repository-health`と`cache-verification`が対象PRのexact HEADで成功し、最新mainのHealthと実CIの失敗が解消した後に、この計画ブランチをマージする。docs-onlyにしても既存Healthの失敗を免除しない。実装修正は各Owned failureで独立PR・独立Expectedを保持し、失敗試験を無条件に無効化しない。
+
+## 15. MVPをStudioの一回の自己再入へ収束させる（2026-11-17）
+
+優先順位の正本は[いま進めること](../NOW.md)に置く。全体の第一目標は受注一件の**実PostgreSQL→Rule変更→生成Web画面**であり、Studioの自己再入はそこに認められた**唯一の並行作業**である。Studio側ではショーケースや研究文書を追加せず、**Studioで定義の必須項目を一つ増やし、生成器の実装に手を入れず、Studio自身が作った次のStudioのWindows画面へその変更を出す**一巡に集中する。§1〜14のM1〜M3は否定しないが、今回のStudio P0の直列前提にはしない。
+
+前回の[PR #5215](https://github.com/hat47x/tei-platform/pull/5215)は**closed／unmerged**であり、そこに記載した到達点をmainの実装と扱わない。これに対しmainには、[PR #5188](https://github.com/hat47x/tei-platform/pull/5188)による実CLI／Studio Hostの共通Inspect、[PR #5303](https://github.com/hat47x/tei-platform/pull/5303)による選択Subjectと検証済みInspector表示の一体化、[PR #5306](https://github.com/hat47x/tei-platform/pull/5306)による**候補**Workbenchの一時生成と型検査が取り込まれている。候補がビルドできることと、製品の`main.ts`／Wails埋込Assetに実採用されたことは別である。
+
+また、main `8d02d2070fe7a4d6f696881bb8a186f00151b4af`では`reference-self-build`、Cache Verification、Windows WebView2の独立Jobが成功した。ただし、**参照セルフビルドの成功だけではStudio Stage1→Stage2の実再入は成立しない**。当該HEADのRepository Healthは確認時点で実行中であり、失敗した歴史的HEADと同じ状態だと決めつけない。
+
+### 15.1 一巡で変えるもの、変えないもの
+
+一巡の対象は、既存Inspectorの**応答定義に必須項目を一つ加える変更**とする。変更前と変更後の定義Source・生成Reader・画面の差を固定し、元のInspectorが選んだ正規Subject、Source fingerprint・byte範囲、Authority LimitsをStage1／Stage2で追う。増やした必須項目は、生成器を改修せず新定義から生成され、Stage2画面で読めなければ不合格。三要素分析の図面や型付きインスタンスの表示は別の表現であり、今回の改修対象にしない。
+
+| 境界 | この一巡で必要な実物 | 今回は増やさないもの |
+| --- | --- | --- |
+| **D0：定義の変更と独立Expected** | StudioでInspector応答の必須項目を一つ増やす前後の定義byteと期待する表示差分。正規Subject／Source Revision、同名異ID・別Workspace・後着応答の負例 | 生成器の改修、別の業務DSL、生成器自身が出したExpected正本 |
+| **D1：生成対象と入力** | Stage1が解決した非Plugin StudioのBuildIntent、選択したGeneratorとToolchain、正規Workbench／生成ReaderのSource Closure | Wails固有の業務意味、説明用の仮想Builder |
+| **D2：実Builder** | Stage1の実Processが指定したBuilder／Invokerの選択と実Call。Stage1自身が起動した因果関係 | CI Shellが二回`go build`したことだけを「自己再入」と呼ぶ扱い |
+| **D3：実Artifact** | Stage2の実ImageとBundle、元Source・生成TS／Go・正規esbuild・Go embedに対応するArtifact revision／byte | 候補Bundle、古い固定Closure、同じ見た目の別Artifactによる代替 |
+| **D4：次世代の実起動** | **生成されたStage2 Binary**を実行したProcessと、それが採用した生成Inspector Reader | 参照Goセルフビルドの収束値からStage2 Desktopの実起動を推論すること |
+| **D5：Windows実Consumer** | Stage2のWindows WebView2で同じSubjectのInspect／Pinを受け、Source・Scope・後着応答を確認する | 既存PoCのWindowやStage1の画面をStage2として再利用すること |
+
+**D1〜D3を同一Attemptで結べない限り、D4〜D5を合格にしない。** World／Model／Artifact Revision、Source・生成器・Toolchainの版、どのProcessがどのBuilderを呼びどのbyteを読んだかを、ひと続きの受入票にする。A→B→Aの再現byteやGeneratorの自己申告だけで旧Evidenceを復活させない。[PR #5291](https://github.com/hat47x/tei-platform/pull/5291)の宣言・申告・外部観測の分離は**未統合の補助検証候補**であり、当面のStudio実再入をそのPRの統合待ちで停止させない。
+
+### 15.2 最初のコード変更は生成Inspector Readerの正式収録
+
+最初に閉じる断線は、[Web設計§21〜22](../design/WEB_STANDARD_COMPONENT_AND_AGENT_HARNESS_2026-11.md)のWEB-P1a-2bである。**第一段は生成Readerを唯一のReaderとして製品へ復旧**する。現行mainの`readInspectorPresentation(raw, {workspaceId, selected, catalog})`と候補`main.inspector-candidate.ts`を確認し、歴史的`main.ts`の選択・Pin・応答laneを保ったまま、**契約Source→生成Reader→正規`main.ts`での実import・呼出し→esbuild→Wails埋込JS**へ接続する。**第二段は、必須項目を一つ足した定義だけを更新して同じ生成器を再実行**し、Stage2画面に差が現れることを確かめる。
+
+実装PRの合格条件は、生成ReaderがBundle内に一つだけ存在し、現在の契約Digestに一致すること、手書きの代替Readerが並存しないこと、埋込JS／HTML／CSS／第三者通知が**同一HEADの正規Build**と一致すること。既存の`TestEmbeddedWorkbenchCarriesTheCurrentGeneratedInspectionReader`を緩めず、生成Desktopの実WebView2でもReader使用を観測する。過去のPinを新しいSourceと偽って更新せず、**新しいSource Closureを新しい版として検収**する。
+
+Reader／Presenterの表示成功はHostの閲覧Grantではない。選択SubjectとCatalog不一致、別Workspace、古いSource Index、部分取得、明示NULL、Authority Limits欠落、後着の古い応答は、既存の独立Expectedと`responses.run("inspection")`の選択laneでそれぞれ拒否・保持を確かめる。現在のHostが認めない原文Openや編集保存を、Inspectorの`textContent`表示だけで成功扱いしない。
+
+### 15.3 M1とRuleの標準化を「Studioの一巡」のHard Gateにしない
+
+[PR #5290](https://github.com/hat47x/tei-platform/pull/5290)の採用済み方針では、業務Ruleの正規形を**Operatorの署名と名前付き入力**で説明し、既存のValidation種別を際限なく増やさない。実装済み[PR #5187](https://github.com/hat47x/tei-platform/pull/5187)の`required-if`は**業務レコードのPresence**の検査であり、`GeneratePositive`が手書きで確認する`semantic.Validation.ID/Attribute != ""`や`Kind=positive`でのRelation指定禁止の自動置換ではない。
+
+したがって自己記述M1の三条件は、現行`required`表のままでは**実判定へのBindingが不足**した状態として管理し、既存Operator・型付きField条件を優先して最小能力を別Packetで検討する。新しいValidationKindや第二Meta InterpreterをStudioのために追加しない。M1で一条件を**TEI定義が実判定**し、M2で対応するGo分岐が削除され実Callerが採用したときだけ、自己置換の進捗に計上する。
+
+**直近の実装順**は、①生成Inspector Readerを唯一のReaderとして復旧、②**定義の必須項目を一つ追加し、生成器のコード差分がゼロのまま**生成・埋込byteを照合、③Stage1が実Buildを選択・起動したD1〜D3の同一Attemptを確認、④Stage2 Windows WebView2のInspectorで変更した項目を実表示（D4〜D5）。受注一件を実ProviderからWebへ届ける主線は[いま進めること](../NOW.md)の優先順位を維持し、Studioの成功で代替しない。

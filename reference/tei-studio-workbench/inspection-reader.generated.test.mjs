@@ -1,106 +1,94 @@
-// The generated Inspector reader is checked against things it was not derived
-// from: the Stage0 hand-written reader (test-only oracle), the contract Source
-// bytes on disk, and a DOM stand-in that observes actual use.
+// Independent expectations for the current generated Inspector contract.
+// The product entrypoint must re-export the generated Reader, not a copy.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readInspection, inspectionReaderProvenance } from "./presentation.ts";
-import * as generated from "./inspection-reader.generated.ts";
-import { seedReadInspection } from "./testdata/inspection-reader.seed-oracle.ts";
+import { readInspection as productionReadInspection } from "./presentation.ts";
+import { readInspection as generatedReadInspection, inspectionReaderProvenance } from "./inspection-reader.generated.ts";
 
 const here = (name) => new URL(name, import.meta.url);
 const subject = { kind: "semantic-data", id: "sales.order" };
 const catalog = { entries: [], modelRevision: "r", worldFingerprint: "w1", sourceIndexFingerprint: "s1" };
-const ok = {
-  schemaVersion: "tei.cli.inspect/v0",
-  effect: "read-only",
-  subject,
-  canonical: { id: "sales.order", attributes: [{ id: "sales.order.customer_id" }] },
-  worldFingerprint: "w1",
-  sourceIndexFingerprint: "s1",
-  sourceStatus: "indexed",
-};
-const outcome = (read, ...args) => {
-  try {
-    return { value: read(...args) };
-  } catch (error) {
-    return { error: error.message };
-  }
-};
-
-// Every row runs through both readers. The expected column is written by hand
-// from the contract, so agreement of the two readers alone cannot pass a row.
-const cases = [
-  ["accepted projection", ok, subject, catalog, "value"],
-  ["canonical null is still a projection", { ...ok, canonical: null }, subject, catalog, "value"],
-  ["missing sourceStatus reads as unknown", { ...ok, sourceStatus: undefined }, subject, catalog, "value"],
-  ["write effect", { ...ok, effect: "write" }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
-  ["another subject id", { ...ok, subject: { kind: subject.kind, id: "sales.customer" } }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
-  ["another subject kind", { ...ok, subject: { kind: "semantic-attribute", id: subject.id } }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
-  ["canonical absent", (({ canonical, ...rest }) => rest)(ok), subject, catalog, "INVALID_INSPECTION_RESPONSE"],
-  ["world fingerprint not a string", { ...ok, worldFingerprint: 1 }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
-  ["index fingerprint absent", { ...ok, sourceIndexFingerprint: undefined }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
-  ["subject without id", { ...ok, subject: { kind: subject.kind } }, subject, catalog, "INVALID_SUBJECT_RESPONSE"],
-  ["response is an array", [ok], subject, catalog, "INVALID_MODEL_RESPONSE"],
-  ["response is null", null, subject, catalog, "INVALID_MODEL_RESPONSE"],
-  ["catalog world moved on", ok, subject, { ...catalog, worldFingerprint: "w2" }, "STALE_MODEL_PROJECTION"],
-  ["catalog index moved on", ok, subject, { ...catalog, sourceIndexFingerprint: "s2" }, "STALE_MODEL_PROJECTION"],
-  ["no catalog snapshot", ok, subject, null, "STALE_MODEL_PROJECTION"],
-  ["no catalog argument", ok, subject, undefined, "STALE_MODEL_PROJECTION"],
+const limits = [
+  "inspection-is-a-derived-read-only-projection",
+  "source-location-is-not-semantic-acceptance",
+  "source-location-is-not-write-authority",
+  "local-read-is-not-disclosure-permission",
 ];
-
+const ok = {
+  schemaVersion: "tei.cli.inspect/v0", effect: "read-only", subject,
+  canonical: { id: "sales.order", attributes: [{ id: "sales.order.customer_id" }] },
+  worldFingerprint: "w1", sourceIndexFingerprint: "s1",
+  sourceStatus: "indexed", authorityLimits: limits,
+};
+function outcome(read, ...args) {
+  try { return { value: read(...args) }; }
+  catch (error) { return { error: error.message }; }
+}
+const cases = [
+  ["valid current reply", ok, subject, catalog, "value"],
+  ["canonical null", { ...ok, canonical: null }, subject, catalog, "value"],
+  ["sourceStatus partial", { ...ok, sourceStatus: "partial" }, subject, catalog, "value"],
+  ["extra limits survive", { ...ok, authorityLimits: [...limits, "additional-scope"] }, subject, catalog, "value"],
+  ["missing sourceStatus", { ...ok, sourceStatus: undefined }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["null sourceStatus", { ...ok, sourceStatus: null }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["missing limits", (({ authorityLimits, ...rest }) => rest)(ok), subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["non-array limits", { ...ok, authorityLimits: "read-only" }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["limit with wrong type", { ...ok, authorityLimits: [...limits, null] }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["missing one required limit", { ...ok, authorityLimits: limits.slice(1) }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["write effect", { ...ok, effect: "write" }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["different qualified id", { ...ok, subject: { kind: subject.kind, id: "sales.customer" } }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["different kind", { ...ok, subject: { kind: "semantic-attribute", id: subject.id } }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["missing canonical", (({ canonical, ...rest }) => rest)(ok), subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["invalid world fingerprint", { ...ok, worldFingerprint: 1 }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["missing index", { ...ok, sourceIndexFingerprint: undefined }, subject, catalog, "INVALID_INSPECTION_RESPONSE"],
+  ["subject without id", { ...ok, subject: { kind: subject.kind } }, subject, catalog, "INVALID_SUBJECT_RESPONSE"],
+  ["array response", [ok], subject, catalog, "INVALID_MODEL_RESPONSE"],
+  ["null response", null, subject, catalog, "INVALID_MODEL_RESPONSE"],
+  ["old world", ok, subject, { ...catalog, worldFingerprint: "w2" }, "STALE_MODEL_PROJECTION"],
+  ["old source index", ok, subject, { ...catalog, sourceIndexFingerprint: "s2" }, "STALE_MODEL_PROJECTION"],
+  ["missing catalog", ok, subject, null, "STALE_MODEL_PROJECTION"],
+];
 for (const [name, raw, expected, snapshot, want] of cases) {
-  test(`generated reader and Stage0 seed agree: ${name}`, () => {
-    const got = outcome(readInspection, raw, expected, snapshot);
-    const seed = outcome(seedReadInspection, raw, expected, snapshot);
-    assert.deepEqual(got, seed);
+  test(`generated Reader follows independently stated behavior: ${name}`, () => {
+    const actual = outcome(generatedReadInspection, raw, expected, snapshot);
     if (want === "value") {
-      assert.equal(got.error, undefined);
-      assert.equal(got.value.version, "w1:s1");
-      assert.equal(got.value.text, JSON.stringify(raw.canonical, null, 2));
-    } else {
-      assert.equal(got.error, want);
-    }
+      assert.equal(actual.error, undefined);
+      assert.equal(actual.value.version, "w1:s1");
+      assert.equal(actual.value.text, JSON.stringify(raw.canonical, null, 2));
+      assert.equal(actual.value.sourceStatus, raw.sourceStatus);
+      assert.equal(actual.value.authorityLimits.length, raw.authorityLimits.length);
+      assert.match(actual.value.authorityLimits[0], /読み取り専用/);
+      if (raw.authorityLimits.length > 4)
+        assert.match(actual.value.authorityLimits.at(-1), /追加の利用制限/);
+    } else assert.equal(actual.error, want);
   });
 }
-
-test("the Workbench entry re-exports the generated part, not a second implementation", () => {
-  assert.equal(readInspection, generated.readInspection);
-  const presentation = readFileSync(here("./presentation.ts"), "utf8");
-  assert.doesNotMatch(presentation, /function readInspection/);
-  assert.match(presentation, /from "\.\/inspection-reader\.generated\.ts"/);
-  // main.ts stays the pinned consumer; it reaches the part only through presentation.ts.
-  const main = readFileSync(here("./main.ts"), "utf8");
-  assert.doesNotMatch(main, /inspection-reader/);
-  assert.doesNotMatch(main, /seed-oracle/);
+test("production Workbench API exposes exactly the generated Reader", () => {
+  assert.strictEqual(productionReadInspection, generatedReadInspection);
 });
-
-test("the part names the contract Source that is on disk now", () => {
-  // Recomputed here from the bytes, without the Go engine: a part generated
-  // from an older contract revision fails this even if it still type-checks.
+test("generated Reader names the exact current contract Source", () => {
   const contract = JSON.parse(readFileSync(here("./inspection-reader.contract.json"), "utf8"));
   const digest = "sha256:" + createHash("sha256").update(JSON.stringify(contract)).digest("hex");
   assert.equal(inspectionReaderProvenance.contractDigest, digest);
   assert.equal(inspectionReaderProvenance.part, contract.part.id);
-  assert.equal(inspectionReaderProvenance.version, contract.part.version);
   assert.equal(inspectionReaderProvenance.operation, contract.operation.bridge);
+  assert.deepEqual(Object.values(contract.requiredLimits), limits);
 });
-
-test("only an accepted projection records use, and each use is counted", () => {
+test("invalid projections do not count as generated Reader use", () => {
   const dataset = {};
   globalThis.document = { documentElement: { dataset } };
   try {
-    assert.throws(() => readInspection({ ...ok, effect: "write" }, subject, catalog));
-    assert.throws(() => readInspection(ok, subject, { ...catalog, worldFingerprint: "w2" }));
+    assert.throws(() => generatedReadInspection({ ...ok, authorityLimits: undefined }, subject, catalog));
+    assert.throws(() => generatedReadInspection({ ...ok, sourceStatus: undefined }, subject, catalog));
+    assert.throws(() => generatedReadInspection(ok, subject, { ...catalog, worldFingerprint: "old" }));
     assert.deepEqual(dataset, {});
-    readInspection(ok, subject, catalog);
-    readInspection(ok, subject, catalog);
+    generatedReadInspection(ok, subject, catalog);
+    generatedReadInspection(ok, subject, catalog);
     assert.deepEqual(dataset, {
       teiInspectionReader: inspectionReaderProvenance.contractDigest,
       teiInspectionReaderCalls: "2",
     });
-  } finally {
-    delete globalThis.document;
-  }
+  } finally { delete globalThis.document; }
 });

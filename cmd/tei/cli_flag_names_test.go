@@ -71,7 +71,8 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 	selfParsed := map[string]bool{
 		"model catalog": true, "model locate": true, "model overview": true,
 		"model document-draft": true, "model document-reconcile": true,
-		"three-element": true,
+		"model search":  true,
+		"three-element": true, "business-procedure": true,
 	}
 	for _, record := range commandCatalog().Commands {
 		if selfParsed[record.Name] {
@@ -95,11 +96,13 @@ func TestAdvertisedFlagNamesAreTheAcceptedSet(t *testing.T) {
 func TestSelfParsedFlagNames(t *testing.T) {
 	want := map[string]struct{ required, optional []string }{
 		"model catalog":            {[]string{"workspace"}, []string{"namespace"}},
-		"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit"}},
-		"model overview":           {[]string{"workspace"}, []string{"limit"}},
+		"model locate":             {[]string{"workspace", "subject-kind", "subject-id"}, []string{"limit", "expected-fingerprint"}},
+		"model overview":           {[]string{"workspace"}, []string{"limit", "expected-fingerprint"}},
+		"model search":             {[]string{"workspace"}, []string{"term", "kind", "limit", "offset"}},
 		"model document-draft":     {[]string{"workspace", "subject-kind", "subject-id"}, []string{"relation-id", "title", "document-kind", "application", "frozen", "section", "model"}},
 		"model document-reconcile": {[]string{"workspace", "draft"}, nil},
 		"three-element":            {nil, nil},
+		"business-procedure":       {[]string{"workspace", "procedure"}, nil},
 	}
 	for name, expect := range want {
 		record := catalogRecord(t, name)

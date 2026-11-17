@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"tei/internal/reacandidate"
 
 	"tei/internal/operations"
 	"tei/internal/sourceindex"
@@ -70,6 +71,18 @@ func failReaIntake(code, message string, exit int, out io.Writer) (int, error) {
 
 // runThreeElementReaIntake is the review entry point of the candidate-only
 // intake path. It never accepts meaning; it only produces a review packet.
+
+// refuseReaEvidence reports the generator's own refusal code. The generator
+// already names the defect (for example EDGE_IDENTITY_DUPLICATE); collapsing it
+// into one wrapper code would hide which rule the evidence broke.
+func refuseReaEvidence(err error, out io.Writer) (int, error) {
+	var evidenceErr *reacandidate.EvidenceError
+	if errors.As(err, &evidenceErr) {
+		return failReaIntake(evidenceErr.Code, evidenceErr.Message, 2, out)
+	}
+	return failReaIntake("EVIDENCE_INVALID", err.Error(), 2, out)
+}
+
 func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 	var parsed reaIntakeArgs
 	fs := reaIntakeFlagSet(&parsed)
@@ -127,62 +140,51 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 		return failReaIntake("INVALID_ARGUMENT", "-mapping requires -workspace; a mapping alone resolves nothing", 2, out)
 	}
 
-	// Build the review packet.
-	packet := map[string]interface{}{
-		"acceptedMeaning":     false,
-		"canonicalWorld":      false,
-		"databaseObservation": false,
-		"ownerDecision":       "pending",
-		"effect":              "read-only",
-		"qualification":       "complete",
-		"bindingAttempted":    false,
-		"adoptionPreviewed":   false,
-		// Legacy field: fingerprint the bytes actually read, not a raw hex dump
-		// of the full input. This does not establish Candidate/Meaning identity.
-		"candidateSetFingerprint": fmt.Sprintf("sha256:%x", sha256.Sum256(evidence)),
-		"fingerprintBasis":        "raw-evidence-bytes-not-candidate-identity",
-		"candidates": []map[string]interface{}{
-			{"candidateId": "candidate-1", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
-			{"candidateId": "candidate-2", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
-			{"candidateId": "candidate-3", "kind": "data-element", "status": "pending", "facts": map[string]interface{}{}},
-		},
-		"bindings": []map[string]interface{}{},
-		"carrier": map[string][]string{
-			"missing": {"semantic/owner.tei", "semantic/binding.tei", "reference/workspace"},
-		},
-		"unresolved": []interface{}{"owner mapping", "binding", "reference"},
+	// Project real structure candidates from the receipt. The evidence is the
+	// same document read above: DecodeAttemptEvidence maps REA's own document
+	// keys onto TEI's camelCase and refuses an incomplete attempt. Without this
+	// the packet carried three synthetic candidates that named no external
+	// occurrence, so parallel edges could not be told apart.
+	attempt, err := reacandidate.DecodeAttemptEvidence(evidence)
+	if err != nil {
+		return refuseReaEvidence(err, out)
+	}
+	set, err := reacandidate.GenerateCandidates(attempt)
+	if err != nil {
+		return refuseReaEvidence(err, out)
 	}
 
-	// Handle adoption preview.
+	// Build the review packet from the generated candidate set. BuildReviewPacket
+	// owns the carrier audit, three-element coverage, unresolved aggregation and
+	// the authority limits, so this tool never restates them by hand.
+	built := reacandidate.BuildReviewPacket(set, nil, nil, nil)
+	encoded, err := json.Marshal(built)
+	if err != nil {
+		return failReaIntake("PACKET_ENCODE_FAILED", err.Error(), 2, out)
+	}
+	var packet map[string]interface{}
+	if err := json.Unmarshal(encoded, &packet); err != nil {
+		return failReaIntake("PACKET_ENCODE_FAILED", err.Error(), 2, out)
+	}
+	// Legacy field: fingerprint the bytes actually read, not the candidate set.
+	// It does not establish Candidate or Meaning identity, and says so.
+	packet["candidateSetFingerprint"] = fmt.Sprintf("sha256:%x", sha256.Sum256(evidence))
+	packet["fingerprintBasis"] = "raw-evidence-bytes-not-candidate-identity"
+	packet["generatedCandidateSetFingerprint"] = built.CandidateSetFingerprint
+
+	// Handle adoption preview. PreviewAdoption projects the candidate set onto
+	// the model without writing it: the preview is a what-if, never acceptance.
 	if strings.TrimSpace(parsed.model) != "" {
 		model, err := loadThreeElementModel(parsed.model)
 		if err != nil {
 			return failReaIntake("MODEL_LOAD_FAILED", err.Error(), 2, out)
 		}
+		preview, err := reacandidate.PreviewAdoption(set, model)
+		if err != nil {
+			return failReaIntake("ADOPTION_PREVIEW_FAILED", err.Error(), 2, out)
+		}
 		packet["adoptionPreviewed"] = true
-		data, fn, _ := model.Index()
-		records := make([]map[string]interface{}, 0, len(data)+len(fn))
-		for id := range data {
-			records = append(records, map[string]interface{}{
-				"id":             id,
-				"kind":           "dataElement",
-				"accepted":       false,
-				"owner":          "",
-				"sourceRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-			})
-		}
-		for id := range fn {
-			records = append(records, map[string]interface{}{
-				"id":             id,
-				"kind":           "functionElement",
-				"accepted":       false,
-				"owner":          "",
-				"sourceRevision": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-			})
-		}
-		packet["adoption"] = map[string]interface{}{
-			"records": records,
-		}
+		packet["adoption"] = preview
 	}
 
 	// Handle comparison with previous set.
@@ -227,13 +229,14 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 			if graph != nil {
 				nodes, _ := graph["nodes"].([]interface{})
 				edges, _ := graph["edges"].([]interface{})
-				observed := bindObservations(nodes, edges, parsed.workspace, ownerMapping, packet["candidates"].([]map[string]interface{}))
+				observed := bindObservations(nodes, edges, parsed.workspace, ownerMapping, candidateIDsByNode(set.Candidates))
+				packet["bindings"] = observed.Bindings
 				if len(observed.Bindings) > 0 {
-					packet["bindings"] = observed.Bindings
 					packet["bindingAttempted"] = true
 				}
 				if len(observed.Unresolved) > 0 {
-					packet["unresolved"] = append(packet["unresolved"].([]interface{}), observed.Unresolved...)
+					existing, _ := packet["unresolved"].([]interface{})
+					packet["unresolved"] = append(existing, observed.Unresolved...)
 				}
 			}
 		}
@@ -263,13 +266,28 @@ func runThreeElementReaIntake(args []string, out io.Writer) (int, error) {
 }
 
 type observationResult struct {
-	Bindings    []map[string]interface{}
-	Unresolved  []interface{}
+	Bindings   []map[string]interface{}
+	Unresolved []interface{}
 }
 
-func bindObservations(nodes, edges []interface{}, workspaceRoot string, ownerMapping map[string]map[string]string, fixedCandidates []map[string]interface{}) observationResult {
+// candidateIDsByNode maps an external node identity to the data candidate the
+// generator produced for it. Bindings name the real candidate instead of
+// patching a placeholder by position.
+func candidateIDsByNode(candidates []reacandidate.StructureCandidate) map[string]string {
+	byNode := make(map[string]string, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.Kind != reacandidate.CandidateKindDataElement {
+			continue
+		}
+		if id := candidate.Facts.ExternalIdentity; id != "" {
+			byNode[id] = candidate.CandidateID
+		}
+	}
+	return byNode
+}
+
+func bindObservations(nodes, edges []interface{}, workspaceRoot string, ownerMapping map[string]map[string]string, candidateIDs map[string]string) observationResult {
 	var result observationResult
-	candidateIndex := 0
 	for _, rawNode := range nodes {
 		node, _ := rawNode.(map[string]interface{})
 		nodeID, _ := node["node_id"].(string)
@@ -283,14 +301,7 @@ func bindObservations(nodes, edges []interface{}, workspaceRoot string, ownerMap
 			value, _ := location["value"].(map[string]interface{})
 			source, _ := value["source"].(string)
 
-			candidateID := ""
-			if candidateIndex < len(fixedCandidates) {
-				candidateID = fixedCandidates[candidateIndex]["candidateId"].(string)
-				fixedCandidates[candidateIndex]["facts"] = map[string]interface{}{
-					"externalIdentity": nodeID,
-				}
-			}
-			candidateIndex++
+			candidateID := candidateIDs[nodeID]
 
 			if strings.TrimSpace(workspaceRoot) == "" {
 				continue
@@ -383,5 +394,3 @@ func bindSource(source, expectedDigest, workspaceRoot string) (string, string, [
 	}
 	return "source-digest-conflict", "unresolved", nil
 }
-
-

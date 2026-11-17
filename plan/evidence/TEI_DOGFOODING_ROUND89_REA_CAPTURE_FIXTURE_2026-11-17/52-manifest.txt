@@ -1,0 +1,14 @@
+The manifest was self-contradictory before this round:
+
+  rea-6.8.0/analysis.json   520 bytes / 7ea3780d...
+  actual file               829 bytes / 6c84cfb3...
+
+7ea3780d is the digest of the 78000-byte capture, so that entry declared a size
+and a digest that cannot both be true.
+
+  rea-6.8.0/view.jsonl      618 / dd936b0c...   actual 929 / 561e927d...
+  rea-6.7.0/analysis.json   516                 actual 829
+  rea-6.7.0/view.jsonl      152                 actual 125
+
+Every entry now matches its file; a script compares bytes and digest for all
+runs. Inconsistencies: 0.

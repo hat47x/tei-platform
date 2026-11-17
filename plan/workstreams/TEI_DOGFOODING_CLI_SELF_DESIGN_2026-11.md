@@ -2970,3 +2970,234 @@ FAIL	tei/internal/workspace [setup failed]
 ### 位置付け
 
 **「選択肢があるのに、選び方を言わない」を直した回**である。同時に、**1つの雑なテストファイルが101のテストを沈黙させていた**ことを見つけた。どちらも「動いているように見えるが、実は何も検証していない」という同じ形をしている。
+
+## 86. 第85ラウンド（2026-11-17）: CI の gate が main で赤かった（gofmt 25ファイル）
+
+これまで3ラウンド続けて「テストが走らない」種類の欠陥を直したので、**その種類がもう残っていないかを体系的に確認した。** 生出力は[第85ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND85_GOFMT_GATE_2026-11-17/README.md)にある。
+
+### 体系的確認: その種類はもう無い
+
+```text
+$ go test -run '^$' ./...
+（出力なし）
+failing-to-build entries: 0
+```
+
+**全パッケージのテストがビルドできる。** 第82〜84ラウンドで直した種類は解消済みである。
+
+### その過程で、CI の gate が main で赤いことを発見
+
+CI が実際に走らせているスクリプトを直接実行した。
+
+```text
+$ bash tools/repository-health-check.sh --fast
+FAIL  gofmt -l . is empty
+FAIL  go vet ./...
+```
+
+**`gofmt -l .` が25ファイルで drift（260行、純粋な整形のみ）。** `go vet` は単独で実行すると rc=0 で PASS で、スクリプトの表示は直前の gofmt 失敗に引きずられたもの。**真の失敗は gofmt だけ**だった。
+
+### 修正
+
+25ファイルに `gofmt -w` を適用。
+
+| 対象 | 修正前 | 修正後 |
+| --- | --- | --- |
+| `gofmt -l .` | **25ファイル** | **0** |
+| gate の5ステップ | **2 FAIL** | **5 PASS** |
+
+drift は私の直近のコミットではなく、他の複数のコミットが持ち込んだもの。
+
+### 測り方を間違えて1回やり直した
+
+最初 `go test ./...`（既定 timeout = **10分**）で測り、3パッケージが 600s で FAIL した。**これは CI を再現していない。**
+
+```bash
+go test -count=1 -timeout 60m ./...    # CI が実際に走らせる形
+```
+
+`tools/repository-health-check.sh` の95行目が `-timeout 60m` を指定している。**既定10分のまま測ったのは私の計器の誤り**で、単独では `reference-plugin-self-build` が **596s で PASS** する。**存在しない欠陥を3件報告するところだった。**
+
+### 位置付け
+
+**「CI が見ている当のものを、CI と同じ flags で測る」をやった回**である。測り方を疑って読み直したことで、本当の赤（gofmt 25ファイル）に到達した。
+
+## 87. 第86ラウンド（2026-11-17）: scoped driver の3テストが、宣言と違う型の引数を渡していた
+
+`repository-health` に残る赤のうち3件が同じ `reference/web-api-contract` に集中していたので、**1つの原因かを確かめた。** 生出力は[第86ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND86_SCOPED_FIXTURE_TYPE_2026-11-17/README.md)にある。
+
+### 3件は同じメッセージで落ちていた
+
+```text
+scoped query execution unavailable
+```
+
+`scoped_driver_bridge.go` は**意図的に**プロバイダの文字列を外へ出さない設計で、`default:` でこのエラーに潰している。**設計は正しいが、テストからは原因が見えない。** 一時的に `fmt.Errorf("DIAGNOSIS %w", err)` に差し替えて原因を取り出し（**診断後に即座に戻した**）、**2種類の原因が1つのメッセージに隠れていた**ことを確認した。
+
+### 本当の原因: フィクスチャが宣言と違う型を渡していた
+
+クエリは `input from std.datetime` を宣言し、`query_execution.go` は **`time.Time` 以外を拒否する**。
+
+| テスト | 渡していたもの | 正しい形 |
+| --- | --- | --- |
+| `TestRealDriver...`・`TestScopedProvider...` | 文字列 `"fixture-query-parameter"` | `time.Time` |
+| `TestScopedDriverRejects...` | `nil`（入力ごと欠落） | `time.Time` |
+
+**production コードは正しく、フィクスチャが誤っていた。**
+
+### Top の assert が一度も走っていなかった
+
+`TestScopedDriverRejects...` は **Top 上限の検査**が目的だが、`nil` のままだと**入力検査で先に落ち、Top の assert に到達していなかった。** つまり**このテストは何も検証していなかった。**
+
+### 変異試験
+
+| # | 変えた箇所 | 結果 |
+| --- | --- | --- |
+| M1 | 文字列引数に戻す | FAIL `scoped query execution unavailable`（**元の症状を再現**） |
+| M2 | Top テストの入力を `nil` に戻す | FAIL `Provider exceeded Top but its result escaped`（**元の症状を再現**） |
+
+### 回帰確認
+
+| 対象 | 結果 |
+| --- | --- |
+| `./reference/web-api-contract` | **ok**（修正前は3件 FAIL） |
+| CI gate（`--fast`） | **6ステップすべて PASS** |
+| production コード | **変更なし**（`_test.go` 1ファイルのみ） |
+
+### 位置付け
+
+**「1つのメッセージが2つの原因を隠していた」回**である。3件が同じ文言で落ちていたので同因と見えたが、実際は「型違い」と「入力欠落」の2種類だった。潰す設計は正しいので、**隠れた原因は一時的な計装で取り出してから直した。**
+
+## 88. 第87ラウンド（2026-11-17）: rea-intake が候補生成を失い、並行Relationの回帰3件が壊れている
+
+`repository-health` に残る `TestREAIntake*` 系3件を、前ラウンドと同じ手法（表面のメッセージではなく実体を計測する）で調べた。生出力は[第87ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND87_REA_CANDIDATE_REGRESSION_2026-11-17/README.md)にある。起票は [#5248](https://github.com/hat47x/tei-platform/issues/5248)。
+
+### 実測
+
+3件とも**単独実行で FAIL**（テスト順序依存ではない）。計装すると:
+
+```text
+DIAGNOSIS candidate kinds: map[data-element:3] (total=3)
+```
+
+fixture には**エッジが2本ある**（`graph.edges=1` ＋ テストが1本追加）のに、候補は `data-element` が3件だけ。**`cross-reference` 候補が1つも生成されていない。**
+
+### いつ壊れたか（二分探索）
+
+```text
+3429c7891  test(rea): 保存REA原本の二入口と並行Relation回帰を統合
+            -> 3件とも PASS（追加時は緑）
+606134e63  refactor(rea): restrict intake to evidence receipts
+            -> ここで壊れた
+```
+
+### 原因: 実データ由来の候補が固定3件のプレースホルダになった
+
+`606134e63` が `reacandidate.GenerateCandidates` の呼び出しを**削除**し、**固定3件の `data-element`** に置き換えている。
+
+### なぜ私が直さないか
+
+`606134e63` は「**intake を receipt に限定する**」という意図的な設計変更に見え、**テストの要求と真正面から衝突**している。production 自身がこう書いている:
+
+> This legacy CLI has synthetic candidate IDs, not source-backed CandidateSet identities.
+
+つまり実装者は placeholder を認識しており、**テストが追随していない**状態。A（生成を戻す）か B（テストを削除）かは**所有者の判断**である。**C（私が A を実装）はリファクタの設計意図を私が決めてしまう**ので採らない。
+
+### 正確な事実整理
+
+`reacandidate` パッケージは**今も存在**し別経路から使われている。失われたのは **`rea-intake` 経由での**候補生成だけ。よって「候補生成が消えた」ではなく、**`rea-intake` から切り離された**のが正確。
+
+### 位置付け
+
+**「緑だったテストが、意図的な設計変更で赤になった」回**である。壊れたのは事実だが、**直すには「どちらの設計が正か」を決める必要がある**。私は判断を起票して返し、事実（いつ・何が・どう変わり・何が失われたか）を確定させた。
+
+## 89. 第88ラウンド（2026-11-17）: rea-intake の候補生成を戻した（#5248 の案Aを採択）
+
+前ラウンドは A（生成を戻す）/ B（テスト削除）を所有者判断として起票した。**本ラウンドは既定の自律方針に従い、可逆な設計判断として A を選んだ。** 生出力は[第88ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND88_REA_CANDIDATES_RESTORED_2026-11-17/README.md)にある。
+
+### A を選んだ根拠（推測ではなく実測）
+
+1. `reacandidate.DecodeAttemptEvidence` と `GenerateCandidates` は**両方 exported で現存**する。
+2. CLI 自身の fixture をそのまま通すと `cross-reference:1, data-element:2` が生成される。
+3. リファクタ `606134e63` の削除は**配線だけ**（128行）で、生成器は残っている。
+4. 安全コミット `d870611b1` の意図（根拠のない `unchanged`・原本 Byte 露出の阻止）と**衝突しない**。
+
+実 REA 原本（78KB）でも `candidates=14 kinds=map[cross-reference:7 data-element:7]` を確認した。**覆す条件**も記録した: 「rea-intake が候補同一性を持たない」と所有者が決めれば B が正しくなる。
+
+### 修正
+
+| 箇所 | 変更 |
+| --- | --- |
+| 候補 | 固定3件の `data-element` → `DecodeAttemptEvidence` + `GenerateCandidates` |
+| パケット | 手書き map → `BuildReviewPacket` |
+| adoption | 固定 record 列 → `PreviewAdoption` |
+| 束縛 | 添字で placeholder を書き換え → 外部同一性で候補を引く |
+| 拒否コード | `EVIDENCE_INVALID` に潰す → 生成器のコードをそのまま返す |
+
+**`-before` は fail-closed のまま**、`authorityLimits` も維持。
+
+### 途中で2件、自分が壊した
+
+| 症状 | 原因 | 対処 |
+| --- | --- | --- |
+| `candidateSetFingerprint` が合わない | 既存契約は**生入力の digest** | 生入力 digest を維持し、生成側は別キー `generatedCandidateSetFingerprint` へ |
+| `bindings` で panic | 型付き構造体でキーが消えた | map 経由で戻した |
+
+**どちらも変更前は緑だった既存契約なので、潰さず併存させた。**
+
+### 結果
+
+`./cmd/tei` の FAIL が **8 → 1**。残る1件は `TestREADualEntry...` で、`internal/externalanalysis/testdata/rea-6.8.0/analysis.json` が UTF-16LE 原本であることを要求するが、`606134e63` が 829バイトの UTF-8 受領書に置換し、`manifest.json` は今も 520バイト / `7ea3780d…` を宣言している（#5176）。**どちらを正とするかは #5176 の判断**なので触っていない。
+
+### 位置付け
+
+**前ラウンドで「判断が要る」と返したものを、根拠を測ってから自分で決めた回**である。同時に、既存契約を2つ壊したので、どちらも併存させて戻した。
+
+## 90. 第89ラウンド（2026-11-17）: manifest の自己矛盾した digest 宣言を直した
+
+前ラウンドで残った `TestREADualEntryCapturedInputAndIdentityBoundaries` と [#5176](https://github.com/hat47x/tei-platform/issues/5176) に取り組んだ。生出力は[第89ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND89_REA_CAPTURE_FIXTURE_2026-11-17/README.md)にある。
+
+### 最初に試した案（失敗）
+
+捕捉原本（78000バイト）を `analysis.json` に**上書きで戻す**と、`operations` が FAIL 0→1、`cmd/tei` が 2→4 に悪化した。
+
+```text
+--- FAIL: TestCapturedREAReceiptCannotSupplyAbsentSemanticGraph
+    captured normalized_result={} must not produce a semantic graph
+```
+
+**stub は意図的なものだった。** グラフを持たない受領書が fail-closed になることを検査する3テストが、まさに現状を必要としている。
+
+### 次に試した案（動いたが取り下げた）
+
+`captured-delivery.json` を追加し参照先を変えた（変異2件で捕捉）。**しかし main が先に同じ #5176 を別の形で解消していた。**
+
+```text
+948efe9b6 test(cli): REA二入口の回帰が自前のcaptured deliveryを読むようにする (#5176)
+```
+
+main は回帰テストに**専用の捕捉**（`cmd/tei/testdata/rea-6.8.0/`、78000バイト、`7ea3780d…`、README 付き）を持たせていた。**私の追加分は同一バイト・同一 digest の重複**で読み手がいないため、**重複を作らず main の形に合わせて削除した。**
+
+### 本ラウンドの実質的な成果: manifest の自己矛盾
+
+| エントリ | 宣言（修正前） | 実ファイル |
+| --- | --- | --- |
+| `rea-6.8.0/analysis.json` | 520バイト / `7ea3780d…` | **829バイト / `6c84cfb3…`** |
+| `rea-6.8.0/view.jsonl` | 618バイト / `dd936b0c…` | **929バイト / `561e927d…`** |
+| `rea-6.7.0/analysis.json` | 516バイト | **829バイト** |
+| `rea-6.7.0/view.jsonl` | 152バイト | **125バイト** |
+
+**520バイトと `7ea3780d…`（78000バイトの digest）を同時に宣言している**という、それ自体で矛盾した状態だった。全エントリを実ファイルに合わせ、スクリプトで全件突き合わせて**不一致 0** を確認した。
+
+### 結果
+
+| 対象 | 変更前 | 変更後 |
+| --- | --- | --- |
+| `./cmd/tei` の FAIL | **2** | **0** |
+| `./internal/operations` / `externalanalysis` / `workspace` | 0 | **0** |
+| manifest の不一致 | **4件** | **0件** |
+| CI gate | 6 PASS | **6 PASS** |
+
+### 位置付け
+
+**「同じ問題を main が別解で先に解いていた」回**である。私は重複する仕組みを作りかけたが、**main の設計の方が良い**（テストが自分の入力を同梱し README で説明する）と判断して取り下げた。**残ったのは manifest の訂正**で、これは main の変更でも直っていなかった自己矛盾である。

@@ -129,6 +129,14 @@ type Runner struct {
 	// Rows is the row set a row-scoped hook is applied to. It is empty for a run
 	// that handles one record, and a row-scoped hook is then reported as needing
 	// the row set rather than run once for the record.
+	//
+	// A key missing from a row means the attribute was NOT READ for that row. It
+	// does not mean the row holds no value: the type cannot tell "read and empty"
+	// from "not read", and narrowTo drops both. A row-scoped hook therefore cannot
+	// treat a missing value as a business rejection; the absence is reported as not
+	// evaluated. Expressing NULL needs a different row type — see
+	// plan/evidence/XTEA_LOWCODE_ROW_SCOPE_VALUE_STATE_2026-11.md for why that
+	// widening waits for a real data source.
 	Rows []map[core.CanonicalID]string
 }
 

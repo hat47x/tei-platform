@@ -47,8 +47,38 @@ jobs:
           node --version
           npm ci --no-audit --no-fund
           npm test
+          # Production entrypoint identity plus independent positive/negative outcomes.
+          node --test inspection-reader.generated.test.mjs
           npm run typecheck
           npm run build
+
+      - name: Verify historical Inspector candidate against its original source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tools/reference-studio-static-composition/inspector-candidate.test.mjs
+
+      - name: Verify product bundle contains exactly one generated Inspector Reader
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { createHash } from "node:crypto";
+          import { readFileSync } from "node:fs";
+          const root = "reference/tei-studio-workbench/";
+          const bundle = readFileSync(root + "dist/main.js", "utf8");
+          const contract = JSON.parse(readFileSync(root + "inspection-reader.contract.json", "utf8"));
+          const digest = "sha256:" + createHash("sha256").update(JSON.stringify(contract)).digest("hex");
+          if (!bundle.includes("// inspection-reader.generated.ts\n"))
+            throw Error("PRODUCT_BUNDLE_MISSING_GENERATED_READER");
+          if (!bundle.includes('contractDigest: "' + digest + '"'))
+            throw Error("PRODUCT_BUNDLE_STALE_READER_CONTRACT");
+          if ((bundle.match(/function readInspection\d*\(/g) ?? []).length !== 1)
+            throw Error("PRODUCT_BUNDLE_DUPLICATE_INSPECTOR_READERS");
+          if (!bundle.includes("teiInspectionReaderCalls") || bundle.includes("seedReadInspection"))
+            throw Error("PRODUCT_BUNDLE_READER_USE_NOT_OBSERVABLE");
+          console.log("CURRENT_GENERATED_READER_CONTRACT " + digest);
+          NODE
 
       - name: Compare build output with Wails embedded files
         shell: bash
@@ -58,3 +88,5 @@ jobs:
             cmp "reference/tei-studio-workbench/dist/$file" "cmd/tei-studio/assets/workbench/$file"
           done
           test ! -e cmd/tei-studio/assets/workbench/dependencies.json
+
+

@@ -120,8 +120,8 @@ func TestMarkedDataTableRuleSharesEvaluatorAndGoLoweringMeaning(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := &evaluatorReadProbe{
 				attribute: attribute.ID,
-				number: tc.number,
-				complete: tc.complete,
+				number:    tc.number,
+				complete:  tc.complete,
 			}
 			result, err := validationeval.Evaluate(rule, source)
 			if (err != nil) != tc.wantError || result != tc.want {

@@ -2118,10 +2118,61 @@ PostgreSQLには、スカラーMembership IDの等値比較と二つの時間Ran
 
 ### 44.2 実テストの範囲と続く受入
 
-同一の隔離`tei_org_axis_e2e`上で、固定の実Membership Queryを再実行し、二つの候補世界で**全Result Rowが一致すること**を確認する。人物対応の差はセッション限定の`pg_temp`表に保持し、実PostgreSQLの`COUNT(DISTINCT person_id)`で3/4人の違いを確認する。候補表は試験終了時に削除し、正式SchemaやSemantic DSLを変更しない。この実測が対象CIで明示PASSするまでは**Expected/NOT RUN**。
+同一の隔離`tei_org_axis_e2e`上で、固定の実Membership Queryを再実行し、二つの候補世界で**全Result Rowが一致すること**を確認する。人物対応の差はセッション限定の`pg_temp`表に保持し、実PostgreSQLの`COUNT(DISTINCT person_id)`で3/4人の違いを確認する。候補表は試験終了時に削除し、正式SchemaやSemantic DSLを変更しない。**実測更新**：[PR #5184](https://github.com/hat47x/tei-platform/pull/5184)はmain統合済みだが、その固定HEADの[CI #43871100089](https://github.com/hat47x/tei-platform/actions/runs/43871100089)はGo整形検査で停止し、反例のGo試験を実行していない。修正[PR #5210](https://github.com/hat47x/tei-platform/pull/5210)はmain統合済み（commit `10a6c107`）。その固定HEADの[隔離PostgreSQL CI #43900533159](https://github.com/hat47x/tei-platform/actions/runs/43900533159)はcompleted/successで、二世界の各サブテスト、Go整形、必須PASS・非SKIP検査が成功した。**同じQueryの全投影と同じ所属集合が一致する一方、仮想Personのdistinctは4人と3人に分かれることをObservedとして受理**する。
 
 ここで区別する資格は、(a)実Readの構文・結果適合、(b)独立した人物Relationの存在とOwner受理、(c)必要な人物情報の完全取得、(d)distinct Personの計算と用途別開示。aが成立してもb〜dを推論しない。`COUNT(Membership)`、`COUNT(DISTINCT Person)`、配賦FTE、役職数、Case責任者・承認候補はそれぞれ別Claimであり、粒度・時点・Scope・必要Readの閉包が異なる。
 
 次の製品縦断では、#2386/#1126で受理したPerson Relationを正式Persistence/QueryとFunction Contextへ接続し、人物数が実Readで決まる場合だけその資格を上げる。一方、Person Link未確定・RLS/partial・異なるRead Cohort・失われたGraph Edgeがあれば人数・唯一性を**unknown**に保つ。#2586は同じAttemptの実Provider→一Consumer、#2516は用途別Disclosure、#2497は情報損失、#4490は業務Rule、#2831はStudioセルフビルドをそれぞれ別Ownerの受入として扱う。
 
 この原理はPluginの複合型port、Adapter変換、Graph/Treeの多重Edge、REA/SHO/AIの候補関係にも適用する。見た目やRow数の一致、型の一致だけで失われたRelationや人物同一性を再構成せず、**Shape・Law・Binding・Read Coverage**をそれぞれ確認する。新しいObservability EngineやOrg固有ACL・Expected Storeは導入しない。
+
+<!-- org-claim-observation-sufficiency-20261117 -->
+### 44.3 観測結果から何を主張できるかを、Claimごとに判断する
+
+二世界の実PG反例は**人物数を計算できない仕組みの証明**ではなく、**現在のQueryの3列だけでは人物数を一意に決められないという反証**である。今後Personを含む正式Relationや別Providerの結果が増えれば、その新しい入力の下で改めて判断する。Queryが同じ結果を返す二世界があり、目的のClaimだけが異なるとき、そのClaimを確定するには観測にない情報が必要になる。
+
+| Claim | 現行実Readで言えること | 次に必要な証拠 |
+| --- | --- | --- |
+| 所属行の観測 | 指定されたvalidAt/knownAt・allocationMinで、取得したMembershipのID/部門/配賦はExpectedに合致 | 全母集団・別Tenant/Replicaまで取得できたとは主張しない。必要ならSource版、Read Scope、完全性を別に検査 |
+| 重複しない人物数 | 4件の所属行から3人または4人が成立し得る。**未確定** | Owner受理済みのMembership occurrence→Person関係、時点、必要なIdentity集合の閉包、用途別開示 |
+| 配賦FTE・部署別集計 | Queryは配賦列を返すが、人物の重複除去や単位・集計粒度・完全性を保証しない | Claimが要求する配賦定義・時点・同一Occurrenceの版・全件性、SUM/再集計の独立Expected |
+| 責任者・承認候補 | 所属数・人物数・RoleAssignmentやCase責任を同一視できない | Rule/Policy版、Person/Role/Responsibilityと委任の必要Read、候補0/1/複数/unknown、現在Grantはさらに別 |
+| Graph/Tree/Pluginの表示と出力 | 3列の型・形が保たれても、Person同一性や隠れたEdgeが自動的に復元されるわけではない | 元Relation occurrence、Portの型と意味Law、明示Adapter、Loss-aware投影、Consumerの実受領とScope |
+
+**判断の単位**は、Source/World版、受理済みRelationとIdentity、Query/実Provider、条件・時点・粒度、Read Cohort/Completeness、Claimの必要情報、ConsumerへのDisclosureを対応付けた既存Scenario/Expectedである。生成されたコード名、SQLの列数や成功応答、UIの一致だけで「確定」を付与しない。情報不足・部分取得・未観測・閲覧不可は用途に応じて既存の`unknown`/`unestablished`等へ接続し、新しい汎用Decision Engineや一律の組織ACLは追加しない。
+
+次の縦断テストは、#2586で通常CLIのFunction選択→実Query/Provider→**一Consumerの実受領**を同じAttemptで証明し、#2506/#2516でRead Cohortと開示を保ったかを確認する。その後、Ownerが受理したPerson Linkの取得がそろったときだけ人物Claimを確定させる。二Consumer同版・業務Rule・Host Grant/Effect、Desktop自走 #2831は引き続きそれぞれ別の検収とする。
+
+<!-- org-quantifier-coverage-20261117 -->
+### 44.4 部分取得でも確定できる主張と、閉じた対象集合を要する主張を分ける
+
+§44.1〜44.3の二世界反例を受け、**取得が完全かどうかだけを一律に合否としない**。既存[#2514](https://github.com/hat47x/tei-platform/issues/2514)のClaim相対の片側結論と標準Data/Query・Function Data Context・Rule/Validationの必要Readを組み合わせ、判断に必要な情報を明示する。組織専用Evaluatorや第二Conformance正本は導入しない。
+
+#### 対象集合と量化
+
+次の表は、**同一validAt/knownAt・同一Scope・同一Query条件で、観測したMembership occurrenceのIDが重複なく確定している**場合に限る。取得集合Rが対象母集団Lの部分集合であると確認でき、「complete」はLの取得範囲が閉じていることを指す。SQL成功や4行取得だけでは全件性は成立しない。
+
+| Claim（Membership occurrenceの件数） | R=0・partial | R=1・partial | Rが2件以上・partial | completeな場合 |
+| --- | --- | --- | --- | --- |
+| 1件以上存在する | unknown | **真**（証人あり） | **真** | Lの件数に従い確定 |
+| 高々1件である | unknown | unknown | **偽**（異なる2 IDが反例） | Lの件数に従い確定 |
+| ちょうど1件である | unknown | unknown | **偽** | Lの件数に従い確定 |
+| 0件である | unknown | **偽** | **偽** | Lが空なら真、それ以外は偽 |
+
+- RがLの一部と確認できない場合（権限による欠落、途中失敗、対象条件のずれ等）は、上表の片側結論も転用しない。部分取得0件を不存在、1件を唯一性とみなさない。
+- as_of_membershipのallocationMinは母集団を絞る条件であり、条件内の証人を全社員・全所属・他Tenantへ広げない。SQL bag重複、履歴の旧新版、異なるIdentityを先に区別する。
+- 表の一意性はMembership occurrence IDのもの。Person数の一意性ではない。§44.1の同じ4所属で3人/4人となる反例は変わらず、distinct Personには受理済みMembership→Person Relation・時点・Scope・取得閉包が必要。
+- 「有効な承認候補が1人いる」にはRoleAssignment・Responsibility・Case・Rule版とその必要Readが要る。自己承認・失効・除外などの**否定条件**が未取得なら、候補を1件見つけただけでは真とはならない。候補の確定からHostのPrincipal/現在GrantやEffectを導出しない。
+
+#### 既存Ownerへの引渡し
+
+| 段階 | 既存資産による検査 | 誤った合格 |
+| --- | --- | --- |
+| Q1 母集団 | #2586/#2506でQuery ID、条件、時点、Scope/Cohort、Result Mapping、取得状態を同一Attemptに結合 | 行数一致＝全件 |
+| Q2 片側結論 | #2514の独立Expectedへ上表の0/1/2件とcomplete/partialを対に渡す | 取得途中で不存在・唯一性を宣言 |
+| Q3 意味粒度 | #2386/#1126が受理するPerson Linkと版を用い、Membership件数・distinct Person・配賦FTEを別Claimにする | 仮想Person対応やJOIN fanoutを正式集計に使用 |
+| Q4 業務・表示 | #4490の候補0/1/複数/unknown、#2497/#2516の投影損失・開示を照合 | 表示の一致＝Person/Grantの復元 |
+
+同じRaw Rowでも、**対象範囲・量化・否定条件・粒度・時点・必要Relation**が異なれば結論は変わる。既存Scenario/Expected、Function Context、Claim相対の説明・Evidenceで記録し、新しい常設証明Schemaは作らない。
+
+**次の製品Exit**：通常CLIで選択したFunction→実Query/Provider→一Consumerを同一Attemptで実行し、「何を確定し何をunknownとしたか」を手書きExpectedと照合する。次いで正式Person Linkと十分なReadを追加した際の結論変化を独立に検査する。二Consumer、業務Rule、現在Grant/Effect、Desktop Stage2は別受入とし、#2586/#2831のP0へ新しいHard Gateを加えない。**本節は設計・未実施、Owner意味受理はNOT ACCEPTED。**

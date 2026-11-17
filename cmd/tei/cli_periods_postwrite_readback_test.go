@@ -57,7 +57,11 @@ func TestPeriodsAdvanceRejectionAfterStateWriteMustReadBack(t *testing.T) {
 	for _, expected := range []operations.PeriodState{
 		operations.PeriodClosing, operations.PeriodClosed,
 	} {
-		err := runPeriodsCommand(root, appID, "", statePath, periodID, "")
+		// The example period now declares close-requires, so the advance must name
+		// that capability to reach the post-write refusal this test characterizes.
+		// Without it the close-requires check refuses first and the write never
+		// happens, which would test something else.
+		err := runPeriodsCommand(root, appID, "", statePath, periodID, "sales.close_period")
 		if err == nil || !strings.Contains(err.Error(), "operation(s) are refused") {
 			t.Fatalf("state transition to %s: expected post-write refusal, got %v", expected, err)
 		}

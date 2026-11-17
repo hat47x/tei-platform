@@ -142,6 +142,16 @@ func main() {
 		}
 		return
 	}
+	if command == "business-procedure" {
+		code, err := runBusinessProcedureCommand(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	if command == "external-candidates" {
 		code, err := runExternalCandidatesCommand(os.Args[2:], os.Stdout)
 		if err != nil {
@@ -199,7 +209,10 @@ func main() {
 	traceMode := newSetStringFlag(fs, "mode", modelref.TraceDefaultMode, "trace summary or full")
 	traceOffset := fs.Int("offset", 0, "explicit full trace result offset")
 	traceLimit := fs.Int("limit", 0, "explicit full trace page size; 0 returns all rows")
-	traceExpectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected typed trace snapshot fingerprint for continued pages")
+	// One shared FlagSet serves every command, so `-expected-fingerprint` is
+	// registered once and read by two: trace continues a page with it, inspect
+	// uses it as a precondition on the Workspace it is about to read.
+	expectedFingerprint := newSetStringFlag(fs, "expected-fingerprint", "", "expected snapshot fingerprint; trace continues a page, inspect fails when the World or Source Index changed")
 	expectedDataDesignFingerprint := fs.String("expected-data-design-fingerprint", "", "expected Data Design Context fingerprint; knowledge-context fails on mismatch")
 	dataDesignCandidateKind := fs.String("data-design-candidate-kind", "", "Data Design candidate kind: business-identity|functional-dependency")
 	dataDesignCandidateFingerprint := fs.String("data-design-candidate-fingerprint", "", "current Data Design candidate fingerprint")
@@ -255,12 +268,14 @@ func main() {
 	deploymentPath := fs.String("deployment", "", "observed deployment state JSON")
 	runPath := fs.String("run", "", "durable deployment run JSON")
 	pluginLockPath := fs.String("plugin-lock", "", "resolved TEI plugin lock JSON")
-	pluginInventoryID := fs.String("plugin", "", "plugin-inventory: report this plugin in detail")
+	pluginInventoryID := fs.String("plugin", "", "plugin-inventory: report this plugin in detail; plugin-plan: the target plugin")
 	pluginInventoryDiagnose := fs.Bool("diagnose", false, "plugin-inventory: report only rows that carry a reason code")
+	pluginPlanTargetLock := fs.String("target-lock", "", "plugin-plan: target resolved plugin lock JSON (update)")
+	pluginPlanSourceIndex := fs.String("source-index", "", "plugin-plan: optional source-index file whose fingerprint binds the plan snapshot")
 	targetPluginLockPath := fs.String("target-plugin-lock", "", "plugin lock for a new recovery run; defaults to -plugin-lock")
 	runID := fs.String("run-id", "", "durable deployment run ID")
 	attemptPath := fs.String("attempt", "", "deployment executor result JSON")
-	actionID := fs.String("action", "", "durable deployment action ID")
+	actionID := fs.String("action", "", "durable deployment action ID; plugin-plan action: disable|remove|delete-data|convert-data|update")
 	reason := fs.String("reason", "", "operator reason")
 	recoveryStrategy := fs.String("strategy", "", "recovery strategy: retry|forward-fix|rollback|manual")
 	targetSolutionID := fs.String("target-solution", "", "recovery target solution release ID")
@@ -463,7 +478,7 @@ func main() {
 		// the caller did not ask for (#3605).
 		if traceDirection.set && traceDirection.value == "" ||
 			traceMode.set && traceMode.value == "" ||
-			traceExpectedFingerprint.set && traceExpectedFingerprint.value == "" {
+			expectedFingerprint.set && expectedFingerprint.value == "" {
 			report := cliTraceReport{SchemaVersion: "tei.cli.trace/v0",
 				Error: &cliInspectionFailure{Code: "INVALID_ARGUMENT",
 					Message: "trace -direction, -mode and -expected-fingerprint must not be empty when supplied"}}
@@ -476,7 +491,7 @@ func main() {
 		code, err := traceWorkspaceJSON(
 			os.Stdout, *workspacePath, *worldPath, *traceScope,
 			*subjectKind, *subjectID, traceDirection.value, traceMode.value,
-			traceExpectedFingerprint.value, *traceOffset, *traceLimit, fs.NArg(),
+			expectedFingerprint.value, *traceOffset, *traceLimit, fs.NArg(),
 		)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -487,7 +502,8 @@ func main() {
 		return
 	}
 	if command == "inspect" {
-		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath, *subjectKind, *subjectID, fs.NArg())
+		code, err := inspectWorkspaceJSONSelected(os.Stdout, *workspacePath, *worldPath,
+			*subjectKind, *subjectID, expectedFingerprint.value, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -508,6 +524,16 @@ func main() {
 	}
 	if command == "plugin-inventory" {
 		code, err := pluginInventoryJSON(os.Stdout, *workspacePath, *worldPath, *environmentID, *pluginLockPath, *pluginInventoryID, *pluginInventoryDiagnose, fs.NArg())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
+	if command == "plugin-plan" {
+		code, err := pluginPlanJSON(os.Stdout, *workspacePath, *worldPath, *environmentID, *actionID, *pluginInventoryID, *pluginLockPath, *pluginPlanTargetLock, *pluginPlanSourceIndex, fs.NArg())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}

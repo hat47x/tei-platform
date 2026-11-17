@@ -993,10 +993,23 @@ return {
             selected_b_graph_aria_focus_caret_unchanged=True,
         )
 
-        # This ordinary Wails Host uses the existing Inspector path. Its
-        # acceptance is the independent Host Inspect/canonical equality above.
-        # Do not require a generated Inspector marker that this binary does not
-        # expose: the generated-UI composition has a separate exact pin gate.
+        # A genuine WebView Inspector read must pass through the generated
+        # contract Reader, not only carry its unused bytes in the bundle.
+        # This is an observation of the WebView; it does not confer Grant,
+        # write authority, or a Stage2 self-build qualification.
+        reader_digest = page_state.get("inspectionReader", "")
+        reader_calls = page_state.get("inspectionReaderCalls", 0)
+        if not isinstance(reader_digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", reader_digest):
+            raise RuntimeError("Native WebView2 did not execute a contract-generated Inspector Reader")
+        if not isinstance(reader_calls, int) or reader_calls < 1:
+            raise RuntimeError("Native WebView2 did not record a valid generated Inspector projection")
+        facts["generated_inspector_reader"] = {
+            "contract_digest": reader_digest,
+            "read_calls_after_initial_inspect": reader_calls,
+            "native_webview2": True,
+        }
+        record("native-webview2-generated-inspector-reader-used",
+               contract_digest=reader_digest, read_calls=reader_calls)
 
         validate_click = """
 const button = document.querySelector('#commands button[data-command-id="validate"]');

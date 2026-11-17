@@ -127,7 +127,7 @@ DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／H�
 
 | 順序 | 実行する最小の変更 | 独立Expectedと停止条件 | 引渡し |
 | --- | --- | --- | --- |
-| **DRI-R1** 現行基線 | mainの#5142（値の状態）、#5143（記録例）、#5146（日付の順序）を、対応するRule ID・Source位置・Reader版とともに確認 | present／null／not-fetched、complete／partial、成立／不成立／未決定を混同しない。未統合の#5148（期間重複）をmainの正式検収へ算入しない | #988／#2621／#4359 |
+| **DRI-R1** 現行基線 | mainの#5142（値の状態）、#5143（記録例）、#5146（日付の順序）を、対応するRule ID・Source位置・Reader版とともに確認 | present／null／not-fetched、complete／partial、成立／不成立／未決定を混同しない。mainに入った#5148（期間非重複）は評価器・記録例まで。実DBの全件性／正式Consumerの資格には算入しない | #988／#2621／#4359 |
 | **DRI-R2** 読取Adapter | 一つの既存Query結果について、必要Attribute／RelationのRead ID、Scope、PresenceとCoverageの根拠を示す。最初はread-only Packetとし、何を観測できないか明示する | NULL格納値・外部結合で生じたNULL・未取得、取得した行の粒度と全件保証を区別。Sourceと実DBの結線が不明ならunsupported | #2586／#2622／#2506 |
 | **DRI-R3** Ruleへ渡す | 取得資格を確認した値だけを既存の状態付きEvaluatorへ渡し、同じ値でもRead範囲が異なる負例を試す | 見えている確定重複による不成立と、未読行があるため成立と確定できない場合を分ける。FixtureだけのPASSは実Provider接続とはしない | #4359／#1180／#2514 |
 | **DRI-R4** I／G／Dの選択 | 同じRule kindと同じ状態付き入出力がTargetで実現可能な場合だけP（既存評価）とG（生成）を比較し、DのProviderの実Callを別に確かめる | positive以外のG未対応を、一般生成済みと見せない。結果が一致してもRead先・実装選択・Builder入力が違えば不合格 | #1121／#4544／#951／#4495 |
@@ -143,7 +143,7 @@ DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／H�
 
 [図表実現設計§15](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md)では、実Query・状態付きReader・Ruleを**同じAttempt**で検収するための最小条件を整理した。これを既存DRI-R2〜R4の次の一試行として扱い、別の大きな実装計画を増やさない。
 
-**先に利用する基線**は、#5155／#5165で確認された組織C1の型付きSource／Queryと実PostgreSQL Readの限定PASS、main済み#5142／#5143／#5146の状態付き評価・記録例・日付Rule、main済み#5166の「日付RuleはP評価可能、現行Gでは未対応」という正負対照である。#5149のContract Query行Readerは**未マージの候補**であり、SQLite Executor直結の局所試験を正式なQuery Binding／実PG／製品CLIへ昇格させない。#5148の期間非重複も審査中とする。
+**先に利用する基線**は、#5155／#5165で確認された組織C1の型付きSource／Queryと実PostgreSQL Readの限定PASS、main済み#5142／#5143／#5146の状態付き評価・記録例・日付Rule、main済み#5166の「日付RuleはP評価可能、現行Gでは未対応」という正負対照である。#5149のContract Query行Readerはmainに統合された。SQLiteのSQL Executor→Result Mapping→状態付きRuleの局所試験は存在する。ただし正式なQuery Binding／Environment／実PG／製品CLIの経路ではなく、関係の全件性は呼出し側の申告に留まる。#5148の期間非重複もmainに入ったが、正式Consumerまでの実証ではない。
 
 | 作業の区切り | まず得る一つの証拠 | 未充足なら止める位置 |
 | --- | --- | --- |
@@ -156,3 +156,17 @@ DRI-0の直後に**DRI-G0**を行う。ここで「Iで充分／Gに適格／H�
 **最初の試行は一つのRuleと一つのContract Queryに限定する。** 変更する要因も、値の状態、必要集合のCoverage、Read ID、実現方式のいずれか一つずつとする。Read Provenanceが確定できない場合は未証明（not-proven）を残し、実際に取得していない項目を補完しない。Ruleで必要なScopeとDBの実読取Scopeが一致するかも別に確かめる。既存#1180／#2514のExpectedへ引き渡し、追加の常設Trace・Scenario Registryは作らない。
 
 この作業は#2586の通常CLI実Provider・#2831の非Plugin Windowsセルフビルドを遅らせる前提Gateではない。今回は引渡し計画の追加のみで、新Go試験・実DB・Windows・Owner受理を行っていない。
+
+## 2026-11-17：次の一試行をCoverage資格の検証に絞る
+
+前節のR2-bは、[#5149](https://github.com/hat47x/tei-platform/pull/5149)の統合により「SQLの実行結果を状態付きRuleへ渡す局所経路」まで進んだ。[実装上の限界と次の反例](../design/DIAGRAM_TO_REALIZATION_STRATEGY_AND_HOOKS_2026-11.md#16-sqliteの局所到達から正式queryruleへ移すための実証境界2026-11-17)に沿い、残る不足を**正式なBinding／Scope／Snapshot／Coverageの根拠**に限定する。
+
+| 次に行うこと | 固定する独立Expected | 完了と呼べない場合 |
+| --- | --- | --- |
+| **R2-b1：全件性の根拠**。既存`TestAPageIsNotTheWholeRelation`を土台に、ページをcompleteと誤申告した経路と、申告に根拠がある経路を区別する | 同じ二行でもpartialなら一意性成立は保留。既読の確定重複はpartialでも不成立。Queryのlimit・filter・Scopeと必要集合を併記 | 呼出し側のcompleteをそのままTrusted Evidenceへ昇格した場合 |
+| **R2-b2：意味とQueryの同一試行束縛**。選択言語とSource／Rule IDを、Contract QueryのInput／実Binding／Row Mappingへ結ぶ | 同じ出力でも別Relation／別Attribute／別Source版を拒否。#5184の同じMembership投影から異なるPerson数を導ける反例を再利用 | 型付きのRowが返っただけ、元Sourceを再Loadできない場合 |
+| **R3-a1：実Callと受領**。状態付き評価を通常CLI側の実Readと独立Consumerへ接続 | 取得値・判定理由・実Read対象とConsumer応答が一つのAttemptに属する。未取得や権限不足は推測で埋めない | SQLiteのユニット試験と別試行のCLI結果を合成した場合 |
+
+`validationread`を新しいReaderで置換しない。現行の`FromHeaderDetail`／`Decide`を使い、必要な資格だけを既存Driver・Function Contextへ返す。#5166の暦日Rule（P可／G未対応）を維持し、未対応なGを暗黙のPへ切り替えない。#5205で改善された`*.tei.md`の言語選択診断はSourceの入口の基線であり、実Providerを呼んだ証拠ではない。読取りコマンドの前提指紋統一[#5198](https://github.com/hat47x/tei-platform/pull/5198)はmainの基線として再利用する。ただしそのSnapshot拒否をQueryの全件性・実Providerの受領に読み替えない。
+
+正式R2-PのBuilder消費、R3の通常CLI実Provider／独立Consumer、Windows Studio Stage1→Stage2は独立P0とする。この追補自体はGo・PostgreSQL・Windowsの新規検証ではなく、既存実装から次に不足する一点への作業引渡しである。

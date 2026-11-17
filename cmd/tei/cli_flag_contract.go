@@ -33,10 +33,11 @@ func selectedReadOnlyFlagError(out io.Writer, command string, err error) (int, e
 // keeps the two in agreement. `model catalog` is not listed here because it
 // parses its own arguments instead of the shared FlagSet.
 var selectedReadOnlyFlagAllowlist = map[string][]string{
-	"plugin-inventory": {"workspace", "world", "environment", "plugin-lock", "plugin", "diagnose"},
+	"plugin-inventory":    {"workspace", "world", "environment", "plugin-lock", "plugin", "diagnose"},
+	"plugin-plan":         {"workspace", "world", "environment", "action", "plugin", "plugin-lock", "target-lock", "source-index"},
 	"external-candidates": {"evidence-path", "tool-version", "observation-id", "relation-id", "expected-evidence-id", "expected-received-digest", "expected-source-revision"},
-	"inspect":             {"workspace", "subject-kind", "subject-id"},
-	"view":                {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation"},
+	"inspect":             {"workspace", "subject-kind", "subject-id", "expected-fingerprint"},
+	"view":                {"workspace", "application", "pattern", "package", "format", "command", "input", "execute", "reference-store", "period-state", "allow-capability", "operation-log", "lifecycle-state", "lifecycle-command", "lifecycle-owner", "lifecycle-generation", "lifecycle-takeover"},
 	"trace": {
 		"workspace", "scope", "subject-kind", "subject-id",
 		"direction", "mode", "offset", "limit", "expected-fingerprint",
@@ -77,7 +78,6 @@ var selectedReadOnlyFlagAllowlist = map[string][]string{
 		"expected-evidence-id", "expected-evidence-fingerprint", "expected-source-revision",
 		"request-out", "tool-path",
 	},
-
 }
 
 // repeatableFlags lists the flags that collect several values by design. They
@@ -98,6 +98,7 @@ var repeatableFlags = map[string]map[string]bool{
 	"plugin-resolve":                         {},
 	"plugin-runtime-plan":                    {},
 	"plugin-inventory":                       {},
+	"plugin-plan":                            {},
 	"knowledge-qualify":                      {},
 	"knowledge-review-plan":                  {},
 	"knowledge-review-handoff":               {},
@@ -106,7 +107,9 @@ var repeatableFlags = map[string]map[string]bool{
 	"model catalog":                          {},
 	"model locate":                           {},
 	"model overview":                         {},
+	"model search":                           {},
 	"model document-draft":                   {"section": true},
+	"business-procedure":                     {},
 }
 
 // validateRepeatableArguments refuses a flag that was supplied more than once
@@ -219,6 +222,7 @@ var emptyStringGuardedFlags = map[string]map[string]bool{
 	},
 	"inspect": {
 		"subject-kind": true, "subject-id": true, "workspace": true,
+		"expected-fingerprint": true,
 	},
 	"trace": {
 		"workspace": true, "scope": true, "subject-kind": true, "subject-id": true,

@@ -18,8 +18,12 @@ type BusinessDataCrossReference struct {
 }
 
 // GenerateBusinessDataCrossReference derives Business→Data mappings via Function chain.
+// Operation flags resolve the same way as GenerateFunctionDataCrossReference, so
+// the two sections of one cross-reference result cannot disagree about the same
+// Function/Data pair.
 func GenerateBusinessDataCrossReference(model ThreeElementModel) []BusinessDataCrossReference {
-	_, fnByID, dataByID := model.Index()
+	dataByID, fnByID, _ := model.Index()
+	derived := derivedOperationsByPair(model)
 
 	type key struct {
 		bus, act, fn, data string
@@ -37,6 +41,13 @@ func GenerateBusinessDataCrossReference(model ThreeElementModel) []BusinessDataC
 						continue
 					}
 					seen[k] = true
+					// An explicit declaration takes precedence as a projection
+					// convention; it must not be reported under a different
+					// operation set here than in the Function/Data section.
+					operations := derived[[2]string{fn.ID, op.DataID}]
+					if crud, ok := explicitCRUDFor(model, fn.ID, op.DataID); ok {
+						operations = operationsForCRUD(crud)
+					}
 					out = append(out, BusinessDataCrossReference{
 						BusinessID:   bus.ID,
 						BusinessName: bus.Name,
@@ -46,7 +57,7 @@ func GenerateBusinessDataCrossReference(model ThreeElementModel) []BusinessDataC
 						FunctionName: fn.Name,
 						DataID:       op.DataID,
 						DataName:     dataByID[op.DataID].Name,
-						Operations:   op.Operations,
+						Operations:   operations,
 					})
 				}
 			}

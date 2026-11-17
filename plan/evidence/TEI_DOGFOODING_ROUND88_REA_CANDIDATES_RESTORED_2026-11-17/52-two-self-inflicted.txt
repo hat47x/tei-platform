@@ -1,0 +1,13 @@
+Restoring the generator broke two pre-existing contracts. Both were
+restored rather than dropped:
+
+  candidateSetFingerprint was pinned to the RAW INPUT digest with
+  fingerprintBasis="raw-evidence-bytes-not-candidate-identity".
+  -> kept both, and put the generated set's value under a separate
+     generatedCandidateSetFingerprint key.
+
+  bindings disappeared when packet became a typed struct.
+  -> re-added through the marshalled map.
+
+Result: ./cmd/tei failures 8 -> 1.
+The remaining one needs #5176 (829-byte stub vs 78KB UTF-16LE original).

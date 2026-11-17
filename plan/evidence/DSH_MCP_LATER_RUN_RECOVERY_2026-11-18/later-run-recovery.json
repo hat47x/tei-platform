@@ -1,0 +1,86 @@
+{
+  "note": "Two separate invocations with the SAME overlay and a one-attempt reconnect budget. In run 1 the MCP server was down and the tool never appeared (27 tools). The server was then started and run 2 reached it on the first try (4 requests, 28 tools). So an exhausted budget is recovered by the next invocation, not within the same process.",
+  "overlay": {
+    "transport": "streamable-http",
+    "serverName": "latermock",
+    "url": "http://127.0.0.1:8792/mcp/later",
+    "toolCallTimeoutMs": 3000,
+    "failOnStartupError": false,
+    "reconnect": {
+      "initialDelayMs": 200,
+      "maxDelayMs": 400,
+      "maxAttempts": 1
+    }
+  },
+  "run1_serverDown": {
+    "portListeningBeforeRun": false,
+    "modelToolCounts": [
+      27,
+      0
+    ],
+    "mcpToolAppeared": false,
+    "serverRequestsReceived": 0
+  },
+  "run2_serverUp": {
+    "portListeningBeforeRun": true,
+    "serverStartedMarker": {
+      "port": 8792,
+      "pid": 53976
+    },
+    "modelToolCounts": [
+      28,
+      0
+    ],
+    "mcpToolAppeared": true,
+    "serverRequestsReceived": 4
+  },
+  "requests": [
+    {
+      "n": 1,
+      "method": "server/discover",
+      "bytes": 280,
+      "atSeconds": 6.063
+    },
+    {
+      "n": 2,
+      "method": "initialize",
+      "bytes": 163,
+      "atSeconds": 6.125
+    },
+    {
+      "n": 3,
+      "method": "notifications/initialized",
+      "bytes": 54,
+      "atSeconds": 6.125
+    },
+    {
+      "n": 4,
+      "method": "tools/list",
+      "bytes": 46,
+      "atSeconds": 6.25
+    }
+  ],
+  "modelRequests": [
+    {
+      "n": 3,
+      "bytes": 77319,
+      "toolCount": 28,
+      "mcpTools": [
+        "mcp__latermock__later_echo"
+      ]
+    },
+    {
+      "n": 4,
+      "bytes": 46189,
+      "toolCount": 0,
+      "mcpTools": []
+    }
+  ],
+  "answers": {
+    "laterRunReachesServer": true,
+    "sameProcessRecoveredAfterExhaustion": false,
+    "toolCountDifference": 1,
+    "explanation": "27 is the base surface without MCP plus the three mcp-resources tools; run 2 adds mcp__latermock__later_echo for 28"
+  },
+  "caveat": "Two runs, one server, one attempt budget. Whether a longer wait inside a single process would eventually recover was not tested here; only that a fresh invocation does."
+}

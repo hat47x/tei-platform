@@ -17,6 +17,7 @@ import (
 var acceptedCommands = []string{
 	"application-release-compatibility",
 	"artifacts",
+	"business-procedure",
 	"commands",
 	"consumer-impact",
 	"database-compatibility",
@@ -81,6 +82,7 @@ var helperDispatchedCommands = []string{
 	"plugin-resolve",
 	"plugin-runtime-plan",
 	"plugin-inventory",
+	"plugin-plan",
 }
 
 func init() {
@@ -175,18 +177,35 @@ func helpText(fs *flag.FlagSet, command string) string {
 			return out.String()
 		}
 		if command == "model locate" {
-			// model locate parses its own FlagSet too; these four flags are its
+			// model locate parses its own FlagSet too; these five flags are its
 			// whole grammar.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
 			fmt.Fprintf(&out, "  -subject-kind string\n    \texact subject kind from model catalog entries[].subject.kind\n")
 			fmt.Fprintf(&out, "  -subject-id string\n    \texact subject ID\n")
 			fmt.Fprintf(&out, "  -limit int\n    \tmaximum entries per list (children, siblings); default %d, at most %d\n", operations.LocationDefaultLimit, operations.LocationMaxLimit)
+			fmt.Fprintf(&out, "  -expected-fingerprint string\n    \tsnapshot fingerprint an earlier read returned; fails when the World or Source Index changed\n")
+			return out.String()
+		}
+		if command == "model search" {
+			// model search parses its own FlagSet; the listing is derived from
+			// the same one the parser uses, so a flag cannot be described here
+			// and refused there (#3943).
+			fs := flag.NewFlagSet("model search", flag.ContinueOnError)
+			modelSearchFlags(fs)
+			writeFlagHelp(&out, fs, command, nil)
+			// The hit is evidence, so the listing says what it searched and what
+			// it did not: a line belongs to the nearest preceding declaration of
+			// the searched kinds, and a Source with no indexed declaration is
+			// not searched at all. An empty hit list therefore is not "this text
+			// appears nowhere".
+			fmt.Fprintf(&out, "\neach hit carries the subject, the workspace-relative Source, the 1-based line and\nthat line as written, so a match can be opened instead of trusted. A line is\nattributed to the nearest preceding declaration among the searched kinds; a line\nbefore the first declaration of a Source, and a Source with no indexed\ndeclaration, are not searched (result.coverage).\nresult.kindCounts counts the hits per kind, not the matching subjects: it is\nresult.total broken down by kind, so its counts sum to result.total. A term one\nsubject writes on three lines is three hits and one subject.\nresult.subjectCount is the number of distinct subjects in the whole answer (the\nlength of result.subjects), so a page cut by -limit that shows one subject's\nlines is never read as the whole subject answer, and result.total is never read\nas a subject count.\nresult.distinctSubjectsOmitted is the number of distinct subjects among the\nmatches this page does not return, counted from those matches rather than\ninferred from the paging numbers.\nresult.subjects lists each matching subject once, with where it first matched and\nhow many of its lines matched (result.subjects[].matchCount), and is not cut by\n-limit, so \"which subjects declare this\" is read there rather than by removing\nthe repeats from result.hits.\n")
 			return out.String()
 		}
 		if command == "model overview" {
-			// model overview parses its own FlagSet; two flags are its grammar.
+			// model overview parses its own FlagSet; three flags are its grammar.
 			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
 			fmt.Fprintf(&out, "  -limit int\n    \tmaximum sections listed; totals still cover every section; default %d, at most %d\n", operations.OverviewDefaultLimit, operations.OverviewMaxLimit)
+			fmt.Fprintf(&out, "  -expected-fingerprint string\n    \tsnapshot fingerprint an earlier read returned; fails when the World or Source Index changed\n")
 			// A section count is not a count of everything the workspace declares:
 			// the sections mirror the model catalog (#4128). Say so here, where a
 			// designer looks before reading the number.
@@ -252,6 +271,15 @@ func helpText(fs *flag.FlagSet, command string) string {
 			// without a second edit — restating them by hand is what left the
 			// catalog flags missing from -h.
 			writeFlagHelp(&out, selfBuildHelpFlags(), command, nil)
+			return out.String()
+		}
+		if command == "business-procedure" {
+			// business-procedure parses its own FlagSet, so it cannot carry an
+			// allowlist entry. The listing is derived from the same FlagSet
+			// that parses the arguments.
+			var args businessProcedureArgs
+			writeFlagHelp(&out, businessProcedureFlagSet(&args), command, nil)
+			fmt.Fprintf(&out, "\nthe projection is read-only. A manual step is kept with its actor and\ninstruction, a business trigger is not an automatic run, approval and\nrejection are separate branches, and a Function reference that does not\nreach exactly one declared target is reported, never guessed.\n")
 			return out.String()
 		}
 		if strings.HasPrefix(command, "three-element") {

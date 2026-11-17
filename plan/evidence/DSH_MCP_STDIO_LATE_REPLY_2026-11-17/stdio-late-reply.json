@@ -1,0 +1,194 @@
+{
+  "note": "A stdio MCP tool slept past toolCallTimeoutMs and then wrote a reply containing a canary. The run was kept alive long enough for that reply to arrive. The canary never appeared in any model request, so a late reply is discarded rather than delivered.",
+  "overlay": {
+    "transport": "stdio",
+    "serverName": "cancelmock",
+    "toolCallTimeoutMs": 2000,
+    "childSleepSeconds": 6,
+    "modelResponseDelaySeconds": 12,
+    "failOnStartupError": false
+  },
+  "lateReplyCanary": "LATE_REPLY_CANARY_313",
+  "runChildIgnoresCancel": {
+    "mode": "ignore",
+    "log": [
+      {
+        "event": "started",
+        "mode": "ignore",
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "server/discover",
+        "id": "server-discover-probe-1",
+        "t": 0.0
+      },
+      {
+        "event": "started",
+        "mode": "ignore",
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "initialize",
+        "id": 0,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "notifications/initialized",
+        "id": null,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "tools/list",
+        "id": 1,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "tools/call",
+        "id": 2,
+        "t": 0.25
+      },
+      {
+        "event": "sleeping",
+        "forSeconds": 6.0,
+        "t": 0.25
+      },
+      {
+        "event": "late-reply-sent",
+        "cancelSeen": false,
+        "t": 6.25
+      },
+      {
+        "event": "request",
+        "method": "notifications/cancelled",
+        "id": null,
+        "t": 6.25
+      },
+      {
+        "event": "cancel-received",
+        "mode": "ignore",
+        "t": 6.25
+      },
+      {
+        "event": "eof",
+        "t": 14.36
+      }
+    ],
+    "toolCallAt": 0.0,
+    "lateReplySentAt": 6.25,
+    "cancelReceivedAt": 6.25
+  },
+  "runChildHonoursCancel": {
+    "mode": "honour",
+    "log": [
+      {
+        "event": "started",
+        "mode": "honour",
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "server/discover",
+        "id": "server-discover-probe-1",
+        "t": 0.0
+      },
+      {
+        "event": "started",
+        "mode": "honour",
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "initialize",
+        "id": 0,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "notifications/initialized",
+        "id": null,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "tools/list",
+        "id": 1,
+        "t": 0.0
+      },
+      {
+        "event": "request",
+        "method": "tools/call",
+        "id": 2,
+        "t": 2.093
+      },
+      {
+        "event": "sleeping",
+        "forSeconds": 6.0,
+        "t": 2.093
+      },
+      {
+        "event": "late-reply-sent",
+        "cancelSeen": false,
+        "t": 8.093
+      },
+      {
+        "event": "request",
+        "method": "notifications/cancelled",
+        "id": null,
+        "t": 8.093
+      },
+      {
+        "event": "cancel-received",
+        "mode": "honour",
+        "t": 8.093
+      },
+      {
+        "event": "eof",
+        "t": 20.703
+      }
+    ],
+    "cancelReceivedAt": 8.093,
+    "note": "the cancel arrived only after the child had already written its reply, so honouring it could not prevent the late reply in this timing"
+  },
+  "modelRequests": [
+    {
+      "n": 1,
+      "bytes": 104363,
+      "sha256": "c973720d7c52c92dbd3b712c475a1088e160b025952e30146a9ffabef66c5480",
+      "toolCount": 28,
+      "responseDelayed": false,
+      "containsLateReplyCanary": false
+    },
+    {
+      "n": 2,
+      "bytes": 59731,
+      "sha256": "15f19ec845c7d4e1f62ebce8c8f74c6b5f7bfa3e42a819740a22c45e759fad27",
+      "toolCount": 0,
+      "responseDelayed": true,
+      "containsLateReplyCanary": false
+    },
+    {
+      "n": 3,
+      "bytes": 54225,
+      "sha256": "547eb5d3ab10240fa01dbb6349a886d49be9342a0992c99ef1d6d7c53722385f",
+      "toolCount": 28,
+      "responseDelayed": true,
+      "containsLateReplyCanary": false
+    }
+  ],
+  "canaryReachedModel": false,
+  "modelRequestCount": 3,
+  "toolResultText": "Error: Request timed out",
+  "runExitCode": 0,
+  "answers": {
+    "lateReplyWrittenByChild": true,
+    "lateReplyDeliveredToModel": false,
+    "clientSentCancel": true,
+    "cancelArrivedBeforeReply": false
+  },
+  "caveat": "The client sent notifications/cancelled only after the child's reply woke the pipe, so the ordering means a disobedient child always gets its reply out first. One tool, one timing; other timeout/sleep combinations were not swept."
+}

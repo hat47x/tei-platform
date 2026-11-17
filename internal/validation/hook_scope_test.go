@@ -101,3 +101,33 @@ func TestHookScopeRefusesAnUnsupportedWord(t *testing.T) {
 		t.Fatalf("codes=%v", codes)
 	}
 }
+
+// TestHookRowScopeWarnsThatNoHostSuppliesRows checks the note a row-scoped
+// declaration now carries.
+//
+// A row scope is accepted by validation, but no host supplies a row set, so every
+// reference execution skips it with a reason. Accepting it silently would let a
+// declaration be admitted and then never applied on any production path (the D-9
+// shape: a declared value that is inert at run time). The note is a warning, not
+// an error: the declaration is well formed, and what is missing is the data source.
+func TestHookRowScopeWarnsThatNoHostSuppliesRows(t *testing.T) {
+	var found bool
+	for _, diagnostic := range validateApplicationPatterns(recordPatternWithHook("row")) {
+		if diagnostic.Code != "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SCOPE_HAS_NO_SUPPLIER" {
+			continue
+		}
+		found = true
+		if diagnostic.Severity != Warning {
+			t.Fatalf("the note must not be an error: severity=%v", diagnostic.Severity)
+		}
+	}
+	if !found {
+		t.Fatal("a row scope was accepted without noting that no host supplies rows")
+	}
+	// A record scope makes no such claim: the record unit is supplied by the caller.
+	for _, diagnostic := range validateApplicationPatterns(recordPatternWithHook("record")) {
+		if diagnostic.Code == "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SCOPE_HAS_NO_SUPPLIER" {
+			t.Fatal("the note was reported for a scope that is supplied")
+		}
+	}
+}

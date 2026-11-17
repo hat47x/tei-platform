@@ -35,6 +35,12 @@ func argumentValueSets(name string) (map[string][]string, map[string]string) {
 	case "inspect":
 		return map[string][]string{"subject-kind": inspectSubjectKinds},
 			map[string]string{"subject-kind": "string"}
+	case "model search":
+		// The same closed set inspect resolves: a search restricted to a kind
+		// this surface cannot read would answer nothing and look like "this
+		// kind declares no such text".
+		return map[string][]string{"kind": inspectSubjectKinds},
+			map[string]string{"kind": "string"}
 	case "trace":
 		return map[string][]string{
 				"subject-kind": traceSubjectKinds,
@@ -53,6 +59,11 @@ func argumentValueSets(name string) (map[string][]string, map[string]string) {
 	case "knowledge-data-design-candidate-review":
 		return map[string][]string{"data-design-candidate-kind": candidateKinds},
 			map[string]string{"data-design-candidate-kind": "string"}
+	case "plugin-plan":
+		// The closed action set the planner accepts; there is deliberately no
+		// apply, because applying is a separate qualified operation (#2550).
+		return map[string][]string{"action": operations.PlanActions()},
+			map[string]string{"action": "string"}
 	}
 	return nil, nil
 }

@@ -675,3 +675,109 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 **他領域との接続**：組織C1で進んだ「生成メソッド名ではなく意味ID・Relation Key・向き・多重度・Query IDで抽象経路を検査する」方針（#5115）、Node Flow／Plugin間の型付きPort・明示Adapter、プロセス実Call／Effectの証拠照合を、一つの質問の**次段の資格**に使う。技術的なRelationの受領・片端点への一致をもって業務上のResource/Event/Agent ParticipationやAuthZ Grantとみなさない。業務REAは専門Roleの投影であり、全Functionへ会計Eventを強制しない。
 
 **次のR1-A／R2の最小入口**：選択した構造Candidateから、既存Source Indexで実Artifact Byte/Revision/位置を再確認し、Ownerが指定したQualified Data/Function IDとSourceを照合できたときだけ「対応付け候補」を前へ進める。それでも関数の入力・出力・副作用の実観測がなければ`Function → Data Read/Write`は不明のままとする。確定したモデルを使う生成Go、正式Builder、通常CLIの実PG Provider Read、Studio Native独立Consumer、実Effect/Grantは別Attempt・独立Expected（#1180/#2514）で検査する。主P0の通常CLI実Provider（#2586）およびWindows Studio Stage1→Stage2（#2831/#4583）は変えない。
+
+## 34. 一Relation質問の検証をAttemptとSource版に結び直す（2026-11-17）
+
+[PR #5180](https://github.com/hat47x/tei-platform/pull/5180)の一Relation質問はmainへ統合済み（merge `774a2ed1`）。ただし統合に用いた[REA候補CI run 43872113460](https://github.com/hat47x/tei-platform/actions/runs/43872113460)では、専用`relation-review`が`gofmt`の差分で停止し、既存`contract`は別領域の`RuleExamples.Data`と`string`の型不一致でビルド失敗した。この時点で「機能がmainにある」と「対象Go試験が成功した」は別事実である。後者の型不一致は現在mainの`core.CanonicalID`による比較で既に修正されているため、このPRで過去修正を重複適用しない。
+
+**修復と再検収**：既存`reacandidate/review.go`と`review_test.go`のGo整形差分を修正し、対象の`relation-review`を固定HEADで再実行する。共通`contract`の結果は別票に残す。単にCIの整形チェックを外したり、過去HEADのPASSを新HEADへ流用したりしない。
+
+**追加の否定例（RQ-09）**：あるAttemptで`edge-order-line`という外部Relation IDが観測され、次のAttemptでも同じIDを使ったが、出典Artifactのバイト版が変わった場合を検査する。構造上の`CandidateID`が同じでも、`AttemptEvidenceID`、候補集合Fingerprint、`SourceRevision.Fingerprint`を別々に保持し、`ownerDecision=pending`と`FunctionDataClaim=not-established-by-external-structure`を維持する。これは、SourceのA→B→Aを含む更新履歴の同一性、正式TEI Relationの継続、業務FunctionのRead/Write、現在のGrantを証明するものではない。
+
+**他領域との接合**：main統合済みの[Studio Source位置表示 #5212](https://github.com/hat47x/tei-platform/pull/5212)は、検証済みSource位置を表示する手段であって、ファイルを開く権限や同一内容の保証ではない。[Data／Ruleの同一Load検査 #5179](https://github.com/hat47x/tei-platform/pull/5179)、[既存の型付きField投影 #5156](https://github.com/hat47x/tei-platform/pull/5156)、[明示／派生CRUD矛盾検査 #5190](https://github.com/hat47x/tei-platform/pull/5190)からは、取得状態・Mapping・利用宣言の相反を保留する停止線を再利用する。これらはREAの外部Structure候補をOwnerの正式Data/Function/Businessへ自動対応付ける権限ではない。
+
+**次段のR1-A**は、指定したRelationの外部Occurrenceと正式Source IndexのArtifact/Range/Revisionを同じ対象・同じ取得範囲で再読取し、別のQualified Data/Function ID候補を照合すること。Sourceが部分取得・未取得・Digest衝突のときは一致の肯定も「存在しない」の否定も保留する。業務REAのResource/Event/Agent Participationは必要なドメインでOwnerが受理したRoleとして扱う。実ProviderでのRead、Ruleの判断、Generator/Builderの実消費、Studioの二Consumer、Permission/Effectは独立Expected（#1180/#2514）の次の資格とし、通常CLI実Provider #2586とWindows Studio Stage1→Stage2 #2831を並行P0のまま維持する。
+
+## 35. REAの価値を抽出し、TEIの移行・設計復元を主線に据える（2026-11-17、方式再評価案）
+
+**判断案**：外部`REA (Reverse Engineer Anything)`をTEI製品の必須基盤とはしない。既存の実ツール検証、型付き`CandidateSet`／`ReviewPacket`、`relationQuestion`は実績として保持するが、**REA自身の解析対象・Provider・バイナリ解析機能を追随拡張することは標準開発の主線にしない**。TEI固有の価値は、既存資産を専門家が読める三要素Data／Function／Business、標準データ構造・表現型・プロセスへ変換し、出典のある設計書、検証、コード生成、実運用への穏やかな移行までつなぐ点にある。REA連携の深掘りは、この製品経路の断点を実際に減らすと確認できる場合だけ行う。
+
+外部REAの公式説明は、JavaScript/Electron・.NET・Webなどの静的／動的調査に加え、Ghidra／Hopper／IDA等を用いるネイティブ解析を含む。ただし**提供機能の広さと、Claude等の特定AIハーネスからの実際の使いやすさは別**であり、「Claudeでほぼ使えない」という評価を検証済みの製品事実にはしない。TEI側で通常必要な解析対象は、完全なバイナリ復元よりも、手元のソース、SQL／DB Schema、画面定義、設定、帳票、設計文書、公開API、観測可能な入力出力である。外部Providerとライセンス・実行環境に依存する深いネイティブ解析を通常案件の前提に置かない。
+
+| 優先 | 取り扱うもの | TEIでの着地点 |
+| --- | --- | --- |
+| 主線A（P0／製品既定） | Java／.NET／Go／JavaScript等のソース、X-TEA／Wagbyのモデル・設定、Markdown、SQL／DDL、API定義 | 既存Reader／Language Pluginから標準データ構造・三要素・Processへ型付き候補を投影。出典・Identity・方向・多重度・時点・未取得を保ってReviewし、正式Builder／実Provider／Studioで段階検証する |
+| 主線B（段階移行） | 実DB Schema・Query／View、画面・帳票、外部API、操作／入出力の記録 | 設計書と実装の差を表示し、一Functionずつ旧環境での実Read／Write、TEIでの生成・実消費、旧新の結果比較へつなぐ。一般のマイグレーションで最優先する |
+| 任意A（外部Analyzer） | REAがすでに得意なJavaScript/Electron静的Graph、.NET成果物、記録済み実行観測 | 独立したTool／Providerとして既存Evidence Adapterから読取専用取込。既存`CandidateSet`・`ReviewPacket`で採用可否を判断し、TEI正本への直結を避ける |
+| 任意B（例外・専門調査） | ソースがなく、代替手段も乏しいネイティブバイナリや難読化成果物、特殊ファームウェア | 外部専門解析に委譲し、契約が明示した限界つきEvidenceのみ受領。TEI本体に逆アセンブラ、Decompiler、侵襲的Runtime Hookや専用実行Hostを搭載しない |
+
+**REAから残すエッセンス**：①問いを狭めた解析（選択Function／Data／Relation occurrence）、②観測・推論・Owner意味受理の分離、③Source Byte／位置／取得版・Tool／Operator版・Attempt・Unknown／Partial／Coverageの保持、④並行・逆向き関係と同名別Identityの保持、⑤局所的なRead-only Candidate→Review→採用判断→実Builder／実Provider／独立Consumerの段階、⑥分析結果が不完全な場合の明示的停止。これらはREA専用の新Coreを増やさず、既存Source Index、Evidence／受理票、標準Graph・型付きPort、三要素モデル、独立Expectedへ共通原則として渡す。
+
+**直近の実装判断**：REAの新バージョン対応、未使用解析形式のSchema追加、ネイティブProvider整備を、通常CLI実PG Function Read（#2586）とWindows Studio Stage1→Stage2（#2831）のP0に割り込ませない。すでに動く6.7／6.8取込と一Relation質問の回帰は小さく維持し、**新しい開発コストをかけるかは実案件の問い・代替不能な証拠・維持費・TEI標準モデルへの有効な還元があるかで都度判断**する。基準未達なら保留し、削除・非互換変更もしない。
+
+**最小ベンチマーク（提案）**：一つの既存業務Functionを対象に、ソース／SQL／画面／資料のうち実在する二種類の出典からData・処理・外部依存の候補を生成し、①同名別Identityと方向、②欠けたSource・部分取得、③設計と実動作の差、④Owner受理前後の資格、⑤生成Goと通常CLI実Readの結果を、既存Expectedで検査する。外部REAを使わず成立した場合はそのまま成功と数え、REA利用を必須の合格条件にしない。逆にソースがなくREAしか関係を観測できない案件が現れた場合だけ、既存Adapterの候補として比較する。
+
+外部逆解析REAと、業務意味としての`Resource–Event–Agent`（経済REA）は引き続き別概念であり、後者のモデル化・組織／責任・状態遷移の受入を外部解析Toolの選定に従属させない。
+
+## 36. 外部REAに依存しない一Function移行の受入票（2026-11-17）
+
+§35の方式判断を、外部Analyzerの採否に左右されない**一つの移行試行**として検証する。対象は旧業務Function一件と、そのFunctionが扱うData一件。最初に旧ソース／SQL／設定／設計文書から実在する二種類の出典を選び、出典が一種類しかない場合はその不足を記録する。三要素分析法は復元された設計を説明するために用い、外部解析GraphのNodeやRelationを正式なData／Function／Businessへ直接昇格させない。
+
+| Gate | 実行する問い | 合格の証拠と停止条件 |
+| --- | --- | --- |
+| M-01 出典 | 旧FunctionとDataの候補はどの原本に存在するか | Source Indexで原本Byte、Range、Revision、取得状態、Source位置を独立確認。欠損／Partial／権限不足なら未確認とする |
+| M-02 同一性 | 同名・並行・逆向きの関係を混同していないか | Qualified ID、外部Occurrence ID、方向、多重度、Source Revisionを別々に表示。IDだけの一致、A→B→Aの見かけの一致は受理しない |
+| M-03 三要素 | Data／Function／Businessのどこまで説明できるか | 既存の三要素図・インスタンス表記でDataと関係候補をReview。Functionの入力／出力、Businessの責任・状態は原典不足ならUnknownを維持 |
+| M-04 業務意味 | 旧FunctionはDataを読む／更新するか | Sourceの静的依存、実SQL、旧環境の観測、Owner判断を別票に記録。単なる`imports`／`loads`をRead／Writeの実績としない |
+| M-05 生成・実行 | 受理された設計がTEIで実際に使われたか | 正式Builder／生成Go／通常`tei` CLIの実Provider Callを、独立Expectedで検証。delegateだけのGo実装や合成Fixtureのみでは不合格 |
+| M-06 旧新比較 | 段階移行後も入力・結果・副作用が一致するか | NULL／欠損、複合キー、取得範囲、順序、権限、トランザクションとEffectを区別して比較。未観測の項目は「同等」としない |
+| M-07 利用経路 | HeadlessとStudioで同じ受理済み設計を確認できるか | CLIとWindows Studio Stage1→Stage2の独立Consumerを別々に検証。StudioのSource位置表示をファイル閲覧権限とみなさない |
+| M-08 外部REAの採否 | REAを使うことで欠けた証拠が実際に補われるか | 既存Readerで十分ならREAなしで合格。追加Evidenceが必要ならTool版、費用、再現性、代替手段、Provider Unknownを比較し、利用は任意とする |
+
+**最初の対象選定**：X-TEAの既存Function移行例を優先する。ただし`sales.order.submit`等の既存合成経路を正式なDB commit／実Effectの証明へ読み替えない。旧システムのSource位置と業務Functionの対応が未特定ならM-01〜M-04で停止し、先に出典の照合を進める。REAの外部Graphを補助に使う場合も、実際に受け取った版のRaw Evidenceと型付きReceiptだけを証拠とし、テスト用Fixtureを実ツールの実績に数えない。
+
+**計画上の扱い**：M-01〜M-04は設計復元・移行準備の局所受入、M-05〜M-07は製品P0と独立Expectedの実行受入、M-08は任意Providerの方式選定である。各Gateの結果は`passed / blocked / unknown / not-run`で個別に記録し、一つの成功を後続Gateの成功へ自動昇格させない。業務REAのResource／Event／Agentは必要な業務領域でのみ専門Roleとして投影する。
+
+## 37. 最初の一Functionを選ぶための実行順序と棄却条件（2026-11-17）
+
+§36のM-01〜M-08は検収の全体像であり、実装着手の順番ではない。初回は**原本と旧実行結果を同じ対象として照合できるFunction**を選ぶ。X-TEAの`sales.order.submit`は既存合成試験の入口としては有用だが、現時点で旧KouseiKanri原典と正式`order_entry.submit_order`／`sales.order.submit`の対応、DB commit、重複副作用防止が未確認である。このままM-05以降の成功例に据えない。
+
+**着手の三段階**
+
+1. **対象を確定する（M-01／M-02）**。旧Functionの名前ではなく、原本の所在・原文範囲・取得Revision・操作入口・対象Dataを一件ずつ示す。旧システムのSourceと現行TEIのQualified Function IDは別列に置き、対応が未確定なら`mapping-pending`とする。二種類の独立出典がない場合は不足を明示する。既存Source Indexの現在の読取能力を使い、外部REAのGraphだけで出典照合を代行しない。
+2. **設計の読み取りを成立させる（M-03／M-04）**。三要素のData／Function／Businessを原本に結び、Functionが参照するData・SQL・外部APIを候補として表示する。型付きGraph／Node FlowのPortやAdapterはDataの形と変換を説明するが、線の接続だけで実Read、書込み、トランザクション、業務Eventを確定しない。実行記録がない場合は`effect-not-observed`で止める。
+3. **実動作を別の試行で受理する（M-05〜M-07）**。通常`tei` CLIのFunction→Query→実Provider→一Consumerという同一AttemptのReadと、旧新結果の独立Expected比較を先に検査する。生成Goが実際に呼ばれたか、NULLと未取得、複合キー、取得範囲、権限、Effectを個別に確認する。Windows Studio Stage1→Stage2は同じ意味モデルを使う別Consumerとして受け入れる。実PG Readが成功してもStudioやWriteの合格にはならない。
+
+| 初回試行の記録欄 | 必須内容 | 初期判定 |
+| --- | --- | --- |
+| 旧Function原本 | リポジトリ／ファイル・Range・Revision／取得状態 | 未特定なら`blocked` |
+| 旧Dataと操作入口 | Data原本、SQL／画面／API入口、対象レコードの識別 | 未特定なら`blocked` |
+| TEI側候補 | Qualified Function／Data ID、候補の根拠、未受理の意味 | `unknown`から開始 |
+| 実Read／Effect | 実Provider・旧実行のAttempt、結果、Effect receipt、独立Expected | 未実行なら`not-run` |
+| 受理責任 | Owner、判断対象、採用したSource版、保留事項 | 未判断なら`pending` |
+| Consumer | CLI実受領、Studio Native実受領を別々に記録 | 未実行なら`not-run` |
+
+**最初のPRの範囲**は旧Functionの原本とDataを一件ずつ特定し、Source Indexによる読取結果と三要素Reviewを同じ検証票へ出すところまでとする。原本を特定できなければ、実装を広げずSource所在の調査をIssueに戻す。対象選定のために新しい汎用Parser、Meaning Engine、Host、Graph Storeを追加しない。既存Reader／Source Index／`reacandidate`のReview／三要素図を再利用し、生成器の実消費や実DB Callは後続の独立受入へ渡す。
+
+**優先順位**：通常CLI実PG Function Read（#2586）とWindows Studio Stage1→Stage2（#2831）を妨げない。外部REA（Reverse Engineer Anything）の追加解析はM-08の任意選択であり、業務REA（Resource–Event–Agent）は必要な業務モデルでOwnerが受理する意味表現として扱う。
+
+## 38. 一Function移行の三要素ReviewをTEI自己記述の第一縦断と接続する（2026-11-17）
+
+[TEI自己記述の第一縦断](TEI_SELF_DESCRIPTION_REVIEW_SLICE_2026-11.md)で整理した「要求索引→三要素モデル定義→型付きインスタンス→図面→Source→独立Expected」の順序を、§37のM-01〜M-04の**レビュー手順**として再利用する。これにより、旧システムの移行用に専用の三要素図エンジンを増やさず、TEI自身の要件・実装を説明する同じ標準データ構造と表現型を使う。
+
+初回レビューでは、①原典のFunction・Data・操作入口のSource位置、②TEI側のQualified ID候補、③同名別Node・並行Relationの独立IDと向き、④Function→DataのCRUDが原典の明示記録なのか推論なのか、⑤不明な入力・出力・Effect、⑥Owner未受理、を**一つのレビュー対象**として並べる。ただし、表示上は一画面であってもSourceの証拠、図面の同一性、業務意味、実Providerの受領は別の判定票にする。
+
+TEI自己記述側の例示GraphやX-TEAのTask→TaskAction→TaskFunctionIO→Function→IOTableの関係図は、検証する**構造の形**を示す。実在する旧原本のByte/Range/Revisionと対応が取れない限りM-01は`blocked`、Function-level CRUDと実行Effectを結ぶ観測がない限りM-04は`unknown`のままにする。これらを同じモデルに載せることは、外部REAの`imports`等の関係を実Read/Writeへ昇格させる根拠にはならない。
+
+**次の小さな実装候補**：既存Source Indexの一つの原文Rangeから、原典ID・Source版・三要素候補・不明理由を読取専用で表示し、原典が未特定／改版／部分取得の場合は正式IDへの自動対応付けを拒否する負例を作る。Ownerが原典を選定するまでは新規ReaderやGeneratorを追加しない。#2586の実PG Function Readと#2831のWindows Studioセルフビルドは別P0として継続する。
+
+## 39. 一Function移行Reviewの独立Expectedと負例（2026-11-17）
+
+§38の自己記述との共通Reviewは、**表示ができたこと**と**対応付けを受理できたこと**を分けて検査する。最初の小さな実装では、既存Source Indexで読取可能な原本一Rangeと、既存三要素モデルのQualified Data／Function候補を対象とし、外部REAを前提にしない。原典のSource ID・位置・Byte Revision、Candidate ID、正式Qualified ID、Owner判断は同じID空間へ潰さず、検証票の別欄に残す。
+
+| Case | 入力条件 | 独立Expected／停止線 |
+| --- | --- | --- |
+| MR-01 | 旧Functionの原文Rangeを完全に読取可能 | 取得したSource版とRangeを表示し、候補の対応は`pending`。読取成功だけで正式Functionへ昇格しない |
+| MR-02 | 同名の旧Functionが二箇所、または同名のDataとBusinessが存在 | Source occurrence／Element Kind／Qualified IDで別Identityを維持。名前だけの一意解決を拒否 |
+| MR-03 | 同じFunction／Data間にR・Uの複数宣言がある | 既存CRUD表・Function–Data相互参照の表示粒度を揃え、派生RUと明示CRUDを区別。宣言と実行Effectは別 |
+| MR-04 | 明示CRUDとFunction宣言の操作集合が矛盾 | 両方の原宣言とConflictを残す。見やすい表示のために片方を消さない |
+| MR-05 | Sourceが改版、または同じByteに戻るA→B→A | 現在Byte一致とSource Revision／取得Attemptの履歴を区別。古い受理・旧Rangeを自動再利用しない |
+| MR-06 | SourceがPartial／unavailable／permission-denied | 原文未確認の理由を表示し、`mapping-pending`。未観測の関係を「存在しない」と判定しない |
+| MR-07 | 外部REAの`imports`／`loads`だけが存在 | 外部Relation occurrenceは観測として保持。正式Read／Write／Business Role／現在Grantの証明にはしない |
+| MR-08 | 原文・三要素図は一致するが、旧実行のDB Effect receiptがない | M-01〜M-03の限定結果だけ記録。M-04実Effect、M-05生成・Provider、M-06旧新比較は`unknown`／`not-run` |
+| MR-09 | 旧実行とTEI実Readで取得Scope・NULL／欠損・複合キーのいずれかが異なる | 観測範囲を明示し、見かけの行数や表示値の一致を旧新同等としない |
+| MR-10 | CLIで候補を確認できるが、Studioで原文を開けない | Source位置表示、Hostの現在Root内原文再読取、Windows Native受領を別判定。閲覧Grantを捏造しない |
+
+**実装・試験の順序**：最初にMR-01／02／05／06を一つの原文Rangeで固定し、既存Source Indexの返す実際の資格を観察する。次にMR-03／04を既存`internal/threeelement`のCRUD・相互参照へ接続し、同名別Kindや明示／派生の矛盾を表示する。MR-07は既存`reacandidate`の読取専用Reviewを再利用する。MR-08〜10は旧実行／Provider／Host／Studioの実証を要するので、設計上のExpectedを定義しただけでPASSにしない。
+
+**Ownerへの引継ぎ**：選択した旧原典の実Source Revision、候補のQualified ID、採用対象のFunction–Data関係、未解決のRead／Write／Business責任を一枚のReview Packetで示す。ただしPacketは閲覧用であり、Ownerが受理した正式モデルへの変更や現在の実行権限を自動的に発生させない。実行受入は通常CLI実PG Read #2586、Studio Stage1→Stage2 #2831、独立Expected #1180／#2514に分離する。

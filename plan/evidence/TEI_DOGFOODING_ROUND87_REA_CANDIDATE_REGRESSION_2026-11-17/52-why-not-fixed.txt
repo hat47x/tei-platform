@@ -1,0 +1,13 @@
+The refactor looks deliberate: production says
+
+  // This legacy CLI has synthetic candidate IDs, not source-backed
+  // CandidateSet identities.
+
+so the implementer knew the placeholder was a placeholder; the tests did not
+follow. Answering "restore generation" or "delete the tests" changes the
+intended contract, and #5248 asks the owner to choose.
+
+Accurate statement of what was lost:
+  - reacandidate.GenerateCandidates still exists and is used by other paths
+  - only rea-intake's use of it was removed
+  => "rea-intake was cut off from candidate generation", not "generation is gone"

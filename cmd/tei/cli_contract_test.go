@@ -67,7 +67,8 @@ func TestDiscoveryAdvertisesTheCommandsOwnSchemaVersion(t *testing.T) {
 		// A subcommand's schema joins its words with "-" (model locate ->
 		// tei.cli.model-locate/v0); model catalog keeps its older name.
 		if cmd.Name == "model locate" || cmd.Name == "model overview" ||
-			cmd.Name == "model document-draft" || cmd.Name == "model document-reconcile" {
+			cmd.Name == "model document-draft" || cmd.Name == "model document-reconcile" ||
+			cmd.Name == "model search" {
 			if cmd.SchemaVersion != "tei.cli."+strings.ReplaceAll(cmd.Name, " ", "-")+"/v0" {
 				t.Errorf("%s schemaVersion=%q", cmd.Name, cmd.SchemaVersion)
 			}
@@ -146,6 +147,13 @@ func TestDiscoverySchemaVersionsMatchActualResponses(t *testing.T) {
 			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
 		}
 		assertAdvertisedVersion(t, "model overview", decode(t, &out))
+	})
+	t.Run("model search", func(t *testing.T) {
+		var out bytes.Buffer
+		if code, err := runModelCommand([]string{"search", "-workspace", root, "-term", "order"}, &out); err != nil || code != 0 {
+			t.Fatalf("code=%d err=%v body=%s", code, err, out.String())
+		}
+		assertAdvertisedVersion(t, "model search", decode(t, &out))
 	})
 	t.Run("workspace-files", func(t *testing.T) {
 		var out bytes.Buffer

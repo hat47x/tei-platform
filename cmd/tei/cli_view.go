@@ -137,6 +137,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	root := fs.String("workspace", "", "TEI workspace directory")
 	applicationID := fs.String("application", "", "exact application ID")
 	patternID := fs.String("pattern", "", "exact application pattern ID")
+	environmentID := fs.String("environment", "", "explicit read-only runtime environment for a Contract Query")
 	packageID := fs.String("package", "", "exact application package ID")
 	commandID := fs.String("command", "", "command capability to plan")
 	execute := fs.Bool("execute", false, "reference execution of the planned command")
@@ -147,6 +148,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	lifecycleCommand := fs.String("lifecycle-command", "", "stable command id recorded in the lifecycle state")
 	lifecycleOwner := fs.String("lifecycle-owner", "cli", "owner recorded in the lifecycle state")
 	lifecycleGeneration := fs.Int("lifecycle-generation", 1, "generation recorded in the lifecycle state")
+	lifecycleTakeover := fs.Bool("lifecycle-takeover", false, "claim a command whose outcome is unknown, before running it under -lifecycle-owner and -lifecycle-generation")
 	var allowedCapabilities inputFlag
 	fs.Var(&allowedCapabilities, "allow-capability", "capability allowed by the reference authorizer; repeatable")
 	var inputPairs inputFlag
@@ -162,20 +164,21 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 	if fs.NArg() != 0 || *root == "" || *applicationID == "" ||
 		(*patternID != "" && *packageID != "") ||
 		(*commandID != "" && *patternID == "") ||
+		(*environmentID != "" && (*patternID == "" || *packageID != "" || *commandID != "" || *execute)) ||
 		(*execute && *commandID == "") ||
 		(*periodStateFile != "" && !*execute) ||
 		(*lifecycleState != "" && (!*execute || *lifecycleCommand == "")) ||
 		(*lifecycleState == "" && *lifecycleCommand != "") ||
 		(*lifecycleGeneration < 1) ||
+		(*lifecycleTakeover && (*lifecycleState == "" || *lifecycleCommand == "")) ||
 		(len(allowedCapabilities) > 0 && !*execute) ||
 		(*operationLogFile != "" && !*execute) ||
-		// -input only feeds the command plan, which exists only with -command.
-		// Without this, `view -application X -input order=ORD-1` succeeded and
-		// dropped the value (and never parsed it), so a caller could believe it
-		// had supplied input to a command that was never planned (#3778).
-		(len(inputPairs) > 0 && *commandID == "") ||
+		// -input belongs only to an explicit command plan or to a selected
+		// runtime Contract Query. Static views must not silently drop it (#3778).
+		(len(inputPairs) > 0 && *commandID == "" && *environmentID == "") ||
 		*root != strings.TrimSpace(*root) || *applicationID != strings.TrimSpace(*applicationID) ||
 		*patternID != strings.TrimSpace(*patternID) || *packageID != strings.TrimSpace(*packageID) ||
+		*environmentID != strings.TrimSpace(*environmentID) ||
 		*commandID != strings.TrimSpace(*commandID) {
 		return fail("INVALID_ARGUMENT", "view requires exact -workspace and -application, at most one of -pattern, -package, or -command, without positional arguments", 2)
 	}
@@ -346,6 +349,11 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 					CommandID:  *lifecycleCommand,
 					Owner:      *lifecycleOwner,
 					Generation: *lifecycleGeneration,
+					// Recovering from an unknown outcome is an operator decision: it
+					// needs a new owner and a larger generation, and the boundary
+					// refuses a command that is not unknown. The invoker performs the
+					// takeover instead of a dispatch, so the attempt is recorded once.
+					Takeover: *lifecycleTakeover,
 				})
 			} else {
 				result, err = invoker.Invoke(context.Background(), request)
@@ -437,6 +445,30 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 			return writeViewReport(out, report, 0)
 		}
 		return writeCommandPlanText(out, plan)
+	}
+	// This is the first product CLI read of the existing header-detail Contract
+	// Query. No query, mapping, or validation is reconstructed in this entry.
+	if *environmentID != "" {
+		if *format != "json" {
+			return fail("INVALID_ARGUMENT", "view -environment currently requires -format json", 2)
+		}
+		values, err := parseInputPairs(inputPairs)
+		if err != nil {
+			return fail("INVALID_ARGUMENT", err.Error(), 2)
+		}
+		result, err := readEnvironmentRows(
+			loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID),
+			core.CanonicalID(*environmentID), values,
+		)
+		if errors.Is(err, errViewEnvironmentInput) {
+			return fail("INVALID_ARGUMENT", err.Error(), 2)
+		}
+		if err != nil {
+			return fail("VIEW_EXECUTION_FAILED", err.Error(), 1)
+		}
+		report.OK = true
+		report.Result = result
+		return writeViewReport(out, report, 0)
 	}
 	kind, err := applicationview.PatternKind(loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID))
 	if err != nil {

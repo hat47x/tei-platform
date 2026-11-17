@@ -239,8 +239,7 @@ func TestPluginInventoryEnvelopeAndModes(t *testing.T) {
 	}
 	// A flag recognized by the shared parser but not consumed by inventory
 	// must be refused, not silently ignored as a successful inventory lookup.
-	if got := run(2, "plugin-inventory", "-workspace", reference, "-environment", "development", "-scope", "unused");
-		got.Error == nil || got.Error.Code != resultCodeInvalidArgument ||
+	if got := run(2, "plugin-inventory", "-workspace", reference, "-environment", "development", "-scope", "unused"); got.Error == nil || got.Error.Code != resultCodeInvalidArgument ||
 		!strings.Contains(got.Error.Message, "plugin-inventory does not accept -scope") {
 		t.Fatalf("recognized but unrelated flag was silently accepted: %+v", got)
 	}

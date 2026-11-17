@@ -11,6 +11,8 @@ on:
       - 'reference/tei-studio-workbench/main.ts'
       - 'reference/tei-studio-workbench/responses.inspection-scope.test.mjs'
       - 'reference/tei-studio-workbench/responses.wiring-contract.test.mjs'
+      - 'reference/tei-studio-workbench/source-locations-presentation.ts'
+      - 'reference/tei-studio-workbench/source-locations-presentation.test.mjs'
       - '.github/workflows/tei-studio-async-lanes-ci.yml'
   pull_request:
     paths:
@@ -22,6 +24,8 @@ on:
       - 'reference/tei-studio-workbench/main.ts'
       - 'reference/tei-studio-workbench/responses.inspection-scope.test.mjs'
       - 'reference/tei-studio-workbench/responses.wiring-contract.test.mjs'
+      - 'reference/tei-studio-workbench/source-locations-presentation.ts'
+      - 'reference/tei-studio-workbench/source-locations-presentation.test.mjs'
       - '.github/workflows/tei-studio-async-lanes-ci.yml'
   workflow_dispatch:
 
@@ -72,3 +76,6 @@ jobs:
         working-directory: reference/tei-studio-workbench
         run: |
           node --test responses.inspection-scope.test.mjs responses.wiring-contract.test.mjs
+      - name: Test Source Index display projection without opening files
+        working-directory: reference/tei-studio-workbench
+        run: node --test source-locations-presentation.test.mjs

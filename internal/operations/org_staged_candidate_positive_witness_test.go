@@ -210,7 +210,7 @@ func orgPositiveSyntheticContext(t *testing.T, values [][]any, dataID string, co
 	// These are distinct mock Query sources, not evidence of a shared read
 	// snapshot. Their digests are local test inputs, not accepted Source pins.
 	syntheticQueryID := core.CanonicalID("org_axes_view.synthetic_" + dataID)
-	sourceDigest := fmt.Sprintf("%x", sha256.Sum256([]byte("synthetic-query-source:" + dataID)))
+	sourceDigest := fmt.Sprintf("%x", sha256.Sum256([]byte("synthetic-query-source:"+dataID)))
 	execution := driver.BrowseQueryEnvironmentExecution{
 		Environment: "development",
 		Instance: environment.DatabaseInstance{
@@ -329,27 +329,27 @@ func TestOrgStagedPositiveCandidateActualFunctionContextCoverage(t *testing.T) {
 		expectedNotUnique bool
 	}{
 		{
-			name: "zero native rows",
-			roleRows: [][]any{},
-			dutyRows: [][]any{},
+			name:          "zero native rows",
+			roleRows:      [][]any{},
+			dutyRows:      [][]any{},
 			expectedClaim: "partial-none",
 		},
 		{
-			name: "one native row each",
-			roleRows: [][]any{{"RA1", "P1", "R1"}},
-			dutyRows: [][]any{{"RS1", "P1", "D1"}},
+			name:          "one native row each",
+			roleRows:      [][]any{{"RA1", "P1", "R1"}},
+			dutyRows:      [][]any{{"RS1", "P1", "D1"}},
 			expectedClaim: "partial-one",
 		},
 		{
-			name: "two native rows each",
-			roleRows: [][]any{{"RA1", "P1", "R1"}, {"RA2", "P2", "R1"}},
-			dutyRows: [][]any{{"RS1", "P1", "D1"}, {"RS2", "P2", "D1"}},
+			name:          "two native rows each",
+			roleRows:      [][]any{{"RA1", "P1", "R1"}, {"RA2", "P2", "R1"}},
+			dutyRows:      [][]any{{"RS1", "P1", "D1"}, {"RS2", "P2", "D1"}},
 			expectedClaim: "partial-many", expectedNotUnique: true,
 		},
 		{
-			name: "one role, no responsibility",
-			roleRows: [][]any{{"RA1", "P1", "R1"}},
-			dutyRows: [][]any{},
+			name:          "one role, no responsibility",
+			roleRows:      [][]any{{"RA1", "P1", "R1"}},
+			dutyRows:      [][]any{},
 			expectedClaim: "partial-none",
 		},
 	} {

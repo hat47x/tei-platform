@@ -75,6 +75,9 @@ func schemaVersionsWritten(t *testing.T, root string) map[string]bool {
 			}
 			source, readErr := os.ReadFile(path)
 			if readErr != nil {
+				if skipVanishedPath(readErr) == nil {
+					return nil
+				}
 				return readErr
 			}
 			for _, match := range schemaVersionPattern.FindAllStringSubmatch(string(source), -1) {
@@ -96,7 +99,7 @@ func schemaVersionsMentioned(t *testing.T, root string) map[string]bool {
 	self := "schema_version_coverage_test.go"
 	mentioned := map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
+		if err := skipVanishedPath(err); err != nil {
 			return err
 		}
 		if entry.IsDir() {

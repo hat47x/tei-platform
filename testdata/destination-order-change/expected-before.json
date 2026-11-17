@@ -1,0 +1,44 @@
+{
+  "orders": {
+    "1001": {
+      "perLine": {
+        "1": {
+          "sales.order_line.quantity_positive": "satisfied",
+          "sales.order_line.line_number_positive": "satisfied"
+        },
+        "2": {
+          "sales.order_line.quantity_positive": "not-satisfied",
+          "sales.order_line.line_number_positive": "satisfied"
+        },
+        "3": {
+          "sales.order_line.quantity_positive": "satisfied",
+          "sales.order_line.line_number_positive": "satisfied"
+        }
+      },
+      "perOrder": {
+        "sales.order.lines.line_number_unique": "not-satisfied"
+      }
+    },
+    "1002": {
+      "perLine": {
+        "4": {
+          "sales.order_line.quantity_positive": "satisfied",
+          "sales.order_line.line_number_positive": "satisfied"
+        },
+        "5": {
+          "sales.order_line.quantity_positive": "satisfied",
+          "sales.order_line.line_number_positive": "satisfied"
+        }
+      },
+      "perOrder": {
+        "sales.order.lines.line_number_unique": "satisfied"
+      }
+    },
+    "1003": {
+      "perLine": {},
+      "perOrder": {
+        "sales.order.lines.line_number_unique": "satisfied"
+      }
+    }
+  }
+}

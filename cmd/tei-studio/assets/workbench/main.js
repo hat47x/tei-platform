@@ -2494,7 +2494,7 @@ var EditorState = class _EditorState {
       if (effect.is(Compartment.reconfigure)) {
         if (conf) {
           compartments = /* @__PURE__ */ new Map();
-          conf.compartments.forEach((val, key) => compartments.set(key, val));
+          conf.compartments.forEach((val, key2) => compartments.set(key2, val));
           conf = null;
         }
         compartments.set(effect.value.compartment, effect.value.extension);
@@ -2783,19 +2783,19 @@ Compartment.reconfigure = /* @__PURE__ */ StateEffect.define();
 function combineConfig(configs, defaults2, combine = {}) {
   let result = {};
   for (let config of configs)
-    for (let key of Object.keys(config)) {
-      let value = config[key], current = result[key];
+    for (let key2 of Object.keys(config)) {
+      let value = config[key2], current = result[key2];
       if (current === void 0)
-        result[key] = value;
+        result[key2] = value;
       else if (current === value || value === void 0) ;
-      else if (Object.hasOwnProperty.call(combine, key))
-        result[key] = combine[key](current, value);
+      else if (Object.hasOwnProperty.call(combine, key2))
+        result[key2] = combine[key2](current, value);
       else
-        throw new Error("Config merge conflict for field " + key);
+        throw new Error("Config merge conflict for field " + key2);
     }
-  for (let key in defaults2)
-    if (result[key] === void 0)
-      result[key] = defaults2[key];
+  for (let key2 in defaults2)
+    if (result[key2] === void 0)
+      result[key2] = defaults2[key2];
   return result;
 }
 var RangeValue = class {
@@ -3958,8 +3958,8 @@ function attrsEq(a, b, ignore) {
   let keysA = Object.keys(a), keysB = Object.keys(b);
   if (keysA.length - 0 != keysB.length - 0)
     return false;
-  for (let key of keysA) {
-    if (key != ignore && (keysB.indexOf(key) == -1 || a[key] !== b[key]))
+  for (let key2 of keysA) {
+    if (key2 != ignore && (keysB.indexOf(key2) == -1 || a[key2] !== b[key2]))
       return false;
   }
   return true;
@@ -8118,7 +8118,7 @@ var InputState = class {
       this.view.observer.delayAndroidKey(event.key, event.keyCode);
       return true;
     }
-    if (browser.ios && !event.synthetic && !event.altKey && !event.metaKey && (PendingKeys.some((key) => key.keyCode == event.keyCode) && !event.ctrlKey || EmacsyPendingKeys.indexOf(event.key) > -1 && event.ctrlKey)) {
+    if (browser.ios && !event.synthetic && !event.altKey && !event.metaKey && (PendingKeys.some((key2) => key2.keyCode == event.keyCode) && !event.ctrlKey || EmacsyPendingKeys.indexOf(event.key) > -1 && event.ctrlKey)) {
       let mods = { ctrlKey: event.ctrlKey, altKey: event.altKey, metaKey: event.metaKey, shiftKey: event.shiftKey };
       if (mods.shiftKey && browser.ios && !/^(off|none)$/.test(this.view.contentDOM.autocapitalize) && iosVirtualKeyboardOpen(this.view.win))
         mods.shiftKey = false;
@@ -8134,13 +8134,13 @@ var InputState = class {
     return false;
   }
   flushIOSKey(change) {
-    let key = this.pendingIOSKey;
-    if (!key || this.view.observer.pendingRecords().length)
+    let key2 = this.pendingIOSKey;
+    if (!key2 || this.view.observer.pendingRecords().length)
       return false;
-    if (key.key == "Enter" && change && change.from < change.to && /^\S+$/.test(change.insert.toString()))
+    if (key2.key == "Enter" && change && change.from < change.to && /^\S+$/.test(change.insert.toString()))
       return false;
     this.pendingIOSKey = void 0;
-    return dispatchKey(this.view.contentDOM, key.key, key.keyCode, key.mods);
+    return dispatchKey(this.view.contentDOM, key2.key, key2.keyCode, key2.mods);
   }
   ignoreDuringComposition(event) {
     if (!/^key/.test(event.type) || event.synthetic)
@@ -8188,7 +8188,7 @@ function bindHandler(plugin, handler) {
 }
 function computeHandlers(plugins) {
   let result = /* @__PURE__ */ Object.create(null);
-  function record3(type) {
+  function record4(type) {
     return result[type] || (result[type] = { observers: [], handlers: [] });
   }
   for (let plugin of plugins) {
@@ -8197,19 +8197,19 @@ function computeHandlers(plugins) {
       for (let type in handlers2) {
         let f = handlers2[type];
         if (f)
-          record3(type).handlers.push(bindHandler(plugin.value, f));
+          record4(type).handlers.push(bindHandler(plugin.value, f));
       }
     if (observers2)
       for (let type in observers2) {
         let f = observers2[type];
         if (f)
-          record3(type).observers.push(bindHandler(plugin.value, f));
+          record4(type).observers.push(bindHandler(plugin.value, f));
       }
   }
   for (let type in handlers)
-    record3(type).handlers.push(handlers[type]);
+    record4(type).handlers.push(handlers[type]);
   for (let type in observers)
-    record3(type).observers.push(observers[type]);
+    record4(type).observers.push(observers[type]);
   return result;
 }
 var PendingKeys = [
@@ -8775,7 +8775,7 @@ handlers.beforeinput = (view, event) => {
     }
   }
   let pending;
-  if (browser.chrome && browser.android && (pending = PendingKeys.find((key) => key.inputType == event.inputType))) {
+  if (browser.chrome && browser.android && (pending = PendingKeys.find((key2) => key2.inputType == event.inputType))) {
     view.observer.delayAndroidKey(pending.key, pending.keyCode);
     if (pending.key == "Backspace" || pending.key == "Delete") {
       let startViewHeight = ((_b = window.visualViewport) === null || _b === void 0 ? void 0 : _b.height) || 0;
@@ -10705,25 +10705,25 @@ var DOMObserver = class {
   // from handling DOM changes for a moment when such a key is
   // detected (via beforeinput or keydown), and then tries to flush
   // them or, if that has no effect, dispatches the given key.
-  delayAndroidKey(key, keyCode) {
+  delayAndroidKey(key2, keyCode) {
     var _a2;
     if (!this.delayedAndroidKey) {
       let flush = () => {
-        let key2 = this.delayedAndroidKey;
-        if (key2) {
+        let key3 = this.delayedAndroidKey;
+        if (key3) {
           this.clearDelayedAndroidKey();
-          this.view.inputState.lastKeyCode = key2.keyCode;
+          this.view.inputState.lastKeyCode = key3.keyCode;
           this.view.inputState.lastKeyTime = Date.now();
           let flushed = this.flush();
-          if (!flushed && key2.force)
-            dispatchKey(this.dom, key2.key, key2.keyCode);
+          if (!flushed && key3.force)
+            dispatchKey(this.dom, key3.key, key3.keyCode);
         }
       };
       this.flushingAndroidKey = this.view.win.requestAnimationFrame(flush);
     }
-    if (!this.delayedAndroidKey || key == "Enter")
+    if (!this.delayedAndroidKey || key2 == "Enter")
       this.delayedAndroidKey = {
-        key,
+        key: key2,
         keyCode,
         // Only run the key handler when no changes are detected if
         // this isn't coming right after another change, in which case
@@ -10761,8 +10761,8 @@ var DOMObserver = class {
     if (records.length)
       this.queue = [];
     let from = -1, to = -1, typeOver = false;
-    for (let record3 of records) {
-      let range = this.readMutation(record3);
+    for (let record4 of records) {
+      let range = this.readMutation(record4);
       if (!range)
         continue;
       if (range.typeOver)
@@ -12193,10 +12193,10 @@ function buildKeymap(bindings, platform = currentPlatform) {
     else if (current != is)
       throw new Error("Key binding " + name2 + " is used both as a regular binding and as a multi-stroke prefix");
   };
-  let add2 = (scope, key, command, preventDefault, stopPropagation) => {
+  let add2 = (scope, key2, command, preventDefault, stopPropagation) => {
     var _a2, _b;
     let scopeObj = bound[scope] || (bound[scope] = /* @__PURE__ */ Object.create(null));
-    let parts = key.split(/ (?!$)/).map((k) => normalizeKeyName(k, platform));
+    let parts = key2.split(/ (?!$)/).map((k) => normalizeKeyName(k, platform));
     for (let i = 1; i < parts.length; i++) {
       let prefix = parts.slice(0, i).join(" ");
       checkPrefix(prefix, true);
@@ -12236,8 +12236,8 @@ function buildKeymap(bindings, platform = currentPlatform) {
         if (!scopeObj._any)
           scopeObj._any = { preventDefault: false, stopPropagation: false, run: [] };
         let { any } = b;
-        for (let key in scopeObj)
-          scopeObj[key].run.push((view) => any(view, currentKeyEvent));
+        for (let key2 in scopeObj)
+          scopeObj[key2].run.push((view) => any(view, currentKeyEvent));
       }
     let name2 = b[platform] || b.key;
     if (!name2)
@@ -17412,11 +17412,11 @@ function createTokenType(extra, tagStr) {
   }
   if (!tags$1.length)
     return 0;
-  let name2 = tagStr.replace(/ /g, "_"), key = name2 + " " + tags$1.map((t2) => t2.id);
-  let known = byTag[key];
+  let name2 = tagStr.replace(/ /g, "_"), key2 = name2 + " " + tags$1.map((t2) => t2.id);
+  let known = byTag[key2];
   if (known)
     return known.id;
-  let type = byTag[key] = NodeType.define({
+  let type = byTag[key2] = NodeType.define({
     id: typeArray.length,
     name: name2,
     props: [styleTags({ [name2]: tags$1 })]
@@ -18279,14 +18279,14 @@ function mountReadonlyGraph(container, input, options = {}) {
       const from = byId.get(edge.source);
       const to = byId.get(edge.target);
       const line = svgElement("line");
-      for (const [key, value] of Object.entries({
+      for (const [key2, value] of Object.entries({
         x1: from.x,
         y1: from.y,
         x2: to.x,
         y2: to.y,
         stroke: "currentColor",
         "stroke-opacity": "0.65"
-      })) attribute(line, key, value);
+      })) attribute(line, key2, value);
       svg2.appendChild(line);
       if (edge.label) {
         const caption = svgElement("text");
@@ -18306,7 +18306,7 @@ function mountReadonlyGraph(container, input, options = {}) {
       tooltip.textContent = node.label || node.id;
       group.appendChild(tooltip);
       const circle = svgElement("circle");
-      for (const [key, value] of Object.entries({
+      for (const [key2, value] of Object.entries({
         // A transparent *painted* fill preserves the outlined appearance but
         // makes the circle interior a pointer target. With fill="none" only
         // the stroke was hittable; the g element has no painted hit area.
@@ -18316,7 +18316,7 @@ function mountReadonlyGraph(container, input, options = {}) {
         fill: "transparent",
         "pointer-events": "all",
         stroke: "currentColor"
-      })) attribute(circle, key, value);
+      })) attribute(circle, key2, value);
       group.appendChild(circle);
       const label = svgElement("text");
       attribute(label, "x", node.x);
@@ -18721,9 +18721,9 @@ var INSPECTOR_SELECTION_EVENT = "tei:inspector-selection-request";
 function normalized(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const request = value;
-  const subject2 = request.subject;
-  if (!subject2 || typeof subject2 !== "object" || Array.isArray(subject2)) return null;
-  const entry = subject2;
+  const subject3 = request.subject;
+  if (!subject3 || typeof subject3 !== "object" || Array.isArray(subject3)) return null;
+  const entry = subject3;
   if (typeof request.workspaceId !== "string" || !request.workspaceId || !Number.isSafeInteger(request.workspaceEpoch) || request.workspaceEpoch < 0 || typeof entry.kind !== "string" || !entry.kind || typeof entry.id !== "string" || !entry.id) return null;
   return {
     workspaceId: request.workspaceId,
@@ -18749,6 +18749,69 @@ function inspectorSelectionFromEvent(event, currentWorkspaceId, currentWorkspace
   return request.subject;
 }
 
+// inspection-limit-labels.ts
+var LABELS = Object.freeze({
+  "inspection-is-a-derived-read-only-projection": "\u8868\u793A\u5185\u5BB9\u306F\u8AAD\u307F\u53D6\u308A\u5C02\u7528\u306E\u6D3E\u751F\u60C5\u5831\u3067\u3059\u3002",
+  "source-location-is-not-semantic-acceptance": "\u5143Source\u306E\u4F4D\u7F6E\u304C\u5206\u304B\u3063\u3066\u3082\u3001\u696D\u52D9\u4E0A\u306E\u610F\u5473\u304C\u53D7\u7406\u3055\u308C\u305F\u3068\u306F\u9650\u308A\u307E\u305B\u3093\u3002",
+  "source-location-is-not-write-authority": "\u5143Source\u306E\u4F4D\u7F6E\u306F\u3001\u7DE8\u96C6\u3084\u4FDD\u5B58\u306E\u8A31\u53EF\u3092\u793A\u3057\u307E\u305B\u3093\u3002",
+  "local-read-is-not-disclosure-permission": "\u30ED\u30FC\u30AB\u30EB\u3067\u8AAD\u3081\u3066\u3082\u3001\u5916\u90E8\u3078\u306E\u958B\u793A\u304C\u8A31\u53EF\u3055\u308C\u305F\u3068\u306F\u9650\u308A\u307E\u305B\u3093\u3002"
+});
+function inspectionLimitLabel(code) {
+  return LABELS[code] ?? `\u8FFD\u52A0\u306E\u5229\u7528\u5236\u9650\uFF1A${code}`;
+}
+
+// inspection-reader.generated.ts
+var inspectionReaderProvenance = Object.freeze({
+  part: "tei.studio.inspection_reader",
+  version: "1.0.0",
+  operation: "main.StudioBridge.InspectSubject",
+  contractDigest: "sha256:0a65d341992bee8ab44f9e767321536a7c8e0d13bc4c60a2ddba34a18bf1359b"
+});
+function record2(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw Error("INVALID_MODEL_RESPONSE");
+  return value;
+}
+function subject(value) {
+  const v = record2(value);
+  const kind = v["kind"], id = v["id"];
+  if (typeof kind !== "string" || !kind || typeof id !== "string" || !id)
+    throw Error("INVALID_SUBJECT_RESPONSE");
+  return { kind, id };
+}
+var key = (s) => JSON.stringify([s.kind, s.id]);
+function recordUse() {
+  const root = globalThis.document?.documentElement;
+  if (!root?.dataset) return;
+  root.dataset.teiInspectionReader = inspectionReaderProvenance.contractDigest;
+  root.dataset.teiInspectionReaderCalls = String(
+    Number(root.dataset.teiInspectionReaderCalls ?? "0") + 1
+  );
+}
+var REQUIRED_INSPECTION_LIMITS = [
+  "inspection-is-a-derived-read-only-projection",
+  "source-location-is-not-semantic-acceptance",
+  "source-location-is-not-write-authority",
+  "local-read-is-not-disclosure-permission"
+];
+function readInspection(raw, expected, catalog) {
+  const v = record2(raw), limits = v["authorityLimits"];
+  const world = v["worldFingerprint"], index = v["sourceIndexFingerprint"];
+  if (v["effect"] !== "read-only" || key(subject(v["subject"])) !== key(expected) || !Object.hasOwn(v, "canonical") || typeof world !== "string" || typeof index !== "string" || typeof v["sourceStatus"] !== "string" || !Array.isArray(limits) || !limits.every((limit) => typeof limit === "string") || !REQUIRED_INSPECTION_LIMITS.every((limit) => limits.includes(limit)))
+    throw Error("INVALID_INSPECTION_RESPONSE");
+  if (!catalog || world !== catalog["worldFingerprint"] || index !== catalog["sourceIndexFingerprint"])
+    throw Error("STALE_MODEL_PROJECTION");
+  recordUse();
+  return {
+    text: JSON.stringify(v["canonical"], null, 2),
+    version: world + ":" + index,
+    sourceStatus: v["sourceStatus"],
+    authorityLimits: limits.map(inspectionLimitLabel),
+    worldFingerprint: world,
+    sourceIndexFingerprint: index
+  };
+}
+
 // presentation.ts
 var MAX_XEAD_TABLES = 200;
 var MAX_XEAD_FIELDS = 2e3;
@@ -18760,13 +18823,13 @@ function summarizeFindings(findings) {
   const warnings = findings.filter((d) => d.severity === "warning").length;
   return { verified: true, errors, warnings, text: `\u30A8\u30E9\u30FC ${errors}\u30FB\u8B66\u544A ${warnings}` };
 }
-function record2(value) {
+function record3(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw Error("INVALID_MODEL_RESPONSE");
   return value;
 }
-function subject(value) {
-  const v = record2(value);
+function subject2(value) {
+  const v = record3(value);
   if (typeof v.kind !== "string" || !v.kind || typeof v.id !== "string" || !v.id)
     throw Error("INVALID_SUBJECT_RESPONSE");
   return { kind: v.kind, id: v.id };
@@ -18777,13 +18840,13 @@ function optionalString(value) {
   return value;
 }
 function sourceRef(value) {
-  const v = record2(value);
+  const v = record3(value);
   if (typeof v.sourceKind !== "string" || typeof v.sourceID !== "string")
     throw Error("INVALID_XEAD_RESPONSE");
   return { kind: v.sourceKind, id: v.sourceID };
 }
 function readXeadObservation(raw) {
-  const value = record2(raw), observation = record2(value.observation);
+  const value = record3(raw), observation = record3(value.observation);
   const limits = value.authorityLimits;
   const requiredLimits = [
     "xead-observation-is-not-canonical-meaning",
@@ -18800,13 +18863,13 @@ function readXeadObservation(raw) {
   const visibleTables = [];
   let totalFields = 0, visibleFields = 0;
   for (const [tableIndex, rawTable] of tables.entries()) {
-    const table = record2(rawTable);
+    const table = record3(rawTable);
     const fields = table.fields === void 0 ? [] : table.fields;
     if (!Array.isArray(fields)) throw Error("INVALID_XEAD_RESPONSE");
     totalFields += fields.length;
     const visibleTableFields = [];
     for (const rawField of fields) {
-      const field = record2(rawField);
+      const field = record3(rawField);
       const source2 = sourceRef(field.source), name3 = optionalString(field.name);
       const dataType = field.dataType === void 0 ? void 0 : sourceRef(field.dataType);
       if (tableIndex < MAX_XEAD_TABLES && visibleFields < MAX_XEAD_FIELDS) {
@@ -18819,7 +18882,7 @@ function readXeadObservation(raw) {
   }
   const visibleDiagnostics = [];
   for (const [index, rawDiagnostic] of diagnostics.entries()) {
-    const diagnostic = record2(rawDiagnostic);
+    const diagnostic = record3(rawDiagnostic);
     if (typeof diagnostic.code !== "string" || typeof diagnostic.element !== "string" || !Number.isSafeInteger(diagnostic.occurrences) || diagnostic.occurrences < 0 || diagnostic.attribute !== void 0 && typeof diagnostic.attribute !== "string")
       throw Error("INVALID_XEAD_RESPONSE");
     if (index < MAX_XEAD_DIAGNOSTICS) {
@@ -18841,23 +18904,23 @@ function readXeadObservation(raw) {
 }
 var subjectKey = (s) => JSON.stringify([s.kind, s.id]);
 function readCatalog(raw) {
-  const v = record2(raw);
+  const v = record3(raw);
   if (v.effect !== "read-only" || !Array.isArray(v.entries) || typeof v.modelRevision !== "string" || typeof v.worldFingerprint !== "string" || typeof v.sourceIndexFingerprint !== "string")
     throw Error("INVALID_CATALOG_RESPONSE");
   const seen = /* @__PURE__ */ new Map();
   const entries2 = v.entries.map((rawEntry) => {
-    const e = record2(rawEntry), s = subject(e.subject), key = subjectKey(s);
+    const e = record3(rawEntry), s = subject2(e.subject), key2 = subjectKey(s);
     if (typeof e.sourceStatus !== "string" || e.ambiguous !== void 0 && typeof e.ambiguous !== "boolean")
       throw Error("INVALID_CATALOG_ENTRY");
     const ambiguous = e.ambiguous === true;
-    if (seen.has(key) && (!seen.get(key) || !ambiguous))
+    if (seen.has(key2) && (!seen.get(key2) || !ambiguous))
       throw Error("INVALID_CATALOG_ENTRY");
-    seen.set(key, ambiguous);
+    seen.set(key2, ambiguous);
     return {
       subject: s,
       sourceStatus: e.sourceStatus,
       ambiguous,
-      ...e.parent === void 0 ? {} : { parent: subject(e.parent) },
+      ...e.parent === void 0 ? {} : { parent: subject2(e.parent) },
       ...typeof e.symbol === "string" ? { symbol: e.symbol } : {}
     };
   });
@@ -18878,15 +18941,15 @@ function inspectEligibility(catalog, selected2) {
   return { ok: true };
 }
 function readValidation(raw) {
-  const v = record2(raw);
+  const v = record3(raw);
   if (!Object.hasOwn(v, "Direct") || !Object.hasOwn(v, "Diagnostics") || v.Diagnostics !== null && !Array.isArray(v.Diagnostics))
     throw Error("INVALID_VALIDATION_RESPONSE");
   const diagnostics = [];
   if (v.Direct !== null) diagnostics.push(v.Direct);
   for (const item of v.Diagnostics ?? [])
-    diagnostics.push(record2(item).diagnostic);
+    diagnostics.push(record3(item).diagnostic);
   return diagnostics.map((value, index) => {
-    const d = record2(value);
+    const d = record3(value);
     if (!["info", "warning", "error"].includes(String(d.severity)) || typeof d.code !== "string" || typeof d.message !== "string")
       throw Error("INVALID_DIAGNOSTIC_RESPONSE");
     return {
@@ -18896,44 +18959,13 @@ function readValidation(raw) {
     };
   });
 }
-var INSPECTION_REQUIRED_LIMITS = [
-  "inspection-is-a-derived-read-only-projection",
-  "source-location-is-not-semantic-acceptance",
-  "source-location-is-not-write-authority",
-  "local-read-is-not-disclosure-permission"
-];
-var INSPECTION_LIMIT_LABELS = {
-  "inspection-is-a-derived-read-only-projection": "\u8868\u793A\u5185\u5BB9\u306F\u8AAD\u307F\u53D6\u308A\u5C02\u7528\u306E\u6D3E\u751F\u60C5\u5831\u3067\u3059\u3002",
-  "source-location-is-not-semantic-acceptance": "\u5143Source\u306E\u4F4D\u7F6E\u304C\u5206\u304B\u3063\u3066\u3082\u3001\u696D\u52D9\u4E0A\u306E\u610F\u5473\u304C\u53D7\u7406\u3055\u308C\u305F\u3068\u306F\u9650\u308A\u307E\u305B\u3093\u3002",
-  "source-location-is-not-write-authority": "\u5143Source\u306E\u4F4D\u7F6E\u306F\u3001\u7DE8\u96C6\u3084\u4FDD\u5B58\u306E\u8A31\u53EF\u3092\u793A\u3057\u307E\u305B\u3093\u3002",
-  "local-read-is-not-disclosure-permission": "\u30ED\u30FC\u30AB\u30EB\u3067\u8AAD\u3081\u3066\u3082\u3001\u5916\u90E8\u3078\u306E\u958B\u793A\u304C\u8A31\u53EF\u3055\u308C\u305F\u3068\u306F\u9650\u308A\u307E\u305B\u3093\u3002"
-};
-function readInspection(raw, expected, catalog) {
-  const v = record2(raw), limits = v.authorityLimits;
-  if (v.effect !== "read-only" || subjectKey(subject(v.subject)) !== subjectKey(expected) || !Object.hasOwn(v, "canonical") || typeof v.worldFingerprint !== "string" || typeof v.sourceIndexFingerprint !== "string" || typeof v.sourceStatus !== "string" || !Array.isArray(limits) || !limits.every((limit) => typeof limit === "string") || !INSPECTION_REQUIRED_LIMITS.every((limit) => limits.includes(limit)))
-    throw Error("INVALID_INSPECTION_RESPONSE");
-  if (!catalog || v.worldFingerprint !== catalog.worldFingerprint || v.sourceIndexFingerprint !== catalog.sourceIndexFingerprint)
-    throw Error("STALE_MODEL_PROJECTION");
-  return {
-    text: JSON.stringify(v.canonical, null, 2),
-    version: `${v.worldFingerprint}:${v.sourceIndexFingerprint}`,
-    sourceStatus: String(v.sourceStatus ?? "unknown"),
-    worldFingerprint: v.worldFingerprint,
-    sourceIndexFingerprint: v.sourceIndexFingerprint,
-    // Display limits returned by the actual read-only Host operation, not a
-    // client-side guess at grants or the current acceptance state.
-    authorityLimits: limits.map(
-      (limit) => INSPECTION_LIMIT_LABELS[limit] ?? `\u8FFD\u52A0\u306E\u5229\u7528\u5236\u9650\uFF1A${limit}`
-    )
-  };
-}
 function relatedGraph(entries2, selected2) {
-  const key = subjectKey(selected2);
-  const active = entries2.find((e) => subjectKey(e.subject) === key);
+  const key2 = subjectKey(selected2);
+  const active = entries2.find((e) => subjectKey(e.subject) === key2);
   const candidates = entries2.filter(
-    (e) => subjectKey(e.subject) === key || e.parent && subjectKey(e.parent) === key || active?.parent && subjectKey(e.subject) === subjectKey(active.parent)
+    (e) => subjectKey(e.subject) === key2 || e.parent && subjectKey(e.parent) === key2 || active?.parent && subjectKey(e.subject) === subjectKey(active.parent)
   );
-  const ordered = active ? [active, ...candidates.filter((e) => subjectKey(e.subject) !== key)] : candidates;
+  const ordered = active ? [active, ...candidates.filter((e) => subjectKey(e.subject) !== key2)] : candidates;
   const visible = ordered.slice(0, 8), visibleKeys = new Set(visible.map((e) => subjectKey(e.subject)));
   return {
     hidden: Math.max(0, candidates.length - visible.length),
@@ -18985,14 +19017,14 @@ async function readPinnedSubject(client2, request, catalog) {
 function initialPinState() {
   return { generation: 0, intent: null, observation: { state: "unqualified" } };
 }
-function pinSubject(previous, workspaceId, workspaceEpoch2, subject2) {
+function pinSubject(previous, workspaceId, workspaceEpoch2, subject3) {
   const generation = previous.generation + 1;
   return {
     generation,
     intent: {
       workspaceId,
       workspaceEpoch: workspaceEpoch2,
-      subject: { kind: subject2.kind, id: subject2.id },
+      subject: { kind: subject3.kind, id: subject3.id },
       generation
     },
     observation: { state: "unqualified" }
@@ -19068,8 +19100,8 @@ var graph = mountReadonlyGraph(
   element("graph"),
   { width: 680, height: 240, nodes: [], edges: [] },
   {
-    onSelect(key) {
-      const entry = entries.find((e) => subjectKey(e.subject) === key);
+    onSelect(key2) {
+      const entry = entries.find((e) => subjectKey(e.subject) === key2);
       if (entry) emitInspectorSelection(element("graph"), {
         workspaceId: workspace.value,
         workspaceEpoch,
@@ -19322,14 +19354,14 @@ function renderList() {
   }
   renderPin();
 }
-async function inspect(subject2) {
+async function inspect(subject3) {
   if (!client || !workspace.value || disposed) return;
-  const eligibility = inspectEligibility(catalogSnapshot, subject2);
+  const eligibility = inspectEligibility(catalogSnapshot, subject3);
   if (!eligibility.ok) {
     responses.invalidate("inspection");
     const request2 = ++inspectionEpoch;
     selected = null;
-    title.textContent = subject2.id;
+    title.textContent = subject3.id;
     renderList();
     editor.setDocument({
       id: "unresolved",
@@ -19345,8 +19377,8 @@ async function inspect(subject2) {
     return false;
   }
   const context = workspaceEpoch, request = ++inspectionEpoch, id = workspace.value;
-  selected = subject2;
-  title.textContent = subject2.id;
+  selected = subject3;
+  title.textContent = subject3.id;
   renderList();
   element("source-status").textContent = "\u30E2\u30C7\u30EB\u6295\u5F71\u3092\u53D6\u5F97\u4E2D";
   showInspectionLimits(null, "\u53D6\u5F97\u4E2D");
@@ -19355,14 +19387,14 @@ async function inspect(subject2) {
     version: `${context}:${request}`,
     text: "\u9078\u629E\u3057\u305F\u8981\u7D20\u3092\u53D6\u5F97\u3057\u3066\u3044\u307E\u3059\u3002"
   });
-  const related = relatedGraph(entries.filter((entry) => !entry.ambiguous), subject2);
+  const related = relatedGraph(entries.filter((entry) => !entry.ambiguous), subject3);
   graph.update(related.input);
-  graph.setSelectedNode(subjectKey(subject2));
+  graph.setSelectedNode(subjectKey(subject3));
   element("graph-note").textContent = related.hidden ? `\u89AA\u5B50\u95A2\u4FC2\u306E\u3046\u30618\u4EF6\u3092\u8868\u793A\uFF08\u307B\u304B${related.hidden}\u4EF6\uFF09` : "\u9078\u629E\u8981\u7D20\u3068\u3001\u4E00\u89A7\u306B\u542B\u307E\u308C\u308B\u76F4\u63A5\u306E\u89AA\u5B50\u95A2\u4FC2";
-  return responses.run("inspection", () => client.inspectSubject(id, subject2.kind, subject2.id), (reply) => {
-    const view = readInspection(unwrap(reply), subject2, catalogSnapshot);
+  return responses.run("inspection", () => client.inspectSubject(id, subject3.kind, subject3.id), (reply) => {
+    const view = readInspection(unwrap(reply), subject3, catalogSnapshot);
     editor.setDocument({
-      id: `${id}/${subjectKey(subject2)}`,
+      id: `${id}/${subjectKey(subject3)}`,
       version: view.version,
       text: view.text
     });
@@ -19511,8 +19543,8 @@ var panel = mountCommandPanel(element("commands"), {
 document.addEventListener(INSPECTOR_SELECTION_EVENT, (event) => {
   const target = event.target;
   if (!(target instanceof Node) || !list.contains(target) && !element("graph").contains(target)) return;
-  const subject2 = inspectorSelectionFromEvent(event, workspace.value, workspaceEpoch);
-  if (subject2) void inspect(subject2).catch(showFailure);
+  const subject3 = inspectorSelectionFromEvent(event, workspace.value, workspaceEpoch);
+  if (subject3) void inspect(subject3).catch(showFailure);
 });
 workspace.addEventListener("change", () => {
   search.value = "";

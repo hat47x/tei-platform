@@ -72,9 +72,9 @@ func TestCheckCloseRequirementLeavesAnUndeclaredPeriodAlone(t *testing.T) {
 }
 
 // TestClosingRequirementDoesNotPreventCorrectionReopen keeps the two
- // independently declared capabilities on their respective transitions.
- // The command supplies one capability name per step; a different close and
- // correction capability must not make the reopen impossible.
+// independently declared capabilities on their respective transitions.
+// The command supplies one capability name per step; a different close and
+// correction capability must not make the reopen impossible.
 func TestClosingRequirementDoesNotPreventCorrectionReopen(t *testing.T) {
 	requirement := operations.PeriodRequirement{
 		Period: "sales.month", Capability: "sales.period.close",

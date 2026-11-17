@@ -1776,3 +1776,17 @@ mainの`7921b005`で製品`workspace.Load`に内蔵`tei.rule-authoring/v0` Reade
 Raw Sourceの説明文のみの改版はSource Indexを失効させるが、意味版・Artifact再利用は#2600で別に判定する。Rule条件改版、同Labelで別Subject、Generator/Toolchain改版、Provider選択改版、現在Grant失効を一つの`ready`値へ潰さない。**R2/R3が進んでも外部Language Plugin／Graph・Window Reader／Plugin Doc Read／Updaterを新Hard Gateにしない。**
 
 **この追記は現行Goと並行PRからの実装引渡しであり、新しいGo、CLI実Provider、Windows Stage2の実行結果は含まない。** 必要な正負例は既存#1180/#2514へ戻し、Runner/Host/Registryを増設しない。
+
+<!-- tei-plugin-consumer-admissibility-plan-20261117 -->
+## 2026-11-17 横断Plugin：型付き配線から用途別の利用適格性へ
+
+[接続検収票§13](../design/PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md)を、他レーンの標準データ様式・Node View・Rule／Process・APIの共通Operationと接合する。**型一致・値一致を、全件性・Presence・Identity・現在Grant・Consumer受領の代用にしない**。Whole／Field／明示Adapterの配線は残し、用途に必要な根拠が失われた場合だけ下流の判断を保留・拒否する。NodeはOperationの出現、Graphはread-onlyなProjectionであり、業務Relation／Runtime Callの正本ではない。
+
+| 順位 | 最小成果とOwner | 証明する境界／未完の境界 |
+| --- | --- | --- |
+| P0並行・PC-A | #2495/#2497/#2506/#2514：既存Field投影×原Contextを比較し、CPW-11/12/14（NULLと未取得、partialの存在／不存在、必要Field喪失）を固定 | read-onlyの用途別適格性。新しいEnvelope・Runner・Core型を作らない |
+| P0本線・PC-B | #2586/#4495/#1251：通常製品CLIのFunction→actual Provider→実Read→一Consumerを同一Attemptで追う。CPW-13/15のIdentity／精度を独立Expectedで検証 | 通常CLI実ProviderとConsumer受領。SQL値一致から全件性や認可を導かない |
+| P0別本線・PC-C | #2831/#4583：Studio Stage1→Stage2の実Windows Consumerを独立検収。#3422/#2390：API公開は共通OperationのSurface Adapterとして別途照合 | CLIでの成功をWails・HTTPの実呼出しへ継承しない。CPW-16を対象 |
+| P1・PC-D | #1129/#1174：必要になったときだけHook Guard→単一Call→Receipt→独立readback | effectUnknown時に無条件再実行しない。外部通知・Commitの受理は別 |
+
+これは既存P0の優先順位やOwnerを変更しない**受入候補**である。CPW-11〜16、実CLI／DB／Windows／外部Hostの追加E2E、業務意味の受理はNOT RUN。PRはSource・Scope・Attempt・出典の対応と新規試験のexact HEADを独立して確認してから統合する。

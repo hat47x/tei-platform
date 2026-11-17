@@ -1,0 +1,8 @@
+Q: are there more packages whose tests silently do not run?
+(That class appeared in rounds 82, 83, 84.)
+
+  $ go test -run '^$' ./...
+  (no output)
+  failing-to-build entries: 0
+
+A: no. Every package's tests compile on current main.

@@ -1134,4 +1134,38 @@ S3の最小受入は、単一所属Occurrence・Assertion revision・物理行�
 | S4 判断候補 | Ruleの必要Read集合、時点、Case/Role改訂と現在Grantを照合する | Query結果1件＝唯一決裁者、Person＝Principalとしない |
 | S5 表示・Plugin | Table/Graph/Tree/SHOのSource Relation occurrence・hidden EdgeとPluginのport/Adapterを追跡 | 見た目やport Shapeが同じでも、Law・Binding・Disclosureを省略しない |
 
-新規Go試験は既存実PostgreSQL suiteの同一`TestOrgAxisAsOfActualPostgresOptIn`内で実行し、独立した一時表だけを用いる。対象HEADの**明示PASS・非SKIP・gofmt**を確認するまでは未受入。次のProduct Exitは#2586の通常CLI Function→Query→実Provider→Consumer同Attempt受領と、人物RelationのOwner採否を独立に進める。#2831のDesktopセルフビルドは先行P0のまま維持する。
+新規Go試験は既存実PostgreSQL suiteの同一`TestOrgAxisAsOfActualPostgresOptIn`内で実行し、独立した一時表だけを用いる。[PR #5184](https://github.com/hat47x/tei-platform/pull/5184)の初回実PG CIは整形失敗のためNOT RUNだったが、main統合済み[PR #5210](https://github.com/hat47x/tei-platform/pull/5210)の[固定run #43900533159](https://github.com/hat47x/tei-platform/actions/runs/43900533159)で、追加した二世界サブテストの明示PASS、gofmt、非SKIPを確認した。**二世界の観測不十分性の反例のみ合格**とする。次のProduct Exitは#2586の通常CLI Function→Query→実Provider→Consumer同Attempt受領と、人物RelationのOwner採否を独立に進める。#2831のDesktopセルフビルドは先行P0のまま維持する。
+
+<!-- org-cross-stream-claim-exit-20261117 -->
+### 10.21 実Queryの観測から、ClaimとConsumerの利用資格へ進む
+
+[組織C1補遺§44.3](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)に、**同じ結果を返す二世界でも結論が異なるClaimは、その結果だけでは確定できない**という検査を加えた。組織固有の判定器を作らず、既存Scenario・Function Data Context・Result Slice・Claim/Projectionを使って受入範囲を引き継ぐ。
+
+| 経路 | 次の製品Exit | 未証明のままにすること |
+| --- | --- | --- |
+| S3→S4 (#2586/#2506) | 通常CLIで選択したFunction→Query→実Provider→一Consumerの同じAttempt、Source/Query版・入力・Read Scope・Result Slice・未確定状態を照合 | 独立ReferenceのReader成功を通常CLIのConsumer受領と同一視しない |
+| S4 Claim (#2514/#2593/#4490) | Membership件数、distinct Person、配賦FTE、責任・承認候補について別の必要情報・粒度・Expectedを定める | Queryの3列と4所属の観測を人物数確定や現行権限と扱わない |
+| S5 Projection/Port (#2497/#2516/#1124) | Graph/Tree/SHO/Pluginの型付きPort・Adapterと投影損失、ConsumerのDisclosureを比較 | Nodeの表示や型ShapeだけでPerson Link・Relation Edge・Grantが復元されたとみなさない |
+
+Person Linkの同一性、訂正か再所属か、どの時間条件で人数を数えるかは#2386/#1126のOwnerが採否を判断する。S3の実DB反例はその判断を代行しない。#2831 Desktopセルフビルドは引き続き独立P0。
+
+
+<!-- org-claim-sufficiency-delivery-20261117 -->
+### 10.22 Claimの情報十分性を、通常CLI実受領から段階的に製品検収する
+
+[組織C1：観測の十分性から業務判断・Consumerへ進むための受入計画](ORGANIZATION_C1_CLAIM_SUFFICIENCY_DELIVERY_2026-11.md)に、§10.20〜10.21の次の実装順・判別ケース・停止条件をまとめた。PR #5155/#5210の隔離PostgreSQL局所PASSを基線とし、人物数の正式確定、二Consumer、業務Rule、Host Effectの合格とはしない。
+
+製品Exitは **G1 通常CLIのFunction→実Provider→一Consumer同一Attempt受領 → G2 Owner受理済みPerson Linkと正式二時点保存 → G3 人物数/FTE等のClaim別十分性 → G4 二Consumerと損失認識Projection → G5 業務候補・現在Grant・Effect** と分ける。G1とG2の準備、G4の独立Expectedは並行可能。G3の確定値は正式Linkと完全Readがそろうまでunknownにする。各Gateは既存Owner/Scenario/Expectedへ接続し、組織専用Runtimeや新しい意味正本を設けない。
+
+優先P0は引き続き #2586 の通常CLI実Readと #2831 のDesktopセルフビルド。上記G1〜G5は**本追補時点では計画であり未実行**。固定HEAD・実Provider・Consumer受領・Owner受理を別々に確認してから受入状態を更新する。
+
+<!-- org-claim-quantifier-handoff-20261117 -->
+### 10.22 S3→S4のClaim判断を、量化と取得範囲ごとに検収する
+
+[組織C1補遺§44.4](ORGANIZATION_C1_TEMPORAL_DECISION_CONFORMANCE_2026-11.md)は、二世界の観測不十分性をさらに具体化し、部分取得の存在証人・反例から結論を確定できる場合と、対象母集団の閉包が必要な場合を分けた。
+
+- **片側結論**：同一Scope/時点/Query条件でR⊆Lが確立したMembership occurrenceを1件観測すれば「1件以上」は真、異なる2 IDなら「高々1件」は偽。ただしpartialな0件は不存在を、partialな1件は唯一性を証明しない。
+- **業務上の粒度**：Membershipの結果をPerson数・配賦FTE・承認候補へ昇格しない。正式Person Relation、否定条件を含むRuleの必要Read、valid/knownとRead Cohort、Claimごとの完全集合性を分けて要求する。
+- **Owner配分**：#2586/#2506の同一Attempt実Read・一Consumer、#2514の片側結論と独立Expected、#2386/#1126のPerson意味受理、#4490の判断候補、#2497/#2516の情報損失・Disclosureを接続する。新Org Evaluator、Temporal Engine、Expected Storeは設けない。
+
+最小の追加試験は**同一条件で0/1/2所属をcomplete/partialそれぞれで照合し、確定・反証・unknownを一Consumerへ伝える**こと。既存Expectedの拡張として行い、新しい検証正本は作らない。Person数と承認候補は正式Relation・Ruleの受理後に別資格で確認する。設計のみで実Provider/Consumerの合格や現在Grantを主張しない。通常CLI実Read #2586とStudioセルフビルド #2831を引き続き先行P0とする。

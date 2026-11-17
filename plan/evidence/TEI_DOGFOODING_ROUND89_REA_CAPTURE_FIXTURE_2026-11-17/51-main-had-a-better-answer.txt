@@ -1,0 +1,12 @@
+I added captured-delivery.json under externalanalysis and repointed the test.
+It worked (two mutations caught it). Then the sync revealed:
+
+  948efe9b6 test(cli): REA二入口の回帰が自前のcaptured deliveryを読むようにする (#5176)
+
+main had already solved the same issue by giving the regression its own capture:
+
+  cmd/tei/testdata/rea-6.8.0/analysis.json   78000 bytes  7ea3780d...
+  cmd/tei/testdata/rea-6.8.0/README.md
+
+Same bytes, same digest as mine, and self-contained. Mine was a duplicate with
+no reader, so I removed it and its manifest entry rather than keep two copies.

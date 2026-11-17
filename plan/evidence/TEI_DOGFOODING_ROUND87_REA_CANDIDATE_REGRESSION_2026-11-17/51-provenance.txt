@@ -1,0 +1,18 @@
+Bisected by checking out the introducing commit:
+
+  3429c7891  test(rea): 保存REA原本の二入口と並行Relation回帰を統合
+     -> all three PASS at this commit
+
+  606134e63  refactor(rea): restrict intake to evidence receipts
+     -> this is where they began to fail
+
+The refactor deleted:
+
+  set, err := reacandidate.GenerateCandidates(evidence)
+  ...BindCandidates... PreviewAdoption...
+
+and replaced it with three hardcoded entries:
+
+  {"candidateId": "candidate-1", "kind": "data-element", ...}
+  {"candidateId": "candidate-2", "kind": "data-element", ...}
+  {"candidateId": "candidate-3", "kind": "data-element", ...}

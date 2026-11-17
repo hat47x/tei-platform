@@ -129,19 +129,12 @@ Consumerに渡せるかを考えるとき、以下の三層は別の問いであ
 
 追加の独立Expectedは既存[PIO-17〜23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[DPC-09〜13](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に結び付け、新しい検収ID群を増やさない。PR #5162／#5163の文書統合をPlugin Portや実Providerの製品PASSへ昇格させない。
 
-## 10. 値の投影で失われる取得状態と、Ruleの読取義務を分ける（2026-11-17）
+## 10. 任意Fieldの値投影では、読取状態を保証できない（2026-11-17）
 
-PC-1aのGo回帰がmainへ統合された[PR #5156](https://github.com/hat47x/tei-platform/pull/5156)では、`select-field`による必須Fieldの欠落拒否と、明示的NULLの保持を確認した。一方、同じ演算の`optional: true`は、**Fieldが存在しない場合もNULL値を出力する**。純粋なRecord投影では適法な使い方があっても、そのJSONだけから「格納値がNULLだった」「まだ読んでいない」「公開を許されていない」を復元できない。
+既存`transform`の`select-field(optional=true)`では、入力RecordにFieldが存在しない場合と、Fieldの値が明示的NULLの場合に、**同じNULLの投影結果**を得られる。この動作は値の整形として有効だが、出力JSONだけから「元からNULLだった」「未取得だった」「公開対象外だった」を区別することはできない。逆に、必須Fieldの欠損を拒否するPC-1aの機能と、意味Ref・取得完全性を保証する機能は同一視しない。
 
-新たな`plugin_field_presence_boundary_test.go`は、入力Recordの`amount`を「Field欠落／明示NULL」に一因子変更しても、`optional`投影結果が一致することを**負の証拠**として示す。同じ意味IDに対する状態付きRuleの読取では、既存`validationeval.Decide`が`undecided(value-null)`と`undecided(value-not-fetched)`を区別し、正値が読めた場合は判断を確定する。数値を読み取る要求Attribute IDも呼出し記録で照合する。この試験は**実際のPort Binder・実Provider・Host公開や権限判断のテストではない**。
+[PR #5214](https://github.com/hat47x/tei-platform/pull/5214)のGo試験は、この情報損失を一因子の負例にし、別に与えた型付き`StatefulSource`に対して`validationeval.Decide`が`value-null`／`value-not-fetched`を異なる理由で報告すること、Ruleが要求したAttribute IDを読んだことを確認する。二つのReaderはこの局所試験で**実Providerへ接続されたわけではない**。
 
-| 境界 | 正本を持つ側 | 接続提案の扱い |
-| --- | --- | --- |
-| Recordの値・投影 | `transform.Value`／pure Transform | 必須Fieldが無ければ拒否。任意Fieldの欠落をNULLへ写す選択は可能だが、取得状態の保存とは主張しない |
-| 属性の意味・取得状態 | 選択済みData／RuleのAttribute Ref、Readerの`ValueState`／関係`Coverage` | 利用側が状態区別を要求するなら、値だけの投影を不適格または未確定とする。契約上の選択根拠を残す |
-| 判断の確定可能性 | 既存`validationeval.Decide`と独立Expected | `not-fetched`をNULLや0へ補完せず、部分取得でも結論が不変な場合だけ確定 |
-| 公開・実行資格 | 現行HostのGrant・Disclosure・選択済みProvider／Attempt | Projection成功を権限付与へ変換しない。Audienceを一段越える場合は現在資格を再確認 |
+適格性は三段で扱う。**接続可能性**はContract／Field ID・型・Role／意味と明示Mappingで、**判断可能性**は実Readした値状態・Relation Coverage・Ruleの要求範囲で、**配送可能性**は現在のScope・Grant・Audience・Disclosure・実Called Providerで、それぞれ確認する。取得状態を必要とするConsumerへNULLだけのProjectionを渡して、その状態が保存されたとは主張しない。状態を運ぶ新しい`transform.Value`型や第二のRule Runnerは設けない。
 
-**PC-1bの設計判断**：取得状態を必要とするConsumerへ接続する前に、実Readの属性ID、取得状態、集合の範囲、Required Context、契約版を照合する。値だけで十分なConsumerにはpure Transformを再利用してよいが、情報損失を暗黙に許容した扱いにはしない。現行`transform.Value`に第二の状態モデルを足したり、NULLを含むValueに新たなHost Grantの意味を与えたりしない。
-
-[型付きI/O設計§22](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)のPIO-24〜29と[標準Flow設計§12.6〜12.8](SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)を既存の独立Expectedとして使用する。最初に成立するのは**「同じ値でも取得状態によってRuleが異なる答えを返す」局所的な反例**であり、正式なSource→Mapping→実Provider→Consumerの縦断検収は別に残る。
+実Source／Query／Relation／AttributeのBinding、DB Queryの取得範囲と観測根拠、実Consumerの同一Attemptでの受領は、既存[Plugin I/O §23](PLUGIN_DEPENDENCY_IO_MAPPING_DESIGN_2026-10.md)と[PC-1bの実行計画§7](../workstreams/PLUGIN_PORTABLE_CONTRIBUTION_EXECUTION_2026-11.md)へ引き渡す。特に`coverage=complete`をCallerの自己申告だけで保証とみなさない。実Provider資格の不足を、値の一致・Rule例・投影成功で補わない。
