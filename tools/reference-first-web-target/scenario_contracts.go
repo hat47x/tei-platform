@@ -27,13 +27,13 @@ type readScenarioResult struct {
 	// was read, in the order of OrderLineRows. RelationAnswers holds the answers
 	// of rules about the whole relation. Both are the same three-valued answers
 	// `tei view -environment` reports, not a new judgement.
-	RowAnswers      []rowAnswerProjection      `json:"rowAnswers"`
-	RelationAnswers []string                   `json:"relationAnswers"`
+	RowAnswers      []rowAnswerProjection `json:"rowAnswers"`
+	RelationAnswers []string              `json:"relationAnswers"`
 	// ReadIdentity names the read this page shows: the selected order, the
 	// header-detail Contract Query target, and the inputs that Query was
 	// executed with. The answers are bound to it, so a list produced by a
 	// different read is refused instead of rendered under these rows.
-	ReadIdentity readIdentityProjection `json:"readIdentity"`
+	ReadIdentity    readIdentityProjection     `json:"readIdentity"`
 	RuntimeBindings []runtimeBindingProjection `json:"runtimeBindings"`
 	AuthorityLimits []string                   `json:"authorityLimits"`
 	Unresolved      []string                   `json:"unresolved"`
