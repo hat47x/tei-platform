@@ -107,6 +107,12 @@ func readDestinationOrderLines(
 	if err != nil {
 		return destinationRead{}, err
 	}
+	// Reject a bad source-attribute or typed Query-input binding before
+	// opening the database. A valid-looking CLI name is not a sufficient
+	// reason to call an external Provider.
+	if _, err := resolver.PrepareHeaderDetailContractQuery(appID, patternID, source, 0); err != nil {
+		return destinationRead{}, fmt.Errorf("runtime view input binding is invalid: %w", err)
+	}
 
 	var selected *environment.Environment
 	for i := range world.Environments {
