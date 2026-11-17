@@ -760,3 +760,24 @@ R1の最初の問いを「旧Function FはData Dを読むか」と置くと、�
 TEI自己記述側の例示GraphやX-TEAのTask→TaskAction→TaskFunctionIO→Function→IOTableの関係図は、検証する**構造の形**を示す。実在する旧原本のByte/Range/Revisionと対応が取れない限りM-01は`blocked`、Function-level CRUDと実行Effectを結ぶ観測がない限りM-04は`unknown`のままにする。これらを同じモデルに載せることは、外部REAの`imports`等の関係を実Read/Writeへ昇格させる根拠にはならない。
 
 **次の小さな実装候補**：既存Source Indexの一つの原文Rangeから、原典ID・Source版・三要素候補・不明理由を読取専用で表示し、原典が未特定／改版／部分取得の場合は正式IDへの自動対応付けを拒否する負例を作る。Ownerが原典を選定するまでは新規ReaderやGeneratorを追加しない。#2586の実PG Function Readと#2831のWindows Studioセルフビルドは別P0として継続する。
+
+## 39. 一Function移行Reviewの独立Expectedと負例（2026-11-17）
+
+§38の自己記述との共通Reviewは、**表示ができたこと**と**対応付けを受理できたこと**を分けて検査する。最初の小さな実装では、既存Source Indexで読取可能な原本一Rangeと、既存三要素モデルのQualified Data／Function候補を対象とし、外部REAを前提にしない。原典のSource ID・位置・Byte Revision、Candidate ID、正式Qualified ID、Owner判断は同じID空間へ潰さず、検証票の別欄に残す。
+
+| Case | 入力条件 | 独立Expected／停止線 |
+| --- | --- | --- |
+| MR-01 | 旧Functionの原文Rangeを完全に読取可能 | 取得したSource版とRangeを表示し、候補の対応は`pending`。読取成功だけで正式Functionへ昇格しない |
+| MR-02 | 同名の旧Functionが二箇所、または同名のDataとBusinessが存在 | Source occurrence／Element Kind／Qualified IDで別Identityを維持。名前だけの一意解決を拒否 |
+| MR-03 | 同じFunction／Data間にR・Uの複数宣言がある | 既存CRUD表・Function–Data相互参照の表示粒度を揃え、派生RUと明示CRUDを区別。宣言と実行Effectは別 |
+| MR-04 | 明示CRUDとFunction宣言の操作集合が矛盾 | 両方の原宣言とConflictを残す。見やすい表示のために片方を消さない |
+| MR-05 | Sourceが改版、または同じByteに戻るA→B→A | 現在Byte一致とSource Revision／取得Attemptの履歴を区別。古い受理・旧Rangeを自動再利用しない |
+| MR-06 | SourceがPartial／unavailable／permission-denied | 原文未確認の理由を表示し、`mapping-pending`。未観測の関係を「存在しない」と判定しない |
+| MR-07 | 外部REAの`imports`／`loads`だけが存在 | 外部Relation occurrenceは観測として保持。正式Read／Write／Business Role／現在Grantの証明にはしない |
+| MR-08 | 原文・三要素図は一致するが、旧実行のDB Effect receiptがない | M-01〜M-03の限定結果だけ記録。M-04実Effect、M-05生成・Provider、M-06旧新比較は`unknown`／`not-run` |
+| MR-09 | 旧実行とTEI実Readで取得Scope・NULL／欠損・複合キーのいずれかが異なる | 観測範囲を明示し、見かけの行数や表示値の一致を旧新同等としない |
+| MR-10 | CLIで候補を確認できるが、Studioで原文を開けない | Source位置表示、Hostの現在Root内原文再読取、Windows Native受領を別判定。閲覧Grantを捏造しない |
+
+**実装・試験の順序**：最初にMR-01／02／05／06を一つの原文Rangeで固定し、既存Source Indexの返す実際の資格を観察する。次にMR-03／04を既存`internal/threeelement`のCRUD・相互参照へ接続し、同名別Kindや明示／派生の矛盾を表示する。MR-07は既存`reacandidate`の読取専用Reviewを再利用する。MR-08〜10は旧実行／Provider／Host／Studioの実証を要するので、設計上のExpectedを定義しただけでPASSにしない。
+
+**Ownerへの引継ぎ**：選択した旧原典の実Source Revision、候補のQualified ID、採用対象のFunction–Data関係、未解決のRead／Write／Business責任を一枚のReview Packetで示す。ただしPacketは閲覧用であり、Ownerが受理した正式モデルへの変更や現在の実行権限を自動的に発生させない。実行受入は通常CLI実PG Read #2586、Studio Stage1→Stage2 #2831、独立Expected #1180／#2514に分離する。
