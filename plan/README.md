@@ -1,6 +1,6 @@
 # TEIの開発計画
 
-[開発全体の計画](MASTER_PLAN.md)と[マイルストーン](MILESTONES.md)は、期限を設けず、製品の価値、作業の依存関係、完了条件を整理する正本です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
+優先順位の正本は[いま進めること](NOW.md)です。[開発全体の計画](MASTER_PLAN.md)はこれまでの経緯の記録、[マイルストーン](MILESTONES.md)は期限を設けない能力の到達点の定義です。全体像は[TEIの考え方](../docs/overview.md)、現時点での実証範囲は[実装状況](../docs/status.md)を参照してください。
 
 `plan/`は、製品要求、着手順、受入シナリオ、設計判断、検証根拠をつなぐ計画の入口です。全体計画とマイルストーンは直下に置き、個別の計画文書は役割ごとのディレクトリにまとめます。
 
@@ -17,7 +17,8 @@
 
 | 調べたいこと | 参照先 |
 | --- | --- |
-| 全体の着手順と現在の主線 | [`MASTER_PLAN.md`](MASTER_PLAN.md) |
+| いま進めること、優先順位、止めるもの | [`NOW.md`](NOW.md) |
+| これまでの経緯の記録 | [`MASTER_PLAN.md`](MASTER_PLAN.md) |
 | 要求から受け入れシナリオ、検証根拠まで | [`UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md`](UPSTREAM_ACCEPTANCE_SCENARIO_TRACEABILITY.md) |
 | 個別作業の目的・完了条件 | GitHubの課題 |
 | 採用した設計判断 | [`adr/README.md`](adr/README.md) |
