@@ -100,6 +100,9 @@ func (r Resolver) QualifyHeaderDetailCoverage(resolution ResolvedHeaderDetailCon
 	var storage *persistence.RelationStorageMapping
 	for i := range mapping.RelationStorage {
 		if mapping.RelationStorage[i].Relation == relation {
+			if storage != nil {
+				return partial("persistence mapping %s declares storage of %s more than once", mapping.ID, relation)
+			}
 			storage = &mapping.RelationStorage[i]
 		}
 	}
