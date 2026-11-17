@@ -131,3 +131,46 @@ XenSQL型のRDB Inspector、Redis Viewer型のKey/Value・JSON Tree、Graph/Node
 **実装順**：①§7の既存SQLite負例と製品CallerのCoverage照合、②通常CLIの実PostgreSQL同一Function、③read-only Node/REA/Batchの型付き投影、④MongoDB等のProvider別適合、⑤Studio固定Selectionから実更新・独立Read。Node／REA／Batchの追加検証をStudio Stage1→Stage2セルフビルドのHard Gateにしない。
 
 **未実施**：上記DPC-N/R/B/W/Eは引渡し用の独立Expected候補であり、実DB、実Job、実Windows、業務Owner受理を実証したものではない。
+
+## 9. 観測した行と業務上の判断を分ける：Claim Sufficiency（2026-11-17）
+
+組織C1の実PostgreSQL反例（#5155、#5210）では、同じMembershipの実Query結果4件に対し、仮想Person対応を変えるとdistinct Personが4人にも3人にもなる。これはSQLの成功、Rowsetの完全取得、型付きPortの接続が揃っても、**業務上の問いに必要な情報が揃ったとは限らない**ことを示す。#2506/#2514の観測十分性と本計画のCoverageを接続するが、正式Person Relationの受理や製品Functionの実行成功に読み替えない。
+
+### 9.1 完全性と十分性を二つの問いとして検証する
+
+- **Coverage**：要求したQuery/Relation/Scopeの行・列・ページ・時点を取り切ったか。§7のrequested/observed/claimed/qualifiedで確認する。
+- **Claim Sufficiency**：その観測から、Consumerが求める業務Claimを一意に決められるか。Claimが必要とするEntity、Relation、Key、時間条件、粒度、権限上の開示範囲を照合する。
+
+Coverageが完全でもClaimに必要なRelationが欠ければ、判断は未確定。逆に、偶然同じ答えになった部分取得を完全と認めない。Claimの確定には業務Ownerが受理した意味と、独立Expectedによる照合が必要であり、SQL ASTやAIの推定を受理に昇格させない。
+
+### 9.2 同一の型付きDataを用途別に受け渡す
+
+| Consumerの問い | 必要な粒度・参照 | 不足時の扱い |
+| --- | --- | --- |
+| 所属件数 | Membership occurrenceと対象ScopeのCoverage | 部分件数として表示、確定件数にしない |
+| 人物数 | 受理済みPerson Link、Person Identity、二時点の対応 | Membership数から推定しない |
+| 配賦FTE | Allocationの単位・精度・有効時点と集計規則 | 人物数や件数へ換算しない |
+| 承認可能者 | 現在のRole/Grant、Caseの条件、必要なPerson/Org関係 | 過去のRole Snapshotだけで許可しない |
+| 更新対象 | 物理Keyと業務Identity、Version/CAS、Source Binding | 表示行やGraph occurrenceだけで更新しない |
+
+同一Query結果をTable、Graph、Batch、Rule、VUIへ再利用しても、Consumerごとの必要条件は別。共通のData Contextを維持しながら、用途別の不足情報を明示する。これは新たなClaim Engineの採用ではなく、既存Function/Role/Facet/Ruleの受理票の整理である。
+
+### 9.3 D0の受入票を一段だけ具体化する
+
+最初のProduct Read（#2586）は次の順序で確認する。
+
+1. Sourceと実Query/Provider、対象Instance、typed parameter、Rowset、Data Context、通常CLI Consumerが**同一Attempt**に属することを示す。
+2. Query結果の行数、列、NULL、Scope、Snapshot、ページ終端を記録し、Callerの完全性申告を独立に検査する。
+3. Consumerが求めるClaimを一つだけ明示し、そのClaimに必要なIdentity/Relation/粒度/時点がRowsetにあるかを確認する。
+4. 反例として、同一RowsetでClaimだけが変わる二世界、部分ページをcompleteと偽装した場合、別時点のRelation混合を独立Expectedで拒否する。
+5. 成功の範囲は「当該Function・当該Consumer・当該実Provider・当該Claim」に限定する。他のDB、別のClaim、更新権限、Studio実機を含めない。
+
+D0で必要なClaimが単純な行表示なら、未実装のPerson LinkやREA全体をHard Gateにしない。組織C1の二世界反例は**汎用化のための負例**として再利用し、初回Product Readの実装を不必要に拡大しない。
+
+### 9.4 引渡しと失効
+
+DPC-C01（Coverage complete／Claim insufficient）、DPC-C02（同じRowset・異なるPerson対応）、DPC-C03（現在Grant失効）、DPC-C04（Source A→B→AとProvider版変更）を#2506/#2514/#1180へ引き渡す。Query/Lineageは#2387、実Provider Callerは#2586、更新Effectは#1174、Studio表示は#3270/#4496が既存Ownerとなる。
+
+失効はWorld Fingerprint、Model Revision、Artifact Revisionを混同せず、Source byte／選択Provider／Relation版／現在Grant／ConsumerのClaim条件ごとに評価する。過去のRowsetや生成物がbyte一致でも、意味の受理や現在の実行許可は自動的に復活しない。
+
+**状態**：組織C1の限定実PG反例を設計根拠として参照した。DPC-C01〜04の製品E2E、正式Person Relation、NoSQLでのClaim Sufficiency、実Studio、Owner意味受理は未実施。最優先P0（#2586通常CLI実Providerと#2831 Studio Stage1→Stage2）は維持する。
