@@ -10,7 +10,7 @@ export const inspectionReaderProvenance = Object.freeze({
   part: "tei.studio.inspection_reader",
   version: "1.0.0",
   operation: "main.StudioBridge.InspectSubject",
-  contractDigest: "sha256:94d0ec5f223c614e25a1d722544cd394c0a552e780859c505354c122e3228efb",
+  contractDigest: "sha256:20d5ed64da11151a03e8e045cb5d78c3ec3411598042a39224b5e37a0cb6e947",
 });
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -47,6 +47,7 @@ const REQUIRED_INSPECTION_LIMITS = [
 // Required response fields declared in the contract. Adding one is a
 // contract-only change: this Generator Source does not name them.
 const REQUIRED_RESPONSE_FIELDS: readonly (readonly [string, string])[] = [
+  ["schemaVersion", "string"],
 ];
 export function readInspection(raw: unknown, expected: Subject, catalog: Catalog) {
   const v = record(raw), limits = v["authorityLimits"];

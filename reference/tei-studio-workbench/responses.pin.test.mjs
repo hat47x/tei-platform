@@ -87,7 +87,7 @@ const catalog = {
   sourceIndexFingerprint: "source-v1",
 };
 const inspection = {
-  effect: "read-only",
+  schemaVersion: "tei.operations.inspect/v0", effect: "read-only",
   subject: A,
   canonical: { name: "Order" },
   worldFingerprint: "world-v1",

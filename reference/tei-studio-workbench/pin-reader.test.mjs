@@ -14,7 +14,7 @@ const catalog = {
   sourceIndexFingerprint: "index-1",
 };
 const inspection = {
-  effect: "read-only", subject: subjectA,
+  schemaVersion: "tei.operations.inspect/v0", effect: "read-only", subject: subjectA,
   canonical: { privateDetails: "not handed off by this reader" },
   worldFingerprint: "world-1", sourceIndexFingerprint: "index-1",
   sourceStatus: "fresh",

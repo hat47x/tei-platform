@@ -18765,7 +18765,7 @@ var inspectionReaderProvenance = Object.freeze({
   part: "tei.studio.inspection_reader",
   version: "1.0.0",
   operation: "main.StudioBridge.InspectSubject",
-  contractDigest: "sha256:94d0ec5f223c614e25a1d722544cd394c0a552e780859c505354c122e3228efb"
+  contractDigest: "sha256:20d5ed64da11151a03e8e045cb5d78c3ec3411598042a39224b5e37a0cb6e947"
 });
 function record2(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -18794,7 +18794,9 @@ var REQUIRED_INSPECTION_LIMITS = [
   "source-location-is-not-write-authority",
   "local-read-is-not-disclosure-permission"
 ];
-var REQUIRED_RESPONSE_FIELDS = [];
+var REQUIRED_RESPONSE_FIELDS = [
+  ["schemaVersion", "string"]
+];
 function readInspection(raw, expected, catalog) {
   const v = record2(raw), limits = v["authorityLimits"];
   const world = v["worldFingerprint"], index = v["sourceIndexFingerprint"];
