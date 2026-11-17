@@ -5,6 +5,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -88,8 +89,11 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 			if !ok {
 				t.Fatalf("row %d has no quantity although it was answered", index)
 			}
-			if quantity != "0" {
-				t.Fatalf("row %d is marked not-satisfied but holds quantity %q", index, quantity)
+			// PostgreSQL returns declared numeric(12,3) values as "0.000".
+			// Check the numeric meaning, not the representation's scale.
+			value, valid := new(big.Rat).SetString(quantity)
+			if !valid || value.Sign() != 0 {
+				t.Fatalf("row %d is marked not-satisfied but holds nonzero or invalid quantity %q", index, quantity)
 			}
 		}
 	}
