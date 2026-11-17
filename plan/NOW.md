@@ -29,13 +29,12 @@
 
 | 順 | 作業 | 担当先 |
 | --- | --- | --- |
-| 1 | **異なる構造の業務モデルでも同じ読取入口を通す。** 別のData・Relation・実テーブルを使う試験は通った。次は、列構成・主キー・Query入力も異なるモデルを、同じ`tei view`と独立した期待で検証する | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
-| 2 | 最初のWebの実行先で、行ごとの答えを表示する（上の5） | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
-| 3 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | #2586 |
-| 4 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | #2586 |
-| 5 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
+| 1 | **実DBと同じ行・判定を、最初の生成Web画面で受け取る。** `tei view`の`rows[].key`、`perRow`、`perRelation`、未判定理由を保持する。静的HTMLだけで完了とはしない | [#1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| 2 | 束縛に取得範囲を宣言し、親Scope・実行したQuery・実際の取得範囲が一致すると確認できた場合に限り、明細番号の一意を「成立」と判定する。宣言だけでは全件取得の証拠にならない。[判断の文書](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)の§6と作業5 | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
+| 3 | 手順書の「まだできないこと」を消す。定義から表を作るSQLを`tei`で出す。`-format text`で行と答えを読める形にする | [#2586](https://github.com/hat47x/tei-platform/issues/2586) |
+| 4 | 規則の正規形とOperatorの署名。判断の文書の作業1〜4、6〜8 | [#4362](https://github.com/hat47x/tei-platform/issues/4362) |
 
-[#5327](https://github.com/hat47x/tei-platform/pull/5327)で固定名の決め打ちを外し、[#5339](https://github.com/hat47x/tei-platform/pull/5339)でData・Relationの意味IDとPostgreSQLの参照テーブルを変えた試験が通った。ただし後者は元の受注明細と同じ列構成を使っている。道の1の残る検証は、**別の属性、Query入力、主キー構成を持つ独立モデル**を実DBから読み、Row Key・Rule結果・取得範囲を実装から独立した期待と照合すること。次のコード変更は`cmd/tei/destination_order_runtime_pg_test.go`の試験から独立したFixtureに切り出し、同じ`tei view`の実行入口を再利用する。これが通るまで道の1は完了としない。
+読取入口については、[#5327](https://github.com/hat47x/tei-platform/pull/5327)で固定名の決め打ちを外し、[#5339](https://github.com/hat47x/tei-platform/pull/5339)で別Data・Relation・実テーブルを通した。さらに[#5362](https://github.com/hat47x/tei-platform/pull/5362)で、**列構成・Query入力・複合主キーが異なるモデル**を同じ`tei view`と実PostgreSQLで読み、手書きの独立Expectedと照合する試験が通った。#5362の対象HEADでは、実PostgreSQL専用CIと全体Healthを含む11検査が成功した。道の1で求めた実DB反証は満たしたので、**次はWeb画面が同じ結果を実際に受け取ること**へ進む。[#5346](https://github.com/hat47x/tei-platform/pull/5346)のHTML投影は候補だが、CLIが出力した静的HTMLと、生成Web画面の実Browser受領は別の資格である。あらゆるData・Providerへの一般性、全件取得、Ownerによる業務意味の受理はまだ認めない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
