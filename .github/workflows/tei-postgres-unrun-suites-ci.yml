@@ -186,7 +186,10 @@ jobs:
           # Native as-of Query, isolated DB probes, and source/IR route contract must execute.
           go test -count=1 -v -timeout 10m -run '^(TestOrgAxisAsOf(ActualPostgres|RevisionKeyCandidate|BitemporalRectangleCandidate|ExclusionConstraintCandidate|TwoWriterExclusionCandidate)OptIn|TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs)$' \
             ./internal/operations | tee -a "$log"
-          go test -count=1 -v -timeout 10m -run 'TestPostgresStore|TestPostgresReserves|TestPostgresRefuses' \
+          # ^TestPostgres names every test in the package. Listing the individual ones
+          # let LoadRequiresARuleID fall outside the filter, so it never ran while
+          # the job stayed green.
+          go test -count=1 -v -timeout 10m -run '^TestPostgres' \
             ./internal/numberingpostgres | tee -a "$log"
 
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証

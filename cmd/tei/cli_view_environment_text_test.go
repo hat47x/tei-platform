@@ -78,4 +78,46 @@ func TestDestinationReadTextPrintsEveryObservedRowAndAnswer(t *testing.T) {
 	if !strings.Contains(emptyOut.String(), "rows 0\n") {
 		t.Fatalf("empty read did not report zero rows: %s", emptyOut.String())
 	}
+	// An undeclared binding must print no declaration line, so "nothing stated"
+	// stays distinguishable from "stated but unchecked".
+	if strings.Contains(emptyOut.String(), "declaration ") {
+		t.Fatalf("an undeclared read printed a declaration: %s", emptyOut.String())
+	}
+}
+
+// A declaration is the binding's statement, not this entry's observation. The
+// text form must say so in the line itself, or a reader who skips the JSON would
+// read the declaration as measured coverage.
+func TestDestinationReadTextMarksTheDeclarationUnchecked(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		decl *destinationDeclaration
+		want string
+	}{
+		{
+			name: "covers every row, unchecked",
+			decl: &destinationDeclaration{CoversRelation: "sales.order.lines", Checked: false},
+			want: "declaration covers sales.order.lines (unchecked)\n",
+		},
+		{
+			name: "covers some rows, unchecked",
+			decl: &destinationDeclaration{CoversSome: true, Checked: false},
+			want: "declaration covers some (unchecked)\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			read := destinationRead{
+				Application: "order_entry", Pattern: "order_entry.order_lines",
+				Environment: "development", Relation: "sales.order.lines",
+				Coverage: "partial", Declaration: tc.decl,
+			}
+			if code, err := writeDestinationReadText(&out, read); err != nil || code != 0 {
+				t.Fatalf("text rendering failed: code=%d err=%v", code, err)
+			}
+			if !strings.Contains(out.String(), tc.want) {
+				t.Fatalf("text output is missing %q; got:\n%s", tc.want, out.String())
+			}
+		})
+	}
 }
