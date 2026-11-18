@@ -35,12 +35,12 @@ func TestRequireAnswersBelongToRead(t *testing.T) {
 	}{
 		{name: "complete and aligned", identity: complete, rows: aligned},
 		{name: "no order key", identity: withOrderKey(complete, ""), rows: aligned, refuse: true, mention: "no complete identity"},
-		{name: "no environment", identity: func() readIdentityProjection { v := complete; v.Environment = ""; return v }(), rows: aligned, refuse: true, mention: "no complete identity"},
-		{name: "no pattern", identity: func() readIdentityProjection { v := complete; v.Pattern = ""; return v }(), rows: aligned, refuse: true, mention: "no complete identity"},
+		{name: "no environment", identity: withEnvironment(complete, ""), rows: aligned, refuse: true, mention: "no complete identity"},
+		{name: "no pattern", identity: withPattern(complete, ""), rows: aligned, refuse: true, mention: "no complete identity"},
 		{name: "no database", identity: withDatabase(complete, ""), rows: aligned, refuse: true, mention: "no complete identity"},
 		{name: "no query", identity: withQuery(complete, ""), rows: aligned, refuse: true, mention: "no complete identity"},
-		{name: "no input", identity: func() readIdentityProjection { v := complete; v.InputOrderID = ""; return v }(), rows: aligned, refuse: true, mention: "no complete identity"},
-		{name: "conflicting order and query input", identity: func() readIdentityProjection { v := complete; v.InputOrderID = "1002"; return v }(), rows: aligned, refuse: true, mention: "differs from query input"},
+		{name: "no input", identity: withInput(complete, ""), rows: aligned, refuse: true, mention: "no complete identity"},
+		{name: "conflicting order and query input", identity: withInput(complete, "1002"), rows: aligned, refuse: true, mention: "differs from query input"},
 		{name: "row count disagrees", identity: withRowCount(complete, 3), rows: aligned, refuse: true, mention: "states 3 rows but 2"},
 		{name: "positions reordered", identity: complete, rows: []rowAnswerProjection{{RowIndex: 1}, {RowIndex: 0}}, refuse: true, mention: "belongs to position"},
 	} {
@@ -79,12 +79,12 @@ func TestReadIdentityKeySeparatesDeclaredScopes(t *testing.T) {
 		env      core.CanonicalID
 	}{
 		{name: "other selected order", identity: withOrderKey(base, "1002"), env: "development"},
-		{name: "other input", identity: func() readIdentityProjection { v := base; v.InputOrderID = "1002"; return v }(), env: "development"},
-		{name: "other environment", identity: func() readIdentityProjection { v := base; v.Environment = "staging"; return v }(), env: "development"},
+		{name: "other input", identity: withInput(base, "1002"), env: "development"},
+		{name: "other environment", identity: withEnvironment(base, "staging"), env: "development"},
 		{name: "other effective environment", identity: base, env: "staging"},
-		{name: "other pattern", identity: func() readIdentityProjection { v := base; v.Pattern = "other"; return v }(), env: "development"},
+		{name: "other pattern", identity: withPattern(base, "other"), env: "development"},
 		{name: "other database", identity: withDatabase(base, "other"), env: "development"},
-		{name: "other contract", identity: func() readIdentityProjection { v := base; v.Contract = "other"; return v }(), env: "development"},
+		{name: "other contract", identity: withContract(base, "other"), env: "development"},
 		{name: "other query", identity: withQuery(base, "other"), env: "development"},
 		{name: "other row count", identity: withRowCount(base, 3), env: "development"},
 	} {
@@ -126,5 +126,25 @@ func withQuery(i readIdentityProjection, query string) readIdentityProjection {
 
 func withRowCount(i readIdentityProjection, count int) readIdentityProjection {
 	i.RowCount = count
+	return i
+}
+
+func withEnvironment(i readIdentityProjection, environment string) readIdentityProjection {
+	i.Environment = environment
+	return i
+}
+
+func withPattern(i readIdentityProjection, pattern string) readIdentityProjection {
+	i.Pattern = pattern
+	return i
+}
+
+func withContract(i readIdentityProjection, contract string) readIdentityProjection {
+	i.Contract = contract
+	return i
+}
+
+func withInput(i readIdentityProjection, orderID string) readIdentityProjection {
+	i.InputOrderID = orderID
 	return i
 }
