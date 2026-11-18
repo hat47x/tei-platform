@@ -794,7 +794,9 @@ FROM changed ORDER BY line_number, order_line_id`
 				CoverageDeclared     string            `json:"coverageDeclared"`
 				CoverageBasis        string            `json:"coverageBasis"`
 				CoverageReason       string            `json:"coverageReason"`
-				Rows                 []struct{ Key string `json:"key"` } `json:"rows"`
+				Rows                 []struct {
+					Key string `json:"key"`
+				} `json:"rows"`
 				PerRelation          map[string]string `json:"perRelation"`
 				PerRelationUndecided map[string]string `json:"perRelationUndecided"`
 			} `json:"result"`
