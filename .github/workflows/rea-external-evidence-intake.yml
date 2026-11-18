@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/rea-external-evidence-intake.yml
       - 'internal/externalanalysis/**'
+      - 'internal/jsonl/**'
       - 'internal/operations/external_candidates*'
       - 'cmd/tei/rea_evidence*'
       - 'plan/fixtures/rea-external-evidence/**'
@@ -14,6 +15,7 @@ on:
     paths:
       - .github/workflows/rea-external-evidence-intake.yml
       - 'internal/externalanalysis/**'
+      - 'internal/jsonl/**'
       - 'internal/operations/external_candidates*'
       - 'cmd/tei/rea_evidence*'
       - 'plan/fixtures/rea-external-evidence/**'
