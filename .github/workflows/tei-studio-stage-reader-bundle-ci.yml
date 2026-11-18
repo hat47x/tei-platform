@@ -97,10 +97,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Setup fixed Go
+      - name: Setup Go from the candidate module
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version: '1.26.11'
+          go-version-file: go.mod
           check-latest: false
           cache: false
 
@@ -114,7 +114,98 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if ((go version) -notmatch 'go1\.26\.11') { throw 'Fixed Go toolchain not available' }
+          $requiredGo = ((Get-Content -LiteralPath go.mod | Select-String -Pattern '^go ([0-9]+\.[0-9]+\.[0-9]+)
+          go mod download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location cmd/tei-studio
+          try {
+            go mod download
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+          Push-Location reference/tei-studio-workbench
+          try {
+            npm ci --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+          $modelRoot = Join-Path $env:RUNNER_TEMP 'tei-studio-changed-data'
+          $sourceDir = Join-Path $modelRoot 'semantic/studio'
+          New-Item -ItemType Directory -Force -Path $sourceDir | Out-Null
+          # Write UTF-8 without BOM; generated IDs and bytes are part of the
+          # attempt and must not depend on the runner's PowerShell encoding.
+          $utf8 = [System.Text.UTF8Encoding]::new($false)
+          $workspaceText = (@(
+            'workspace: studio_reader'
+            'formatVersion: 1'
+            'sources:'
+            '  - semantic'
+            'languages:'
+            '  - tei.authoring/v1'
+          ) -join "`n") + "`n"
+          [System.IO.File]::WriteAllText((Join-Path $modelRoot 'tei.workspace.yaml'), $workspaceText, $utf8)
+          $dataText = (@(
+            '# Studio response'
+            ''
+            '<!-- tei: data InspectionResponse in studio -->'
+            '| attribute | type | required | display |'
+            '| --- | --- | --- | --- |'
+            '| schemaVersion | std.text | yes | Schema |'
+            '| snapshotFingerprint | std.text | yes | Snapshot |'
+          ) -join "`n") + "`n"
+          [System.IO.File]::WriteAllText(
+            (Join-Path $sourceDir 'inspection-response.tei.md'), $dataText, $utf8)
+
+      - name: Stage1 and Stage2 build the new Wails Desktop and inspect it in WebView2
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B tools/reference-studio-part-generator/stage_reentry.py --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $attempt = Join-Path $env:RUNNER_TEMP 'tei-studio-generated-desktop-stage'
+          $source = Join-Path $env:RUNNER_TEMP 'tei-studio-changed-data'
+          $supply = Join-Path ((go env GOMODCACHE).Trim()) 'cache/download'
+          $reportFile = Join-Path $env:RUNNER_TEMP 'tei-studio-staged-desktop-evidence.json'
+          python -B tools/reference-studio-part-generator/stage_reentry.py `
+            --repo . --supply $supply --work $attempt `
+            --authoring-root $source --authoring-data studio.inspection_response `
+            --bundle-reader --stage-desktop-bundle --desktop-smoke > $reportFile
+          if ($LASTEXITCODE -ne 0) { throw 'TEI-driven changed Data -> new Stage2 Desktop -> WebView2 failed' }
+          $report = Get-Content -LiteralPath $reportFile -Raw | ConvertFrom-Json
+          foreach ($name in @(
+            'reentryObserved',
+            'stage1TeiArtifactIsStage2Invoker',
+            'eachBundleCarriesItsOwnGeneratedReader',
+            'bundlesWereMadeByTheRecordedNodeChild',
+            'stage2PartChangedFromCommittedPart',
+            'authoringSourceStableAcrossStages',
+            'eachDesktopUsedItsStageGeneratedBundle',
+            'stage2DesktopEmbedsGeneratedBundle',
+            'generatedDesktopExcludesCommittedBundle',
+            'generatedDesktopCarriesReaderContract',
+            'stage2DesktopUsedGeneratedReaderInNewProcess'
+          )) {
+            if ($report.judgement.$name -ne $true) { throw "Missing Stage2 acceptance: $name" }
+          }
+          if ($report.stage2Desktop.embedded.inputMode -ne 'stage-generated') {
+            throw 'The committed Bundle was used instead of the changed Bundle'
+          }
+          $head = (git rev-parse HEAD).Trim()
+          if ($report.sources.repoHead -ne $head) { throw 'Attempt Source revision mismatch' }
+          Write-Host "Stage2 changed Data / generated Bundle / new native WebView2: PASS at $head"
+
+      - name: Keep exact staged Desktop evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-stage-generated-windows-desktop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/tei-studio-staged-desktop-evidence.json
+            ${{ runner.temp }}/tei-studio-generated-desktop-stage/stage2-desktop-smoke/**
+          retention-days: 7
+          if-no-files-found: warn
+).Matches.Groups[1].Value)
+          if (-not $requiredGo -or (go version) -notmatch ("go" + [regex]::Escape($requiredGo))) {
+            throw 'The Go toolchain does not match the version required by go.mod'
+          }
           go mod download
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Push-Location cmd/tei-studio
