@@ -219,10 +219,23 @@ func ruleToValidationWithInputs(
 			}
 		}
 	}
-	// An assignment that survives the name check still has nowhere to go:
-	// semantic.Validation carries the operator and its subject, not the input
-	// values. Converting anyway would produce a rule that reads as the
-	// single-input operator and silently ignores the assignment.
+	// The rule subject supplies the first input already. A named assignment
+	// to that same input would bind it twice, even before input values can be
+	// represented in semantic.Validation. Keep the authored second binding's
+	// position so the author can remove exactly that assignment.
+	if len(declared) > 0 {
+		for _, assignment := range rule.Inputs {
+			if assignment.Name == declared[0] {
+				return semantic.Validation{}, &RuleConversionIssue{
+					RuleID: rule.ID, Span: assignment.NameSpan,
+					Msg: fmt.Sprintf("operator %s input %q is already supplied by the rule subject; do not assign it again",
+						rule.Operator.Text, assignment.Name),
+				}
+			}
+		}
+	}
+	// Other assigned inputs still have no home in the semantic model.
+	// Refuse them rather than silently losing their values.
 	return refuseAssignedInputs(rule)
 }
 

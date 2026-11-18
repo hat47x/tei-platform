@@ -11,10 +11,9 @@ import (
 	"tei/internal/workspace"
 )
 
-// An operator input assignment cannot be carried into the meaning yet, so a
-// Markdown source that writes one is refused at Load. The loader is
-// all-or-nothing: the whole source stops rather than contributing the other
-// rules it holds, so the failure has to name the assignment.
+// A rule subject already supplies its Operator's first input. A Markdown
+// source must reject a named assignment that supplies it again at Load.
+// The loader is all-or-nothing and must identify that second binding.
 func TestRuleAuthoringSourceWithOperatorInputAssignmentIsRefusedAtLoad(t *testing.T) {
 	root := t.TempDir()
 	writeWorkspaceFile(t, root, "tei.workspace.yaml",
@@ -27,7 +26,7 @@ func TestRuleAuthoringSourceWithOperatorInputAssignmentIsRefusedAtLoad(t *testin
 	if err == nil {
 		t.Fatal("a source whose rule assigns an operator input loaded as meaning")
 	}
-	if !strings.Contains(err.Error(), "no place for an operator input value") {
+	if !strings.Contains(err.Error(), "already supplied by the rule subject") {
 		t.Fatalf("the refusal does not name the assignment: %v", err)
 	}
 	if !strings.Contains(err.Error(), "sales.item.probe") {
