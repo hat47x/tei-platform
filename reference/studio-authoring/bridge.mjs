@@ -28,8 +28,12 @@ function exactRevision(revision) {
 // The accepted World is caller-supplied; this tool does not authenticate its
 // provenance. Callers must obtain World and modelRevision from the same workspace.
 export function indexWorld(world) {
+  // Go's JSON encoder uses null for a nil slice when no Application exists.
+  // Explicit null is the empty Application set; a missing/malformed field
+  // remains invalid. This does not invent a Data or source declaration.
   if (!world || typeof world !== "object" || !Array.isArray(world.semantics) ||
-      !Array.isArray(world.applications)) throw new Error("INVALID_WORLD");
+      !(world.applications === null || Array.isArray(world.applications)))
+    throw new Error("INVALID_WORLD");
   const data = new Map(), relations = new Map(), attributes = new Map();
   const patterns = new Map(), namespaces = new Map(), validations = new Map();
   const applications = new Map(), validationConsumers = new Map();
@@ -48,7 +52,7 @@ export function indexWorld(world) {
       }
     }
   }
-  for (const app of world.applications) {
+  for (const app of world.applications ?? []) {
     insert(applications, app.id, app, "application");
     for (const validationID of array(app.validations, "application.validations")) {
       requireID(validationID, "application.validation");
