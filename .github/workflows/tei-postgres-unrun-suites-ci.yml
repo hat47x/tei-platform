@@ -289,6 +289,8 @@ jobs:
             'TestFirstWebAcceptsARuleChangeEndToEnd'
             'TestFirstWebAcceptsARuleChangeEndToEnd/before'
             'TestFirstWebAcceptsARuleChangeEndToEnd/after'
+            'TestFirstWebAcceptsARuleChangeEndToEnd/before/chrome-dom'
+            'TestFirstWebAcceptsARuleChangeEndToEnd/after/chrome-dom'
             'TestServeReadFromDBRefusesAHostSuppliedDatabase'
             'TestServeReadFromDBRequiresTheEnvironmentDSN'
             'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
@@ -305,6 +307,11 @@ jobs:
           }
           # The first Web Target must reach Chrome through HTTP; the CLI's
           # static HTML Chrome test and the HTTP body assertion are separate.
+          rule_change_chrome_count="$(grep -Fc 'actual rule-change Chrome DOM verified for order 1001' "$log" || true)"
+          test "$rule_change_chrome_count" -eq 2 || {
+            echo "rule-change Chrome DOM receipts: $rule_change_chrome_count; expected two (before and after)" >&2
+            exit 1
+          }
           first_web_chrome_count="$(grep -Fc 'actual first Web HTTP Chrome DOM verified for order 1001' "$log" || true)"
           test "$first_web_chrome_count" -eq 1 || {
             echo "first Web real PostgreSQL HTTP Chrome DOM receipt is missing" >&2

@@ -5,9 +5,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -89,6 +94,51 @@ func TestFirstWebAcceptsARuleChangeEndToEnd(t *testing.T) {
 			if !strings.Contains(page, "sales.order.lines.line_number_unique not-satisfied") {
 				t.Fatalf("stage=%s lost the witnessed duplicate's relation decision", stage.name)
 			}
+
+			// The HTTP body is not the only statement: a real browser must
+			// receive this page and keep the same answers in its DOM. Each stage
+			// gets its own run and receipt, so one page cannot stand in for both.
+			t.Run("chrome-dom", func(t *testing.T) {
+				browser := os.Getenv("TEI_VIEW_BROWSER_BINARY")
+				if browser == "" {
+					t.Skip("TEI_VIEW_BROWSER_BINARY is unset; real Chrome DOM not run")
+				}
+				address := freeLoopbackAddress(t)
+				ctx, cancel := context.WithCancel(context.Background())
+				stopped := make(chan error, 1)
+				go func() {
+					stopped <- runCombinedWebTargetWithHost(ctx, nil, nil, webHostWiring{},
+						[]string{
+							"-workspace", scratch, "-application", "order_entry",
+							"-baseline-id", "B", "-baseline-revision", testBaselineRevision,
+							"-target-revision", testTargetRevision, "-listen", address,
+							"-legacy-users", legacyFixturePath(t, "users.json"),
+							"-legacy-authorization", legacyFixturePath(t, "authorization.json"),
+							"-diagnostic-unaccepted-source",
+							"-serve-read-from-db",
+						})
+				}()
+				t.Cleanup(func() {
+					cancel()
+					select {
+					case <-stopped:
+					case <-time.After(10 * time.Second):
+						t.Error("the web target did not stop with its context")
+					}
+				})
+				waitForHealth(t, address, stopped)
+
+				dom := chromeDOMOfSubmittedOrder(t, browser, address)
+				if strings.Contains(dom, dsn) {
+					t.Fatal("the Chrome DOM carried the database connection string")
+				}
+				chromeLines := sectionBetween(dom, `id="order-lines"`, `id="read-identity"`)
+				if chromeLines == "" {
+					t.Fatal("the Chrome DOM did not contain the order-line read")
+				}
+				requirePageAnswersMatchExpectation(t, chromeLines, want)
+				t.Logf("actual rule-change Chrome DOM verified for order 1001 (stage %s)", stage.name)
+			})
 		})
 	}
 }
@@ -288,4 +338,41 @@ func destinationFixtureRoot(t *testing.T) string {
 	}
 	t.Fatal("cannot locate testdata/destination-order-change from this package")
 	return ""
+}
+
+// chromeDOMOfSubmittedOrder opens the running target's form in headless Chrome.
+//
+// The bootstrap page only submits the form; the final document is served by the
+// running first Web Target, backed by the real PostgreSQL read. A browser
+// opening a static file would not exercise this HTTP boundary.
+func chromeDOMOfSubmittedOrder(t *testing.T, browser, address string) string {
+	t.Helper()
+	bootstrap := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = io.WriteString(w, fmt.Sprintf(`<!doctype html><html><body>
+<form id="bootstrap-post" method="post" action="http://%s/custom-submit">
+<input type="hidden" name="loginId" value="legacy-order-editor">
+<input type="hidden" name="credential" value="editor-secret">
+<input type="hidden" name="from" value="2026-09-01T00:00:00Z">
+<input type="hidden" name="row" value="0">
+</form><script>document.getElementById("bootstrap-post").submit()</script></body></html>`, address))
+	}))
+	defer bootstrap.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, browser,
+		"--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+		"--no-first-run", "--virtual-time-budget=7500",
+		"--user-data-dir="+t.TempDir(), "--dump-dom", bootstrap.URL)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Chrome failed to render the first Web Target HTTP page: %v", err)
+	}
+	dom := string(output)
+	if strings.Contains(dom, `id="bootstrap-post"`) ||
+		!strings.Contains(dom, `id="read-result"`) {
+		t.Fatal("Chrome did not navigate from the submission bootstrap to the Web Target result")
+	}
+	return dom
 }
