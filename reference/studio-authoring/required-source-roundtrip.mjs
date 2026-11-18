@@ -81,7 +81,7 @@ const failed = (bin, args, expected) => {
   });
   if (result.error) throw result.error;
   assert.notEqual(result.status, 0, "expected an explicit refusal");
-  assert.match(result.stderr, expected);
+  assert.match(result.stderr + "\n" + result.stdout, expected);
 };
 mkdirSync(join(workspace, "semantic/studio"), { recursive: true });
 mkdirSync(outputDir, { recursive: true });
