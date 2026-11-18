@@ -15,8 +15,9 @@ import (
 // actual Contract Query's read-only transaction is open. The Target ties the
 // claim to that execution; synthetic or unrelated reads receive no proof.
 type webRelationCoverageProof struct {
-	Target   realization.ContractQueryTarget
-	Complete bool
+	Target           realization.ContractQueryTarget
+	Complete         bool
+	ProviderEvidence any // original non-secret SQL runner evidence, not replaced by coverage
 }
 
 // rowAnswerProjection is one row of the read surface with the answer of every
