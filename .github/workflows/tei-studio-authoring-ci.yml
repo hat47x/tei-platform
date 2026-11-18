@@ -195,12 +195,13 @@ jobs:
             "$RUNNER_TEMP/tei-studio-playwright" "$shots"
           test -s "$shots/er.png"
           test -s "$shots/table.png"
+          test -s "$shots/required.png"
           jq -e --arg sha "$GITHUB_SHA" '
             .schema == "tei.reference.studio-real-browser-receipt/v0"
             and .head == $sha
             and .browser == "real-chrome-headless"
             and .sourceRevisionAfter == .revision
-            and (.cases | length == 2)
+            and ([.cases[].name] | sort == ["er", "required", "table"])
             and ([.cases[] | .revisionBound == true
               and .realChromeDOMEvent == true
               and .cspScriptExecuted == true
