@@ -230,7 +230,7 @@ jobs:
           # Road item 2's remaining half: the page a browser opens must carry
           # the same answers from the same database. Kept separate so its PASS
           # line is required by name below.
-          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$|^TestFirstWebAcceptsARuleChangeEndToEnd$' \
+          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$|^TestFirstWebAcceptsARuleChangeEndToEnd$|^TestFirstChangeGuideRunsEndToEnd$' \
             ./tools/reference-first-web-target | tee -a "$log"
           # Refusal paths must be tested even without a database fixture.
           go test -count=1 -v -timeout 10m -run '^TestServeReadFromDB' \
@@ -291,6 +291,7 @@ jobs:
             'TestFirstWebAcceptsARuleChangeEndToEnd/after'
             'TestFirstWebAcceptsARuleChangeEndToEnd/before/chrome-dom'
             'TestFirstWebAcceptsARuleChangeEndToEnd/after/chrome-dom'
+            'TestFirstChangeGuideRunsEndToEnd'
             'TestServeReadFromDBRefusesAHostSuppliedDatabase'
             'TestServeReadFromDBRequiresTheEnvironmentDSN'
             'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
@@ -307,6 +308,11 @@ jobs:
           }
           # The first Web Target must reach Chrome through HTTP; the CLI's
           # static HTML Chrome test and the HTTP body assertion are separate.
+          guide_count="$(grep -Fc 'first-change guide steps 0-5 verified end to end' "$log" || true)"
+          test "$guide_count" -eq 1 || {
+            echo "first-change guide end-to-end receipt: $guide_count; expected one" >&2
+            exit 1
+          }
           rule_change_chrome_count="$(grep -Fc 'actual rule-change Chrome DOM verified for order 1001' "$log" || true)"
           test "$rule_change_chrome_count" -eq 2 || {
             echo "rule-change Chrome DOM receipts: $rule_change_chrome_count; expected two (before and after)" >&2
