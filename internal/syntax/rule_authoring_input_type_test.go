@@ -13,7 +13,7 @@ import (
 //
 // The expected verdicts below are written from that statement, not from the
 // conversion code. A value of the wrong type must be named as a type problem,
-// not reported later as an unsupported transport.
+// not misreported as a duplicate subject-input binding.
 func TestRuleAuthoringRefusesAValueOfTheWrongType(t *testing.T) {
 	cases := []struct {
 		name, value, want string
@@ -35,11 +35,11 @@ func TestRuleAuthoringRefusesAValueOfTheWrongType(t *testing.T) {
 			src := "namespace sales\noperator sales.op: takes low: number\nstring\n" +
 				"rule sales.item.probe:\n  sales.item.amount is sales.op low: " + tc.value + "\n"
 			if tc.want == "" {
-				// The value type is accepted; the assignment is then refused for
-				// the separate reason that the meaning cannot carry it yet.
+				// The value type is accepted; the explicit assignment then
+				// rebinds the input already supplied by the subject.
 				_, issues := syntax.RuleNamespace(mustParseRuleFile(t, src))
-				if len(issues) != 1 || !strings.Contains(issues[0].Msg, "no place for an operator input value") {
-					t.Fatalf("issues=%+v, want the value-transport refusal only", issues)
+				if len(issues) != 1 || !strings.Contains(issues[0].Msg, "already supplied by the rule subject") {
+					t.Fatalf("issues=%+v, want the subject-input rebinding refusal only", issues)
 				}
 				return
 			}
@@ -51,7 +51,7 @@ func TestRuleAuthoringRefusesAValueOfTheWrongType(t *testing.T) {
 				t.Fatalf("message=%q, want it to mention %q", issues[0].Msg, tc.want)
 			}
 			// A malformed reference is a value error at the authored bytes,
-			// not a later failure to transport an otherwise valid assignment.
+			// not a later subject-input rebinding error.
 			cleanSource := strings.ReplaceAll(src, "string\n", "")
 			valueStart := strings.LastIndex(cleanSource, tc.value)
 			if valueStart < 0 || issues[0].Span.Start.Offset != valueStart || issues[0].Span.End.Offset != valueStart+len(tc.value) {
