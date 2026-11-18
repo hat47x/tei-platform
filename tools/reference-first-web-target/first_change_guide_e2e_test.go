@@ -45,7 +45,10 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fixtures := destinationFixtureRoot(t)
+	fixtures, err := filepath.Abs(destinationFixtureRoot(t))
+	if err != nil {
+		t.Fatal("cannot resolve the published fixture directory")
+	}
 	guide, err := os.ReadFile(filepath.Join(repoRootForGuide(t), "docs", "first-change.md"))
 	if err != nil {
 		t.Fatal(err)
