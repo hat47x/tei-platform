@@ -230,7 +230,7 @@ jobs:
           # Road item 2's remaining half: the page a browser opens must carry
           # the same answers from the same database. Kept separate so its PASS
           # line is required by name below.
-          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$|^TestFirstWebAcceptsARuleChangeEndToEnd$' \
+          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$|^TestFirstWebAcceptsARuleChangeEndToEnd$|^TestShippedWebPageShowsTheRuleEditThroughChrome$' \
             ./tools/reference-first-web-target | tee -a "$log"
           # Refusal paths must be tested even without a database fixture.
           go test -count=1 -v -timeout 10m -run '^TestServeReadFromDB' \
@@ -289,6 +289,9 @@ jobs:
             'TestFirstWebAcceptsARuleChangeEndToEnd'
             'TestFirstWebAcceptsARuleChangeEndToEnd/before'
             'TestFirstWebAcceptsARuleChangeEndToEnd/after'
+            'TestShippedWebPageShowsTheRuleEditThroughChrome'
+            'TestShippedWebPageShowsTheRuleEditThroughChrome/before'
+            'TestShippedWebPageShowsTheRuleEditThroughChrome/after'
             'TestServeReadFromDBRefusesAHostSuppliedDatabase'
             'TestServeReadFromDBRequiresTheEnvironmentDSN'
             'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
