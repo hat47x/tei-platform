@@ -76,6 +76,10 @@ class Stage2ReaderTemporalContractTest(unittest.TestCase):
         self.assertFalse(observed_verdict(readerCallsAfterInitialInspect=0))
         self.assertFalse(observed_verdict(readerCalls=1))
 
+    def test_wrong_or_missing_executable_cannot_qualify_the_reader(self):
+        self.assertFalse(observed_verdict(exeDigest="different-stage2-binary"))
+        self.assertFalse(observed_verdict(exeDigest=None))
+
     def test_observation_reader_uses_both_distinct_page_snapshots(self):
         facts = {
             "exe_sha256": "a" * 64,
