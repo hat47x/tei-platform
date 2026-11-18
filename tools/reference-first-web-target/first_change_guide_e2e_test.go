@@ -151,8 +151,10 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatalf("the guide copy did not make a fresh isolated Workspace: %q", root)
 	}
 
-	// Step 2: read the detail and see the answers.
-	before := readOrderThroughCLI(t, binary, root, dsn, "1001")
+	// Step 2: run the exact published CLI command against this Workspace.
+	viewScript := documentedGuideShellStep(t, handbook,
+		"## 2. 明細を読み、規則の答えを見る", "## 3. 規則を一つ足す")
+	before := readOrderThroughDocumentedShell(t, attempt, root, dsn, viewScript)
 	requireCLIAnswersMatchExpectation(t, before, expectedAnswersForOrder(t, filepath.Join(fixtures, "expected-before.json"), "1001"))
 
 	// Step 3: run the actual handbook commands in the same Workspace the
@@ -182,10 +184,14 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatal("step 3 did not register the authoring language")
 	}
 
-	// Step 4a: validate. The edit must not be rejected.
-	if validated := runGuideCLI(t, binary, "validate", "-workspace", root); validated.code != 0 {
-		t.Fatalf("step 4: validate rejected the edited Workspace: code=%d stdout=%s stderr=%s",
-			validated.code, validated.stdout, validated.stderr)
+	// Step 4a: run the published validate shell, without a test-only CLI alias.
+	validateScript := documentedGuideShellStep(t, handbook,
+		"## 4. 確かめて、読み直す", "## 5. Webの画面で同じ答えを見る")
+	validate := exec.Command("sh", "-eu", "-c", validateScript)
+	validate.Dir = attempt
+	validate.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+root)
+	if _, err := validate.CombinedOutput(); err != nil {
+		t.Fatalf("step 4: documented validation rejected the edited Workspace: %v (output withheld)", err)
 	}
 	// The guide says an example that contradicts its rule is a diagnostic. If
 	// that were not so, the validate above would prove nothing about examples.
@@ -196,8 +202,8 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatalf("step 4: the example mismatch was not the diagnostic: %s", validated.stdout+validated.stderr)
 	}
 
-	// Step 4b: read again. The new rule's answer appears and the rows do not change.
-	after := readOrderThroughCLI(t, binary, root, dsn, "1001")
+	// Step 4b: repeat step 2 literally, as the guide instructs.
+	after := readOrderThroughDocumentedShell(t, attempt, root, dsn, viewScript)
 	requireCLIAnswersMatchExpectation(t, after, expectedAnswersForOrder(t, filepath.Join(fixtures, "expected-after.json"), "1001"))
 	for _, key := range []string{"1", "2", "3"} {
 		if _, ok := after.Rows[key]; !ok {
@@ -312,7 +318,30 @@ func readOrderThroughCLI(t *testing.T, binary, workspaceRoot, dsn, orderID strin
 	if got.code != 0 {
 		t.Fatalf("view failed: code=%d stdout=%s stderr=%s", got.code, got.stdout, got.stderr)
 	}
-	if strings.Contains(got.stdout, dsn) {
+	return decodeGuideOrderRead(t, got.stdout, dsn)
+}
+
+// readOrderThroughDocumentedShell executes the published step-2 shell block
+// against the exact Workspace copied by step 1, before and after the edit.
+func readOrderThroughDocumentedShell(t *testing.T, attempt, workspaceRoot, dsn, script string) cliOrderRead {
+	t.Helper()
+	command := exec.Command("sh", "-eu", "-c", script)
+	command.Dir = attempt
+	command.Env = append(os.Environ(),
+		"TEI_FIRST_WORKSPACE="+workspaceRoot, "TEI_VIEW_PG_DSN="+dsn)
+	var stdout, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &stdout, &stderr
+	if err := command.Run(); err != nil {
+		t.Fatalf("step 2/4 documented view command failed: %v (output withheld)", err)
+	}
+	return decodeGuideOrderRead(t, stdout.String(), dsn)
+}
+
+// decodeGuideOrderRead checks the returned rows and rule answers; both the
+// documented shell path and the auxiliary CLI path use the same parser.
+func decodeGuideOrderRead(t *testing.T, payload, dsn string) cliOrderRead {
+	t.Helper()
+	if strings.Contains(payload, dsn) {
 		t.Fatal("the CLI JSON carried the database connection string")
 	}
 	var report struct {
@@ -324,11 +353,11 @@ func readOrderThroughCLI(t *testing.T, binary, workspaceRoot, dsn, orderID strin
 			PerRow map[string]map[string]string `json:"perRow"`
 		} `json:"result"`
 	}
-	if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
+	if err := json.Unmarshal([]byte(payload), &report); err != nil {
 		t.Fatalf("the CLI output is not the documented JSON: %v", err)
 	}
 	if !report.OK {
-		t.Fatalf("view reported failure: %s", got.stdout)
+		t.Fatal("the documented view reported failure")
 	}
 	// Relation completeness belongs to the separate Query/coverage qualification
 	// tests. This five-step acceptance checks the same concrete row answers even
