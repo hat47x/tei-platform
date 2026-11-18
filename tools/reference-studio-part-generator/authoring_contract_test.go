@@ -96,7 +96,6 @@ func TestAuthoringDataControlsGeneratedReaderWithoutGeneratorChanges(t *testing.
 	}
 }
 
-
 func TestRealInspectCanonicalChangesWithAuthoringDataRequiredFlag(t *testing.T) {
 	// This checks the user-visible Inspector text's actual Source-backed input.
 	// The generated Reader renders the Canonical JSON, while the separate
