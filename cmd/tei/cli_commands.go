@@ -306,7 +306,13 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -model string\n    \tpath to three-element model JSON\n")
 			return out.String()
 		}
-		fmt.Fprintf(&out, "run `tei commands` for the advertised commands\n")
+		// This command is dispatched but is not in the discovery catalogue, so
+		// "run `tei commands`" would send the caller to a list that does not
+		// contain it. Say that instead of pointing at a page without it
+		// (#5494). The flags are not printed here: the shared FlagSet holds
+		// every command's flags, and dumping them would answer a different
+		// question than the one asked.
+		fmt.Fprintf(&out, "%s is not in the read-only discovery catalogue; `tei commands` does not list it, and no per-command flag listing is published for it\n", command)
 		return out.String()
 	}
 	wanted := make(map[string]bool, len(allowed))
