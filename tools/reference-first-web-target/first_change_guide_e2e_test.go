@@ -217,28 +217,49 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	if browser == "" {
 		t.Skip("TEI_VIEW_BROWSER_BINARY is unset; step 5's browser receipt not run")
 	}
-	t.Setenv(readDSNEnv, dsn)
+	// Build the actual first Web Target entry point instead of invoking its
+	// in-process test Host. This exercises the zero-injected-Reader CLI,
+	// its default authentication fixtures and the explicit PostgreSQL flag.
+	// The guide uses "go run"; building then starting the same package avoids
+	// leaving a go-run child process alive when the test stops the server.
+	webBinary := filepath.Join(t.TempDir(), "first-web-target")
+	buildWeb := exec.Command("go", "build", "-o", webBinary, "./tools/reference-first-web-target")
+	buildWeb.Dir = repoRootForGuide(t)
+	if _, err := buildWeb.CombinedOutput(); err != nil {
+		t.Fatalf("cannot build the shipped first Web Target: %v (output withheld)", err)
+	}
+	revision := exec.Command("git", "rev-parse", "HEAD")
+	revision.Dir = repoRootForGuide(t)
+	headBytes, err := revision.Output()
+	if err != nil {
+		t.Fatalf("cannot resolve the guide's actual checkout revision: %v", err)
+	}
+	head := strings.TrimSpace(string(headBytes))
 	address := freeLoopbackAddress(t)
 	ctx, cancel := context.WithCancel(context.Background())
+	web := exec.CommandContext(ctx, webBinary,
+		"-serve-read-from-db",
+		"-diagnostic-unaccepted-source",
+		"-workspace", root, "-application", "order_entry",
+		"-baseline-id", "B", "-baseline-revision", head,
+		"-target-revision", head, "-listen", address,
+	)
+	web.Dir = repoRootForGuide(t)
+	// Only the child process receives the DSN. It is never an argument,
+	// part of the edited Workspace or part of a test failure message.
+	web.Env = append(os.Environ(), readDSNEnv+"="+dsn)
+	if err := web.Start(); err != nil {
+		cancel()
+		t.Fatalf("cannot start the shipped first Web Target: %v", err)
+	}
 	done := make(chan error, 1)
-	go func() {
-		done <- runCombinedWebTargetWithHost(ctx, nil, nil, webHostWiring{},
-			[]string{
-				"-workspace", root, "-application", "order_entry",
-				"-baseline-id", "B", "-baseline-revision", testBaselineRevision,
-				"-target-revision", testTargetRevision, "-listen", address,
-				"-legacy-users", legacyFixturePath(t, "users.json"),
-				"-legacy-authorization", legacyFixturePath(t, "authorization.json"),
-				"-diagnostic-unaccepted-source",
-				"-serve-read-from-db",
-			})
-	}()
+	go func() { done <- web.Wait() }()
 	t.Cleanup(func() {
 		cancel()
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
-			t.Error("the web target did not stop with its context")
+			t.Error("the shipped first Web Target did not stop")
 		}
 	})
 	waitForHealth(t, address, done)
