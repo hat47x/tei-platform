@@ -695,6 +695,14 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 			if err != nil {
 				return RuleAuthoring{}, err
 			}
+			// Each input has one binding within a rule. Reject a second one
+			// at the authored name rather than depending on conversion order.
+			for _, previous := range inputs {
+				if previous.Name == nameTok.Text {
+					return RuleAuthoring{}, p.errAt(nameTok, fmt.Sprintf(
+						"operator input %q is assigned more than once", nameTok.Text))
+				}
+			}
 			if _, err := p.next(); err != nil { // the colon
 				return RuleAuthoring{}, err
 			}
