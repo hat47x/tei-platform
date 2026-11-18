@@ -165,6 +165,7 @@ jobs:
             tools/reference-first-web-target/read_scenario_postgres.go \
             tools/reference-first-web-target/read_scenario_postgres_test.go \
             tools/reference-first-web-target/read_scenario_page_postgres_test.go \
+            tools/reference-first-web-target/first_change_sql_rollback_pg_test.go \
             | tee "$RUNNER_TEMP/destination-order-gofmt.diff"
           test ! -s "$RUNNER_TEMP/destination-order-gofmt.diff"
 
