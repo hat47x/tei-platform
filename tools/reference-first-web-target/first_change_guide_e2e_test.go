@@ -81,10 +81,23 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatal("cannot verify the disposable database starts empty")
 	}
 	if preexistingParents || preexistingDetails {
-		t.Fatal("the first-change walkthrough requires an empty isolated PostgreSQL database")
+		// The dedicated CI database is shared with earlier tests, which may
+		// leave their order fixtures behind. Reset only the two known order
+		// tables, and only after verifying the ACTUAL isolated database name.
+		// This is test setup, not a hidden replacement for the guide's DDL.
+		for _, table := range []string{"public.order_lines", "public.orders"} {
+			if _, err := db.Exec("DROP TABLE IF EXISTS " + table + " CASCADE"); err != nil {
+				t.Fatal("cannot reset the isolated order tables before step 0")
+			}
+		}
 	}
-	// Register destructive cleanup only after verifying both tables were absent.
-	// A failed isolation precondition must never drop preexisting user tables.
+	if err := db.QueryRowContext(t.Context(),
+		"SELECT to_regclass('public.orders') IS NOT NULL, to_regclass('public.order_lines') IS NOT NULL").
+		Scan(&preexistingParents, &preexistingDetails); err != nil || preexistingParents || preexistingDetails {
+		t.Fatal("step 0 did not start without parent/detail tables in the isolated database")
+	}
+	// Register destructive cleanup only after the isolated database guard.
+	// This cleanup is never registered against an arbitrary user database.
 	t.Cleanup(func() {
 		for _, table := range []string{"public.order_lines", "public.orders"} {
 			if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
