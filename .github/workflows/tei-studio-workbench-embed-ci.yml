@@ -15,6 +15,7 @@ on:
       - reference/tei-studio-graph/**
       - reference/tei-studio-workbench/**
       - tools/reference-studio-part-generator/**
+      - tools/reference-studio-static-composition/build-generated-workbench.mjs
   workflow_dispatch:
 
 permissions:
