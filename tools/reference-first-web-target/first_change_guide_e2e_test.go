@@ -69,8 +69,8 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		}
 	}
 	for target, source := range map[string]string{
-		"tei": binary,
-		"reference/workspace": filepath.Join(repoRootForGuide(t), "reference", "workspace"),
+		"tei":                               binary,
+		"reference/workspace":               filepath.Join(repoRootForGuide(t), "reference", "workspace"),
 		"testdata/destination-order-change": fixtures,
 	} {
 		if err := os.Symlink(source, filepath.Join(attempt, target)); err != nil {
