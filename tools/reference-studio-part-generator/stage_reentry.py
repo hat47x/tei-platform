@@ -304,7 +304,6 @@ def self_test() -> None:
         assert not judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", observed)["reentryObserved"], name
     # A Stage2 Desktop built by the Stage0 TEI is not re-entry even if it runs.
     assert not judge(desktop_stage("tei0"), desktop_stage("tei0"), "part", desktop())["reentryObserved"]
-
     print("self-test: 18 judgements behaved as specified")
 
 
@@ -392,4 +391,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
