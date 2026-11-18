@@ -227,6 +227,15 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(seedDir, "seed.sql"), seed, 0o644); err != nil {
 				t.Fatal(err)
 			}
+			// The published guide seeds the parent orders before the details.
+			// Run the current shell block unchanged, using the actual parent fixture.
+			ordersSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed-orders.sql"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(seedDir, "seed-orders.sql"), ordersSeed, 0o644); err != nil {
+				t.Fatal(err)
+			}
 
 			command := exec.Command("sh", "-eu", "-c", script)
 			command.Dir = root
@@ -241,13 +250,26 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 				"SELECT to_regclass('public.order_lines') IS NOT NULL").Scan(&exists); err != nil {
 				t.Fatal("cannot inspect the isolated detail table")
 			}
+			var parentExists bool
+			if err := db.QueryRowContext(t.Context(),
+				"SELECT to_regclass('public.orders') IS NOT NULL").Scan(&parentExists); err != nil {
+				t.Fatal("cannot inspect the isolated parent table")
+			}
 			if tc.wantFailed {
-				if exists {
-					t.Fatal("the guide left a table behind after a failed seed transaction")
+				if exists || parentExists {
+					t.Fatal("the guide left generated tables behind after a failed seed transaction")
 				}
 			} else {
-				if !exists {
-					t.Fatal("the guide did not commit the generated detail table")
+				if !exists || !parentExists {
+					t.Fatal("the guide did not commit both the generated parent and detail tables")
+				}
+				var parentCount int
+				if err := db.QueryRowContext(t.Context(),
+					"SELECT count(*) FROM public.orders").Scan(&parentCount); err != nil {
+					t.Fatal("cannot inspect the committed parent seed rows")
+				}
+				if parentCount != 3 {
+					t.Fatalf("the guide committed %d parent orders, want 3", parentCount)
 				}
 				var count int
 				if err := db.QueryRowContext(t.Context(),
