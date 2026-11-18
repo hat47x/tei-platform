@@ -360,9 +360,9 @@ func applySchemaFromDefinitions(t *testing.T, binary, workspaceRoot string, db *
 		t.Fatalf("step 0: desired-schema failed: code=%d stderr=%s", printed.code, printed.stderr)
 	}
 	// Start from an empty schema so an earlier run cannot stand in for these
-	// statements.
+	// statements. Do not cascade into unrelated dependent fixtures.
 	for _, table := range []string{"public.order_lines", "public.orders"} {
-		if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
+		if _, err := db.Exec("drop table if exists " + table); err != nil {
 			t.Fatalf("step 0: cannot clear %s: %v", table, err)
 		}
 	}
