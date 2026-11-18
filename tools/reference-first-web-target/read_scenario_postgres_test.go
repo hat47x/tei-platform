@@ -51,6 +51,64 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 	if err := requireIsolatedWebReadDatabase(t.Context(), db, readPostgresDatabase+"_unexpected"); err == nil {
 		t.Fatal("a different database name passed the isolation guard")
 	}
+
+	t.Run("the Contract Query transaction is read-only and repeatable-read", func(t *testing.T) {
+		// Use a disposable table unrelated to the order fixture. Reading its
+		// row count establishes the snapshot; a different connection then
+		// commits a second row. The selected Query's transaction must not see
+		// that later write and must refuse attempts to write itself.
+		const table = "public.tei_web_read_snapshot_probe"
+		var preexisting bool
+		if err := db.QueryRowContext(t.Context(),
+			"SELECT to_regclass($1) IS NOT NULL", table).Scan(&preexisting); err != nil || preexisting {
+			t.Fatal("snapshot probe table already exists or could not be checked")
+		}
+		if _, err := db.ExecContext(t.Context(),
+			"CREATE TABLE "+table+" (id bigint PRIMARY KEY)"); err != nil {
+			t.Fatal("cannot create isolated snapshot probe")
+		}
+		t.Cleanup(func() {
+			if _, err := db.Exec("DROP TABLE IF EXISTS " + table); err != nil {
+				t.Error("cannot clean isolated snapshot probe")
+			}
+		})
+		if _, err := db.ExecContext(t.Context(), "INSERT INTO "+table+" VALUES (1)"); err != nil {
+			t.Fatal("cannot seed isolated snapshot probe")
+		}
+
+		tx, err := beginWebReadOnlyQueryTx(t.Context(), db)
+		if err != nil {
+			t.Fatal("cannot begin PostgreSQL web-query transaction")
+		}
+		defer func() { _ = tx.Rollback() }()
+		var isolation, readOnly string
+		var initial int
+		if err := tx.QueryRowContext(t.Context(),
+			"SELECT current_setting('transaction_isolation'), current_setting('transaction_read_only'), (SELECT count(*) FROM "+table+")").
+			Scan(&isolation, &readOnly, &initial); err != nil {
+			t.Fatal("cannot inspect the actual web-query transaction")
+		}
+		if isolation != "repeatable read" || readOnly != "on" || initial != 1 {
+			t.Fatalf("web-query transaction is not a stable read-only snapshot: isolation=%q readOnly=%q count=%d",
+				isolation, readOnly, initial)
+		}
+		if _, err := db.ExecContext(t.Context(), "INSERT INTO "+table+" VALUES (2)"); err != nil {
+			t.Fatal("cannot commit independent snapshot probe write")
+		}
+		var after, outside int
+		if err := tx.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&after); err != nil {
+			t.Fatal("cannot reread inside web-query snapshot")
+		}
+		if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&outside); err != nil {
+			t.Fatal("cannot read from an independent connection")
+		}
+		if after != 1 || outside != 2 {
+			t.Fatalf("different snapshots were conflated: query=%d independent=%d", after, outside)
+		}
+		if _, err := tx.ExecContext(t.Context(), "INSERT INTO "+table+" VALUES (3)"); err == nil {
+			t.Fatal("the web-query transaction accepted a write")
+		}
+	})
 	if err := seedReadFixture(t, db); err != nil {
 		t.Fatal(err)
 	}
@@ -130,12 +188,10 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 		t.Fatal("no relation-wide line_number_unique answer for the database read")
 	}
 
-	t.Run("a covers declaration does not prove full Web relation coverage", func(t *testing.T) {
-		// Browse row 1 names order 1002 in the independently seeded orders:
-		// it has two distinct line_numbers. The Workspace declares covers, so
-		// CLI can qualify complete in the ordinary unfiltered PostgreSQL case.
-		// The first Web runner currently has no same-attempt physical coverage
-		// qualification, and must not borrow the CLI's positive answer.
+	t.Run("the executed query and PostgreSQL visibility qualify this relation", func(t *testing.T) {
+		// The Workspace declares covers, but this positive answer is
+		// permitted only after the exact selected Query and physical table
+		// were checked inside its own RepeatableRead transaction.
 		second, err := runner.Run(t.Context(), readScenarioInput{
 			From: "2026-09-01T00:00:00Z", RowIndex: 1,
 		})
@@ -152,15 +208,69 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 				continue
 			}
 			found = true
-			if !strings.Contains(answer, " undecided (") ||
-				!strings.Contains(answer, "relation-partially-read") {
-				t.Fatalf("Web read used unqualified relation coverage: %q", answer)
+			if answer != rule+" satisfied" {
+				t.Fatalf("the qualified complete read did not prove uniqueness: %q", answer)
 			}
 		}
 		if !found {
 			t.Fatal("the Web read omitted the relation-wide uniqueness answer")
 		}
 	})
+
+	t.Run("row-level security refuses complete coverage even with covers", func(t *testing.T) {
+		// Catalog qualification runs in the same transaction as the
+		// read. An RLS-enabled table can hide rows for another role, so
+		// the Web must not infer completeness from observed values.
+		if _, err := db.ExecContext(t.Context(), "alter table public.order_lines enable row level security"); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, err := db.Exec("alter table public.order_lines disable row level security"); err != nil {
+				t.Errorf("cannot restore the isolated table's RLS setting: %v", err)
+			}
+		})
+		second, err := runner.Run(t.Context(), readScenarioInput{
+			From: "2026-09-01T00:00:00Z", RowIndex: 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		const rule = "sales.order.lines.line_number_unique"
+		found := false
+		for _, answer := range second.RelationAnswers {
+			if !strings.HasPrefix(answer, rule+" ") {
+				continue
+			}
+			found = true
+			if !strings.Contains(answer, " undecided (") ||
+				!strings.Contains(answer, "relation-partially-read") {
+				t.Fatalf("an RLS-enabled table was treated as complete: %q", answer)
+			}
+		}
+		if !found {
+			t.Fatal("the Web read omitted the relation-wide uniqueness answer")
+		}
+
+		// The duplicate that the current role did observe still refutes
+		// uniqueness. Unknown coverage prevents a positive proof, not
+		// a known counterexample.
+		first, err := runner.Run(t.Context(), readScenarioInput{
+			From: "2026-09-01T00:00:00Z", RowIndex: 0,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		found = false
+		for _, answer := range first.RelationAnswers {
+			if answer == rule+" not-satisfied" {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("an observed duplicate was lost under RLS: %v", first.RelationAnswers)
+		}
+	})
+
 }
 
 // requireIsolatedWebReadDatabase checks the ACTUAL PostgreSQL database, not
