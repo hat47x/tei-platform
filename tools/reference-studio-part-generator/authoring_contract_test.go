@@ -96,6 +96,69 @@ func TestAuthoringDataControlsGeneratedReaderWithoutGeneratorChanges(t *testing.
 	}
 }
 
+func TestRealInspectCanonicalChangesWithAuthoringDataRequiredFlag(t *testing.T) {
+	// This checks the user-visible Inspector text's actual Source-backed input.
+	// The generated Reader renders the Canonical JSON, while the separate
+	// Windows WebView2 test must still prove that the text reached the screen.
+	root, source := makeStudioAuthoringWorkspace(t, "| snapshotFingerprint | std.text | no | Snapshot |\n")
+	subject := sourceindex.Subject{Kind: "semantic-data", ID: "studio.inspection_response"}
+	inspect := func() (string, map[string]bool) {
+		t.Helper()
+		got, err := operations.InspectSubject(root, subject)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Subject != subject || got.Effect != "read-only" {
+			t.Fatalf("Inspect returned another Subject or effect: %+v", got)
+		}
+		var canonical struct {
+			ID         string `json:"id"`
+			Attributes []struct {
+				Symbol   string `json:"symbol"`
+				Required bool   `json:"required"`
+			} `json:"attributes"`
+		}
+		if err := json.Unmarshal(got.Canonical, &canonical); err != nil {
+			t.Fatal(err)
+		}
+		if canonical.ID != subject.ID {
+			t.Fatalf("Inspect canonical has unexpected ID %q", canonical.ID)
+		}
+		required := make(map[string]bool, len(canonical.Attributes))
+		for _, field := range canonical.Attributes {
+			if _, duplicate := required[field.Symbol]; duplicate {
+				t.Fatalf("duplicate Canonical attribute %q", field.Symbol)
+			}
+			required[field.Symbol] = field.Required
+		}
+		if len(required) != 2 || !required["schemaVersion"] {
+			t.Fatalf("Canonical did not contain both expected attributes: %+v", required)
+		}
+		return string(got.Canonical), required
+	}
+	beforeText, beforeFields := inspect()
+	if beforeFields["snapshotFingerprint"] {
+		t.Fatal("baseline Canonical unexpectedly requires snapshotFingerprint")
+	}
+	newSource := "# Studio response\n\n<!-- tei: data InspectionResponse in studio -->\n" +
+		"| attribute | type | required | display |\n" +
+		"| --- | --- | --- | --- |\n" +
+		"| schemaVersion | std.text | yes | Schema |\n" +
+		"| snapshotFingerprint | std.text | yes | Snapshot |\n"
+	if err := os.WriteFile(source, []byte(newSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	afterText, afterFields := inspect()
+	if !afterFields["snapshotFingerprint"] {
+		t.Fatal("changed Canonical did not require snapshotFingerprint")
+	}
+	if beforeText == afterText {
+		t.Fatal("real Inspect canonical text did not change after Data Source edit")
+	}
+	// This is a different observation from a generated Reader's hidden
+	// provenance digest. No model change is accepted or written by Studio here.
+}
+
 func TestAuthoringBindingUsesRealChildNoClobberAndReportsSource(t *testing.T) {
 	root, _ := makeStudioAuthoringWorkspace(t, "| snapshotFingerprint | std.text | yes | Snapshot |\n")
 	artifact := filepath.Join(t.TempDir(), "reader.ts")
