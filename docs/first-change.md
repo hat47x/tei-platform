@@ -6,7 +6,7 @@
 
 ## 用意するもの
 
-Go、PostgreSQL（`psql`を含む）、このリポジトリ。以下のコマンドは`awk`を使うPOSIXシェル向けで、WindowsではWSLなどの環境で実行する。PowerShell上での実行は未検証である。試してよい空のデータベースを一つ作り、接続先を環境変数へ入れる。接続先は作業領域へ書かない。
+Go、PostgreSQL（`psql`を含む）、このリポジトリ。以下のコマンドは`awk`を使うPOSIXシェル向けで、WindowsではWSLなどの環境で実行する。PowerShell上での実行は未検証である。**手順0〜5は同じシェルで続けて実行する。**試してよい空のデータベースを一つ作り、接続先を環境変数へ入れる。接続先は作業領域へ書かない。
 
 ```bash
 go build -o tei ./cmd/tei
@@ -18,7 +18,7 @@ export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータ�
 表を作るSQLは、保存の定義から出す。
 
 ```bash
-tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
+./tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
   | psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1
 psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 ```
@@ -36,13 +36,16 @@ psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 参照用の作業領域は変えない。写しで試す。
 
 ```bash
-cp -r reference/workspace /tmp/my-workspace
+export TEI_FIRST_WORKSPACE="$(mktemp -d)"
+cp -R reference/workspace/. "$TEI_FIRST_WORKSPACE/"
 ```
+
+作業領域のコピー先は毎回新しく作る。以前の試行で編集したファイルを誤って引き継がないためである。以降の手順は同じシェルで実行し、`TEI_FIRST_WORKSPACE`を変更しない。
 
 ## 2. 明細を読み、規則の答えを見る
 
 ```bash
-./tei view -workspace /tmp/my-workspace -application order_entry \
+./tei view -workspace "$TEI_FIRST_WORKSPACE" -application order_entry \
   -pattern order_entry.order_lines -environment development \
   -input order_id=1001 -format json
 ```
@@ -57,18 +60,18 @@ cp -r reference/workspace /tmp/my-workspace
 
 ```bash
 # 設計文書の言語を選ぶ
-printf 'languages:\n  - tei.authoring/v1\n' >> /tmp/my-workspace/tei.workspace.yaml
+printf 'languages:\n  - tei.authoring/v1\n' >> "$TEI_FIRST_WORKSPACE/tei.workspace.yaml"
 
 # 規則と、近くの例を置く
-cp testdata/destination-order-change/edit/unit-price.tei.md /tmp/my-workspace/semantic/sales/
+cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPACE/semantic/sales/"
 
 # 受注入力のApplicationが、その規則を使うと書く
 awk '{
   print
   if ($0 == "    uses validation sales.order_line.quantity_positive")
     print "    uses validation sales.order_line.unit_price_positive"
-}' /tmp/my-workspace/applications/order-entry/application.tei > /tmp/my-workspace/applications/order-entry/application.tei.next
-mv /tmp/my-workspace/applications/order-entry/application.tei.next /tmp/my-workspace/applications/order-entry/application.tei
+}' "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei" > "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei.next"
+mv "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei.next" "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei"
 ```
 
 置いた設計文書は、規則一行と例の表でできている。
@@ -91,10 +94,10 @@ rule sales.order_line.unit_price_positive:
 ## 4. 確かめて、読み直す
 
 ```bash
-./tei validate -workspace /tmp/my-workspace
+./tei validate -workspace "$TEI_FIRST_WORKSPACE"
 ```
 
-`ok`で終わる。参照用の作業領域が元から持つ警告が一件出るが、この変更とは関係がない。例の表の`not-satisfied`を`satisfied`へ書き換えてもう一度実行すると、`RULE_EXAMPLE_MISMATCH`で止まる。例と規則が食い違っていることを、文書の段階で見つけている。
+`ok`で終わる。参照元の作業領域に由来する警告が複数出る場合があるため、警告の件数ではなく内容を確認する。例の表の`not-satisfied`を`satisfied`へ書き換えてもう一度実行すると、`RULE_EXAMPLE_MISMATCH`で止まる。例と規則が食い違っていることを、文書の段階で見つけている。
 
 手順2と同じコマンドをもう一度打つ。同じ行に対して、単価が0の明細（`key` 3）に`sales.order_line.unit_price_positive: not-satisfied`が増えている。データベースもプログラムも変えていない。
 
@@ -102,7 +105,7 @@ rule sales.order_line.unit_price_positive:
 
 ## 5. Webの画面で同じ答えを見る
 
-手順3で規則を追加した`/tmp/my-workspace`を第一Web Targetにも渡し、実PostgreSQLの同じ明細に対する判定を画面で見る。元の`reference/workspace`を渡すと、編集前の規則しか表示されない。
+手順3で規則を追加した作業領域（`TEI_FIRST_WORKSPACE`）を第一Web Targetにも渡し、実PostgreSQLの同じ明細に対する判定を画面で見る。元の`reference/workspace`を渡すと、編集前の規則しか表示されない。
 CLIと同じ定義・接続先を使うが、各HTTP要求は別の読取であり、同じDBスナップショットで実行されたという意味ではない。接続文字列は**環境変数**から渡し、作業領域へ書かない。
 
 ```bash
@@ -110,7 +113,7 @@ export TEI_WEB_READ_PG_DSN="$TEI_VIEW_PG_DSN"
 go run ./tools/reference-first-web-target \
   -serve-read-from-db \
   -diagnostic-unaccepted-source \
-  -workspace /tmp/my-workspace -application order_entry \
+  -workspace "$TEI_FIRST_WORKSPACE" -application order_entry \
   -baseline-id B -baseline-revision "$(git rev-parse HEAD)" \
   -target-revision "$(git rev-parse HEAD)" \
   -listen 127.0.0.1:8080
