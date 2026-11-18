@@ -208,6 +208,19 @@ try {
     assert.equal(readFileSync(source, "utf8"), afterText);
     assert.equal(revision(), r1);
     assert.equal(run("git", ["rev-parse", "HEAD"]).stdout.trim(), originalHead);
+    // Transport ONLY the accepted Source and the separately recorded baseline
+    // to a Windows job. Do not export the scratch Decision store as authority.
+    for (const label of ["before-workspace", "accepted-workspace"]) {
+      mkdirSync(join(outputDir, label, "semantic/studio"), {recursive:true});
+      writeFileSync(join(outputDir, label, "tei.workspace.yaml"),
+        readFileSync(join(workspace, "tei.workspace.yaml")));
+      writeFileSync(join(outputDir, label, sourceRel),
+        label === "before-workspace" ? beforeText : readFileSync(source));
+    }
+    assert.equal(hash(readFileSync(join(outputDir, "accepted-workspace", sourceRel))),
+      hash(readFileSync(source)));
+    assert.equal(readFileSync(join(outputDir, "before-workspace", sourceRel), "utf8"),
+      beforeText);
     const receipt = {
       schema: "tei.reference.studio-required-source-loop/v0",
       head: originalHead,
