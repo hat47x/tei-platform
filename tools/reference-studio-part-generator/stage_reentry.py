@@ -233,12 +233,11 @@ def one_contract(path: Path) -> str | None:
 
 
 def embedded_bundle(desktop: Path, bundle: bytes, part: Path) -> dict:
-    """What the Desktop executable carries, read from its bytes.
+    """Inspect the Desktop bytes and the Reader contract independently.
 
-    go:embed stores file contents verbatim, so the committed bundle must occur
-    in the executable as one contiguous byte run. The bundle is not rebuilt by
-    TEI; the check is that this Desktop embeds exactly the committed bundle and
-    that the bundle names the contract the regenerated part names.
+    The caller supplies either the committed historical Bundle or the new
+    Bundle that the TEI-driven Node child produced. The returned observation
+    makes no assertion about who selected or accepted that input.
     """
     image = desktop.read_bytes() if desktop.is_file() else b""
     part_ids = CONTRACT_DIGEST.findall(part.read_bytes()) if part.is_file() else []
@@ -255,6 +254,8 @@ def embedded_bundle(desktop: Path, bundle: bytes, part: Path) -> dict:
 def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None = None) -> dict:
     """Each judgement is separate; agreement of bytes alone is never re-entry."""
     bundle_mode = "bundleGeneration" in stage1 or "bundleGeneration" in stage2
+    generated_desktop = (desktop is not None
+                         and desktop.get("embedded", {}).get("inputMode") == "stage-generated")
     steps = ("teiBuild", "generatorBuild", "partGeneration") + (
         ("bundleGeneration",) if bundle_mode else ()) + (
         ("studioDesktopBuild",) if desktop is not None else ())
@@ -285,8 +286,20 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
         "teiArtifactsEqual": stage1_tei == stage2["teiBuild"].get("artifactDigest"),
         "partsEqual": stage1["partGeneration"].get("artifactDigest") is not None
         and stage1["partGeneration"].get("artifactDigest") == stage2["partGeneration"].get("artifactDigest"),
-        "stage2PartIsTheCommittedPart": stage2["partGeneration"].get("artifactDigest") == committed_part,
     }
+    if generated_desktop:
+        judgement.update({
+            "stage2PartChangedFromCommittedPart": stage2["partGeneration"].get("artifactDigest") is not None
+            and stage2["partGeneration"]["artifactDigest"] != committed_part,
+            "authoringSourceStableAcrossStages": bool(stage1.get("authoringSourceDigest"))
+            and stage1.get("authoringSourceDigest") == stage2.get("authoringSourceDigest")
+            and stage1.get("authoringData") == stage2.get("authoringData")
+            and stage1.get("authoringSourceDigest") == desktop.get("authoringSourceDigest")
+            and desktop.get("authoringSourceDigest") == desktop.get("authoringSourceAfterDigest"),
+        })
+    else:
+        judgement["stage2PartIsTheCommittedPart"] = (
+            stage2["partGeneration"].get("artifactDigest") == committed_part)
     if bundle_mode:
         contract1, contract2 = stage1.get("partContract"), stage2.get("partContract")
         builder1 = stage1.get("bundleBuilderSourceDigest")
@@ -311,14 +324,38 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
         })
     if desktop is not None:
         embedded = desktop.get("embedded", {})
-        judgement.update({
-            "studioDesktopsEqual": stage1["studioDesktopBuild"].get("artifactDigest") is not None
-            and stage1["studioDesktopBuild"].get("artifactDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
-            "stage2DesktopEmbedsCommittedBundle": embedded.get("embedsCommittedBundle") is True
-            and embedded.get("desktopDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
-            "committedBundleCarriesRegeneratedPart": embedded.get("regeneratedPartContract") is not None
-            and embedded.get("bundleContract") == embedded.get("regeneratedPartContract"),
-        })
+        judgement["studioDesktopsEqual"] = (
+            stage1["studioDesktopBuild"].get("artifactDigest") is not None
+            and stage1["studioDesktopBuild"].get("artifactDigest")
+            == stage2["studioDesktopBuild"].get("artifactDigest"))
+        if generated_desktop:
+            judgement.update({
+                "eachDesktopUsedItsStageGeneratedBundle": all(
+                    stage.get("desktopInputBundleDigest") is not None
+                    and stage.get("desktopInputBundleDigest")
+                    == stage.get("bundleGeneration", {}).get("artifactDigest")
+                    and stage.get("desktopSourceDifference") == [COMMITTED_BUNDLE.as_posix()]
+                    and stage.get("desktopCheckoutCommit") == desktop.get("sourceHead")
+                    for stage in (stage1, stage2)
+                ),
+                "stage2DesktopEmbedsGeneratedBundle": embedded.get("embedsCommittedBundle") is True
+                and embedded.get("desktopDigest") == stage2["studioDesktopBuild"].get("artifactDigest")
+                and embedded.get("committedBundleDigest")
+                == stage2.get("bundleGeneration", {}).get("artifactDigest"),
+                "generatedDesktopExcludesCommittedBundle":
+                embedded.get("committedBundleAbsent") is True,
+                "generatedDesktopCarriesReaderContract":
+                embedded.get("regeneratedPartContract") is not None
+                and embedded.get("bundleContract") == embedded.get("regeneratedPartContract")
+                and embedded.get("bundleContract") == stage2.get("partContract"),
+            })
+        else:
+            judgement.update({
+                "stage2DesktopEmbedsCommittedBundle": embedded.get("embedsCommittedBundle") is True
+                and embedded.get("desktopDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
+                "committedBundleCarriesRegeneratedPart": embedded.get("regeneratedPartContract") is not None
+                and embedded.get("bundleContract") == embedded.get("regeneratedPartContract"),
+            })
         if "smoke" in desktop:
             smoke = desktop["smoke"]
             judgement["stage2DesktopUsedGeneratedReaderInNewProcess"] = (
