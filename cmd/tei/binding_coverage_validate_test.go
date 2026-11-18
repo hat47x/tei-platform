@@ -28,6 +28,17 @@ func TestValidateChecksWhatABindingStatesAboutItsRows(t *testing.T) {
 		{name: "the reference Workspace, nothing stated", replace: "", exit: 0, want: "HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED"},
 		{name: "every line of the order", replace: "    covers sales.order.lines\n", exit: 0, absent: "COVERAGE"},
 		{name: "only some rows", replace: "    covers some\n", exit: 0, absent: "COVERAGE"},
+		{
+			// The warning offers `covers %s` as the way to state what the Query
+			// returns. That statement is not a proof that every row arrived, so
+			// the advice must not read as "add this and the rule is satisfied".
+			// A read of a declared binding still answers the rule undecided
+			// (RULE_NORMAL_FORM decision §6).
+			name:    "the advice does not promise satisfaction",
+			replace: "",
+			exit:    0,
+			want:    "not a proof that every row arrived",
+		},
 		{name: "another relation", replace: "    covers sales.order.customer\n", exit: 1, want: "HEADER_DETAIL_BINDING_COVERS_OTHER_RELATION"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
