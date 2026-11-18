@@ -213,12 +213,48 @@ jobs:
             and .authority.acceptedBusiness == "not-established"
           ' "$shots/real-browser-receipt.json" >/dev/null
 
+      - name: 実Chromeの必須指定を審査・Source保存しInspectorで再読込
+        shell: bash
+        run: |
+          set -euo pipefail
+          shots="$RUNNER_TEMP/tei-studio-required-source-roundtrip"
+          node reference/studio-authoring/required-source-roundtrip.mjs \
+            "$RUNNER_TEMP/tei-studio-playwright" "$shots" \
+            > "$RUNNER_TEMP/tei-studio-required-source-roundtrip.log"
+          test -s "$shots/before.png"
+          test -s "$shots/after.png"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.studio-required-source-roundtrip/v0"
+            and .head == $sha
+            and .attempt == "one-disposable-workspace"
+            and .before.required == false
+            and .after.required == true
+            and .before.revision != .after.revision
+            and .before.sourceFingerprint != .after.sourceFingerprint
+            and .realChromeDOMEvent == true
+            and .reviewedViaSharedAcceptance == true
+            and .acceptViaSharedAcceptance == true
+            and .productInspectorReload == true
+            and .reopenedEditorShowsChangedValue == true
+            and .staleDraftRefused == true
+            and .sourceOtherBytesPreserved == true
+            and .externalNetworkRequests == 0
+            and .authority.humanAcceptance == "not-observed"
+            and .authority.ownerSemanticApproval == "not-established"
+            and .authority.productionWailsUI == "not-observed"
+            and .authority.formalBuildIntent == "not-established"
+          ' "$shots/required-source-roundtrip.json" >/dev/null
+          jq '{schema, head, subject, before, after, authority}' \
+            "$shots/required-source-roundtrip.json"
+
       - name: 実Chromeのオフライン編集画面証跡を添付
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: studio-edit-chrome-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/tei-studio-real-browser/
+          path: |
+            ${{ runner.temp }}/tei-studio-real-browser/
+            ${{ runner.temp }}/tei-studio-required-source-roundtrip/
           retention-days: 7
           if-no-files-found: error
 
