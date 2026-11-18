@@ -356,7 +356,7 @@ const (
 	practicalBValidationSource  = "semantic/sales/validation.tei"
 	practicalBQuerySource       = "applications/order-entry/queries/recent_orders.tei"
 	practicalBBindingSource     = "applications/order-entry/realizations/header-detail/order-lines.tei"
-	practicalBBindingCovers    = "    covers sales.order.lines\n"
+	practicalBBindingCovers     = "    covers sales.order.lines\n"
 	practicalBQueryBefore       = "sha256:a7c1c4f6fc55bf93ba775c444c1b2576cc2e979e4e0d93aeeecbe508c61fe3ac"
 	practicalBQueryInputInsert  = "    input from std.datetime\n"
 	practicalBApplicationBefore = "sha256:d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
