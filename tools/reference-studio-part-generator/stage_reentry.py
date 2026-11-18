@@ -194,7 +194,7 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
         "everyStepCompletedAndCrossChecked": clean(stage1) and clean(stage2),
         "eachStageDrivenByItsOwnTei": driven_by(stage1) and driven_by(stage2),
         "stage1TeiArtifactIsStage2Invoker": stage1_tei is not None and stage2["invokerOnDisk"] == stage1_tei
-        and all(stage2[s].get("invokerDigest") == stage1_tei for s in steps),
+        and all(stage2.get(s, {}).get("invokerDigest") == stage1_tei for s in steps),
         "stage2PartMadeByStage2RebuiltGenerator": stage2["generatorBuild"].get("artifactDigest") is not None
         and stage2["partGeneration"].get("invokedExecutableDigest") == stage2["generatorBuild"].get("artifactDigest"),
         "stage1PartMadeByStage1BuiltGenerator": stage1["generatorBuild"].get("artifactDigest") is not None
