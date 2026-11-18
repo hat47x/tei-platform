@@ -58,7 +58,11 @@ func referenceLoadFingerprint(t *testing.T, r Result) string {
 // Old current fingerprint (pre-RA-0) 61ebb5cabef7f5037ad26eadb9d379058c1138545c379774b4d72e24d69ee259
 // is historical evidence, not the new current Golden; it must not be reused.
 // New digest is measured by the exact-head repository-health Go test.
-const referenceLoadFingerprintOnOriginMain = "435b687ed763cd9680901b0c76e198f70c2058a408162527ec809b3e54fb3091"
+// Recompute for NOW.md road 3: the reference header-detail binding of
+// order_entry.order_lines now states `covers sales.order.lines`. Previous
+// digest 435b687ed763cd9680901b0c76e198f70c2058a408162527ec809b3e54fb3091 is
+// historical; the new one was measured by this test with only that line added.
+const referenceLoadFingerprintOnOriginMain = "528b511b50b9e5e0f3687f5641045ca3eb1149c255e097070d86b64c11654268"
 
 func TestLoadReferenceWorkspaceFingerprintIsStable(t *testing.T) {
 	root := copyReferenceWorkspace(t)

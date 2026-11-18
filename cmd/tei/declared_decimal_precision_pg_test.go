@@ -234,8 +234,8 @@ func TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack(t *testing.T) {
 			if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
 				t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
 			}
-			if !report.OK || report.Result.Coverage != "partial" {
-				t.Fatalf("CLI claimed complete coverage or failed: %+v", report)
+			if !report.OK || report.Result.Coverage != "complete" {
+				t.Fatalf("CLI failed to qualify the declared complete read: %+v", report)
 			}
 			want := expected.Orders[orderID]
 			if !reflect.DeepEqual(report.Result.PerLine, want.PerLine) {

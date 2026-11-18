@@ -89,7 +89,7 @@ func TestADeclarationAloneIsNotCoverage(t *testing.T) {
 		declared string
 		reason   string
 	}{
-		{"nothing declared", nil, "", "does not state"},
+		{"nothing declared", []coverageEdit{declareCovers("")}, "", "does not state"},
 		{"some declared", []coverageEdit{func(w *ir.World) {
 			for i := range w.HeaderDetailContractQueryBindings {
 				w.HeaderDetailContractQueryBindings[i].CoversSome = true

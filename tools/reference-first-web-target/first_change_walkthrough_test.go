@@ -37,7 +37,7 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 		"sales.order_line.unit_price_positive",
 		"sales.order.lines.line_number_unique",
 		"`not-satisfied`",
-		"`undecided`",
+		"`satisfied`",
 	} {
 		if !strings.Contains(webStep, required) {
 			t.Errorf("the Web walkthrough omitted %q", required)

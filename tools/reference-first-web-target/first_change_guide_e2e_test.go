@@ -19,8 +19,9 @@ import (
 	"tei/tools/internal/postgresdb"
 )
 
-// TestFirstChangeGuideRunsEndToEnd walks docs/first-change.md's five steps in
-// order, as written, against one real PostgreSQL database.
+// TestFirstChangeGuideRunsEndToEnd checks the handbook's five semantic steps
+// in order against one real PostgreSQL database. Editing uses a Go helper,
+// not the literal shell commands printed in the handbook.
 //
 // The guide is the acceptance document for plan/NOW.md's destination, so it has
 // to be checked as a sequence: step 2's answers, step 3's three-file edit,

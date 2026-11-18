@@ -196,6 +196,28 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(frozenTree, queryPath), oldQuery, 0o644); err != nil {
 		t.Fatalf("restore pinned historical Query in isolated worktree: %v", err)
 	}
+	// The historic parser predates header-detail coverage. Restore the raw
+	// pre-covers declaration from a pinned commit in the isolated frozen tree,
+	// after confirming that this one line is the entire Source difference.
+	const preCoversBindingRevision = "69e93f6e718cd32bd594c99bd16f31e0ab80f549"
+	bindingPath := filepath.Join("reference", "workspace", "applications", "order-entry", "realizations", "header-detail", "order-lines.tei")
+	oldBindingCommand := exec.Command("git", "-C", repo, "show", preCoversBindingRevision+":"+filepath.ToSlash(bindingPath))
+	oldBinding, err := oldBindingCommand.Output()
+	if err != nil {
+		t.Fatalf("read pinned pre-covers binding: %v", err)
+	}
+	currentBinding, err := os.ReadFile(filepath.Join(currentTree, bindingPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const coversLine = "    covers sales.order.lines\n"
+	if bytes.Count(currentBinding, []byte(coversLine)) != 1 ||
+		!bytes.Equal(bytes.Replace(currentBinding, []byte(coversLine), nil, 1), oldBinding) {
+		t.Fatal("the current binding differs from the pre-covers source by more than its coverage declaration")
+	}
+	if err := os.WriteFile(filepath.Join(frozenTree, bindingPath), oldBinding, 0o644); err != nil {
+		t.Fatalf("restore pinned pre-covers binding in frozen worktree: %v", err)
+	}
 	commit := exec.Command("git", "-C", frozenTree,
 		"-c", "user.name=tei-frozen-workspace",
 		"-c", "user.email=tei-frozen-workspace@example.invalid",
@@ -205,7 +227,8 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	}
 	frozenRevision := string(git("-C", frozenTree, "rev-parse", "HEAD"))
 	// The frozen comparison differs from live HEAD only in two pre-format
-	// manifests and this one sha256-pinned pre-RA-0 Query source. This is
+	// manifests, a sha256-pinned pre-RA-0 Query and the pinned pre-covers
+	// binding. This is
 	// historical runner parity, not acceptance of the current typed Query.
 	liveRevision := string(git("rev-parse", "HEAD"))
 	changedPaths := strings.Fields(string(git("-C", repo, "diff", "--name-only", liveRevision, frozenRevision)))
@@ -213,6 +236,7 @@ func TestHistoricalProcessPluginRunnerEvidenceParity(t *testing.T) {
 	wantChanged := []string{
 		"reference/plugin-self-build/workspace/tei.workspace.yaml",
 		"reference/workspace/applications/order-entry/queries/recent_orders.tei",
+		"reference/workspace/applications/order-entry/realizations/header-detail/order-lines.tei",
 		"reference/workspace/tei.workspace.yaml",
 	}
 	if !reflect.DeepEqual(changedPaths, wantChanged) {
