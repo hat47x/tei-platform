@@ -44,7 +44,7 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 	queryContract database.QueryContract,
 	parameters map[string]any,
 ) (driver.ContractQueryResult, error) {
-	tx, err := e.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
+	tx, err := beginWebReadOnlyQueryTx(ctx, e.db)
 	if err != nil {
 		return driver.ContractQueryResult{}, fmt.Errorf("cannot begin a read-only PostgreSQL transaction")
 	}
@@ -76,6 +76,17 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 		}
 	}
 	return result, nil
+}
+
+// beginWebReadOnlyQueryTx gives a single Contract Query one stable database
+// snapshot for its physical rows and any later catalog visibility check.
+// This DOES NOT cover the separate Browse or customer-reference reads, nor
+// establish full relation coverage by itself. The caller must roll it back.
+func beginWebReadOnlyQueryTx(ctx context.Context, db *sql.DB) (*sql.Tx, error) {
+	return db.BeginTx(ctx, &sql.TxOptions{
+		ReadOnly:  true,
+		Isolation: sql.LevelRepeatableRead,
+	})
 }
 
 // newPostgresReadRunner returns the normal read runner with both the browse and
