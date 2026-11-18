@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"tei/tools/internal/postgresdb"
 )
 
 // The setup printed in the first-change guide must stop when either the
@@ -121,6 +123,144 @@ func TestFirstChangeGuideSetupFailsClosed(t *testing.T) {
 			leftovers, err := filepath.Glob(filepath.Join(root, "tmp.*"))
 			if err != nil || len(leftovers) != 0 {
 				t.Fatalf("temporary SQL was not removed: files=%v err=%v", leftovers, err)
+			}
+		})
+	}
+}
+
+// TestFirstChangeGuideSQLSetupIsAtomicInPostgres runs the documented step-0
+// shell block with the actual generated CLI, psql and isolated PostgreSQL.
+// Stubbed command exits prove control flow; this checks that a late seed
+// failure also rolls back the earlier DDL and inserted rows.
+func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the guide requires a POSIX shell and psql")
+	}
+	dsn := webReadPostgresDSN(t)
+	if os.Getenv(readPostgresNameEnv) != readPostgresDatabase {
+		t.Fatal("refusing to edit PostgreSQL without its isolated database confirmation")
+	}
+	if _, err := exec.LookPath("psql"); err != nil {
+		t.Fatal("psql is missing from the real-database acceptance runner")
+	}
+	db, err := postgresdb.OpenSQL(dsn)
+	if err != nil {
+		t.Fatal("cannot open the isolated PostgreSQL database")
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if err := requireIsolatedWebReadDatabase(t.Context(), db, readPostgresDatabase); err != nil {
+		t.Fatal(err)
+	}
+	binary := buildCLIForGuide(t)
+	document, err := os.ReadFile(filepath.Join(repoRootForGuide(t), "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(document)
+	from := strings.Index(text, "## 0. 表を作り、明細を入れる")
+	to := strings.Index(text, "## 1. 作業領域の写しを作る")
+	if from < 0 || to <= from {
+		t.Fatal("the guide does not delimit the SQL setup step")
+	}
+	section := text[from:to]
+	fence := strings.Repeat(string(rune(96)), 3)
+	open := strings.Index(section, fence+"bash\n")
+	if open < 0 {
+		t.Fatal("the guide has no shell setup block")
+	}
+	block := section[open+len(fence+"bash\n"):]
+	close := strings.Index(block, fence)
+	if close < 0 {
+		t.Fatal("the guide's shell setup block is unterminated")
+	}
+	script := block[:close]
+	if !strings.Contains(script, "-v ON_ERROR_STOP=1 -1") {
+		t.Fatal("the guide no longer asks psql for an atomic transaction")
+	}
+
+	originalSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	clearTables := func() {
+		t.Helper()
+		for _, table := range []string{"public.order_lines", "public.orders"} {
+			if _, err := db.Exec("DROP TABLE IF EXISTS " + table); err != nil {
+				t.Fatalf("cannot reset the isolated PostgreSQL table %s: %v", table, err)
+			}
+		}
+	}
+	t.Cleanup(clearTables)
+
+	for _, tc := range []struct {
+		name       string
+		breakSeed  bool
+		wantRows   int
+		wantFailed bool
+	}{
+		{name: "valid seed commits rows", wantRows: 5},
+		{name: "late seed error rolls back DDL and rows", breakSeed: true, wantFailed: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			clearTables()
+			root := t.TempDir()
+			if err := os.Symlink(binary, filepath.Join(root, "tei")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(root, "reference"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(filepath.Join(repoRootForGuide(t), "reference", "workspace"),
+				filepath.Join(root, "reference", "workspace")); err != nil {
+				t.Fatal(err)
+			}
+			seedDir := filepath.Join(root, "testdata", "destination-order-change")
+			if err := os.MkdirAll(seedDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			seed := append([]byte(nil), originalSeed...)
+			if tc.breakSeed {
+				// A deliberate SQL failure after the original INSERT proves
+				// that previously applied DDL and rows are rolled back.
+				seed = append(seed, []byte("\nSELECT 1 / 0;\n")...)
+			}
+			if err := os.WriteFile(filepath.Join(seedDir, "seed.sql"), seed, 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			command := exec.Command("sh", "-eu", "-c", script)
+			command.Dir = root
+			command.Env = append(os.Environ(), "TMPDIR="+root, "TEI_VIEW_PG_DSN="+dsn)
+			// Output can carry a DSN. Do not echo it into CI failure logs.
+			_, runErr := command.CombinedOutput()
+			if failed := runErr != nil; failed != tc.wantFailed {
+				t.Fatalf("step-0 shell failed=%v, want failure=%v", failed, tc.wantFailed)
+			}
+			var exists bool
+			if err := db.QueryRowContext(t.Context(),
+				"SELECT to_regclass('public.order_lines') IS NOT NULL").Scan(&exists); err != nil {
+				t.Fatal("cannot inspect the isolated detail table")
+			}
+			if tc.wantFailed {
+				if exists {
+					t.Fatal("the guide left a table behind after a failed seed transaction")
+				}
+			} else {
+				if !exists {
+					t.Fatal("the guide did not commit the generated detail table")
+				}
+				var count int
+				if err := db.QueryRowContext(t.Context(),
+					"SELECT count(*) FROM public.order_lines").Scan(&count); err != nil {
+					t.Fatal("cannot inspect the committed seed rows")
+				}
+				if count != tc.wantRows {
+					t.Fatalf("the guide committed %d rows, want %d", count, tc.wantRows)
+				}
+			}
+			leftovers, err := filepath.Glob(filepath.Join(root, "tmp.*"))
+			if err != nil || len(leftovers) != 0 {
+				t.Fatalf("the guide left generated SQL tempfiles: count=%d err=%v", len(leftovers), err)
 			}
 		})
 	}
