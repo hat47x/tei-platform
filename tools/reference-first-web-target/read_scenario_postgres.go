@@ -25,8 +25,10 @@ import (
 // The transaction is opened and rolled back here; nothing in this adapter
 // commits, so a read cannot become a write even if a realization were edited.
 type readOnlyTxExecutor struct {
-	db           *sql.DB
-	realizations []realization.ContractQuerySQLRealization
+	db                 *sql.DB
+	realizations       []realization.ContractQuerySQLRealization
+	world              ir.World
+	coverageResolution driver.ResolvedHeaderDetailContractQuery
 }
 
 var _ driver.ContractQueryExecutor = readOnlyTxExecutor{}
@@ -42,7 +44,7 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 	queryContract database.QueryContract,
 	parameters map[string]any,
 ) (driver.ContractQueryResult, error) {
-	tx, err := e.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	tx, err := e.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return driver.ContractQueryResult{}, fmt.Errorf("cannot begin a read-only PostgreSQL transaction")
 	}
@@ -55,7 +57,25 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 		Realizations: e.realizations,
 		Runner:       postgresquery.Runner{DB: tx},
 	}
-	return inner.ExecuteContractQuery(ctx, target, queryContract, parameters)
+	result, err := inner.ExecuteContractQuery(ctx, target, queryContract, parameters)
+	if err != nil {
+		return driver.ContractQueryResult{}, err
+	}
+	// A proof belongs only to the executed header-detail target and the
+	// PostgreSQL snapshot that returned these rows. An unrelated reference
+	// query, an authored covers declaration or a later catalog inspection
+	// cannot qualify the relation-wide rule.
+	if target == e.coverageResolution.Binding.Target {
+		qualification := driver.NewResolver(e.world).QualifyHeaderDetailCoverage(
+			e.coverageResolution, environment.ProviderPostgres,
+		)
+		if qualification.Complete {
+			if ok, _ := driver.PostgresPhysicalReadAllowsComplete(ctx, tx, e.world, e.coverageResolution); ok {
+				result.Payload = webRelationCoverageProof{Target: target, Complete: true}
+			}
+		}
+	}
+	return result, nil
 }
 
 // newPostgresReadRunner returns the normal read runner with both the browse and
@@ -79,7 +99,16 @@ func newPostgresReadRunner(world ir.World, db *sql.DB) (*referenceReadScenarioRu
 	if db == nil {
 		return nil, fmt.Errorf("a PostgreSQL connection is required for the database-backed read")
 	}
-	executor := readOnlyTxExecutor{db: db, realizations: world.ContractQuerySQLRealizations}
+	resolution, err := driver.NewResolver(world).ResolveHeaderDetailContractQuery(
+		core.MustCanonicalID("order_entry"), core.MustCanonicalID("order_entry.order_lines"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve the declared order-line read: %w", err)
+	}
+	executor := readOnlyTxExecutor{
+		db: db, realizations: world.ContractQuerySQLRealizations,
+		world: world, coverageResolution: resolution,
+	}
 	added := driver.ContractQueryExecutorMap{}
 	for _, binding := range world.ContractQueryExecutorBindings {
 		if binding.Executor != core.MustCanonicalID("database.query.postgres") {
