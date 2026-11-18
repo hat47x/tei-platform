@@ -39,6 +39,9 @@ type Operation struct {
 	Placement string `json:"placement,omitempty"`
 	// AttributeTypeはset-attribute-typeの新しい型（完全なCanonical ID）。
 	AttributeType string `json:"attributeType,omitempty"`
+	// Required is a tri-state *request*: nil means absent, false and true
+	// are both explicit choices. This is not a new meaning model.
+	Required *bool `json:"required,omitempty"`
 	// Symbolは、set-symbolが既存subjectへ設定する表示名である。Canonical IDは変えない。
 	Symbol string `json:"symbol,omitempty"`
 
@@ -214,7 +217,7 @@ func onlyFields(op Operation, allowed ...string) error {
 	present := map[string]bool{
 		"namespace": op.Namespace != "", "id": op.ID != "", "kind": op.Kind != "",
 		"attribute": op.Attribute != "", "relation": op.Relation != "", "attributeType": op.AttributeType != "",
-		"symbol": op.Symbol != "",
+		"required": op.Required != nil, "symbol": op.Symbol != "",
 		"data":   op.Data != nil, "addRelation": op.AddRelation != nil,
 		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
 		"removeBusinessRule": op.RemoveBusinessRule != nil,
@@ -258,8 +261,10 @@ func normalizeOperation(op Operation) (Operation, error) {
 		return normalizeSetSymbol(op)
 	case opSetAttributeType:
 		return normalizeSetAttributeType(op)
+	case opSetAttributeRequired:
+		return normalizeSetAttributeRequired(op)
 	default:
-		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use / set-symbol / set-attribute-type）", op.Op)
+		return op, fmt.Errorf("operation %q は未対応です（add-validation / add-data / add-relation / add-candidate-key / add-functional-dependency / remove-candidate-key / remove-functional-dependency / add-application / add-reference-pattern / add-environment-binding / add-application-validation-use / set-symbol / set-attribute-type / set-attribute-required）", op.Op)
 	}
 }
 
@@ -684,6 +689,8 @@ func operationKey(op Operation) string {
 		return op.Kind + ":" + op.ID
 	case opSetAttributeType:
 		return "attribute-type:" + op.ID
+	case opSetAttributeRequired:
+		return "attribute-required:" + op.ID
 	}
 	return op.Op
 }
