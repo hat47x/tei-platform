@@ -181,7 +181,7 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 	clearTables := func() {
 		t.Helper()
 		for _, table := range []string{"public.order_lines", "public.orders"} {
-			if _, err := db.ExecContext(t.Context(), "DROP TABLE IF EXISTS "+table); err != nil {
+			if _, err := db.Exec("DROP TABLE IF EXISTS " + table); err != nil {
 				t.Fatalf("cannot reset the isolated PostgreSQL table %s: %v", table, err)
 			}
 		}
