@@ -213,6 +213,40 @@ jobs:
             and .authority.acceptedBusiness == "not-established"
           ' "$shots/real-browser-receipt.json" >/dev/null
 
+      - name: 実ChromeのData編集から共通審査・Source受理・再読込までを一巡検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          shots="$RUNNER_TEMP/tei-studio-real-browser"
+          node reference/studio-authoring/real-browser-required-accept.mjs \
+            "$RUNNER_TEMP/tei-studio-playwright" "$shots"
+          test -s "$shots/required-editor-before.png"
+          test -s "$shots/required-editor-after.png"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.studio-required-browser-accept-roundtrip/v0"
+            and .head == $sha
+            and .sourceFormat == "tei.authoring/v1"
+            and .origin == "studio-offline-Chrome"
+            and .sourcePath == "semantic/studio/inspection-response.tei.md"
+            and .editorDraftSavedOutsideWorkspace == true
+            and .browserSelection == "required=yes"
+            and .sharedReviewAcceptable == true
+            and .reviewFingerprintBound == true
+            and .acceptByTestDriver == true
+            and .sourceChangedOnlyAtAccept == true
+            and .exactCellOnlyChanged == true
+            and .goWorkspaceReread == true
+            and .chromeEditorReread == true
+            and .oldDraftStaleRefused == true
+            and .initialRevision != .finalRevision
+            and .initialSourceDigest != .finalSourceDigest
+            and .authority.humanAcceptance == "not-observed"
+            and .authority.productionStudioUI == "not-observed"
+            and .authority.businessMeaningAcceptance == "not-established"
+            and .authority.formalBuildIntent == "not-established"
+            and .authority.WindowsWebView2 == "not-observed"
+          ' "$shots/required-roundtrip-receipt.json" >/dev/null
+
       - name: 実Chromeのオフライン編集画面証跡を添付
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
