@@ -28,8 +28,12 @@ function exactRevision(revision) {
 // The accepted World is caller-supplied; this tool does not authenticate its
 // provenance. Callers must obtain World and modelRevision from the same workspace.
 export function indexWorld(world) {
+  // Go's valid empty Application slice marshals as null. It means no
+  // Applications, not an absent or malformed World. Do not infer authority
+  // from an absent property or treat other non-arrays as empty.
+  const declaredApplications = world?.applications === null ? [] : world?.applications;
   if (!world || typeof world !== "object" || !Array.isArray(world.semantics) ||
-      !Array.isArray(world.applications)) throw new Error("INVALID_WORLD");
+      !Array.isArray(declaredApplications)) throw new Error("INVALID_WORLD");
   const data = new Map(), relations = new Map(), attributes = new Map();
   const patterns = new Map(), namespaces = new Map(), validations = new Map();
   const applications = new Map(), validationConsumers = new Map();
@@ -48,7 +52,7 @@ export function indexWorld(world) {
       }
     }
   }
-  for (const app of world.applications) {
+  for (const app of declaredApplications) {
     insert(applications, app.id, app, "application");
     for (const validationID of array(app.validations, "application.validations")) {
       requireID(validationID, "application.validation");
@@ -506,7 +510,7 @@ export function candidateFromEdit(world, revision, edit) {
   }
   if (!isText(edit.id) || !isText(edit.intent) ||
       !["studio", "ai", "file", "cli"].includes(edit.origin) ||
-      !["er", "table"].includes(edit.view)) throw new Error("INVALID_EDIT");
+      !["er", "table", "required"].includes(edit.view)) throw new Error("INVALID_EDIT");
   const ix = indexWorld(world);
   const s = selected(ix, edit.subject);
   let op;
@@ -523,6 +527,15 @@ export function candidateFromEdit(world, revision, edit) {
       data: s.id, id: edit.relationID, symbol: edit.symbol,
       target: edit.targetData, cardinality: edit.cardinality
     } };
+  } else if (edit.view === "required" && edit.operation === "set-attribute-required" &&
+             s.kind === "attribute") {
+    // A user draft is NOT a Source edit. Shared Acceptance will resolve the
+    // exact Markdown cell and reject absent/ambiguous Source at review time.
+    if (typeof edit.required !== "boolean" ||
+        edit.required === (s.value.required === true) ||
+        edit.applicationUse !== undefined)
+      throw new Error("INVALID_OR_UNCHANGED_REQUIRED_PROPOSAL");
+    op = { op: "set-attribute-required", id: s.id, required: edit.required };
   } else if (edit.view === "table" && edit.operation === "add-validation" &&
              s.kind === "attribute") {
     if (!isText(edit.validationID) || edit.validationKind !== "positive")
