@@ -218,7 +218,7 @@ func onlyFields(op Operation, allowed ...string) error {
 		"namespace": op.Namespace != "", "id": op.ID != "", "kind": op.Kind != "",
 		"attribute": op.Attribute != "", "relation": op.Relation != "", "attributeType": op.AttributeType != "",
 		"required": op.Required != nil, "symbol": op.Symbol != "",
-		"data":   op.Data != nil, "addRelation": op.AddRelation != nil,
+		"data": op.Data != nil, "addRelation": op.AddRelation != nil,
 		"addCandidateKey": op.AddCandidateKey != nil, "addFunctionalDependency": op.AddFunctionalDependency != nil,
 		"removeBusinessRule": op.RemoveBusinessRule != nil,
 		"application":        op.Application != nil, "pattern": op.Pattern != nil,
