@@ -247,6 +247,17 @@ func helpText(fs *flag.FlagSet, command string) string {
 			fmt.Fprintf(&out, "  -semantic\n    \tconvert the physical schema to a TEI semantic namespace\n")
 			return out.String()
 		}
+		if command == "desired-schema" {
+			// desired-schema is dispatched but deliberately absent from the
+			// read-only discovery catalog, so it has no allowlist entry and
+			// "run `tei commands`" points at a list that does not contain it.
+			// Its three flags are stated here (#5485).
+			fmt.Fprintf(&out, "  -workspace string\n    \tTEI workspace directory\n")
+			fmt.Fprintf(&out, "  -database string\n    \tdatabase canonical ID\n")
+			fmt.Fprintf(&out, "  -provider string\n    \tdatabase provider: postgres|sqlite\n")
+			fmt.Fprintf(&out, "  -format string\n    \tjson for the schema snapshot, sql for the statements that create it (default \"json\")\n")
+			return out.String()
+		}
 		if command == "dbcheck" {
 			// dbcheck is dispatched but deliberately absent from the read-only
 			// discovery catalog, so it cannot carry an allowlist entry; the one

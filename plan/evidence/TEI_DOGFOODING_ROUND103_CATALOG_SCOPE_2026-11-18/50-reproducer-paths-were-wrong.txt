@@ -1,0 +1,9 @@
+#4128's own reproducer uses paths the loader does not read:
+
+  databases/<db>/migrations/<id>.tei      -> loader wants migrations/<id>/migration.tei
+  releases/databases/<ver>.tei            -> loader wants releases/databases/<db>/<ver>.tei
+  releases/solutions/<ver>.tei            -> loader wants releases/solutions/<solution>/<ver>.tei
+
+With the issue's paths: WORKSPACE_SOURCE_ROOT warning "no loader reads".
+With the real paths: no warning, and world counts grow
+  migrations 1->2, databaseReleases 3->4, solutionReleases 2->3.

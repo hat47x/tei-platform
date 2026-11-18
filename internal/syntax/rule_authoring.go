@@ -99,6 +99,16 @@ type OperatorAuthoring struct {
 	// then a rule cannot ask for one.
 	AbsentAs     string
 	AbsentAsSpan Anchor
+	// OfEachRow is true when the input reads every row of the relation,
+	// written `of each row`. It decides how the rule is asked: once per
+	// scope key rather than once per row.
+	OfEachRow     bool
+	OfEachRowSpan Anchor
+	// RefutesOnSomeRows is true when the declaration states that a witnessed
+	// counterexample among the rows read is enough to say the rule does not
+	// hold, written `refutes on some rows`.
+	RefutesOnSomeRows     bool
+	RefutesOnSomeRowsSpan Anchor
 
 	DeclarationSpan Anchor
 	IDSpan          Anchor
@@ -349,6 +359,43 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
 			"unknown operator input %q; accepted inputs are number", inputTok.Text))
 	}
+	// `of each row` makes the input read every row of the relation.
+	var ofEachRow bool
+	var ofEachRowSpan Anchor
+	if nt.Kind == TokenIdent && nt.Text == "of" {
+		if _, err := p.next(); err != nil {
+			return OperatorAuthoring{}, err
+		}
+		eachTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if eachTok.Kind != TokenIdent || eachTok.Text != "each" {
+			at := eachTok
+			if eachTok.Kind == TokenEOF {
+				at = nt
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected \"each\" after \"of\"; the range is written \"of each row\"")
+		}
+		rowTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if rowTok.Kind != TokenIdent || rowTok.Text != "row" {
+			at := rowTok
+			if rowTok.Kind == TokenEOF {
+				at = eachTok
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected \"row\" after \"of each\"; the range is written \"of each row\"")
+		}
+		ofEachRow = true
+		ofEachRowSpan = Anchor{Start: nt.Start, End: rowTok.End}
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+	}
+
 	// `absent as <name>` declares how the input reads when it holds no value.
 	var absentAs string
 	var absentAsSpan Anchor
@@ -389,22 +436,73 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 			return OperatorAuthoring{}, err
 		}
 	}
+	// `refutes on some rows` states that a witnessed counterexample is enough.
+	var refutes bool
+	var refutesSpan Anchor
+	if nt.Kind == TokenIdent && nt.Text == "refutes" {
+		if _, err := p.next(); err != nil {
+			return OperatorAuthoring{}, err
+		}
+		onTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if onTok.Kind != TokenIdent || onTok.Text != "on" {
+			at := onTok
+			if onTok.Kind == TokenEOF {
+				at = nt
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected \"on\" after \"refutes\"; write \"refutes on some rows\"")
+		}
+		someTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if someTok.Kind != TokenIdent || someTok.Text != "some" {
+			at := someTok
+			if someTok.Kind == TokenEOF {
+				at = onTok
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected \"some\" after \"refutes on\"; write \"refutes on some rows\"")
+		}
+		rowsTok, err := p.next()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+		if rowsTok.Kind != TokenIdent || rowsTok.Text != "rows" {
+			at := rowsTok
+			if rowsTok.Kind == TokenEOF {
+				at = someTok
+			}
+			return OperatorAuthoring{}, p.errAt(at, "expected \"rows\" after \"refutes on some\"; write \"refutes on some rows\"")
+		}
+		refutes = true
+		refutesSpan = Anchor{Start: nt.Start, End: rowsTok.End}
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorAuthoring{}, err
+		}
+	}
 	if !ruleAuthoringDeclarationEnds(nt) {
 		return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
 			"unexpected %q after the operator declaration; an operator takes exactly one input", nt.Text))
 	}
 	return OperatorAuthoring{
-		Namespace:       namespace,
-		ID:              id,
-		Symbol:          symbol,
-		Input:           OperatorInputWord(inputTok.Text),
-		InputName:       inputName,
-		AbsentAs:        absentAs,
-		DeclarationSpan: Anchor{Start: keyword.Start, End: inputTok.End},
-		IDSpan:          tokenAnchor(nameTok),
-		InputSpan:       tokenAnchor(inputTok),
-		InputNameSpan:   inputNameSpan,
-		AbsentAsSpan:    absentAsSpan,
+		Namespace:             namespace,
+		ID:                    id,
+		Symbol:                symbol,
+		Input:                 OperatorInputWord(inputTok.Text),
+		InputName:             inputName,
+		AbsentAs:              absentAs,
+		DeclarationSpan:       Anchor{Start: keyword.Start, End: inputTok.End},
+		IDSpan:                tokenAnchor(nameTok),
+		InputSpan:             tokenAnchor(inputTok),
+		InputNameSpan:         inputNameSpan,
+		AbsentAsSpan:          absentAsSpan,
+		OfEachRow:             ofEachRow,
+		OfEachRowSpan:         ofEachRowSpan,
+		RefutesOnSomeRows:     refutes,
+		RefutesOnSomeRowsSpan: refutesSpan,
 	}, nil
 }
 
