@@ -45,7 +45,6 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-
 	fixtures := destinationFixtureRoot(t)
 	guide, err := os.ReadFile(filepath.Join(repoRootForGuide(t), "docs", "first-change.md"))
 	if err != nil {
@@ -75,13 +74,6 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	t.Cleanup(func() {
-		for _, table := range []string{"public.order_lines", "public.orders"} {
-			if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
-				t.Errorf("cannot clean up generated %s table: %v", table, err)
-			}
-		}
-	})
 	var preexistingParents, preexistingDetails bool
 	if err := db.QueryRowContext(t.Context(),
 		"SELECT to_regclass('public.orders') IS NOT NULL, to_regclass('public.order_lines') IS NOT NULL").
@@ -91,6 +83,15 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	if preexistingParents || preexistingDetails {
 		t.Fatal("the first-change walkthrough requires an empty isolated PostgreSQL database")
 	}
+	// Register destructive cleanup only after verifying both tables were absent.
+	// A failed isolation precondition must never drop preexisting user tables.
+	t.Cleanup(func() {
+		for _, table := range []string{"public.order_lines", "public.orders"} {
+			if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
+				t.Errorf("cannot clean up generated %s table: %v", table, err)
+			}
+		}
+	})
 	setup := exec.Command("sh", "-eu", "-c", documentedGuideShellStep(t, handbook,
 		"## 0. 表を作り、明細を入れる", "## 1. 作業領域の写しを作る"))
 	setup.Dir = attempt
