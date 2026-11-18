@@ -49,6 +49,12 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 		strings.Contains(setup, "\ntei desired-schema ") {
 		t.Fatal("step 0 did not use the locally built ./tei executable")
 	}
+	// psql normally continues after an error in a SQL file unless
+	// ON_ERROR_STOP is set. A partial seed must not look like a successful
+	// first-use read or provide misleading Rule evidence.
+	if !strings.Contains(setup, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -f testdata/destination-order-change/seed.sql`) {
+		t.Fatal("step 0 can continue after a seed SQL failure instead of refusing the walkthrough")
+	}
 	parts := strings.SplitN(doc, "## 5. Webの画面で同じ答えを見る", 2)
 	if len(parts) != 2 {
 		t.Fatal("Web walkthrough step 5 was not found")
