@@ -14,6 +14,7 @@ on:
       - reference/tei-studio-editor/**
       - reference/tei-studio-graph/**
       - reference/tei-studio-workbench/**
+      - tools/reference-studio-part-generator/**
   workflow_dispatch:
 
 permissions:
@@ -39,6 +40,13 @@ jobs:
           node-version: 24.21.0
           check-latest: false
 
+      - name: Setup Go for Data-derived Reader integration
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
       - name: Test and build Workbench
         working-directory: reference/tei-studio-workbench
         shell: bash
@@ -49,6 +57,9 @@ jobs:
           npm test
           # Production entrypoint identity plus independent positive/negative outcomes.
           node --test inspection-reader.generated.test.mjs
+          # Generate both Readers from actual *.tei.md Data; bundle each with
+          # esbuild and assert independent old/new runtime behavior.
+          node --test inspection-reader.model-derived.test.mjs
           npm run typecheck
           npm run build
 
