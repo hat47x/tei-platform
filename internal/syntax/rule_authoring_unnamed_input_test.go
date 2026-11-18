@@ -12,7 +12,7 @@ import (
 // input name, but cannot assign a second value to the same input (#4362).
 //
 // The expected diagnostic is different for a known input name and an
-// undeclared one. Neither can emit a validation until value transport exists.
+// undeclared one. Neither may emit a validation from an invalid binding.
 func TestRuleAuthoringNormalizesUnnamedInputBeforeRefusal(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -24,13 +24,13 @@ func TestRuleAuthoringNormalizesUnnamedInputBeforeRefusal(t *testing.T) {
 			name:       "the unnamed form recognizes value before rejecting a second subject-input binding",
 			operator:   "operator probe.non_negative: takes number",
 			assignment: "value: 0",
-			wantIssue:  "the meaning has already supplied by the rule subject yet",
+			wantIssue:  "already supplied by the rule subject",
 		},
 		{
 			name:       "the named form recognizes value before rejecting a second subject-input binding",
 			operator:   "operator probe.non_negative: takes value: number",
 			assignment: "value: 0",
-			wantIssue:  "the meaning has already supplied by the rule subject yet",
+			wantIssue:  "already supplied by the rule subject",
 		},
 		{
 			name:       "the unnamed form still refuses another name",
@@ -84,7 +84,7 @@ func TestRuleAuthoringDoesNotDeclareValueForTheUnnamedForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	namespace, issues := syntax.RuleNamespace(file)
-	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "the meaning has already supplied by the rule subject yet") {
+	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "already supplied by the rule subject") {
 		t.Fatalf("expected the subject-input rebinding refusal, issues=%+v", issues)
 	}
 	if len(namespace.Validations) != 0 {
