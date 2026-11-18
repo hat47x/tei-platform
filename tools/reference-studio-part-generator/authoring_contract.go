@@ -13,12 +13,12 @@ import (
 // authoringBinding describes the exact Source-backed Data that contributed
 // required response fields. It is provenance, not acceptance or permission.
 type authoringBinding struct {
-	DataID              string   `json:"dataId"`
-	SourcePath          string   `json:"sourcePath"`
-	SourceFingerprint   string   `json:"sourceFingerprint"`
-	ModelRevision       string   `json:"modelRevision"`
+	DataID               string   `json:"dataId"`
+	SourcePath           string   `json:"sourcePath"`
+	SourceFingerprint    string   `json:"sourceFingerprint"`
+	ModelRevision        string   `json:"modelRevision"`
 	RequiredAttributeIDs []string `json:"requiredAttributeIds"`
-	InputContractDigest string   `json:"inputContractDigest"`
+	InputContractDigest  string   `json:"inputContractDigest"`
 }
 
 type requiredResponseField struct {
