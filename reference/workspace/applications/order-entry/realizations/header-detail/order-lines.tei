@@ -6,4 +6,5 @@ header-detail-contract-query-binding {
     contract sales_core.order_line
     query find_by_order
     input sales.order.order_id to order_id
+    covers sales.order.lines
 }

@@ -170,7 +170,7 @@ func checkDestinationAlternateModel(t *testing.T, db *sql.DB, binary, dsn string
 			}
 			if result.Result.Relation != expected.Relation ||
 				!reflect.DeepEqual(result.Result.KeyAttributes, expected.KeyAttributes) ||
-				result.Result.Coverage != "partial" {
+				result.Result.Coverage != "complete" {
 				t.Fatalf("alternate model lost semantic identity or overclaimed coverage: %+v", result.Result)
 			}
 			want := expected.Checks[batch]
