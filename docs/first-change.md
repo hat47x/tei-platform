@@ -1,12 +1,12 @@
 # はじめての一変更
 
-受注明細を実際のPostgreSQLから読み、設計文書へ規則を一つ足して、答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の到達点の1〜4に当たる。
+受注明細を実際のPostgreSQLから読み、設計文書へ規則を一つ足して、答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の到達点の1〜5を通す。
 
 2026年11月17日に、main `3ae3507c`とPostgreSQL 16で、この順に打って通ることを確かめた。**Webの画面で同じ答えを見る手順（到達点の5）も、下の5に書いた。**
 
 ## 用意するもの
 
-Go、PostgreSQL（`psql`を含む）、このリポジトリ。以下のコマンドは`awk`を使うPOSIXシェル向けで、WindowsではWSLなどの環境で実行する。PowerShell上での実行は未検証である。**手順0〜5は同じシェルで続けて実行する。**試してよい空のデータベースを一つ作り、接続先を環境変数へ入れる。接続先は作業領域へ書かない。
+Go、PostgreSQL（`psql`を含む）、このリポジトリ。以下のコマンドは`awk`を使うPOSIXシェル向けで、WindowsではWSLなどの環境で実行する。PowerShell上での実行は未検証である。手順0〜5は同じシェルで続けて実行する。試してよい空のデータベースを一つ作り、接続先を環境変数へ入れる。接続先は作業領域へ書かない。
 
 ```bash
 go build -o tei ./cmd/tei
@@ -52,7 +52,7 @@ cp -R reference/workspace/. "$TEI_FIRST_WORKSPACE/"
 
 `result.rows`に読んだ3行が、`result.perRow`に行ごとの規則の答えが出る。行は`key`（明細の主キー）で指す。数量が0の明細（`key` 2）は、`sales.order_line.quantity_positive`が`not-satisfied`になる。`result.perRelation`は受注一件の明細すべてに一度尋ねる規則の答えで、明細番号が重なっているので`not-satisfied`になる。
 
-受注1002では、明細番号の一意が`undecided`になる。読んだ2行に重なりはないが、Queryが受注の明細をすべて返したと、どこにも宣言していないためである。宣言の書き方は決めてあり、実装はこれからである。
+受注1002では、明細番号の一意が`satisfied`になる。参照Workspaceの束縛には`covers sales.order.lines`があり、実行Queryが関係の保存から対象受注の全行を読むことを照合できるためである。宣言だけでは全件と判定しない。行を落とすQueryや宣言を外した束縛では`partial`のままである。
 
 ## 3. 規則を一つ足す
 
@@ -97,7 +97,7 @@ rule sales.order_line.unit_price_positive:
 ./tei validate -workspace "$TEI_FIRST_WORKSPACE"
 ```
 
-`ok`で終わる。参照元の作業領域に由来する警告が複数出る場合があるため、警告の件数ではなく内容を確認する。例の表の`not-satisfied`を`satisfied`へ書き換えてもう一度実行すると、`RULE_EXAMPLE_MISMATCH`で止まる。例と規則が食い違っていることを、文書の段階で見つけている。
+`ok`で終わる。参照用の作業領域に残るRelease契約の警告は、今回追加した規則の失敗を意味しない。例の表の`not-satisfied`を`satisfied`へ書き換えてもう一度実行すると、`RULE_EXAMPLE_MISMATCH`で止まる。例と規則が食い違っていることを、文書の段階で見つけている。
 
 手順2と同じコマンドをもう一度打つ。同じ行に対して、単価が0の明細（`key` 3）に`sales.order_line.unit_price_positive: not-satisfied`が増えている。データベースもプログラムも変えていない。
 
@@ -128,17 +128,17 @@ go run ./tools/reference-first-web-target \
 `2026-09-01T00:00:00Z`、`row` に `0` を入れて送る。**明細の行ごとの答え**が出る。
 
 - 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
-- `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では重複を観測しないだけでは全件の一意性を証明できず、`undecided`となる。
+- `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では、取得範囲の宣言と実行Queryの照合が通るため、一意性は`satisfied`になる。
 - 画面は選択した受注・実行したContract Query・行数をReadの情報として示す。行数や表示位置が回答と合わなければ描画を拒否するが、**表示したIDだけで、別のReadからの混入がすべて排除されたとは言えない**。
 
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
 
-実PostgreSQLのCIでは`TestFirstWebAcceptsARuleChangeEndToEnd`が規則変更前後のHTTP応答を、さらにその`before/chrome-dom`・`after/chrome-dom`が**実Chromeで受け取った画面**を、それぞれ手書きの期待値と業務主キーで照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。これは診断用Source読込での受入であり、手順を初めて使う人が通して実行した記録や、受理済みSourceの本番配備の証拠にはならない。
+実PostgreSQLのCIでは`TestFirstWebAcceptsARuleChangeEndToEnd`が規則変更前後のHTTP応答を、さらにその`before/chrome-dom`・`after/chrome-dom`が**実Chromeで受け取った画面**を、それぞれ手書きの期待値と業務主キーで照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。さらに[#5510](https://github.com/hat47x/tei-platform/pull/5510)では、CLIを別プロセスで実行し、同じ実PostgreSQLと実Chromeを使って五段階を一つの試験で通した。ただし、規則の編集にはGoの試験用ヘルパーを使っており、このページのシェルコマンドを一字一句そのまま実行した証拠ではない。診断用Source読込による検証であり、受理済みSourceの本番配備を立証するものでもない。
 
 ## まだできないこと
 
 - 異なる属性集合を持つ**さらに別の**業務モデル。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/`・`cmd/tei/destination_order_alternate_pg_case_test.go`・#5362）。
-- 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
+- 行を落とすQueryや宣言のない束縛から、一意性の「成立」を証明すること。取得範囲が確認できない場合は、理由を残して`undecided`にする。
 
 

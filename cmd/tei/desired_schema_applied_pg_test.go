@@ -207,8 +207,8 @@ func TestDesiredSchemaSQLCreatesTheTableTheReadNeeds(t *testing.T) {
 			if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
 				t.Fatalf("invalid CLI JSON: %v (%s)", err, got.stdout)
 			}
-			if !report.OK || report.Result.Coverage != "partial" {
-				t.Fatalf("CLI claimed complete coverage or failed: %+v", report)
+			if !report.OK || report.Result.Coverage != "complete" {
+				t.Fatalf("CLI failed to qualify the declared complete read: %+v", report)
 			}
 			want := expected.Orders[orderID]
 			if !reflect.DeepEqual(report.Result.PerLine, want.PerLine) {
@@ -225,19 +225,12 @@ func TestDesiredSchemaSQLCreatesTheTableTheReadNeeds(t *testing.T) {
 				}
 				seen[row.Key] = true
 			}
-			for rule, answer := range want.PerOrder {
-				gotAnswer := report.Result.PerOrder[rule]
-				if answer == "not-satisfied" {
-					// A duplicate already observed remains decisive even with partial coverage.
-					if gotAnswer != answer {
-						t.Fatalf("order=%s rule=%s: %s, want %s", orderID, rule, gotAnswer, answer)
-					}
-				} else if gotAnswer != "undecided" || report.Result.PerOrderUndecided[rule] == "" {
-					// Without a qualified complete read, absence of observed duplicates
-					// is not proof of uniqueness; preserve the undecided reason.
-					t.Fatalf("order=%s rule=%s: unproven completeness yielded %q (reason %q)",
-						orderID, rule, gotAnswer, report.Result.PerOrderUndecided[rule])
-				}
+			// The declared covers range is checked against the actual Query
+			// and relation storage. Preserve the independent relation-wide
+			// expectations, including empty orders, without undecided rows.
+			if !reflect.DeepEqual(report.Result.PerOrder, want.PerOrder) || len(report.Result.PerOrderUndecided) != 0 {
+				t.Fatalf("order=%s perRelation=%v undecided=%v, independently expected %v",
+					orderID, report.Result.PerOrder, report.Result.PerOrderUndecided, want.PerOrder)
 			}
 		})
 	}
