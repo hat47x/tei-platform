@@ -324,3 +324,119 @@ func runGuideCLI(t *testing.T, binary string, args ...string) guideCLIResult {
 	}
 	return guideCLIResult{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }
+
+// TestFirstChangeGuideExecutesLiteralRuleEdit runs the actual POSIX shell
+// blocks for the Workspace copy and the Rule edit in docs/first-change.md.
+// Existing E2E tests cover the PostgreSQL read and Chrome; this specifically
+// checks that the documented commands work without replacing them with a Go
+// helper or hard-coding a previously edited Workspace directory.
+func TestFirstChangeGuideExecutesLiteralRuleEdit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the handbook requires a POSIX shell, mktemp and awk")
+	}
+	guide, err := os.ReadFile(filepath.Join(repoRootForGuide(t), "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(guide)
+	step0 := sectionBetween(text, "## 0. 表を作り、明細を入れる", "## 1. 作業領域の写しを作る")
+	if !strings.Contains(step0, "\n./tei desired-schema -workspace ") {
+		t.Fatal("the handbook did not invoke the locally built ./tei binary")
+	}
+
+	block := func(startHeading, endHeading string) string {
+		t.Helper()
+		section := sectionBetween(text, startHeading, endHeading)
+		const fence = "```bash\n"
+		start := strings.Index(section, fence)
+		if start < 0 {
+			t.Fatalf("no shell block under %s", startHeading)
+		}
+		body := section[start+len(fence):]
+		end := strings.Index(body, "```")
+		if end < 0 {
+			t.Fatalf("unterminated shell block under %s", startHeading)
+		}
+		return body[:end]
+	}
+
+	copyScript := block("## 1. 作業領域の写しを作る", "## 2. 明細を読み、規則の答えを見る")
+	if !strings.Contains(copyScript, "mktemp -d") ||
+		!strings.Contains(copyScript, "cp -R reference/workspace/.") ||
+		strings.Contains(copyScript, "/tmp/my-workspace") {
+		t.Fatal("step 1 does not allocate and populate a fresh Workspace")
+	}
+	sandbox := t.TempDir()
+	receipt := filepath.Join(sandbox, "workspace.path")
+	copyWorkspace := func() string {
+		t.Helper()
+		// The receipt merely reports the shell-created directory to the test.
+		// The commands from the handbook are not changed or replaced.
+		script := copyScript + "\nprintf '%s\\n' \"$TEI_FIRST_WORKSPACE\" > \"$TEI_GUIDE_RECEIPT\"\n"
+		cmd := exec.Command("sh", "-eu", "-c", script)
+		cmd.Dir = repoRootForGuide(t)
+		cmd.Env = append(os.Environ(), "TMPDIR="+sandbox, "TEI_GUIDE_RECEIPT="+receipt)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("step 1 failed in the actual POSIX shell: %v\n%s", err, output)
+		}
+		output, err := os.ReadFile(receipt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		root := strings.TrimSpace(string(output))
+		if !strings.HasPrefix(root, sandbox+string(os.PathSeparator)) {
+			t.Fatalf("step 1 copied outside the isolated test directory: %q", root)
+		}
+		return root
+	}
+	previous := copyWorkspace()
+	root := copyWorkspace()
+	if previous == root {
+		t.Fatal("step 1 reused a Workspace from the previous attempt")
+	}
+
+	editScript := block("## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	if !strings.Contains(editScript, "$TEI_FIRST_WORKSPACE") || strings.Contains(editScript, "/tmp/my-workspace") {
+		t.Fatal("step 3 did not use the Workspace created in step 1")
+	}
+	edit := exec.Command("sh", "-eu", "-c", editScript)
+	edit.Dir = repoRootForGuide(t)
+	edit.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+root)
+	if output, err := edit.CombinedOutput(); err != nil {
+		t.Fatalf("step 3 failed in the actual POSIX shell: %v\n%s", err, output)
+	}
+
+	settings, err := os.ReadFile(filepath.Join(root, "tei.workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(settings), "  - tei.authoring/v1") {
+		t.Fatal("the edit did not register tei.authoring/v1")
+	}
+	rule, err := os.ReadFile(filepath.Join(root, "semantic", "sales", "unit-price.tei.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(rule), "rule sales.order_line.unit_price_positive:") ||
+		!strings.Contains(string(rule), "| 0 | not-satisfied |") {
+		t.Fatal("the edit did not place the rule together with its example")
+	}
+	application, err := os.ReadFile(filepath.Join(root, "applications", "order-entry", "application.tei"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(application), "uses validation sales.order_line.unit_price_positive") != 1 {
+		t.Fatal("the awk insertion did not register the new rule exactly once")
+	}
+	if _, err := os.Stat(filepath.Join(root, "applications", "order-entry", "application.tei.next")); !os.IsNotExist(err) {
+		t.Fatalf("the mv command left an intermediate source behind: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(previous, "semantic", "sales", "unit-price.tei.md")); !os.IsNotExist(err) {
+		t.Fatalf("the previous unedited Workspace was contaminated: %v", err)
+	}
+	binary := buildCLIForGuide(t)
+	if validated := runGuideCLI(t, binary, "validate", "-workspace", root); validated.code != 0 {
+		t.Fatalf("the actual shell edit did not validate: code=%d stdout=%s stderr=%s",
+			validated.code, validated.stdout, validated.stderr)
+	}
+}
