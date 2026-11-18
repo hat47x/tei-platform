@@ -20,7 +20,7 @@ export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータ�
 ```bash
 ./tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
   | psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1
-psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
+psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -f testdata/destination-order-change/seed.sql
 ```
 
 `-format sql`を省くと、同じ定義を列・型・主キーを持つJSONとして返す。どちらも同じ定義から出しているので、列・型・主キーの食い違いは起きない。
