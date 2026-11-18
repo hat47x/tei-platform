@@ -148,6 +148,16 @@ type ModelSearchSubject struct {
 type ModelSearchCoverage struct {
 	Derived    []string `json:"derived"`
 	NotDerived []string `json:"notDerived"`
+	// NotSearchableKinds names the subject kinds this surface accepts as a
+	// `-kind` value but cannot enumerate, so a search restricted to one of them
+	// answers zero hits however many declarations of that kind the Workspace
+	// holds. The kinds come from the catalog traversal; a kind the catalog does
+	// not list has no subject to attribute a line to, so it is not searched.
+	//
+	// The list exists so "this term is absent" and "this kind is never
+	// searched" stay different answers. Without it an empty page reads as the
+	// first when it is the second (#5228).
+	NotSearchableKinds []string `json:"notSearchableKinds"`
 }
 
 const (
@@ -553,5 +563,36 @@ func searchCoverage() ModelSearchCoverage {
 			"sources-beyond-the-work-bound",
 			"acceptance-and-edit-authority",
 		},
+		NotSearchableKinds: NotSearchableKinds(),
 	}
+}
+
+// NotSearchableKinds lists the accepted -kind values this search cannot
+// enumerate: the kinds `inspect` resolves that `model catalog` does not list.
+// They are accepted by the value check so the closed set stays one list, but a
+// search restricted to one of them can only answer zero hits, and the answer
+// says so instead of leaving the caller to guess (#5228).
+func NotSearchableKinds() []string {
+	var out []string
+	for _, kind := range InspectionSubjectKinds {
+		if !catalogEnumeratesKind(kind) {
+			out = append(out, kind)
+		}
+	}
+	return out
+}
+
+// catalogEnumeratesKind reports whether the catalog traversal can produce a
+// subject of this kind. The list is the traversal in model_catalog.go, kept
+// here as a value so the search and the catalog cannot drift silently: a new
+// catalog kind that is not added here would show up as a kind the search
+// wrongly reports as unsearchable, which the test in this package fails on.
+func catalogEnumeratesKind(kind string) bool {
+	switch kind {
+	case "semantic", "semantic-type", "semantic-data", "semantic-attribute", "semantic-relation",
+		"semantic-candidate-key", "semantic-functional-dependency", "semantic-capability",
+		"semantic-validation", "application", "application-pattern", "query":
+		return true
+	}
+	return false
 }
