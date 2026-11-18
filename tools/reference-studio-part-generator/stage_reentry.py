@@ -368,6 +368,56 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
                 and smoke["readerCalls"] >= 2
                 and type(smoke.get("readerCallsAfterInitialInspect")) is int
                 and 1 <= smoke["readerCallsAfterInitialInspect"] < smoke["readerCalls"])
+    if desktop is not None and "visibleBeforeSourceDigest" in desktop:
+        smoke = desktop.get("smoke", {})
+        observed = smoke.get("visibleAuthoring") or {}
+        before = observed.get("before") or {}
+        after = observed.get("after") or {}
+
+        def visible_fields(item: dict) -> dict | None:
+            # Interpret the actual text read from CodeMirror by WebDriver.
+            # The Reader's hidden contract marker is not the displayed result.
+            try:
+                canonical = json.loads(item.get("editorText", ""))
+            except (TypeError, ValueError):
+                return None
+            if not isinstance(canonical, dict) or canonical.get("id") != "studio.inspection_response":
+                return None
+            attributes = canonical.get("attributes")
+            if not isinstance(attributes, list) or len(attributes) != 2:
+                return None
+            fields = {}
+            for attr in attributes:
+                if not isinstance(attr, dict) or not isinstance(attr.get("symbol"), str):
+                    return None
+                if attr["symbol"] in fields:
+                    return None
+                fields[attr["symbol"]] = attr.get("required", False)
+            return fields
+
+        before_fields, after_fields = visible_fields(before), visible_fields(after)
+        expected_reader = desktop.get("embedded", {}).get("regeneratedPartContract")
+        judgement.update({
+            "visibleBeforeSourceUnchanged": bool(desktop.get("visibleBeforeSourceDigest"))
+            and desktop.get("visibleBeforeSourceDigest")
+            == desktop.get("visibleBeforeSourceAfterDigest")
+            and desktop.get("visibleBeforeSourceDigest") != desktop.get("authoringSourceDigest"),
+            "sameNativeWebViewDisplaysChangedCanonical": (
+                before.get("workspaceId") == "workspace-2"
+                and after.get("workspaceId") == "workspace-3"
+                and before.get("subjectTitle") == after.get("subjectTitle") == "studio.inspection_response"
+                and before.get("editorEditable") == after.get("editorEditable") == "false"
+                and before_fields == {"schemaVersion": True, "snapshotFingerprint": False}
+                and after_fields == {"schemaVersion": True, "snapshotFingerprint": True}
+                and isinstance(before.get("editorText"), str)
+                and before.get("editorText") != after.get("editorText")
+                and isinstance(expected_reader, str) and expected_reader.startswith("sha256:")
+                and before.get("inspectionReader") == after.get("inspectionReader") == expected_reader
+                and type(before.get("inspectionReaderCalls")) is int
+                and type(after.get("inspectionReaderCalls")) is int
+                and before["inspectionReaderCalls"] < after["inspectionReaderCalls"]
+            ),
+        })
     judgement["reentryObserved"] = all(judgement.values())
     return judgement
 
@@ -388,12 +438,15 @@ def smoke_observations(facts: dict) -> dict:
         "initialObservedContract": page.get("inspectionReader") or None,
         "readerCalls": graph.get("inspectionReaderCalls"),
         "readerCallsAfterInitialInspect": page.get("inspectionReaderCalls"),
+        "visibleAuthoring": facts.get("visible_authoring"),
     }
 
 
-def desktop_smoke(repo: Path, desktop: Path, evidence: Path) -> dict:
-    """Start the Stage2 Desktop as a new process through the existing smoke."""
-    completed = subprocess.run([sys.executable, str(repo / SMOKE), str(desktop), str(evidence)],
+def desktop_smoke(repo: Path, desktop: Path, evidence: Path,
+                  visible_before: Path | None = None, visible_after: Path | None = None) -> dict:
+    """Start Stage2 Desktop through the same real WebView2 smoke."""
+    extra = ([str(visible_before), str(visible_after)] if visible_before is not None else [])
+    completed = subprocess.run([sys.executable, str(repo / SMOKE), str(desktop), str(evidence), *extra],
                                cwd=repo, capture_output=True, text=True, encoding="utf-8",
                                errors="replace", check=False)
     result_lines = [line for line in completed.stdout.splitlines() if line.startswith("SMOKE_RESULT=")]
@@ -595,6 +648,9 @@ def main() -> int:
     parser.add_argument("--stage-desktop-bundle", action="store_true",
                         help="build staged Windows Desktop with the newly generated Bundle "
                              "and verify it in a fresh WebView2 process (requires authoring Data)")
+    parser.add_argument("--visible-before-root", type=Path,
+                        help="read before/after Data in one native WebView2; requires "
+                             "--stage-desktop-bundle and uses --authoring-root as after")
     args = parser.parse_args()
     if args.desktop_smoke:
         args.studio_desktop = True
@@ -616,12 +672,20 @@ def main() -> int:
                      "--stage-desktop-bundle")
     if args.authoring_root and not args.bundle_reader:
         parser.error("changed authoring Data requires a TEI-driven Reader Bundle")
+    if args.visible_before_root and not args.stage_desktop_bundle:
+        parser.error("--visible-before-root requires --stage-desktop-bundle")
     if not (args.repo and args.supply and args.work):
         parser.error("--repo, --supply and --work are required")
     repo, supply, work = args.repo.resolve(), args.supply.resolve(), args.work.resolve()
     expected_head = git_head(repo)
     authoring_root = args.authoring_root.resolve() if args.authoring_root else None
     authoring_before = authoring_source_digest(authoring_root) if authoring_root else None
+    visible_before_root = args.visible_before_root.resolve() if args.visible_before_root else None
+    visible_before_digest = authoring_source_digest(visible_before_root) if visible_before_root else None
+    if visible_before_root is not None and (
+            visible_before_root == authoring_root or visible_before_digest == authoring_before
+            or args.authoring_data != "studio.inspection_response"):
+        parser.error("visible before must be a different Source of studio.inspection_response")
     if work.exists():
         parser.error(f"--work already exists: {work}")
     go = shutil.which(args.go)
@@ -660,6 +724,9 @@ def main() -> int:
         node_child, authoring_root, args.authoring_data, args.stage_desktop_bundle,
         expected_head)
     authoring_after = authoring_source_digest(authoring_root) if authoring_root else None
+    visible_before_after = authoring_source_digest(visible_before_root) if visible_before_root else None
+    if visible_before_digest != visible_before_after:
+        raise RuntimeError("visible before Source changed during the Stage1 -> Stage2 Attempt")
     if authoring_before != authoring_after:
         raise RuntimeError("authoring Source changed during the Stage1 -> Stage2 Attempt")
     if git_head(repo) != expected_head:
@@ -687,7 +754,12 @@ def main() -> int:
                 studio2, (repo / COMMITTED_BUNDLE).read_bytes(),
                 Path(stage2["partPath"]))}
         if args.desktop_smoke and studio2.is_file():
-            desktop["smoke"] = desktop_smoke(repo, studio2, work / "stage2-desktop-smoke")
+            if visible_before_root is not None:
+                desktop["visibleBeforeSourceDigest"] = visible_before_digest
+                desktop["visibleBeforeSourceAfterDigest"] = visible_before_after
+            desktop["smoke"] = desktop_smoke(
+                repo, studio2, work / "stage2-desktop-smoke",
+                visible_before_root, authoring_root if visible_before_root is not None else None)
 
     committed = digest_bytes((repo / COMMITTED_PART).read_bytes().replace(b"\r\n", b"\n"))
     result = {
@@ -701,6 +773,9 @@ def main() -> int:
                  "authoringInputDigestAfter": authoring_after,
                  "authoringData": args.authoring_data}
                if authoring_root is not None else {}),
+            **({"visibleBeforeSourceDigest": visible_before_digest,
+                 "visibleBeforeSourceAfterDigest": visible_before_after}
+               if visible_before_root is not None else {}),
             **({"bundleBuilderSourceBytes": digest_file(repo / BUNDLE_CHILD)}
                if node_child is not None else {}),
         },
