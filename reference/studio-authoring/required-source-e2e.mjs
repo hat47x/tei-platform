@@ -79,8 +79,8 @@ try {
   checked(html.includes("script-src &#39;sha256-" + digest + "&#39;") &&
     html.includes("connect-src &#39;none&#39;"), "form CSP pins offline script");
   function initial(id) {
-    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const match = html.match(new RegExp('<input id="' + escaped + '"[^>]*value="([^"]*)"'));
+    assert.match(id, /^[a-z-]+$/);
+    const match = html.match(new RegExp('<input id="' + id + '"[^>]*value="([^"]*)"'));
     assert.ok(match, "missing form Source field: " + id);
     return match[1];
   }
