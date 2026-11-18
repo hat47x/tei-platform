@@ -8,7 +8,16 @@ import (
 	"tei/internal/driver/validationread"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationeval"
+	"tei/internal/realization"
 )
+
+// webRelationCoverageProof is minted only by the PostgreSQL executor while the
+// actual Contract Query's read-only transaction is open. The Target ties the
+// claim to that execution; synthetic or unrelated reads receive no proof.
+type webRelationCoverageProof struct {
+	Target   realization.ContractQueryTarget
+	Complete bool
+}
 
 // rowAnswerProjection is one row of the read surface with the answer of every
 // rule the Application declares, for that row.
@@ -36,10 +45,10 @@ type ruleAnswerProjection struct {
 // the rows of one relation, and ResolveApplicationValidations decides which
 // rules to ask (ADR-0029). This file holds no rule list of its own.
 //
-// Coverage is partial: the current Contract Query binding does not certify that
-// every row of the relation was fetched, so a rule about all the rows stays
-// undecided rather than being read as satisfied. That is the same conservative
-// statement `tei view -environment` makes.
+// Coverage defaults to partial. A relation-wide rule can be satisfied only
+// when the selected PostgreSQL executor checked the Query/storage mapping and
+// physical table visibility in the same transaction that returned the rows.
+// A covers declaration, a matching value or a separate read is not proof.
 func ruleAnswers(
 	resolver driver.Resolver,
 	semantics []semantic.Namespace,
@@ -50,7 +59,12 @@ func ruleAnswers(
 	if err != nil {
 		return nil, nil, err
 	}
-	detail, err := validationread.FromHeaderDetail(semantics, execution, validationeval.CoveragePartial)
+	coverage := validationeval.CoveragePartial
+	if proof, ok := execution.Result.Payload.(webRelationCoverageProof); ok &&
+		proof.Complete && proof.Target == execution.Resolution.Binding.Target {
+		coverage = validationeval.CoverageComplete
+	}
+	detail, err := validationread.FromHeaderDetail(semantics, execution, coverage)
 	if err != nil {
 		return nil, nil, err
 	}
