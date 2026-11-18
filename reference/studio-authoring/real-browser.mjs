@@ -165,6 +165,72 @@ try {
     });
     await context.close();
   }
+  // Required-cell editing uses the same offline Chrome form, but this
+  // reference Workspace is authored in native .tei, not tei.authoring/v1.
+  // We verify real browser proposal generation ONLY: accepting that
+  // candidate against an unrelated Source format would be misleading.
+  const nativeWorld = JSON.parse(run("go",
+    ["run", "./cmd/tei", "world", "-workspace", workspace]));
+  const owner = nativeWorld.semantics.flatMap(ns => ns.data || [])
+    .find(data => data.id === "sales.order_line");
+  const selectedAttribute = owner?.attributes?.find(attr =>
+    attr.id === "sales.order_line.unit_price");
+  assert.ok(selectedAttribute, "real Workspace does not contain target Attribute");
+  const requiredChoice = selectedAttribute.required === true ? "no" : "yes";
+  const requiredHTML = run(process.execPath, [
+    cli, "edit-form", "-workspace", workspace,
+    "-focus", "attribute:sales.order_line.unit_price",
+    "-edit-mode", "required"
+  ]);
+  const requiredPath = join(temporary, "required.html");
+  writeFileSync(requiredPath, requiredHTML, { mode: 0o600 });
+  const requiredContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const page = await requiredContext.newPage();
+    const pageErrors = [], networkRequests = [];
+    page.on("pageerror", err => pageErrors.push(err.message));
+    page.on("request", req => {
+      if (/^https?:/i.test(req.url())) networkRequests.push(req.url());
+    });
+    await page.goto(pathToFileURL(requiredPath).href, { waitUntil: "load" });
+    assert.equal(await page.locator("#model-revision").inputValue(), baseline);
+    assert.equal(await page.locator("#subject").inputValue(),
+      "attribute:sales.order_line.unit_price");
+    await page.locator("#candidate-id").fill("chrome-1124-required");
+    await page.locator("#intent").fill("必須指定の変更を未審査候補として作る");
+    await page.locator("#required-choice").selectOption(requiredChoice);
+    await page.locator('button[type="submit"]').click();
+    const edit = JSON.parse(await page.locator("#proposal-json").inputValue());
+    assert.equal(edit.view, "required");
+    assert.equal(edit.operation, "set-attribute-required");
+    assert.equal(edit.required, requiredChoice === "yes");
+    assert.equal(edit.expectedModelRevision, baseline);
+    const editPath = join(temporary, "required.json");
+    writeFileSync(editPath, JSON.stringify(edit) + "\n", { mode: 0o600 });
+    const candidate = JSON.parse(run(process.execPath, [
+      cli, "propose", "-workspace", workspace, "-edit-file", editPath
+    ]));
+    assert.deepEqual(candidate.delta, [{
+      op: "set-attribute-required", id: "sales.order_line.unit_price",
+      required: requiredChoice === "yes"
+    }]);
+    assert.equal(candidate.baseModelRevision, baseline);
+    assert.equal(revision(), baseline, "the offline Required form must not write Source");
+    assert.deepEqual(pageErrors, []);
+    assert.deepEqual(networkRequests, []);
+    await page.screenshot({path: join(outputDir, "required.png"), fullPage: true});
+    receipts.push({
+      name: "required", focus: "attribute:sales.order_line.unit_price",
+      editSchema: edit.schema, candidateSchema: candidate.schema,
+      reviewSchema: null, revisionBound: true, realChromeDOMEvent: true,
+      cspScriptExecuted: true, offlineNetworkRequests: networkRequests.length,
+      accepted: false, sourceChanged: false,
+      qualification: "candidate-only; this Source is native .tei, not tei.authoring/v1"
+    });
+  } finally {
+    await requiredContext.close();
+  }
+
   const receipt = {
     schema: "tei.reference.studio-real-browser-receipt/v0",
     head: process.env.GITHUB_SHA || null,
