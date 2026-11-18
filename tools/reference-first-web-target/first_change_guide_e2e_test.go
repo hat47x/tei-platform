@@ -57,8 +57,13 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	root := t.TempDir()
 	copyWorkspaceForRuleChange(t, referenceWorkspacePath(t), root)
 	applySchemaFromDefinitions(t, binary, root, db)
-	t.Cleanup(func() { _, _ = db.Exec("drop table if exists public.order_lines") })
-	t.Cleanup(func() { _, _ = db.Exec("drop table if exists public.orders") })
+	t.Cleanup(func() {
+		for _, table := range []string{"public.order_lines", "public.orders"} {
+			if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
+				t.Errorf("cannot clean up generated %s table: %v", table, err)
+			}
+		}
+	})
 	seedTx, err := db.BeginTx(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
