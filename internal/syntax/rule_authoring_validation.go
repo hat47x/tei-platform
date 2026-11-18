@@ -296,8 +296,16 @@ func isNumberText(text string) bool {
 // what an attribute reference looks like. Whether the id resolves is the
 // validator's decision, not this surface's.
 func isCanonicalReferenceText(text string) bool {
-	return strings.Contains(text, ".") && text != "." &&
-		!strings.HasPrefix(text, ".") && !strings.HasSuffix(text, ".")
+	if !strings.Contains(text, ".") {
+		return false
+	}
+	// An identifier-shaped token is not necessarily a canonical attribute
+	// reference: empty segments and invalid segment characters must be
+	// diagnosed before the unsupported value-transport boundary.
+	// Whether a well-formed ID actually names an attribute is still the
+	// Workspace validator's responsibility.
+	_, err := core.ParseCanonicalID(text)
+	return err == nil
 }
 
 func inputNameDeclared(names []string, name string) bool {
