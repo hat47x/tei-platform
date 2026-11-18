@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 
+	"tei/internal/operations"
 	"tei/internal/plugin/transform"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
@@ -36,6 +38,23 @@ func inspectorFieldType(typeID string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+// inspectSubjectStringField checks the actual Operation's JSON response shape,
+// rather than treating any Data attribute name as a real InspectSubject field.
+// Only non-optional top-level strings are admitted by this first binding.
+// This is a structural check, not proof that a specific Host invocation ran.
+func inspectSubjectStringField(name string) bool {
+	t := reflect.TypeOf(operations.SubjectInspection{})
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		jsonName, options, _ := strings.Cut(field.Tag.Get("json"), ",")
+		if jsonName == name && !strings.Contains(options, "omitempty") &&
+			field.Type.Kind() == reflect.String {
+			return true
+		}
+	}
+	return false
 }
 
 // bindAuthoringData augments the existing Reader contract with a Data table
@@ -117,6 +136,18 @@ func bindAuthoringData(root, dataID string, contractRaw []byte) ([]byte, *author
 	if err := json.Unmarshal(contractRaw, &sections); err != nil {
 		return nil, nil, err
 	}
+	// The response shape checked below belongs only to this exact Operation.
+	// An arbitrary bridge must not inherit its field qualifications.
+	var op struct {
+		Bridge string `json:"bridge"`
+		Effect string `json:"effect"`
+	}
+	if err := json.Unmarshal(sections["operation"], &op); err != nil {
+		return nil, nil, fmt.Errorf("Reader Operation: %w", err)
+	}
+	if op.Bridge != "main.StudioBridge.InspectSubject" || op.Effect != "read-only" {
+		return nil, nil, fmt.Errorf("authoring Reader binding requires the read-only InspectSubject Operation")
+	}
 	rawRequired, ok := sections[requiredResponseFieldsSection]
 	if !ok {
 		return nil, nil, fmt.Errorf("Reader contract has no %s baseline", requiredResponseFieldsSection)
@@ -151,6 +182,9 @@ func bindAuthoringData(root, dataID string, contractRaw []byte) ([]byte, *author
 		fieldType, supported := inspectorFieldType(attr.TypeID)
 		if !supported {
 			return nil, nil, fmt.Errorf("required attribute %q has unsupported Reader wire type %q", attr.ID, attr.TypeID)
+		}
+		if fieldType != "string" || !inspectSubjectStringField(attr.Symbol) {
+			return nil, nil, fmt.Errorf("required attribute %q does not match a non-optional string field of InspectSubject response", attr.ID)
 		}
 		if current, exists := seen[attr.Symbol]; exists {
 			if current != fieldType {
