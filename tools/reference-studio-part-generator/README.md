@@ -103,9 +103,9 @@ python -B tools/reference-studio-part-generator/stage_reentry.py `
 | `studioDesktopsEqual` | Stage1とStage2のDesktop実行ファイルが一致 |
 | `stage2DesktopEmbedsCommittedBundle` | Stage2のDesktop実行ファイルの**byte列に**、コミット済みbundleがちょうど一回含まれる（`go:embed`は内容をそのまま格納する） |
 | `committedBundleCarriesRegeneratedPart` | そのbundleが、Stage2で再生成した部品と同じ契約digestを持つ |
-| `stage2DesktopUsedGeneratedReaderInNewProcess` | smokeが起動した実行ファイルのdigestがStage2の成果物と一致し、WebView2で観測した契約digestが再生成部品と一致し、初回Inspect後の呼出回数が1以上で、Graph選択後の呼出回数が増えている（計2回以上） |
+| `stage2DesktopUsedGeneratedReaderInNewProcess` | smokeが起動した実行ファイルのdigestがStage2の成果物と一致し、初回InspectとGraph選択後の両時点でWebView2が観測した契約digestが再生成部品と一致し、初回Inspect後の呼出回数が1以上で、Graph選択後の呼出回数が増えている（計2回以上） |
 
-`--self-test`は、bundleを含まないDesktop・別契約のbundle・別契約のreader・別の実行ファイル（例：CIの通常build）でのsmoke・1回だけの使用・初回とGraph選択後で呼出回数が増えない場合・初回回数の欠落や不正な型・smoke失敗・Stage0のTEIが作ったDesktopを、いずれも不成立と判定することを確かめます。
+`--self-test`は、bundleを含まないDesktop・別契約のbundle・別契約のreader・別の実行ファイル（例：CIの通常build）でのsmoke・1回だけの使用・初回とGraph選択後で呼出回数が増えない場合・初回回数の欠落や不正な型・途中でのReader契約の不一致・smoke失敗・Stage0のTEIが作ったDesktopを、いずれも不成立と判定することを確かめます。
 
 実測は[Stage2 Desktopの記録](../../plan/evidence/TEI_STUDIO_SELF_BUILD_STAGE2_DESKTOP_2026-11-17.md)にあります。
 
