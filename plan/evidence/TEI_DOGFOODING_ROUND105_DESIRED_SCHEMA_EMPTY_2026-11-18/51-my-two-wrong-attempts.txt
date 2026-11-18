@@ -1,0 +1,16 @@
+Two failed attempts before a correct mapping:
+
+  1 persist equip.loan { table equip_core.loans { column ... } }
+      -> expected database, semantic, table, column, primary-key, ...
+         (the body is a sequence of database/semantic/table/column)
+
+  2 persist equip.loan { database equip_core; semantic equip.loan; ... }
+      -> PERSISTENCE_MAPPING_DATABASE_NAMESPACE_MISMATCH
+         "owned by database equip_core but is outside its namespace"
+      -> PERSISTENCE_UNDECLARED_SEMANTIC_DEPENDENCY
+         "refers to equip.loan but database equip_core does not declare uses semantic equip"
+
+  3 persist equip_core.loans { ... } + database ... uses semantic equip
+      -> ok, tables appear
+
+Both refusals named the fix. Only the zero-mapping case says nothing.

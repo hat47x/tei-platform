@@ -3884,3 +3884,49 @@ $ tei commands -> 30コマンド
 ### 位置付け
 
 **「起票の本文を信じて未解決扱いを続けるのを、4回連続でやめた」回**である。`#4178`・`#4169`・`#4128`・`#5228` はいずれも**本文が古く、実測すると状態が違った**。
+
+## 106. 第105ラウンド（2026-11-18）: `desired-schema` は「マッピングが無い」と「表が無い」を区別しない
+
+目的文の「再びドッグフーディングに戻る」を実行した。未使用だった面 **`tei desired-schema`** を使い、**自分の equip 設計に足りないものを答えられるか**を問うた。生出力は[第105ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND105_DESIRED_SCHEMA_EMPTY_2026-11-18/README.md)にある。
+
+### 動くことは確認した
+
+参照の `sales_core` では**2テーブル・列・主キーまで含む JSON**が返り、`equip` に正しいマッピングを書けば**自分のテーブルも同じ形で出る**（`-format sql` も同じ定義から作られる、`#2586`）。
+
+### 見つけた欠落
+
+**マッピングを1つも書いていない `equip_core`** では:
+
+```text
+$ tei desired-schema -workspace W -database equip_core -provider postgres
+{
+  "database": "equip_core"
+}
+exit=0
+```
+
+`tables` は `omitempty` なので**現れない**。**「まだ書いていない」と「書いたが表が0件」が同じ出力**になる。`validate` も警告しない（`UNBOUND_DATABASE_REQUIREMENT` は環境束縛の話で別の事実）。
+
+### 非対称が問題
+
+正しく書くまでの2回の失敗は、**どちらも直し方を名指ししてくれた**:
+
+```text
+PERSISTENCE_MAPPING_DATABASE_NAMESPACE_MISMATCH ... but is outside its namespace
+PERSISTENCE_UNDECLARED_SEMANTIC_DEPENDENCY  ... does not declare uses semantic equip
+```
+
+**0件のときだけ、何も言わない。** 「次に何を書くべきか」を問うた呼び出し側への答えが**「空です」だけ**である。
+
+### 起票
+
+[#5511](https://github.com/hat47x/tei-platform/issues/5511) を起票した。**設計判断を伴う**ため、案を3つ並べたところまでで止めた（A: `mappingCount` 追加＝**既定案**、B: `tables` 常時出力、C: `validate` の警告）。**既定案 A を選ぶ理由**は `desired-schema` が `tei.cli.*/v0` の envelope を持たない raw 出力であり、**追加のみが既存の読み手を壊さない**ため。
+
+### NOT RUN
+
+- 実 PostgreSQL への DDL 適用（SQL は生成したが**実行していない**）。
+- 空スキーマでの `-format sql` の出力（**何も出なかった**。起票の対象に含めた）。
+
+### 位置付け
+
+**「設計者が次に書くべきものを答えられるか」を問うた回**で、答えは**「半分」**だった。**直前の2エラーは直し方を名指ししていた**のに、**0件のときだけ何も言わない**という非対称を見つけた。
