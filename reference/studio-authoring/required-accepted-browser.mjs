@@ -59,6 +59,15 @@ const inspect = () => {
   assert.equal(result.schemaVersion, "tei.cli.inspect/v0");
   assert.equal(result.ok, true);
   assert.equal(result.result?.effect, "read-only");
+  assert.equal(result.result?.sourceStatus, "indexed");
+  const refs = result.result?.sources?.references || [];
+  const artifacts = result.result?.sources?.artifacts || [];
+  assert.equal(refs.length, 1, "Data must have one exact Source Index reference");
+  assert.equal(refs[0].artifactPath, sourceRelative);
+  assert.equal(refs[0].subject?.kind, "semantic-data");
+  assert.equal(refs[0].subject?.id, dataID);
+  assert.equal(artifacts.length, 1);
+  assert.equal(artifacts[0].path, sourceRelative);
   const canonical = result.result?.canonical;
   assert.equal(canonical?.id, dataID);
   assert.equal(canonical.attributes?.length, 2);
