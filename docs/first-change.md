@@ -136,10 +136,7 @@ go run ./tools/reference-first-web-target \
 ## まだできないこと
 
 - 異なる属性集合を持つ**さらに別の**業務モデル。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/`・`cmd/tei/destination_order_alternate_pg_case_test.go`・#5362）。
-- 明細番号の一意を「成立」と答えること。束縛へ `covers sales.order.lines` と書けば
-  `tei validate` の警告は消え、`tei view` の `declaration` にもその宣言が出る。しかし
-  **答えは `undecided` のまま**である（理由は `relation-partially-read`）。宣言は
-  Query が何を返すかの記述であって、全行が届いた証明ではない。全行が揃ったと確かめた
-  場合にだけ「成立」と答える仕組み（資格の照合）は、まだ無い。
+- 現在の参照用Workspaceで、重複を観測しなかった受注について明細番号の一意を「成立」と答えること。束縛に`covers sales.order.lines`の宣言がないため、取得範囲は`partial`となり、受注1002の一意性は`undecided`（`relation-partially-read`）のままである。一方、受注1001のように重複を観測した場合は、取得範囲が一部でも「不成立」と判断できる。
+- **宣言だけで全件取得を認めること。** 取得範囲の資格を照合する仕組みは実装済み（#5507）。`covers`の宣言に加え、実行するQueryの条件と関係の保存定義が一致し、余分な行の絞り込みがないと確かめた場合に限り`coverage: complete`とする。宣言を残したままQueryが行を落とす場合や、照合できないSQLの場合は`partial`のままである。参照用Workspaceへの宣言の反映は別の変更として、既存試験・歴史的な生成器との互換性も検証してから行う。
 
 
