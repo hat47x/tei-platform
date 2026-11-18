@@ -335,7 +335,7 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
                     and stage.get("desktopInputBundleDigest")
                     == stage.get("bundleGeneration", {}).get("artifactDigest")
                     and stage.get("desktopSourceDifference") == [COMMITTED_BUNDLE.as_posix()]
-                    and stage.get("desktopCheckoutCommit") == desktop.get("sourceHead")
+                    and stage.get("desktopCheckoutCommit") == embedded.get("sourceHead")
                     for stage in (stage1, stage2)
                 ),
                 "stage2DesktopEmbedsGeneratedBundle": embedded.get("embedsCommittedBundle") is True
