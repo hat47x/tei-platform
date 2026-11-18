@@ -48,7 +48,9 @@ func TestFirstChangeGuideSetupFailsClosed(t *testing.T) {
 		"./tei desired-schema -workspace reference/workspace",
 		"> \"$schema_sql\"",
 		"psql \"$TEI_VIEW_PG_DSN\" -v ON_ERROR_STOP=1 -1",
-		"-f \"$schema_sql\" -f testdata/destination-order-change/seed.sql",
+		"-f \"$schema_sql\"",
+		"-f testdata/destination-order-change/seed-orders.sql",
+		"-f testdata/destination-order-change/seed.sql",
 	} {
 		if !strings.Contains(script, required) {
 			t.Fatalf("the setup script lacks the failure/transaction guard %q", required)
@@ -86,6 +88,9 @@ func TestFirstChangeGuideSetupFailsClosed(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(fixture, "seed.sql"), []byte("INSERT INTO sample VALUES (1);\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
+			if err := os.WriteFile(filepath.Join(fixture, "seed-orders.sql"), []byte("INSERT INTO sample VALUES (2);\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			cmd := exec.Command("sh", "-eu", "-c", script)
 			cmd.Dir = root
 			cmd.Env = append(os.Environ(),
@@ -105,7 +110,7 @@ func TestFirstChangeGuideSetupFailsClosed(t *testing.T) {
 				if readErr != nil {
 					t.Fatalf("the setup never reached psql: %v", readErr)
 				}
-				for _, required := range []string{"-v ON_ERROR_STOP=1", "-1 -f ", "-f testdata/destination-order-change/seed.sql"} {
+				for _, required := range []string{"-v ON_ERROR_STOP=1", "-1 -f ", "-f testdata/destination-order-change/seed-orders.sql", "-f testdata/destination-order-change/seed.sql"} {
 					if !strings.Contains(string(args), required) {
 						t.Fatalf("psql was not called in one fail-fast transaction: %q", args)
 					}

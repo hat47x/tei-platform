@@ -211,12 +211,13 @@ func seedReadFixture(t *testing.T, db *sql.DB) error {
 	)`); err != nil {
 		return err
 	}
-	// The parent rows the seed's order_ids belong to, newest first as the
-	// browse Query orders them. Order 1003 has no lines, which the seed states.
-	if _, err := db.Exec(`insert into public.orders values
-		(1001, 11, '2026-09-18T09:30:00Z', 'draft', 12500.00, null),
-		(1002, 12, '2026-09-18T08:15:00Z', 'draft', 8300.00, null),
-		(1003, 13, '2026-09-18T07:30:00Z', 'draft', 6200.00, null)`); err != nil {
+	// Use the same parent orders as the user-facing first-change guide.
+	// The browse Query must not receive private test-only parent fixtures.
+	ordersSeed, err := os.ReadFile(filepath.Join(fixtureRoot(t), "seed-orders.sql"))
+	if err != nil {
+		return err
+	}
+	if _, err := db.Exec(string(ordersSeed)); err != nil {
 		return err
 	}
 	if _, err := db.Exec(`create table public.order_lines (
