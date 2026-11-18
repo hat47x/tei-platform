@@ -88,6 +88,48 @@ test("Table form optionally binds application use without Source writes", () => 
   });
   assert.equal(candidateFromEdit(world(), rev, paired).delta.length, 2);
 });
+test("Required form produces one typed candidate with no Source write or implicit acceptance", () => {
+  const w = world(), subject = "attribute:sales.order_line.price";
+  const html = renderStudioEditHTML(w, rev, subject, "required");
+  assert.match(html, /現在の必須指定：no/);
+  assert.match(html, /id="required-choice"/);
+  assert.match(html, /この画面では正本を書き換えたり/);
+  assert.doesNotMatch(html, /<form[^>]+action=/i);
+  const edit = JSON.parse(simulate(html, {
+    subject, view: "required", "required-choice": "yes"
+  }).output);
+  assert.equal(edit.required, true);
+  assert.equal(edit.expectedModelRevision, rev);
+  const candidate = candidateFromEdit(w, rev, edit);
+  assert.equal(candidate.delta.length, 1);
+  assert.deepEqual(candidate.delta[0], {
+    op: "set-attribute-required", id: "sales.order_line.price", required: true
+  });
+  assert.equal(candidate.origin.kind, "studio");
+  assert.throws(() => candidateFromEdit(w, nextRev, edit),
+    /STUDIO_EDIT_STALE_MODEL_REVISION/);
+  assert.throws(() => candidateFromEdit(w, rev, {...edit, required: "yes"}),
+    /INVALID_OR_UNCHANGED_REQUIRED_PROPOSAL/);
+  assert.throws(() => candidateFromEdit(w, rev, {...edit, required: false}),
+    /INVALID_OR_UNCHANGED_REQUIRED_PROPOSAL/);
+  assert.equal(simulate(html, {
+    subject, view: "required", "required-choice": ""
+  }).output, "");
+
+  const previouslyRequired = world();
+  previouslyRequired.semantics[0].data[1].attributes[0].required = true;
+  const optionalForm = renderStudioEditHTML(previouslyRequired, rev, subject, "required");
+  assert.match(optionalForm, /現在の必須指定：yes/);
+  const makeOptional = JSON.parse(simulate(optionalForm, {
+    subject, view: "required", "required-choice": "no"
+  }).output);
+  assert.deepEqual(candidateFromEdit(previouslyRequired, rev, makeOptional).delta, [
+    { op: "set-attribute-required", id: "sales.order_line.price", required: false }
+  ]);
+  assert.throws(() => renderStudioEditHTML(w, rev, "data:sales.order", "required"),
+    /REQUIRED_CHANGE_NEEDS_ATTRIBUTE/);
+});
+
 test("Standalone HTML escapes untrusted subject names, never adds authority", () => {
   const w = world(), attack = 'sales.<img src=x onerror="1">';
   w.semantics[0].data.push({ id: attack, attributes: [] });
