@@ -256,13 +256,23 @@ func readEnvironmentRows(
 		// put an unredacted driver error into the public JSON report.
 		return destinationRead{}, fmt.Errorf("Contract Query execution failed; check the environment binding and database")
 	}
-	// Neither a row count, an SQL query without LIMIT, nor the binding's
-	// declaration alone proves complete relation coverage. Only a Query that
-	// matches the Workspace's relation storage does; anything else is partial.
+	// A structurally complete Query may still see only a portion of the
+	// relation if PostgreSQL row security hides rows. Check the physical table
+	// in the SAME read-only transaction as the observed rows before promoting
+	// a positive relation-wide claim. Unknown table kind or catalog visibility
+	// fails closed to partial; a witnessed duplicate remains decisive.
 	qualification := resolver.QualifyHeaderDetailCoverage(execution.Execution.Resolution, execution.Executor.Instance.Provider)
 	coverage := validationeval.CoveragePartial
 	if qualification.Complete {
-		coverage = validationeval.CoverageComplete
+		if visible, reason := postgresBaseTableVisibilityQualified(
+			ctx, tx, world, prepared.Binding.Target.Database, prepared.Relation.Target.ID,
+		); visible {
+			coverage = validationeval.CoverageComplete
+		} else {
+			qualification.Complete = false
+			qualification.Basis = ""
+			qualification.Reason = reason
+		}
 	}
 	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, coverage)
 	if err != nil {
@@ -397,6 +407,52 @@ func environmentHeaderSource(world ir.World, resolved driver.ResolvedHeaderDetai
 // select its Go type. A physical int64 column gives an explicit conversion
 // rule; text-like and unknown storage retain the original string. Conversion
 // failure is reported rather than silently changing or truncating the input.
+// postgresBaseTableVisibilityQualified checks the real base table associated
+// with the mapped Data, not a table name inferred from an HTTP input. The
+// caller already executed the accepted SQL on tx, which holds its table lock
+// until rollback, so a concurrent ALTER TABLE cannot change RLS while this
+// same-attempt catalog observation is made.
+//
+// This is a conservative runtime guard, not a proof of arbitrary SQL semantics:
+// non-base relations, ambiguous mappings, implicit search paths and catalog
+// failures never qualify full coverage.
+func postgresBaseTableVisibilityQualified(
+	ctx context.Context, tx *sql.Tx, world ir.World,
+	databaseID, dataID core.CanonicalID,
+) (bool, string) {
+	const unknown = "PostgreSQL table visibility could not be qualified for complete relation coverage"
+	var table string
+	count := 0
+	for _, mapping := range world.Persistence {
+		if mapping.Database == databaseID && mapping.SemanticData == dataID {
+			count++
+			table = mapping.Table
+		}
+	}
+	if count != 1 {
+		return false, unknown
+	}
+	schema, name, qualified := strings.Cut(table, ".")
+	if !qualified || schema == "" || name == "" || strings.Contains(name, ".") {
+		return false, unknown
+	}
+	var kind string
+	var rlsEnabled, rlsForced bool
+	err := tx.QueryRowContext(ctx, `
+SELECT c.relkind::text, c.relrowsecurity, c.relforcerowsecurity
+FROM pg_catalog.pg_class AS c
+JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+WHERE n.nspname = $1 AND c.relname = $2
+`, schema, name).Scan(&kind, &rlsEnabled, &rlsForced)
+	if err != nil || kind != "r" {
+		return false, unknown
+	}
+	if rlsEnabled || rlsForced {
+		return false, "PostgreSQL row-level security is enabled; complete relation visibility is unverified"
+	}
+	return true, ""
+}
+
 func environmentHeaderInputValue(world ir.World, databaseID, dataID, attributeID core.CanonicalID, raw string) (any, error) {
 	found := false
 	var storage persistence.StorageType
