@@ -302,3 +302,149 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+
+  accepted-source-into-windows-studio:
+    # The accepted file is produced by the actual Chrome+Shared Acceptance
+    # job, then passed as immutable bytes to the existing Windows Stage driver.
+    needs: studio-source-loop
+    runs-on: windows-2022
+    timeout-minutes: 65
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: off
+    steps:
+      - name: Checkout the same workflow revision, including Git worktrees
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Go from the checked-in module
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Setup Node for existing esbuild child
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.21.0'
+          check-latest: false
+
+      - name: Download actual accepted Source bytes from this workflow run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: studio-required-source-loop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-studio-source-transport
+
+      - name: Prepare real Stage Builder supply and check accepted Source lineage
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $transport = Join-Path $env:RUNNER_TEMP 'tei-studio-source-transport'
+          $receiptPath = Join-Path $transport 'required-source-loop-receipt.json'
+          if (-not (Test-Path -LiteralPath $receiptPath)) { throw 'No accepted Source receipt' }
+          $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne $env:GITHUB_SHA -or $receipt.head -ne $head) {
+            throw 'Chrome acceptance and Windows reentry are on different Source revisions'
+          }
+          if ($receipt.status -ne 'PASS' -or $receipt.humanMeaningAcceptance -ne 'not-observed') {
+            throw 'Missing explicit Reference acceptance boundary'
+          }
+          $accepted = Join-Path $transport 'accepted-workspace'
+          $before = Join-Path $transport 'before-workspace'
+          $relative = 'semantic/studio/inspection-response.tei.md'
+          $acceptedPath = Join-Path $accepted $relative
+          $beforePath = Join-Path $before $relative
+          $hashAfter = (Get-FileHash -LiteralPath $acceptedPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $hashBefore = (Get-FileHash -LiteralPath $beforePath -Algorithm SHA256).Hash.ToLowerInvariant()
+          if (('sha256:' + $hashAfter) -ne $receipt.sourceBytesAfter -or
+              ('sha256:' + $hashBefore) -ne $receipt.sourceBytesBefore) {
+            throw 'Downloaded Data Source bytes do not match accepted Chrome source fingerprints'
+          }
+          $old = [System.IO.File]::ReadAllText($beforePath)
+          $new = [System.IO.File]::ReadAllText($acceptedPath)
+          $from = '| snapshotFingerprint | std.text | no | Snapshot |'
+          $to = '| snapshotFingerprint | std.text | yes | Snapshot |'
+          if (($old.Split($from)).Count -ne 2 -or $new -ne $old.Replace($from, $to)) {
+            throw 'The downloaded accepted Source differs by more than one required cell'
+          }
+          $manifestOld = [System.IO.File]::ReadAllBytes((Join-Path $before 'tei.workspace.yaml'))
+          $manifestNew = [System.IO.File]::ReadAllBytes((Join-Path $accepted 'tei.workspace.yaml'))
+          if (([Convert]::ToHexString($manifestOld)) -ne ([Convert]::ToHexString($manifestNew))) {
+            throw 'Source Workspace manifest was altered between Chrome and Stage2'
+          }
+          go mod download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Push-Location cmd/tei-studio
+          try {
+            go mod download
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+          Push-Location reference/tei-studio-workbench
+          try {
+            npm ci --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+
+      - name: Rebuild Stage1 and Stage2 from that accepted Source and inspect real WebView2
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B tools/reference-studio-part-generator/stage_reentry.py --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $transport = Join-Path $env:RUNNER_TEMP 'tei-studio-source-transport'
+          $source = Join-Path $transport 'accepted-workspace'
+          $before = Join-Path $transport 'before-workspace'
+          $attempt = Join-Path $env:RUNNER_TEMP 'tei-studio-accepted-source-n3-attempt'
+          $supply = Join-Path ((go env GOMODCACHE).Trim()) 'cache/download'
+          $reportFile = Join-Path $env:RUNNER_TEMP 'tei-studio-accepted-source-n3-evidence.json'
+          python -B tools/reference-studio-part-generator/stage_reentry.py `
+            --repo . --supply $supply --work $attempt `
+            --authoring-root $source --authoring-data studio.inspection_response `
+            --visible-before-root $before `
+            --bundle-reader --stage-desktop-bundle --desktop-smoke > $reportFile
+          if ($LASTEXITCODE -ne 0) { throw 'Accepted Data -> Stage2 Wails -> WebView2 failed' }
+          $report = Get-Content -LiteralPath $reportFile -Raw | ConvertFrom-Json
+          $receipt = Get-Content -LiteralPath (Join-Path $transport 'required-source-loop-receipt.json') -Raw | ConvertFrom-Json
+          if ($report.sources.repoHead -ne $receipt.head -or $report.sources.repoHead -ne (git rev-parse HEAD).Trim()) {
+            throw 'Stage2 used a different Git Source revision than Chrome acceptance'
+          }
+          foreach ($gate in @(
+            'reentryObserved',
+            'stage1TeiArtifactIsStage2Invoker',
+            'eachBundleCarriesItsOwnGeneratedReader',
+            'bundlesWereMadeByTheRecordedNodeChild',
+            'stage2PartChangedFromCommittedPart',
+            'authoringSourceStableAcrossStages',
+            'eachDesktopUsedItsStageGeneratedBundle',
+            'stage2DesktopEmbedsGeneratedBundle',
+            'generatedDesktopExcludesCommittedBundle',
+            'generatedDesktopCarriesReaderContract',
+            'stage2DesktopUsedGeneratedReaderInNewProcess',
+            'visibleBeforeSourceUnchanged',
+            'sameNativeWebViewDisplaysChangedCanonical'
+          )) {
+            if ($report.judgement.$gate -ne $true) { throw "Stage2 acceptance missing: $gate" }
+          }
+          $visible = $report.stage2Desktop.smoke.visibleAuthoring
+          if ($visible.before.snapshotRequired -ne $false -or
+              $visible.after.snapshotRequired -ne $true -or
+              $receipt.independentCanonicalRequiredBefore -ne $false -or
+              $receipt.independentCanonicalRequiredAfter -ne $true) {
+            throw 'Real Chrome accepted Source and Stage2 visible Inspector disagree'
+          }
+          Write-Host 'Real Chrome -> explicit Review/Accept -> saved Source -> Stage2 Windows WebView2: PASS'
+
+      - name: Retain Stage2 evidence bound to actual accepted Source
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: studio-accepted-source-to-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/tei-studio-accepted-source-n3-evidence.json
+            ${{ runner.temp }}/tei-studio-accepted-source-n3-attempt/stage2-desktop-smoke/**
+          retention-days: 7
+          if-no-files-found: warn
