@@ -140,7 +140,7 @@ func validateHeaderDetailBindingCoverage(
 				Code:     "HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED",
 				Severity: Warning,
 				Subject:  &bindingSubject,
-				Message: fmt.Sprintf("Application %s uses rule %s about all the rows of %s, but header-detail Contract Query binding %s does not state that it returns every row; the rule can be refuted but never satisfied. Add `covers %s` if the Query returns every row for the header, or `covers some` if it does not",
+				Message: fmt.Sprintf("Application %s uses rule %s about all the rows of %s, but header-detail Contract Query binding %s does not state that it returns every row; the rule can be refuted but never satisfied. Add `covers %s` if the Query returns every row for the header, or `covers some` if it does not. The statement records what the Query returns; it is not a proof that every row arrived, so a read of the binding still answers the rule undecided",
 					resolved.Application.ID, rule.ID, resolved.Relation.ID, binding.Identity(), resolved.Relation.ID),
 			})
 		}
