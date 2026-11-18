@@ -28,12 +28,20 @@ function exactRevision(revision) {
 // The accepted World is caller-supplied; this tool does not authenticate its
 // provenance. Callers must obtain World and modelRevision from the same workspace.
 export function indexWorld(world) {
-  if (!world || typeof world !== "object" || !Array.isArray(world.semantics) ||
-      !Array.isArray(world.applications)) throw new Error("INVALID_WORLD");
+  // Go's ir.World emits `applications:null` for a nil slice and omits
+  // `semantics` for an empty slice. Both are legitimate empty collections,
+  // notably in a Data-only tei.authoring/v1 Workspace. Keep actual non-array
+  // values invalid; never fabricate a Source declaration or an Application.
+  const semantics = world?.semantics ?? [];
+  const applicationList = world?.applications ?? [];
+  if (!world || typeof world !== "object" ||
+      !Object.hasOwn(world, "applications") ||
+      !Array.isArray(semantics) || !Array.isArray(applicationList))
+    throw new Error("INVALID_WORLD");
   const data = new Map(), relations = new Map(), attributes = new Map();
   const patterns = new Map(), namespaces = new Map(), validations = new Map();
   const applications = new Map(), validationConsumers = new Map();
-  for (const ns of world.semantics) {
+  for (const ns of semantics) {
     insert(namespaces, ns.id, ns, "namespace");
     for (const validation of array(ns.validations, "namespace.validations")) {
       insert(validations, validation.id, { ...validation, namespace: ns.id }, "validation");
@@ -48,7 +56,7 @@ export function indexWorld(world) {
       }
     }
   }
-  for (const app of world.applications) {
+  for (const app of applicationList) {
     insert(applications, app.id, app, "application");
     for (const validationID of array(app.validations, "application.validations")) {
       requireID(validationID, "application.validation");
