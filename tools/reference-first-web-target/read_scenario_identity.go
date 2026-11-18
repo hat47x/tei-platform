@@ -46,18 +46,21 @@ func readIdentityFrom(
 
 // requireAnswersBelongToRead refuses answers that do not belong to this read.
 //
-// Position alignment proves the answers line up with these rows. It cannot tell
-// whether the answers came from this read or from another read of the same
-// shape, because both would be aligned. The identity is what distinguishes
-// them: it carries the selected order, the executed target, and the row count,
-// and the answers are only rendered under it after this check.
+// This check validates the declared target, selected order and positional
+// alignment. It does not prove that answers were produced in the same
+// execution: two reads of the same scope can have different snapshots. The
+// caller must derive rows and answers from the same execution, as Run does.
 func requireAnswersBelongToRead(
 	identity readIdentityProjection,
 	rows []rowAnswerProjection,
 	relationAnswers []string,
 ) error {
-	if identity.SelectedOrderKey == "" || identity.Database == "" || identity.Contract == "" || identity.Query == "" {
+	if identity.SelectedOrderKey == "" || identity.Environment == "" || identity.Pattern == "" ||
+		identity.Database == "" || identity.Contract == "" || identity.Query == "" || identity.InputOrderID == "" {
 		return fmt.Errorf("the read has no complete identity, so its answers cannot be attributed")
+	}
+	if identity.SelectedOrderKey != identity.InputOrderID {
+		return fmt.Errorf("selected order %q differs from query input %q", identity.SelectedOrderKey, identity.InputOrderID)
 	}
 	if identity.RowCount != len(rows) {
 		return fmt.Errorf("the read states %d rows but %d answer rows were produced", identity.RowCount, len(rows))
@@ -71,10 +74,13 @@ func requireAnswersBelongToRead(
 	return nil
 }
 
-// readIdentityKey is the stable comparison form of a read identity. Two reads
-// with different keys are different reads even when their rows look identical.
+// readIdentityKey distinguishes declared read scopes, not execution attempts.
+// Equal keys do not establish a shared snapshot or prove that rows and answers
+// came from the same invocation. Quote each component to avoid separator
+// collisions in the comparison key.
 func readIdentityKey(identity readIdentityProjection, environment core.CanonicalID) string {
-	return fmt.Sprintf("%s|%s|%s|%s|%s|%d",
-		environment, identity.Contract, identity.Query, identity.SelectedOrderKey,
+	return fmt.Sprintf("%q|%q|%q|%q|%q|%q|%q|%q|%d",
+		environment, identity.Environment, identity.Pattern, identity.Database,
+		identity.Contract, identity.Query, identity.SelectedOrderKey,
 		identity.InputOrderID, identity.RowCount)
 }
