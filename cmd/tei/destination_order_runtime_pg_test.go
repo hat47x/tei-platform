@@ -755,7 +755,7 @@ func assertDestinationHTMLFromPostgres(
 	}
 	page := got.stdout
 	if !strings.Contains(page, "<!doctype html>") ||
-		!strings.Contains(page, "coverage: partial") ||
+		!strings.Contains(page, "coverage: complete") ||
 		!strings.Contains(page, "rows: "+strconv.Itoa(len(perLine))) {
 		t.Fatalf("order=%s HTML missing document, observed coverage or row count", orderID)
 	}
@@ -835,7 +835,7 @@ func assertDestinationChromeDOMFromPostgres(
 	}
 	dom := string(output)
 	if !strings.Contains(dom, "<html") ||
-		!strings.Contains(dom, "coverage: partial") ||
+		!strings.Contains(dom, "coverage: complete") ||
 		!strings.Contains(dom, "rows: "+strconv.Itoa(len(perLine))) ||
 		strings.Contains(dom, dsn) {
 		t.Fatalf("order %s: Chrome DOM lost read metadata or exposed a DB secret", orderID)
