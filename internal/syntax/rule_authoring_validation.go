@@ -79,6 +79,25 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 		out.Validations = append(out.Validations, validation)
 	}
 	for _, operator := range file.Operators {
+		// A range or a refutation statement has no place in the meaning yet.
+		// Converting would produce an operator that silently ignores what the
+		// declaration says about how it is asked.
+		if operator.OfEachRow {
+			issues = append(issues, RuleConversionIssue{
+				RuleID: operator.ID, Span: operator.OfEachRowSpan,
+				Msg: "the meaning has no place for an input read over all rows yet; " +
+					"an operator that states \"of each row\" cannot be converted until the normalization carries it",
+			})
+			continue
+		}
+		if operator.RefutesOnSomeRows {
+			issues = append(issues, RuleConversionIssue{
+				RuleID: operator.ID, Span: operator.RefutesOnSomeRowsSpan,
+				Msg: "the meaning has no place for a refutation statement yet; " +
+					"an operator that states \"refutes on some rows\" cannot be converted until the normalization carries it",
+			})
+			continue
+		}
 		input, ok := OperatorInputFor(operator.Input)
 		if !ok {
 			issues = append(issues, RuleConversionIssue{
