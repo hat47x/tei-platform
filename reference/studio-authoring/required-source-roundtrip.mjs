@@ -25,7 +25,6 @@ const source = join(workspace, sourcePath);
 const subjectID = "studio.inspection_response.snapshot_fingerprint";
 const dataID = "studio.inspection_response";
 const subject = "attribute:" + subjectID;
-const started = "no";
 const documentBefore = [
   "# Studio data",
   "",
@@ -93,7 +92,8 @@ writeFileSync(source, documentBefore);
 const sourceFingerprintBefore = digest(readFileSync(source));
 const revisionBefore = revision();
 const inspectedBefore = inspection();
-assert.equal(inspectedBefore.attribute.required, false);
+// Canonical omits false-valued options; absence is not an explicit false cell.
+assert.equal(inspectedBefore.attribute.required === true, false);
 
 let browser;
 try {
