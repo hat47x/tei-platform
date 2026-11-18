@@ -89,8 +89,9 @@ func TestFirstChangeGuideAppliesSchemaAndSeedAtomicallyInPostgres(t *testing.T) 
 				t.Fatalf("disposable table %s already exists", tc.table)
 			}
 			t.Cleanup(func() {
-				if _, err := db.ExecContext(t.Context(),
-					"drop table if exists public."+tc.table); err != nil {
+				// t.Context() is canceled before Cleanup; use the database's
+				// normal cleanup call after the test has finished.
+				if _, err := db.Exec("drop table if exists public." + tc.table); err != nil {
 					t.Errorf("failed to remove disposable table %s", tc.table)
 				}
 			})
