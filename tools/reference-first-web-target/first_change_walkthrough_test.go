@@ -50,3 +50,32 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 		t.Fatal("step 5 documents a removed DB connection flag")
 	}
 }
+
+// TestFirstChangeWalkthroughUsesTheLocallyBuiltCLI checks the literal command
+// boundary that the five-step Go acceptance does not cover. A POSIX shell
+// normally does not search its current directory for a bare "tei" command;
+// the guide builds ./tei and must execute that file when creating the schema.
+func TestFirstChangeWalkthroughUsesTheLocallyBuiltCLI(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	guide := string(raw)
+	if !strings.Contains(guide, "go build -o tei ./cmd/tei") {
+		t.Fatal("the walkthrough no longer builds its local CLI")
+	}
+	after, ok := strings.Cut(guide, "## 0. 表を作り、明細を入れる")
+	if !ok {
+		t.Fatal("the schema setup step is absent")
+	}
+	step0, ok := strings.Cut(after, "## 1. 作業領域の写しを作る")
+	if !ok {
+		t.Fatal("the schema setup step has no boundary")
+	}
+	if !strings.Contains(step0, "./tei desired-schema -workspace reference/workspace") {
+		t.Fatal("the DDL step does not invoke the CLI built by this walkthrough")
+	}
+	if strings.Contains(step0, "\ntei desired-schema ") {
+		t.Fatal("the DDL step relies on the current directory being on PATH")
+	}
+}
