@@ -505,7 +505,72 @@ def self_test() -> None:
     assert not judge(bundle_stage("tei0"), bad_stage2, "part")["reentryObserved"]
     # One side missing the bundle step must fail closed instead of KeyError.
     assert not judge(bundle_stage("tei0"), stage("tei1"), "part")["reentryObserved"]
-    print("self-test: 24 judgements behaved as specified")
+    def changed_desktop_stage(invoker: str) -> dict:
+        built = bundle_stage(invoker)
+        built["partGeneration"] = step(invoker, "changed-part", "gen")
+        built["studioDesktopBuild"] = step(invoker, "changed-studio")
+        built["desktopInputBundleDigest"] = "bundle"
+        built["desktopSourceDifference"] = [COMMITTED_BUNDLE.as_posix()]
+        built["desktopCheckoutCommit"] = "pinned-head"
+        built["authoringSourceDigest"] = "authoring-source"
+        built["authoringData"] = "studio.inspection_response"
+        return built
+
+    def changed_desktop() -> dict:
+        actual = desktop(exe="changed-studio")
+        actual["embedded"].update({
+            "inputMode": "stage-generated",
+            "desktopDigest": "changed-studio",
+            "committedBundleDigest": "bundle",
+            "embedsCommittedBundle": True,
+            "committedBundleAbsent": True,
+            "sourceHead": "pinned-head",
+        })
+        actual["authoringSourceDigest"] = "authoring-source"
+        actual["authoringSourceAfterDigest"] = "authoring-source"
+        return actual
+
+    changed = judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                    "part", changed_desktop())
+    assert changed["reentryObserved"] and changed["stage2DesktopEmbedsGeneratedBundle"], changed
+
+    invalid = changed_desktop()
+    invalid["embedded"]["committedBundleAbsent"] = False
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["embedded"]["embedsCommittedBundle"] = False
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["authoringSourceAfterDigest"] = "source-changed"
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["embedded"]["sourceHead"] = "other-head"
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["embedded"]["committedBundleDigest"] = "old-bundle"
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["desktopInputBundleDigest"] = "another-bundle"
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["desktopSourceDifference"] = [COMMITTED_BUNDLE.as_posix(), "go.mod"]
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["authoringSourceDigest"] = "other-authoring"
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["partGeneration"] = step("tei1", "part", "gen")
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    print("self-test: 33 judgements behaved as specified")
 
 
 def main() -> int:
