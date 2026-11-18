@@ -182,6 +182,12 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Step 0 now seeds the three parent orders before the five detail rows.
+	// Use the same file as the documented walkthrough, not test-only rows.
+	ordersSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed-orders.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	clearTables := func() {
 		t.Helper()
 		for _, table := range []string{"public.order_lines", "public.orders"} {
@@ -227,6 +233,9 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(seedDir, "seed.sql"), seed, 0o644); err != nil {
 				t.Fatal(err)
 			}
+			if err := os.WriteFile(filepath.Join(seedDir, "seed-orders.sql"), ordersSeed, 0o644); err != nil {
+				t.Fatal(err)
+			}
 
 			command := exec.Command("sh", "-eu", "-c", script)
 			command.Dir = root
@@ -241,13 +250,18 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 				"SELECT to_regclass('public.order_lines') IS NOT NULL").Scan(&exists); err != nil {
 				t.Fatal("cannot inspect the isolated detail table")
 			}
+			var parentExists bool
+			if err := db.QueryRowContext(t.Context(),
+				"SELECT to_regclass('public.orders') IS NOT NULL").Scan(&parentExists); err != nil {
+				t.Fatal("cannot inspect the isolated parent table")
+			}
 			if tc.wantFailed {
-				if exists {
-					t.Fatal("the guide left a table behind after a failed seed transaction")
+				if exists || parentExists {
+					t.Fatal("the guide left a detail or parent table behind after a failed seed transaction")
 				}
 			} else {
-				if !exists {
-					t.Fatal("the guide did not commit the generated detail table")
+				if !exists || !parentExists {
+					t.Fatal("the guide did not commit both generated tables")
 				}
 				var count int
 				if err := db.QueryRowContext(t.Context(),
@@ -255,7 +269,14 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 					t.Fatal("cannot inspect the committed seed rows")
 				}
 				if count != tc.wantRows {
-					t.Fatalf("the guide committed %d rows, want %d", count, tc.wantRows)
+					t.Fatalf("the guide committed %d detail rows, want %d", count, tc.wantRows)
+				}
+				if err := db.QueryRowContext(t.Context(),
+					"SELECT count(*) FROM public.orders").Scan(&count); err != nil {
+					t.Fatal("cannot inspect the committed parent orders")
+				}
+				if count != 3 {
+					t.Fatalf("the guide committed %d parent orders, want 3", count)
 				}
 			}
 			leftovers, err := filepath.Glob(filepath.Join(root, "tmp.*"))
