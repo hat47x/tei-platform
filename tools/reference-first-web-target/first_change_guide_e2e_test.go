@@ -19,8 +19,9 @@ import (
 	"tei/tools/internal/postgresdb"
 )
 
-// TestFirstChangeGuideRunsEndToEnd walks docs/first-change.md's five steps in
-// order, as written, against one real PostgreSQL database.
+// TestFirstChangeGuideRunsEndToEnd checks the handbook's five semantic steps
+// in order against one real PostgreSQL database. Editing uses a Go helper,
+// not the literal shell commands printed in the handbook.
 //
 // The guide is the acceptance document for plan/NOW.md's destination, so it has
 // to be checked as a sequence: step 2's answers, step 3's three-file edit,
@@ -177,10 +178,10 @@ func readOrderThroughCLI(t *testing.T, binary, workspaceRoot, dsn, orderID strin
 	if !report.OK {
 		t.Fatalf("view reported failure: %s", got.stdout)
 	}
-	// The guide says coverage stays partial until a binding qualifies it, so a
-	// read that claims more than that is not the documented behaviour.
-	if report.Result.Coverage != "partial" {
-		t.Fatalf("coverage=%q, the guide says the read cannot certify complete coverage", report.Result.Coverage)
+	// The reference Workspace states covers sales.order.lines. The executed
+	// Query is checked against the storage relation before coverage is complete.
+	if report.Result.Coverage != "complete" {
+		t.Fatalf("coverage=%q, expected verified complete relation read", report.Result.Coverage)
 	}
 	read := cliOrderRead{Rows: map[string]bool{}, Answers: report.Result.PerRow}
 	for _, row := range report.Result.Rows {
