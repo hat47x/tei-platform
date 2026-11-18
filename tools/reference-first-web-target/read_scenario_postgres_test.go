@@ -130,12 +130,10 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 		t.Fatal("no relation-wide line_number_unique answer for the database read")
 	}
 
-	t.Run("a covers declaration does not prove full Web relation coverage", func(t *testing.T) {
-		// Browse row 1 names order 1002 in the independently seeded orders:
-		// it has two distinct line_numbers. The Workspace declares covers, so
-		// CLI can qualify complete in the ordinary unfiltered PostgreSQL case.
-		// The first Web runner currently has no same-attempt physical coverage
-		// qualification, and must not borrow the CLI's positive answer.
+	t.Run("the executed query and PostgreSQL visibility qualify this relation", func(t *testing.T) {
+		// The Workspace declares covers, but this positive answer is
+		// permitted only after the exact selected Query and physical table
+		// were checked inside its own RepeatableRead transaction.
 		second, err := runner.Run(t.Context(), readScenarioInput{
 			From: "2026-09-01T00:00:00Z", RowIndex: 1,
 		})
@@ -152,15 +150,69 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 				continue
 			}
 			found = true
-			if !strings.Contains(answer, " undecided (") ||
-				!strings.Contains(answer, "relation-partially-read") {
-				t.Fatalf("Web read used unqualified relation coverage: %q", answer)
+			if answer != rule+" satisfied" {
+				t.Fatalf("the qualified complete read did not prove uniqueness: %q", answer)
 			}
 		}
 		if !found {
 			t.Fatal("the Web read omitted the relation-wide uniqueness answer")
 		}
 	})
+
+	t.Run("row-level security refuses complete coverage even with covers", func(t *testing.T) {
+		// Catalog qualification runs in the same transaction as the
+		// read. An RLS-enabled table can hide rows for another role, so
+		// the Web must not infer completeness from observed values.
+		if _, err := db.ExecContext(t.Context(), "alter table public.order_lines enable row level security"); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, err := db.Exec("alter table public.order_lines disable row level security"); err != nil {
+				t.Errorf("cannot restore the isolated table's RLS setting: %v", err)
+			}
+		})
+		second, err := runner.Run(t.Context(), readScenarioInput{
+			From: "2026-09-01T00:00:00Z", RowIndex: 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		const rule = "sales.order.lines.line_number_unique"
+		found := false
+		for _, answer := range second.RelationAnswers {
+			if !strings.HasPrefix(answer, rule+" ") {
+				continue
+			}
+			found = true
+			if !strings.Contains(answer, " undecided (") ||
+				!strings.Contains(answer, "relation-partially-read") {
+				t.Fatalf("an RLS-enabled table was treated as complete: %q", answer)
+			}
+		}
+		if !found {
+			t.Fatal("the Web read omitted the relation-wide uniqueness answer")
+		}
+
+		// The duplicate that the current role did observe still refutes
+		// uniqueness. Unknown coverage prevents a positive proof, not
+		// a known counterexample.
+		first, err := runner.Run(t.Context(), readScenarioInput{
+			From: "2026-09-01T00:00:00Z", RowIndex: 0,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		found = false
+		for _, answer := range first.RelationAnswers {
+			if answer == rule+" not-satisfied" {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("an observed duplicate was lost under RLS: %v", first.RelationAnswers)
+		}
+	})
+
 }
 
 // requireIsolatedWebReadDatabase checks the ACTUAL PostgreSQL database, not
