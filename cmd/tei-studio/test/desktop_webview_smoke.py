@@ -285,9 +285,19 @@ def request_window_close(pid: int) -> list[str]:
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="strict")
     sys.stderr.reconfigure(encoding="utf-8", errors="strict")
-    if len(sys.argv) != 3:
-        print("usage: desktop_webview_smoke.py <desktop-exe> <evidence-dir>", file=sys.stderr)
+    if len(sys.argv) not in (3, 5):
+        print("usage: desktop_webview_smoke.py <desktop-exe> <evidence-dir> "
+              "[<before-authoring-root> <after-authoring-root>]", file=sys.stderr)
         return 2
+
+    visible_before = Path(sys.argv[3]).resolve() if len(sys.argv) == 5 else None
+    visible_after = Path(sys.argv[4]).resolve() if len(sys.argv) == 5 else None
+    if visible_before is not None:
+        if visible_before == visible_after or not all(
+            (root / "tei.workspace.yaml").is_file() for root in (visible_before, visible_after)
+        ):
+            print("visible authoring requires two different valid Workspace roots", file=sys.stderr)
+            return 2
 
     app_path = Path(sys.argv[1]).resolve()
     evidence_dir = Path(sys.argv[2]).resolve()
@@ -411,8 +421,13 @@ def main() -> int:
         facts["frontend_devserver_url_unset"] = True
         facts["inherited_frontend_devserver_url_cleared"] = inherited_devserver_url is not None
         facts["webview_debug_port_argument"] = f"--webview-debug-port={webview_debug_port}"
+        # In the explicit visible-difference mode these are real additional
+        # read-only Host Workspaces, not data copied into or faked in the UI.
+        visible_workspaces = ([f"--workspace={visible_before}", f"--workspace={visible_after}"]
+                              if visible_before is not None else [])
         app_process = subprocess.Popen(
-            [str(app_path), f"--workspace={workspace_root}", f"--webview-debug-port={webview_debug_port}"],
+            [str(app_path), f"--workspace={workspace_root}", *visible_workspaces,
+             f"--webview-debug-port={webview_debug_port}"],
             stdout=app_stdout,
             stderr=app_stderr,
             env=app_env,
@@ -635,6 +650,11 @@ return {
         if page_state.get("subjectTitle") != "sales.order":
             raise RuntimeError(f"Initial Catalog selection was not inspected: {page_state.get('subjectTitle')!r}")
         expected_options = [{"value": "workspace-1", "label": "workspace (workspace-1)"}]
+        if visible_before is not None:
+            expected_options.extend([
+                {"value": "workspace-2", "label": f"{visible_before.name} (workspace-2)"},
+                {"value": "workspace-3", "label": f"{visible_after.name} (workspace-3)"},
+            ])
         if page_state.get("workspaceOptions") != expected_options:
             raise RuntimeError(f"Initial workspace option was not rendered: {page_state.get('workspaceOptions')!r}")
         expected_assets = {"/workbench/main.js", "/workbench/style.css", "/wails/runtime.js"}
@@ -1710,6 +1730,109 @@ return true;
             old_observation_rejected=True, explicit_recheck_required=True,
             different_workspace_switch_tested=False,
         )
+
+        if visible_before is not None:
+            # Use the same Wails executable, WebView2 process, authenticated
+            # runtime Bridge and product Inspector that passed the fixed smoke.
+            # The only extra operation is choosing two real Host Workspaces.
+            # No Test HTML, fake Host reply or hidden Reader digest stands in
+            # for the content editable=false user can actually see.
+            visible_observations: dict[str, Any] = {}
+            previous_reader_calls = int(page_state.get("inspectionReaderCalls", 0))
+            for label, workspace_id, expected_required in (
+                ("before", "workspace-2", False),
+                ("after", "workspace-3", True),
+            ):
+                select_result = webdriver_request(
+                    base_url, "POST", f"/session/{driver_session}/execute/sync", {
+                        "script": """
+const selected = document.querySelector('#workspace');
+if (!selected || !Array.from(selected.options).some(x => x.value === arguments[0]))
+  throw Error('VISIBLE_AUTHORING_WORKSPACE_NOT_LISTED');
+selected.value = arguments[0];
+selected.dispatchEvent(new Event('change', {bubbles:true}));
+return selected.value;
+""",
+                        "args": [workspace_id],
+                    },
+                ).get("value")
+                if select_result != workspace_id:
+                    raise RuntimeError(f"Workbench did not select {workspace_id}")
+                visible_deadline = time.monotonic() + 25
+                while time.monotonic() < visible_deadline:
+                    # The product's list consists of real selectable Catalog
+                    # subjects, not query results injected by the smoke.
+                    selectable = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync", {
+                            "script": """
+const buttons = Array.from(document.querySelectorAll('#subjects button.subject'));
+const match = buttons.find(b => b.querySelector('small')?.textContent?.includes(
+  'semantic-data · studio.inspection_response'));
+if (!match) return false;
+match.click();
+return true;
+""",
+                            "args": [],
+                        },
+                    ).get("value")
+                    if selectable is True:
+                        break
+                    time.sleep(0.2)
+                else:
+                    raise RuntimeError(f"Changed Data was not listed by real Host Catalog: {workspace_id}")
+                visible_deadline = time.monotonic() + 25
+                while time.monotonic() < visible_deadline:
+                    observation = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync",
+                        {"script": inspect_script, "args": []},
+                    ).get("value", {})
+                    if (observation.get("subjectTitle") == "studio.inspection_response"
+                            and observation.get("sourceStatus", "").startswith("参照情報：")
+                            and observation.get("notice") == "選択したモデルの投影を表示しています。"):
+                        try:
+                            canonical = json.loads(observation.get("editor", ""))
+                        except (TypeError, ValueError):
+                            time.sleep(0.2)
+                            continue
+                        if canonical.get("id") == "studio.inspection_response":
+                            break
+                    time.sleep(0.2)
+                else:
+                    raise RuntimeError(f"Real Inspector did not display authoring Data in {workspace_id}")
+                fields = canonical.get("attributes", [])
+                if not isinstance(fields, list) or len(fields) != 2:
+                    raise RuntimeError(f"Visible Canonical attributes are not the expected Data: {label}")
+                by_symbol = {field.get("symbol"): field.get("required", False)
+                             for field in fields if isinstance(field, dict)}
+                if (by_symbol.get("schemaVersion") is not True
+                        or by_symbol.get("snapshotFingerprint") is not expected_required
+                        or len(by_symbol) != 2):
+                    raise RuntimeError(f"Visible Canonical differs from independent expected values: {label}")
+                reader_contract = observation.get("inspectionReader")
+                reader_calls = observation.get("inspectionReaderCalls")
+                if (not isinstance(reader_contract, str) or not reader_contract.startswith("sha256:")
+                        or type(reader_calls) is not int or reader_calls <= previous_reader_calls
+                        or observation.get("editorEditable") != "false"):
+                    raise RuntimeError(f"Visible Inspector did not use the actual generated Reader: {label}")
+                previous_reader_calls = reader_calls
+                visible_observations[label] = {
+                    "workspaceId": workspace_id,
+                    "subjectTitle": observation["subjectTitle"],
+                    "editorText": observation["editor"],
+                    "editorEditable": observation["editorEditable"],
+                    "inspectionReader": reader_contract,
+                    "inspectionReaderCalls": reader_calls,
+                    "snapshotRequired": by_symbol["snapshotFingerprint"],
+                }
+                record("visible-authoring-inspect-verified", source=label,
+                       workspace_id=workspace_id, required=expected_required,
+                       reader_calls=reader_calls)
+            if visible_observations["before"]["editorText"] == visible_observations["after"]["editorText"]:
+                raise RuntimeError("Visible Inspector text did not change with its Data Source")
+            if visible_observations["before"]["inspectionReader"] != visible_observations["after"]["inspectionReader"]:
+                raise RuntimeError("Two visible Inspect views used different Reader contracts")
+            facts["visible_authoring"] = visible_observations
+            write_json(evidence_dir / "visible-authoring-inspector.json", visible_observations)
 
         page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response, "observeXeadUi": xead_state, "observeXeadBridge": observe_envelope, "observeXeadEmptyUi": empty_state, "observeXeadEmptyBridge": empty_envelope, "observeXeadMissingUi": missing_state, "observeXeadMissingBridge": missing_envelope})
         write_json(evidence_dir / "page-state.json", page_state)
