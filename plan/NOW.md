@@ -45,9 +45,9 @@
 
 並行して進めてよいのは一本だけである。**Studioが次の自分を作る一巡**（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）。完了の条件は一文にする。Studioで定義を一つ変え、**生成器には触れずに**、Studio自身が作った次のStudioがWindowsで起動し、その変更が画面に出ること。
 
-「生成器には触れずに」が要である。当初は34行の契約からReader一つを作るために約690行の生成手続きを要し、必須項目一つの追加にも生成器の改修が必要だった。現在は[#5325](https://github.com/hat47x/tei-platform/pull/5325)で生成Readerを製品の唯一のReaderへ戻し、[#5365](https://github.com/hat47x/tei-platform/pull/5365)で未対応の宣言を拒否した。[#5389](https://github.com/hat47x/tei-platform/pull/5389)ではJSON契約の`requiredResponseFields`へ`schemaVersion`を足すだけでReaderの必須性・型検査が変わり、生成器の実装byteを変えずに正規Bundleと実Windows WebView2で使用された。**ただし、JSON契約はTEIのData・Ruleから導かれておらず、変更後の契約でStage1がStage2を構築したわけでもない。**
+「生成器には触れずに」が要である。[#5325](https://github.com/hat47x/tei-platform/pull/5325)で生成Readerを製品の唯一のReaderへ戻し、[#5365](https://github.com/hat47x/tei-platform/pull/5365)で未対応の宣言を拒否した。[#5389](https://github.com/hat47x/tei-platform/pull/5389)ではJSON契約の変更がReaderに届くことを確かめた。**[#5516](https://github.com/hat47x/tei-platform/pull/5516)ではさらに、`tei.authoring/v1`のMarkdown Data定義から必須属性を既存の`requiredResponseFields`へ渡し、Dataの必須指定を変えた前後で生成Readerが変わることを独立した期待と照合した。** 生成器本体のソースは不変で、Source位置・指紋・Model Revision・入力契約digestを別々に記録する。対応を確認した`std.text`と`std.identifier`だけを許し、非対応型・曖昧な定義・不正なSource出現は生成前に拒否する。この成果は**Data→Reader生成まで**であり、Ruleの全面的な生成、Studioの画面Editorでの定義編集、正式なInspect応答との接続や次世代Desktopの起動はまだ証明していない。
 
-**次のコード変更は[#4583](https://github.com/hat47x/tei-platform/issues/4583)で一巡を閉じる。** 既存の`tei.authoring/v1`で記述したData項目・Ruleから必須応答項目を取り出し、同じReader契約と生成経路へ渡す。定義変更の前後を独立した期待と照合し、**生成器本体の差分ゼロ、古いReaderの拒否、生成Readerの動作変更**を確認する。その変更をStage1の実Build・実Builder呼出しからStage2の新しいWindows実行物へ結び、画面で変更後のReaderが使われたことまで同一の実行単位で確かめる。[#5373](https://github.com/hat47x/tei-platform/pull/5373)のStage2実起動の限定実測は変更前の契約による別の記録であり、今回の完了には足し合わせない。第二の言語・Host・生成器は増やさない。
+**次のコード変更は[#4583](https://github.com/hat47x/tei-platform/issues/4583)の残る一巡を閉じる。** #5516のSource由来の必須属性を、Studioが実際に受け取る`InspectSubject`応答と生成Readerの正式契約へつなぐ。定義変更前後の独立Expectedで、**生成器本体の差分ゼロ、古いReaderの拒否、新しいReaderの動作変更**を維持する。そのうえで、変更後のData定義をStage1の実Build・実Builder呼出しから新しいBundleとStage2 Windows Desktopへ渡し、**別プロセスのWebView2画面でその新しいReaderを使ったこと**まで同じAttemptで観測する。編集UI／Source Writerの受理は別の資格として扱い、仮のSource更新だけで「Studioで編集した」とは認めない。[#5373](https://github.com/hat47x/tei-platform/pull/5373)の変更前契約によるStage2実起動と、#5516のData→Reader生成を**別々の成功として足し合わせない**。第二の言語・Host・生成器は増やさない。
 
 ## 到達点まで止めるもの
 
