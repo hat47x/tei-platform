@@ -651,7 +651,8 @@ def self_test() -> None:
                   "part", visible_desktop())
     assert valid["sameNativeWebViewDisplaysChangedCanonical"] and valid["reentryObserved"], valid
 
-    for name in ("same-text", "wrong-reader", "same-source", "stale-selection",
+    for name in ("same-text", "wrong-reader", "same-source", "source-mutated-after-smoke",
+                 "before-source-mutated-after-smoke", "stale-selection",
                  "editable-editor", "not-a-real-call", "wrong-required"):
         invalid = visible_desktop()
         before, after = invalid["smoke"]["visibleAuthoring"]["before"], invalid["smoke"]["visibleAuthoring"]["after"]
@@ -661,6 +662,10 @@ def self_test() -> None:
             after["inspectionReader"] = "sha256:" + "0" * 64
         elif name == "same-source":
             invalid["visibleBeforeSourceDigest"] = "authoring-source"
+        elif name == "source-mutated-after-smoke":
+            invalid["authoringSourceAfterDigest"] = "unexpected-after-smoke"
+        elif name == "before-source-mutated-after-smoke":
+            invalid["visibleBeforeSourceAfterDigest"] = "unexpected-after-smoke"
         elif name == "stale-selection":
             after["workspaceId"] = "workspace-2"
         elif name == "editable-editor":
@@ -810,6 +815,26 @@ def main() -> int:
             desktop["smoke"] = desktop_smoke(
                 repo, studio2, work / "stage2-desktop-smoke",
                 visible_before_root, authoring_root if visible_before_root is not None else None)
+
+    # Both model Sources were checked after Stage2 generation. Their
+    # identities must also survive the *consumer* observation: a checksum
+    # taken before WebView2 runs does not prove what it later read.
+    if args.stage_desktop_bundle:
+        final_authoring_digest = authoring_source_digest(authoring_root)
+        if final_authoring_digest != authoring_before:
+            raise RuntimeError("authoring Source changed before Stage2 WebView2 observation finished")
+        authoring_after = final_authoring_digest
+        if visible_before_root is not None:
+            final_visible_digest = authoring_source_digest(visible_before_root)
+            if final_visible_digest != visible_before_digest:
+                raise RuntimeError("visible before Source changed before Stage2 WebView2 observation finished")
+            visible_before_after = final_visible_digest
+        if git_head(repo) != expected_head:
+            raise RuntimeError("Git HEAD changed before Stage2 WebView2 observation finished")
+        if desktop is not None:
+            desktop["authoringSourceAfterDigest"] = authoring_after
+            if visible_before_root is not None:
+                desktop["visibleBeforeSourceAfterDigest"] = visible_before_after
 
     committed = digest_bytes((repo / COMMITTED_PART).read_bytes().replace(b"\r\n", b"\n"))
     result = {
