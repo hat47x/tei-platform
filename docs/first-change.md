@@ -102,15 +102,15 @@ rule sales.order_line.unit_price_positive:
 
 ## 5. Webの画面で同じ答えを見る
 
-`tei view -environment` と同じReadを、第一Web TargetのHTTP画面でも見る。
-接続文字列は**環境変数**から渡し、作業領域へ書かない。
+手順3で規則を追加した`/tmp/my-workspace`を第一Web Targetにも渡し、実PostgreSQLの同じ明細に対する判定を画面で見る。元の`reference/workspace`を渡すと、編集前の規則しか表示されない。
+CLIと同じ定義・接続先を使うが、各HTTP要求は別の読取であり、同じDBスナップショットで実行されたという意味ではない。接続文字列は**環境変数**から渡し、作業領域へ書かない。
 
 ```bash
 export TEI_WEB_READ_PG_DSN="$TEI_VIEW_PG_DSN"
 go run ./tools/reference-first-web-target \
   -serve-read-from-db \
   -diagnostic-unaccepted-source \
-  -workspace reference/workspace -application order_entry \
+  -workspace /tmp/my-workspace -application order_entry \
   -baseline-id B -baseline-revision "$(git rev-parse HEAD)" \
   -target-revision "$(git rev-parse HEAD)" \
   -listen 127.0.0.1:8080
@@ -124,18 +124,14 @@ go run ./tools/reference-first-web-target \
 ブラウザで `http://127.0.0.1:8080/custom-submit` を開き、`from` に
 `2026-09-01T00:00:00Z`、`row` に `0` を入れて送る。**明細の行ごとの答え**が出る。
 
-- 受注1001の3行のうち、**数量0の1行だけ**が `not-satisfied` になる。
-- `sales.order.lines.line_number_unique` は、束縛が `covers` を宣言していない間は
-  **`undecided`＋理由**のままである（宣言だけでは全件取得の証拠にならない）。
-- 画面は「**この答えが属するRead**」を表示する。選択した受注・実行したContract Query・
-  行数が出る。**別のReadの答えを混ぜると、画面は描画せずに拒否する。**
+- 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
+- `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では重複を観測しないだけでは全件の一意性を証明できず、`undecided`となる。
+- 画面は選択した受注・実行したContract Query・行数をReadの情報として示す。行数や表示位置が回答と合わなければ描画を拒否するが、**表示したIDだけで、別のReadからの混入がすべて排除されたとは言えない**。
 
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
 
-この手順はCIでも毎回走る。`TestShippedWebPageShowsRealPostgresRowAnswers` が
-**出荷するのと同じ起動関数**を通し、実PostgreSQLの行に対する答えを独立した期待と
-照合する。
+実PostgreSQLのCIでは`TestFirstWebAcceptsARuleChangeEndToEnd`が規則変更前後のHTTP応答を、さらにその`before/chrome-dom`・`after/chrome-dom`が**実Chromeで受け取った画面**を、それぞれ手書きの期待値と業務主キーで照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。これは診断用Source読込での受入であり、手順を初めて使う人が通して実行した記録や、受理済みSourceの本番配備の証拠にはならない。
 
 ## まだできないこと
 
