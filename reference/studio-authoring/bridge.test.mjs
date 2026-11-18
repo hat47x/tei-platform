@@ -35,6 +35,40 @@ function edit() {
     targetData: "sales.order", cardinality: "one" };
 }
 
+test("real Go nil slices are empty Canonical collections, not invalid Studio World", () => {
+  const world = { semantics: [{
+    id: "studio", validations: null,
+    data: [{
+      id: "studio.inspection_response",
+      attributes: [{
+        id: "studio.inspection_response.snapshot_fingerprint",
+        type: "std.text", required: false
+      }],
+      relations: null
+    }]
+  }], applications: null };
+  const indexed = indexWorld(world);
+  assert.equal(indexed.applications.size, 0);
+  assert.equal(indexed.validations.size, 0);
+  assert.ok(indexed.attributes.has("studio.inspection_response.snapshot_fingerprint"));
+  const candidate = candidateFromEdit(world, revision, {
+    schema: "tei.reference.studio-edit/v0",
+    origin: "studio", id: "nil-collections", intent: "必須指定を明示する",
+    view: "required", operation: "set-attribute-required",
+    subject: "attribute:studio.inspection_response.snapshot_fingerprint",
+    required: true, expectedModelRevision: revision
+  });
+  assert.deepEqual(candidate.delta, [{
+    op: "set-attribute-required",
+    id: "studio.inspection_response.snapshot_fingerprint", required: true
+  }]);
+  assert.throws(() => indexWorld({ ...world, applications: {} }), /INVALID_WORLD/);
+  assert.throws(() => indexWorld({ ...world, semantics: "invalid" }), /INVALID_WORLD/);
+  assert.throws(() => indexWorld({ ...world, semantics: [
+    { ...world.semantics[0], validations: {} }
+  ] }), /namespace.validations: array required/);
+});
+
 test("the same accepted relation ID is navigable across table, ER and function", () => {
   const world = fixture(), original = JSON.stringify(world);
   const result = projectWorld(world, revision, "relation:sales.order.lines");
