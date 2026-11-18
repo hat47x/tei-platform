@@ -1,0 +1,82 @@
+name: TEI Studio Reader Bundle stage reentry
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - .github/workflows/tei-studio-stage-reader-bundle-ci.yml
+      - tools/reference-studio-part-generator/**
+      - tools/reference-go-build-with-supply/**
+      - tools/reference-studio-static-composition/build-generated-workbench.mjs
+      - reference/tei-studio-workbench/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studio-reader-bundle-stage-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tei-driven-reader-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.21.0
+          check-latest: false
+
+      - name: Prepare declared module supply and Workbench deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          go mod download
+          (cd reference/tei-studio-workbench && npm ci --no-audit --no-fund)
+
+      - name: Check reentry judgement and drive real N2 Bundle from both TEI stages
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+          GOWORK: off
+        run: |
+          set -euo pipefail
+          python3 -B tools/reference-studio-part-generator/stage_reentry.py --self-test
+          python3 -B tools/reference-studio-part-generator/stage_reentry.py \
+            --repo . --supply "$(go env GOMODCACHE)/cache/download" \
+            --work "$RUNNER_TEMP/tei-studio-reader-bundle-stage" --bundle-reader \
+            > "$RUNNER_TEMP/studio-bundle-stage-result.json"
+          python3 - "$RUNNER_TEMP/studio-bundle-stage-result.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          checks = report["judgement"]
+          assert checks["reentryObserved"] is True, checks
+          for field in (
+              "bundlesWereMadeByTheRecordedNodeChild",
+              "bundlesUseSameBuilderSource",
+              "eachBundleCarriesItsOwnGeneratedReader",
+              "bundleContractsEqualAcrossStages",
+              "bundlesEqualAcrossStages",
+              "stage1TeiArtifactIsStage2Invoker",
+          ):
+              assert checks[field] is True, field
+          assert report["stage2Desktop"] is None
+          print("TEI Stage1 -> Stage2 Reader/Node Bundle receipts checked; no Desktop claim")
+          PY

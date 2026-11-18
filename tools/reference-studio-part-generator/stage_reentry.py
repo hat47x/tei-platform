@@ -14,6 +14,10 @@ Stage0 seed, starts those TEI processes, and compares what they recorded.
           tei1 drives: Go build of the part generator           -> gen2
           tei1 drives: gen2 over the same contract Source       -> part2
 
+With --bundle-reader each stage drives the existing Node/esbuild child through
+its TEI invoker, consuming that stage's just-generated Reader Part and recording
+a separate JS Bundle artifact. It does not feed this new bundle to Wails yet.
+
 With --studio-desktop each stage also drives a Go build of the Studio Wails
 Desktop (the nested module cmd/tei-studio) with the same child:
 
@@ -29,10 +33,10 @@ Re-entry is observed only when the Stage2 invoker is the Stage1 artifact, the
 Stage2 part was produced by the generator Stage2 rebuilt, and the bytes agree.
 Two launches of `go build` by this script would not satisfy any of these.
 
-It claims no Seed Trust, acceptance or Runtime Authority. The Node/esbuild
-bundling is still not driven: the Desktop embeds the committed bundle, and the
-judgement only checks that it is that bundle and that it carries the identity
-of the part Stage2 regenerated.
+It claims no Seed Trust, acceptance or Runtime Authority. In the default
+Desktop mode the Node/esbuild bundle remains the committed one. The separate
+--bundle-reader mode makes a real new Bundle, but does not build a Desktop
+containing it: these qualifications must not be added together.
 """
 from __future__ import annotations
 
@@ -53,6 +57,7 @@ CONTRACT = WORKBENCH / "inspection-reader.contract.json"
 COMMITTED_PART = WORKBENCH / "inspection-reader.generated.ts"
 STUDIO_MODULE = Path("cmd/tei-studio")
 COMMITTED_BUNDLE = STUDIO_MODULE / "assets" / "workbench" / "main.js"
+BUNDLE_CHILD = Path("tools/reference-studio-static-composition/build-generated-workbench.mjs")
 SMOKE = STUDIO_MODULE / "test" / "desktop_webview_smoke.py"
 EXE = ".exe" if os.name == "nt" else ""
 CONTRACT_DIGEST = re.compile(rb'contractDigest: "(sha256:[0-9a-f]{64})"')
@@ -87,7 +92,8 @@ def drive(tei: Path, child: Path, child_args: list[str], artifact: Path) -> dict
     }
 
 
-def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path, studio_desktop: bool = False) -> dict:
+def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
+              studio_desktop: bool = False, node_child: Path | None = None) -> dict:
     work.mkdir(parents=True)
 
     def go_build(package: str, name: str, module: Path = repo) -> tuple[Path, dict]:
@@ -116,6 +122,19 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path, s
         "teiArtifactPath": str(tei_out),
         "partPath": str(part),
     }
+    if node_child is not None:
+        bundle = work / "workbench.generated.js"
+        # This is the existing N2 child; the TEI invoker, not Python, launches
+        # Node and checks the new artifact's digest against the child receipt.
+        stage["bundleGeneration"] = drive(tei, node_child, [
+            str(repo / BUNDLE_CHILD), "--inspection-reader", str(part),
+            "--artifact-out", str(bundle),
+        ], bundle)
+        stage["bundlePath"] = str(bundle)
+        stage["bundleNodeDigest"] = digest_file(node_child)
+        stage["bundleBuilderSourceDigest"] = digest_file(repo / BUNDLE_CHILD)
+        stage["partContract"] = one_contract(part)
+        stage["bundleContract"] = one_contract(bundle)
     if studio_desktop:
         # The nested Studio module is its own build root; its go.mod reaches
         # the TEI module through a relative replace, so the same child builds it.
@@ -123,6 +142,12 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path, s
         stage["studioDesktopBuild"] = studio_build
         stage["studioDesktopPath"] = str(studio)
     return stage
+
+
+def one_contract(path: Path) -> str | None:
+    """Select exactly one generated Reader contract, never a substring match."""
+    matches = CONTRACT_DIGEST.findall(path.read_bytes()) if path.is_file() else []
+    return matches[0].decode() if len(matches) == 1 else None
 
 
 def embedded_bundle(desktop: Path, bundle: bytes, part: Path) -> dict:
@@ -147,25 +172,29 @@ def embedded_bundle(desktop: Path, bundle: bytes, part: Path) -> dict:
 
 def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None = None) -> dict:
     """Each judgement is separate; agreement of bytes alone is never re-entry."""
+    bundle_mode = "bundleGeneration" in stage1 or "bundleGeneration" in stage2
     steps = ("teiBuild", "generatorBuild", "partGeneration") + (
+        ("bundleGeneration",) if bundle_mode else ()) + (
         ("studioDesktopBuild",) if desktop is not None else ())
 
     def clean(stage: dict) -> bool:
         return all(
-            stage[s].get("invokedExitCode") == 0 and stage[s].get("artifactCrossCheckMatched") is True
-            and not stage[s].get("failureCause") and stage[s].get("artifactDigest") == stage[s].get("artifactOnDisk")
+            stage.get(s, {}).get("invokedExitCode") == 0 and stage.get(s, {}).get("artifactCrossCheckMatched") is True
+            and not stage.get(s, {}).get("failureCause")
+            and stage.get(s, {}).get("artifactDigest") is not None
+            and stage.get(s, {}).get("artifactDigest") == stage.get(s, {}).get("artifactOnDisk")
             for s in steps
         )
 
     def driven_by(stage: dict) -> bool:
-        return all(stage[s].get("invokerDigest") == stage["invokerOnDisk"] for s in steps)
+        return all(stage.get(s, {}).get("invokerDigest") == stage["invokerOnDisk"] for s in steps)
 
     stage1_tei = stage1["teiBuild"].get("artifactDigest")
     judgement = {
         "everyStepCompletedAndCrossChecked": clean(stage1) and clean(stage2),
         "eachStageDrivenByItsOwnTei": driven_by(stage1) and driven_by(stage2),
         "stage1TeiArtifactIsStage2Invoker": stage1_tei is not None and stage2["invokerOnDisk"] == stage1_tei
-        and all(stage2[s].get("invokerDigest") == stage1_tei for s in steps),
+        and all(stage2.get(s, {}).get("invokerDigest") == stage1_tei for s in steps),
         "stage2PartMadeByStage2RebuiltGenerator": stage2["generatorBuild"].get("artifactDigest") is not None
         and stage2["partGeneration"].get("invokedExecutableDigest") == stage2["generatorBuild"].get("artifactDigest"),
         "stage1PartMadeByStage1BuiltGenerator": stage1["generatorBuild"].get("artifactDigest") is not None
@@ -176,6 +205,28 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
         and stage1["partGeneration"].get("artifactDigest") == stage2["partGeneration"].get("artifactDigest"),
         "stage2PartIsTheCommittedPart": stage2["partGeneration"].get("artifactDigest") == committed_part,
     }
+    if bundle_mode:
+        contract1, contract2 = stage1.get("partContract"), stage2.get("partContract")
+        builder1 = stage1.get("bundleBuilderSourceDigest")
+        judgement.update({
+            "bundlesWereMadeByTheRecordedNodeChild": all(
+                stage.get("bundleGeneration", {}).get("invokedExecutableDigest")
+                == stage.get("bundleNodeDigest")
+                and bool(stage.get("bundleNodeDigest"))
+                for stage in (stage1, stage2)
+            ),
+            "bundlesUseSameBuilderSource": bool(builder1)
+            and builder1 == stage2.get("bundleBuilderSourceDigest"),
+            "eachBundleCarriesItsOwnGeneratedReader": all(
+                stage.get("partContract") is not None
+                and stage.get("partContract") == stage.get("bundleContract")
+                for stage in (stage1, stage2)
+            ),
+            "bundleContractsEqualAcrossStages": contract1 is not None and contract1 == contract2,
+            "bundlesEqualAcrossStages": stage1.get("bundleGeneration", {}).get("artifactDigest") is not None
+            and stage1["bundleGeneration"]["artifactDigest"]
+            == stage2.get("bundleGeneration", {}).get("artifactDigest"),
+        })
     if desktop is not None:
         embedded = desktop.get("embedded", {})
         judgement.update({
@@ -304,7 +355,38 @@ def self_test() -> None:
         assert not judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", observed)["reentryObserved"], name
     # A Stage2 Desktop built by the Stage0 TEI is not re-entry even if it runs.
     assert not judge(desktop_stage("tei0"), desktop_stage("tei0"), "part", desktop())["reentryObserved"]
-    print("self-test: 18 judgements behaved as specified")
+    def bundle_stage(invoker: str) -> dict:
+        built = stage(invoker)
+        built.update({
+            "bundleGeneration": step(invoker, "bundle", "node-child"),
+            "bundleNodeDigest": "node-child",
+            "bundleBuilderSourceDigest": "builder-source",
+            "partContract": contract,
+            "bundleContract": contract,
+        })
+        return built
+
+    bundled = judge(bundle_stage("tei0"), bundle_stage("tei1"), "part")
+    assert bundled["reentryObserved"] and bundled["eachBundleCarriesItsOwnGeneratedReader"], bundled
+    bad_stage2 = bundle_stage("tei1")
+    bad_stage2["bundleContract"] = "sha256:" + "d" * 64
+    assert not judge(bundle_stage("tei0"), bad_stage2, "part")["reentryObserved"]
+    bad_stage2 = bundle_stage("tei1")
+    bad_stage2["bundleGeneration"]["invokedExecutableDigest"] = "other-node"
+    assert not judge(bundle_stage("tei0"), bad_stage2, "part")["reentryObserved"]
+    bad_stage2 = bundle_stage("tei1")
+    bad_stage2["bundleGeneration"]["artifactOnDisk"] = "stale-bundle"
+    assert not judge(bundle_stage("tei0"), bad_stage2, "part")["reentryObserved"]
+    bad_stage2 = bundle_stage("tei1")
+    bad_stage2["bundleBuilderSourceDigest"] = "other-builder"
+    assert not judge(bundle_stage("tei0"), bad_stage2, "part")["reentryObserved"]
+    bad_stage2 = bundle_stage("tei1")
+    bad_stage2["bundleGeneration"]["artifactDigest"] = "old-bundle"
+    bad_stage2["bundleGeneration"]["artifactOnDisk"] = "old-bundle"
+    assert not judge(bundle_stage("tei0"), bad_stage2, "part")["reentryObserved"]
+    # One side missing the bundle step must fail closed instead of KeyError.
+    assert not judge(bundle_stage("tei0"), stage("tei1"), "part")["reentryObserved"]
+    print("self-test: 24 judgements behaved as specified")
 
 
 def main() -> int:
@@ -319,12 +401,18 @@ def main() -> int:
     parser.add_argument("--desktop-smoke", action="store_true",
                         help="start the Stage2 Desktop as a new process through the WebView2 smoke "
                              "(Windows; implies --studio-desktop)")
+    parser.add_argument("--bundle-reader", action="store_true",
+                        help="have both TEI invokers drive the existing Node/esbuild child "
+                             "using their generated Reader (does NOT embed it in a Desktop)")
+    parser.add_argument("--node", default="node", help="Node executable for the existing esbuild child")
     args = parser.parse_args()
     if args.desktop_smoke:
         args.studio_desktop = True
     if args.self_test:
         self_test()
         return 0
+    if args.bundle_reader and args.studio_desktop:
+        parser.error("--bundle-reader cannot be combined with Desktop until the new Bundle is embedded")
     if not (args.repo and args.supply and args.work):
         parser.error("--repo, --supply and --work are required")
     repo, supply, work = args.repo.resolve(), args.supply.resolve(), args.work.resolve()
@@ -333,6 +421,14 @@ def main() -> int:
     go = shutil.which(args.go)
     if go is None:
         parser.error(f"Stage0 seed Go executable not found: {args.go}")
+    node_child = None
+    if args.bundle_reader:
+        node_exe = shutil.which(args.node)
+        if node_exe is None:
+            parser.error(f"Node executable not found: {args.node}")
+        node_child = Path(node_exe).resolve()
+        if not (repo / WORKBENCH / "node_modules" / "esbuild").is_dir():
+            parser.error("Workbench esbuild is not installed; run npm ci in reference/tei-studio-workbench")
     stage0 = work / "stage0"
     stage0.mkdir(parents=True)
 
@@ -345,12 +441,12 @@ def main() -> int:
     tei0 = seed_build("./cmd/tei", "tei")
     go_child = seed_build("./tools/reference-go-build-with-supply", "go-build-with-supply")
 
-    stage1 = run_stage(tei0, go_child, repo, supply, work / "stage1", args.studio_desktop)
+    stage1 = run_stage(tei0, go_child, repo, supply, work / "stage1", args.studio_desktop, node_child)
     tei1 = Path(stage1["teiArtifactPath"])
     if not tei1.is_file():
         raise RuntimeError(f"stage1 did not produce a TEI binary: {stage1['teiBuild'].get('failureCause')}")
     # The Stage2 driver is the Stage1 artifact itself, at the path Stage1 wrote it.
-    stage2 = run_stage(tei1, go_child, repo, supply, work / "stage2", args.studio_desktop)
+    stage2 = run_stage(tei1, go_child, repo, supply, work / "stage2", args.studio_desktop, node_child)
     desktop = None
     if args.studio_desktop:
         studio2 = Path(stage2["studioDesktopPath"])
@@ -367,6 +463,8 @@ def main() -> int:
             "generatorSourceBytes": digest_file(repo / TRANSFORM),
             "contractSourceBytes": digest_file(repo / CONTRACT),
             "committedPart": committed,
+            **({"bundleBuilderSourceBytes": digest_file(repo / BUNDLE_CHILD)}
+               if node_child is not None else {}),
         },
         "stage0": {
             "nature": "external Go seed; not a driven process",
@@ -375,14 +473,16 @@ def main() -> int:
             "goVersion": subprocess.run([go, "version"], capture_output=True, text=True).stdout.strip(),
             "teiDigest": digest_file(tei0),
             "goBuildChildDigest": digest_file(go_child),
+            **({"nodeExecutableDigest": digest_file(node_child)} if node_child is not None else {}),
         },
         "stage1": stage1,
         "stage2": stage2,
         "stage2Desktop": desktop,
         "judgement": judge(stage1, stage2, committed, desktop),
         "claimBoundary": "one host, one toolchain, one supply; the Go build child is the Stage0 seed's in both stages; "
-                         "the Node/esbuild bundle is the committed one, not rebuilt by TEI; "
-                         "no Seed Trust, acceptance or Runtime Authority is claimed",
+                         + ("Node/esbuild is driven by each TEI invoker with its generated Reader, but this new bundle is NOT embedded in a Stage2 Desktop; "
+                            if node_child is not None else "the Node/esbuild bundle is the committed one, not rebuilt by TEI; ")
+                         + "no Seed Trust, acceptance or Runtime Authority is claimed",
     }
     json.dump(result, sys.stdout, indent=2)
     print()

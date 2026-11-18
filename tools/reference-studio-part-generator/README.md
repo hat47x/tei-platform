@@ -87,6 +87,21 @@ python3 tools/reference-studio-part-generator/stage_reentry.py \
 
 実測は[証拠記録](../../plan/evidence/TEI_STUDIO_SELF_BUILD_S1_INSPECTION_READER_2026-11-13.md)にあります。
 
+### 生成ReaderからWorkbench Bundleを作る（Stage1・Stage2）
+
+`--bundle-reader`を指定すると、各段のTEIが実際に起動したReader生成器の出力を、既存のNode/esbuild子プロセスに渡します。出力は各段に固有の`workbench.generated.js`です。生成したPart、Node実行ファイル、Bundle生成元のスクリプト、生成Bundleそれぞれのダイジェストを記録し、Reader契約がBundleに含まれていることと、Stage1とStage2の成果物が一致することを照合します。
+
+```bash
+# Workbenchの依存関係とGo module供給を準備した独立した作業領域で実行
+(cd reference/tei-studio-workbench && npm ci)
+go mod download
+python3 -B tools/reference-studio-part-generator/stage_reentry.py \
+  --repo . --supply "$(go env GOMODCACHE)/cache/download" \
+  --work /tmp/tei-studio-reader-bundle-attempt --bundle-reader
+```
+
+ここで成立するのは**Stage1とStage2が実際にNode/esbuildを起動し、生成ReaderからBundleを作ったこと**までです。新BundleはWindows Desktopへ埋め込まれません。そのため、`--bundle-reader`と`--studio-desktop`／`--desktop-smoke`は同時に指定できません。定義変更後の新BundleからStage2 Desktopを構築し、別プロセスの実WebView2で使用する最後の接続は、引き続き[#4583](https://github.com/hat47x/tei-platform/issues/4583)の未完条件です。
+
 ### Stage2でStudio Desktopそのものを構築し、新しいプロセスとして使う（Windows）
 
 ```powershell
@@ -112,7 +127,7 @@ python -B tools/reference-studio-part-generator/stage_reentry.py `
 ## 主張しないこと
 
 - **Studio全体の生成**ではありません。生成したのは純関数一つです。
-- **Node/esbuildのbundlingはTEIのBuild graphの外**です。Desktopはコミット済みbundleを埋め込み、判定はそれがコミット済みのbundleそのものであり、再生成部品と同じ契約を名指すことまでを確かめます。TEIがbundleを作り直したことは主張しません。
+- **Node/esbuildの正式Build Intent・依存閉包は未接続**です。既定のDesktop実行ではコミット済みBundleを埋め込むだけです。別モードの`--bundle-reader`ではTEIがNode/esbuildを実際に起動して新しいBundleを作りますが、そのBundleをWindows Desktopへ埋め込んだことは主張しません。
 - Desktopを含む各Buildは`tei self-build`のprimitive形式（起動と記録）で、計画（Build Intent・catalog）は使っていません。`l2b`の五条件は主張しません。
 - Stage2で使うGo build child（`reference-go-build-with-supply`）は両段ともStage0のseedが作ったものです。Seed Trust、受理、Runtime Authorityは主張しません。
 - `studio_generated`タグの生成Goサービス（PoC B）とは別の経路です。そちらは`main`に生成物が無く、このtoolは触れていません。
