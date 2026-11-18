@@ -2,7 +2,7 @@
 
 受注明細を実際のPostgreSQLから読み、設計文書へ規則を一つ足して、答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の到達点の1〜5を通す。
 
-2026年11月17日には、main `3ae3507c`とPostgreSQL 16で手順0〜4を確認した。その後、実PostgreSQLと実Chromeを使ったCIで五段階を一続きに検査した（#5510）。ただし、規則の編集にはGoの試験用ヘルパーを使っている。**このページのシェルコマンドを初回利用者がそのまま実行した検収は、まだ終わっていない。**
+実PostgreSQLと実Chromeを用いた五段階の試験に加え、[#5588](https://github.com/hat47x/tei-platform/pull/5588)では**このページの手順0・1・3のbashコードをそのまま読み取り**、実DDL・親子Seed投入、Workspace複製、規則・例の編集を、手順2・4の実CLIと手順5の実Chrome画面まで同じ試行につないだ（対象HEADの関連CIは11件成功）。ただし、Webサーバーの起動はテストハーネス経由であり、**このページの`go run`コマンドとフォームの手動操作、初回利用者による通し操作の検収はまだ終わっていない。**
 
 ## 用意するもの
 
@@ -140,7 +140,7 @@ go run ./tools/reference-first-web-target \
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
 
-実PostgreSQLのCIでは`TestFirstWebAcceptsARuleChangeEndToEnd`が規則変更前後のHTTP応答を、さらにその`before/chrome-dom`・`after/chrome-dom`が**実Chromeで受け取った画面**を、それぞれ手書きの期待値と業務主キーで照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。Relation全体の判定については、[#5571](https://github.com/hat47x/tei-platform/pull/5571)の実PostgreSQL試験が、全件性の成立・RLSによる保留・観測済み重複を別々に検査している。さらに[#5510](https://github.com/hat47x/tei-platform/pull/5510)では、CLIを別プロセスで実行し、同じ実PostgreSQLと実Chromeを使って五段階を一つの試験で通した。ただし、規則の編集にはGoの試験用ヘルパーを使っており、このページのシェルコマンドを一字一句そのまま実行した証拠ではない。診断用Source読込による検証であり、受理済みSourceの本番配備を立証するものでもない。
+実PostgreSQLのCIでは`TestFirstWebAcceptsARuleChangeEndToEnd`が規則変更前後のHTTP応答を、さらにその`before/chrome-dom`・`after/chrome-dom`が**実Chromeで受け取った画面**を、それぞれ手書きの期待値と業務主キーで照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。Relation全体の判定については、[#5571](https://github.com/hat47x/tei-platform/pull/5571)の実PostgreSQL試験が、全件性の成立・RLSによる保留・観測済み重複を別々に検査している。さらに[#5588](https://github.com/hat47x/tei-platform/pull/5588)では、**手順0・1・3の公開bashを同じ隔離DB・複製Workspaceで実行**し、変更前後のCLIと実Chromeまで一続きに照合した。次は**手順5の公開`go run`起動コマンドと実ブラウザのフォーム入力を、同じ試行で記載どおりに検査すること**である。利用者による手動操作、正式なSource受理、本番配備を立証したものではない。
 
 ## まだできないこと
 
