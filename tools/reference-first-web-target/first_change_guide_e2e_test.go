@@ -256,7 +256,6 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome")
 }
 
-
 // documentedGuideShellStep returns the commands from the published POSIX
 // handbook, without replacing them with equivalent Go test helpers.
 func documentedGuideShellStep(t *testing.T, handbook, from, to string) string {
