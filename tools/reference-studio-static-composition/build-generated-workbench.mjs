@@ -17,7 +17,7 @@ const args = process.argv.slice(2);
 const fromModel = args.length === 4 &&
   args[0] === "--inspection-reader" && args[2] === "--artifact-out";
 if (args.length !== 0 && !fromModel)
-  throw new Error("generated_workbench_builder_unsupported_arguments");
+  throw new Error("generated_workbench_builder_does_not_accept_arguments");
 const artifact = fromModel ? resolve(args[3]) : fixedArtifact;
 const part = fromModel ? resolve(args[1]) : null;
 if (fromModel && (part === artifact || part === resolve(workbench, "inspection-reader.generated.ts")))
