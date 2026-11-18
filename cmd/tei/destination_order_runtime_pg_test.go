@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"html"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -729,6 +730,94 @@ FROM changed ORDER BY line_number, order_line_id`
 
 	t.Run("different attributes, Query input and composite primary key", func(t *testing.T) {
 		checkDestinationAlternateModel(t, db, binary, dsn)
+	})
+
+	t.Run("row-level security cannot turn hidden duplicates into a complete read", func(t *testing.T) {
+		// This database is isolated. A separate non-superuser is essential:
+		// the PostgreSQL service owner can bypass RLS even with a policy.
+		const role = "tei_rls_reader_probe"
+		const password = "tei_rls_probe_disposable_only"
+		if _, err := db.Exec("CREATE ROLE " + role + " LOGIN PASSWORD '" + password + "'"); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			for _, statement := range []string{
+				"DROP POLICY IF EXISTS tei_rls_hide_duplicate ON public.order_lines",
+				"ALTER TABLE public.order_lines DISABLE ROW LEVEL SECURITY",
+				"REVOKE SELECT ON public.order_lines FROM " + role,
+				"REVOKE USAGE ON SCHEMA public FROM " + role,
+				"DROP ROLE IF EXISTS " + role,
+			} {
+				if _, err := db.Exec(statement); err != nil {
+					t.Errorf("cannot clean up isolated RLS probe: %v", err)
+				}
+			}
+		})
+		for _, statement := range []string{
+			"GRANT USAGE ON SCHEMA public TO " + role,
+			"GRANT SELECT ON public.order_lines TO " + role,
+			"CREATE POLICY tei_rls_hide_duplicate ON public.order_lines FOR SELECT TO " + role + " USING (order_line_id <> 3)",
+			"ALTER TABLE public.order_lines ENABLE ROW LEVEL SECURITY",
+		} {
+			if _, err := db.Exec(statement); err != nil {
+				t.Fatal(err)
+			}
+		}
+		connection, err := url.Parse(dsn)
+		if err != nil || (connection.Scheme != "postgres" && connection.Scheme != "postgresql") {
+			t.Fatalf("the disposable PostgreSQL DSN must use a URL: %v", err)
+		}
+		connection.User = url.UserPassword(role, password)
+		limitedDSN := connection.String()
+		limited, err := sql.Open("pgx", limitedDSN)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = limited.Close() })
+		var visibleRows int
+		if err := limited.QueryRow("SELECT count(*) FROM public.order_lines WHERE order_id = 1001").Scan(&visibleRows); err != nil {
+			t.Fatal(err)
+		}
+		if visibleRows != 2 {
+			t.Fatalf("RLS probe did not actually hide one of the duplicated rows: visible=%d", visibleRows)
+		}
+		t.Setenv("TEI_VIEW_PG_DSN", limitedDSN)
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.order_lines", "-environment", "development",
+			"-input", "order_id=1001", "-format", "json")
+		if got.code != 0 ||
+			strings.Contains(got.stdout+got.stderr, limitedDSN) ||
+			strings.Contains(got.stdout+got.stderr, password) {
+			// A failed leak check must never copy the sensitive value into CI logs.
+			t.Fatalf("RLS read failed or exposed connection credentials: code=%d", got.code)
+		}
+		var report struct {
+			Result struct {
+				Coverage         string `json:"coverage"`
+				CoverageDeclared string `json:"coverageDeclared"`
+				CoverageReason   string `json:"coverageReason"`
+				Rows             []struct {
+					Key string `json:"key"`
+				} `json:"rows"`
+				PerRelation          map[string]string `json:"perRelation"`
+				PerRelationUndecided map[string]string `json:"perRelationUndecided"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
+			t.Fatalf("invalid RLS view JSON: %v", err)
+		}
+		const uniqueness = "sales.order.lines.line_number_unique"
+		if report.Result.Coverage != "partial" ||
+			report.Result.CoverageDeclared != "sales.order.lines" ||
+			!strings.Contains(report.Result.CoverageReason, "row-level security") ||
+			len(report.Result.Rows) != 2 ||
+			report.Result.PerRelation[uniqueness] != "undecided" ||
+			report.Result.PerRelationUndecided[uniqueness] == "" {
+			t.Fatalf("RLS hid a duplicate but the read claimed more than it observed: %+v", report.Result)
+		}
 	})
 
 }

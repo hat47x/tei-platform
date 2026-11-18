@@ -94,6 +94,63 @@ type destinationRead struct {
 	PerRelationUndecided map[string]string            `json:"perRelationUndecided,omitempty"`
 }
 
+// postgresPhysicalReadAllowsComplete verifies that the physical table used by
+// the selected Query cannot silently hide rows through row-level security or a
+// view/inheritance expansion. This is a conservative runtime qualification,
+// not a replacement for the Workspace's static Query/storage proof.
+//
+// The catalog query runs in the same repeatable-read transaction as the data
+// Query, so a separate connection or a later snapshot cannot qualify a read.
+// Unknown tables and metadata failures leave the result partial.
+func postgresPhysicalReadAllowsComplete(
+	ctx context.Context,
+	tx *sql.Tx,
+	world ir.World,
+	resolution driver.ResolvedHeaderDetailContractQuery,
+) (bool, string) {
+	var physicalTable string
+	matches := 0
+	for _, mapping := range world.Persistence {
+		if mapping.Database != resolution.Binding.Target.Database ||
+			mapping.SemanticData != resolution.Relation.Target.ID {
+			continue
+		}
+		matches++
+		if matches != 1 {
+			return false, "the PostgreSQL persistence table is ambiguous"
+		}
+		physicalTable = mapping.Table
+	}
+	if matches != 1 || physicalTable == "" {
+		return false, "the PostgreSQL persistence table was not identified"
+	}
+	// A name resolved through search_path can refer to a different table
+	// than the one the SQL execution actually read. Require an explicit
+	// schema and compare names via pg_namespace instead of to_regclass.
+	schema, name, qualified := strings.Cut(physicalTable, ".")
+	if !qualified || schema == "" || name == "" || strings.Contains(name, ".") {
+		return false, "the PostgreSQL persistence table needs an unambiguous schema-qualified name"
+	}
+	var kind string
+	var rlsEnabled, rlsForced, hasChildren bool
+	err := tx.QueryRowContext(ctx, `SELECT c.relkind::text, c.relrowsecurity,
+		c.relforcerowsecurity, c.relhassubclass
+		FROM pg_catalog.pg_class AS c
+		JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+		WHERE n.nspname = $1 AND c.relname = $2`, schema, name).
+		Scan(&kind, &rlsEnabled, &rlsForced, &hasChildren)
+	if err != nil {
+		return false, "the physical PostgreSQL table could not be verified"
+	}
+	if kind != "r" || hasChildren {
+		return false, "the physical PostgreSQL source is not a plain table without inherited rows"
+	}
+	if rlsEnabled || rlsForced {
+		return false, "the PostgreSQL table enables row-level security and may hide relation rows"
+	}
+	return true, ""
+}
+
 // destinationDeclarationFrom reports the binding's own statement about how many
 // rows its Query returns. Checked is false by construction: this entry does not
 // cross-check the statement against the parent scope, the executed Query or the
@@ -226,7 +283,7 @@ func readEnvironmentRows(
 	// A Workspace's SQL realization is selected by its Contract binding.
 	// Run it inside a server-enforced read-only transaction, not merely under
 	// a CLI option named "read". Never allow an edited realization to write.
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return destinationRead{}, fmt.Errorf("cannot begin a read-only PostgreSQL transaction")
 	}
@@ -260,6 +317,17 @@ func readEnvironmentRows(
 	// declaration alone proves complete relation coverage. Only a Query that
 	// matches the Workspace's relation storage does; anything else is partial.
 	qualification := resolver.QualifyHeaderDetailCoverage(execution.Execution.Resolution, execution.Executor.Instance.Provider)
+	// Matching the declared SQL to persistence does not prove that PostgreSQL
+	// allowed the current role to see all matching rows. RLS, a view or an
+	// inherited relation can remove rows without changing the authored Query.
+	// Resolve the physical table on this same read-only transaction/snapshot.
+	if qualification.Complete {
+		if ok, reason := postgresPhysicalReadAllowsComplete(ctx, tx, world, execution.Execution.Resolution); !ok {
+			qualification.Complete = false
+			qualification.Basis = ""
+			qualification.Reason = reason
+		}
+	}
 	coverage := validationeval.CoveragePartial
 	if qualification.Complete {
 		coverage = validationeval.CoverageComplete
