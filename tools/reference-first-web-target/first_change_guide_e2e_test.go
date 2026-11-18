@@ -51,15 +51,38 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Step 0: the tables come from the definitions, then the guide's seed.
+	// Step 0: use the actual generated tables. The previous fixture helper
+	// dropped those tables and recreated both by hand, masking a missing parent
+	// order seed in the published walkthrough.
 	root := t.TempDir()
 	copyWorkspaceForRuleChange(t, referenceWorkspacePath(t), root)
 	applySchemaFromDefinitions(t, binary, root, db)
-	if err := seedReadFixture(t, db); err != nil {
-		t.Fatal(err)
-	}
 	t.Cleanup(func() { _, _ = db.Exec("drop table if exists public.order_lines") })
 	t.Cleanup(func() { _, _ = db.Exec("drop table if exists public.orders") })
+	seedTx, err := db.BeginTx(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = seedTx.Rollback() }()
+	for _, name := range []string{"seed-orders.sql", "seed.sql"} {
+		seed, err := os.ReadFile(filepath.Join(fixtures, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := seedTx.Exec(string(seed)); err != nil {
+			t.Fatalf("step 0: generated tables did not accept %s: %v", name, err)
+		}
+	}
+	if err := seedTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	var ordersInBrowse int
+	if err := db.QueryRow("select count(*) from public.orders where order_id in (1001, 1002, 1003)").Scan(&ordersInBrowse); err != nil {
+		t.Fatal(err)
+	}
+	if ordersInBrowse != 3 {
+		t.Fatalf("step 0: the real Web browse table has %d parent orders, want 3", ordersInBrowse)
+	}
 
 	// Step 2: read the detail and see the answers.
 	before := readOrderThroughCLI(t, binary, root, dsn, "1001")
