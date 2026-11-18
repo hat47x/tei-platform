@@ -35,6 +35,39 @@ function edit() {
     targetData: "sales.order", cardinality: "one" };
 }
 
+test("Go World with no Application uses explicit null, not an invalid missing collection", () => {
+  const semanticOnly = {
+    semantics: [{ id: "studio", data: [{
+      id: "studio.inspection_response",
+      attributes: [{ id: "studio.inspection_response.snapshot_fingerprint", required: false }]
+    }] }],
+    applications: null
+  };
+  const baseline = JSON.stringify(semanticOnly);
+  const indexed = indexWorld(semanticOnly);
+  assert.equal(indexed.data.size, 1);
+  assert.equal(indexed.attributes.size, 1);
+  assert.equal(indexed.applications.size, 0);
+  assert.deepEqual(candidateFromEdit(semanticOnly, revision, {
+    schema: "tei.reference.studio-edit/v0",
+    id: "required",
+    origin: "studio",
+    intent: "既存Dataの必須指定を変える",
+    view: "required",
+    subject: "attribute:studio.inspection_response.snapshot_fingerprint",
+    operation: "set-attribute-required",
+    required: true
+  }).delta, [{ op: "set-attribute-required",
+    id: "studio.inspection_response.snapshot_fingerprint", required: true }]);
+  assert.equal(JSON.stringify(semanticOnly), baseline, "no synthetic World mutation");
+  for (const malformed of [
+    { semantics: semanticOnly.semantics },
+    { ...semanticOnly, applications: undefined },
+    { ...semanticOnly, applications: {} },
+    { ...semanticOnly, applications: "none" }
+  ]) assert.throws(() => indexWorld(malformed), /INVALID_WORLD/);
+});
+
 test("the same accepted relation ID is navigable across table, ER and function", () => {
   const world = fixture(), original = JSON.stringify(world);
   const result = projectWorld(world, revision, "relation:sales.order.lines");
