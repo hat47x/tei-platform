@@ -37,8 +37,9 @@ function edit() {
 
 test("Go World with no Application uses explicit null, not an invalid missing collection", () => {
   const semanticOnly = {
-    semantics: [{ id: "studio", data: [{
+    semantics: [{ id: "studio", validations: null, data: [{
       id: "studio.inspection_response",
+      relations: null,
       attributes: [{ id: "studio.inspection_response.snapshot_fingerprint", required: false }]
     }] }],
     applications: null
@@ -60,6 +61,9 @@ test("Go World with no Application uses explicit null, not an invalid missing co
   }).delta, [{ op: "set-attribute-required",
     id: "studio.inspection_response.snapshot_fingerprint", required: true }]);
   assert.equal(JSON.stringify(semanticOnly), baseline, "no synthetic World mutation");
+  assert.throws(() => indexWorld({
+    ...semanticOnly, semantics: [{ ...semanticOnly.semantics[0], validations: {} }]
+  }), /namespace.validations: array required/);
   for (const malformed of [
     { semantics: semanticOnly.semantics },
     { ...semanticOnly, applications: undefined },
