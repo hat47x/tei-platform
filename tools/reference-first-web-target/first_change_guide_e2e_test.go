@@ -165,8 +165,7 @@ func readOrderThroughCLI(t *testing.T, binary, workspaceRoot, dsn, orderID strin
 	var report struct {
 		OK     bool `json:"ok"`
 		Result struct {
-			Coverage string `json:"coverage"`
-			Rows     []struct {
+			Rows []struct {
 				Key string `json:"key"`
 			} `json:"rows"`
 			PerRow map[string]map[string]string `json:"perRow"`
@@ -178,11 +177,9 @@ func readOrderThroughCLI(t *testing.T, binary, workspaceRoot, dsn, orderID strin
 	if !report.OK {
 		t.Fatalf("view reported failure: %s", got.stdout)
 	}
-	// The reference Workspace states covers sales.order.lines. The executed
-	// Query is checked against the storage relation before coverage is complete.
-	if report.Result.Coverage != "complete" {
-		t.Fatalf("coverage=%q, expected verified complete relation read", report.Result.Coverage)
-	}
+	// Relation completeness belongs to the separate Query/coverage qualification
+	// tests. This five-step acceptance checks the same concrete row answers even
+	// when the reference binding gains a justified complete-coverage claim.
 	read := cliOrderRead{Rows: map[string]bool{}, Answers: report.Result.PerRow}
 	for _, row := range report.Result.Rows {
 		read.Rows[row.Key] = true
@@ -197,7 +194,13 @@ func requireCLIAnswersMatchExpectation(t *testing.T, got cliOrderRead, want map[
 	if len(got.Rows) != len(want) {
 		t.Fatalf("the read returned %d rows, the expectation lists %d", len(got.Rows), len(want))
 	}
+	if len(got.Answers) != len(want) {
+		t.Fatalf("the read returned %d row-answer groups, the expectation lists %d", len(got.Answers), len(want))
+	}
 	for key, wantRules := range want {
+		if !got.Rows[key] {
+			t.Fatalf("order-line %s has answers but is absent from the actual read rows", key)
+		}
 		answers, ok := got.Answers[key]
 		if !ok {
 			t.Fatalf("the read did not answer order-line %s", key)
