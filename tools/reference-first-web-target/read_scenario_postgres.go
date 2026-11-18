@@ -71,7 +71,9 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 		)
 		if qualification.Complete {
 			if ok, _ := driver.PostgresPhysicalReadAllowsComplete(ctx, tx, e.world, e.coverageResolution); ok {
-				result.Payload = webRelationCoverageProof{Target: target, Complete: true}
+				result.Payload = webRelationCoverageProof{
+					Target: target, Complete: true, ProviderEvidence: result.Payload,
+				}
 			}
 		}
 	}
