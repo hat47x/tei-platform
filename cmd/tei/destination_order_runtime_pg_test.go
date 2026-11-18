@@ -727,6 +727,52 @@ FROM changed ORDER BY line_number, order_line_id`
 		}
 	})
 
+	t.Run("RLS does not qualify a positive uniqueness claim", func(t *testing.T) {
+		// The accepted Workspace and SQL do not change. PostgreSQL row
+		// security can conceal rows without changing any static Query shape.
+		if _, err := db.Exec("ALTER TABLE public.order_lines ENABLE ROW LEVEL SECURITY"); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			if _, err := db.Exec("ALTER TABLE public.order_lines DISABLE ROW LEVEL SECURITY"); err != nil {
+				t.Errorf("cannot restore the test table RLS setting: %v", err)
+			}
+		}()
+		root := t.TempDir()
+		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.order_lines", "-environment", "development",
+			"-input", "order_id=1002", "-format", "json")
+		if got.code != 0 || strings.Contains(got.stdout+got.stderr, dsn) {
+			t.Fatalf("RLS read failed or exposed a DB secret: code=%d stdout=%s stderr=%s",
+				got.code, got.stdout, got.stderr)
+		}
+		var report struct {
+			OK bool `json:"ok"`
+			Result struct {
+				Coverage             string            `json:"coverage"`
+				CoverageDeclared     string            `json:"coverageDeclared"`
+				CoverageBasis        string            `json:"coverageBasis"`
+				CoverageReason       string            `json:"coverageReason"`
+				PerRelation          map[string]string `json:"perRelation"`
+				PerRelationUndecided map[string]string `json:"perRelationUndecided"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
+			t.Fatalf("RLS read did not return JSON: %v (%s)", err, got.stdout)
+		}
+		const unique = "sales.order.lines.line_number_unique"
+		if !report.OK || report.Result.Coverage != "partial" ||
+			report.Result.CoverageDeclared != "sales.order.lines" ||
+			report.Result.CoverageBasis != "" ||
+			!strings.Contains(report.Result.CoverageReason, "row-level security") ||
+			report.Result.PerRelation[unique] != "undecided" ||
+			report.Result.PerRelationUndecided[unique] == "" {
+			t.Fatalf("RLS visibility was silently promoted to complete: %+v", report)
+		}
+	})
+
 	t.Run("different attributes, Query input and composite primary key", func(t *testing.T) {
 		checkDestinationAlternateModel(t, db, binary, dsn)
 	})
