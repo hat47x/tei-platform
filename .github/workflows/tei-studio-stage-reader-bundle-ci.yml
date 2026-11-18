@@ -130,23 +130,29 @@ jobs:
           $modelRoot = Join-Path $env:RUNNER_TEMP 'tei-studio-changed-data'
           $sourceDir = Join-Path $modelRoot 'semantic/studio'
           New-Item -ItemType Directory -Force -Path $sourceDir | Out-Null
-          @'
-          workspace: studio_reader
-          formatVersion: 1
-          sources:
-            - semantic
-          languages:
-            - tei.authoring/v1
-          '@ | Set-Content -LiteralPath (Join-Path $modelRoot 'tei.workspace.yaml') -Encoding utf8
-          @'
-          # Studio response
-
-          <!-- tei: data InspectionResponse in studio -->
-          | attribute | type | required | display |
-          | --- | --- | --- | --- |
-          | schemaVersion | std.text | yes | Schema |
-          | snapshotFingerprint | std.text | yes | Snapshot |
-          '@ | Set-Content -LiteralPath (Join-Path $sourceDir 'inspection-response.tei.md') -Encoding utf8
+          # Write UTF-8 without BOM; generated IDs and bytes are part of the
+          # attempt and must not depend on the runner's PowerShell encoding.
+          $utf8 = [System.Text.UTF8Encoding]::new($false)
+          $workspaceText = (@(
+            'workspace: studio_reader'
+            'formatVersion: 1'
+            'sources:'
+            '  - semantic'
+            'languages:'
+            '  - tei.authoring/v1'
+          ) -join "`n") + "`n"
+          [System.IO.File]::WriteAllText((Join-Path $modelRoot 'tei.workspace.yaml'), $workspaceText, $utf8)
+          $dataText = (@(
+            '# Studio response'
+            ''
+            '<!-- tei: data InspectionResponse in studio -->'
+            '| attribute | type | required | display |'
+            '| --- | --- | --- | --- |'
+            '| schemaVersion | std.text | yes | Schema |'
+            '| snapshotFingerprint | std.text | yes | Snapshot |'
+          ) -join "`n") + "`n"
+          [System.IO.File]::WriteAllText(
+            (Join-Path $sourceDir 'inspection-response.tei.md'), $dataText, $utf8)
 
       - name: Stage1 and Stage2 build the new Wails Desktop and inspect it in WebView2
         shell: pwsh
