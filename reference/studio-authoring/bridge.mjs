@@ -11,7 +11,9 @@ function requireID(id, context) {
   return id;
 }
 function array(value, context) {
-  if (value === undefined) return [];
+  // Go emits nil slices as JSON null. Optional empty collections in a
+  // semantic-only Workspace do not become new model elements.
+  if (value === undefined || value === null) return [];
   if (!Array.isArray(value)) throw new Error(context + ": array required");
   return value;
 }
