@@ -89,6 +89,12 @@ jobs:
           python3 -B tools/check-public-boundary/check_test.py
           python3 -B tools/check-public-boundary/check.py --root .
 
+      - name: Studio Stage2 Readerの呼出時系列を検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tools/reference-studio-part-generator/stage_reentry.py --self-test
+
       - name: 指定版のGoを用意
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
