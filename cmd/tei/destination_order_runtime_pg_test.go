@@ -788,9 +788,11 @@ FROM changed ORDER BY line_number, order_line_id`
 			"view", "-workspace", root, "-application", "order_entry",
 			"-pattern", "order_entry.order_lines", "-environment", "development",
 			"-input", "order_id=1001", "-format", "json")
-		if got.code != 0 || strings.Contains(got.stdout+got.stderr, limitedDSN) {
-			t.Fatalf("RLS read failed or exposed a connection string: code=%d output=%s stderr=%s",
-				got.code, got.stdout, got.stderr)
+		if got.code != 0 ||
+			strings.Contains(got.stdout+got.stderr, limitedDSN) ||
+			strings.Contains(got.stdout+got.stderr, password) {
+			// A failed leak check must never copy the sensitive value into CI logs.
+			t.Fatalf("RLS read failed or exposed connection credentials: code=%d", got.code)
 		}
 		var report struct {
 			Result struct {
