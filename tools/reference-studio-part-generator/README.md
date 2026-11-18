@@ -119,6 +119,8 @@ python -B tools/reference-studio-part-generator/stage_reentry.py `
 
 このモードでは、**変更後Partの旧契約との差異、Source内容の前後一致、両段の実Node/esbuild起動、Stage専用Wails入力のdigest、Stage2 exeへの新Bundle収録、旧Bundleの非収録、別WebView2プロセスでの初回Inspect・Graph操作後のReader使用増加**をそれぞれ照合します。対象HEADも両段で同一に固定し、条件が欠ければ`reentryObserved`を成立させません。Windowsの実CIは[Stage Reader Bundle再入](../../.github/workflows/tei-studio-stage-reader-bundle-ci.yml)が所有します。
 
+**表示の受入は別です。** この試行で照合するReader契約digestはDOMの非表示属性であり、変更後の契約が実行された証拠にはなっても、Inspectorの本文が利用者に見える形で変わったことは示しません。変更前後のInspector表示内容や可視検証結果を、Reader自身の自己申告とは独立した期待値と照合する検収が必要です。これを通すまでは[#4583](https://github.com/hat47x/tei-platform/issues/4583)のStudio一巡を完了扱いしません。
+
 **ここでStudioの実編集を証明したことにはなりません。** Sourceは外部に用意した変更後のテスト用Workspaceであり、Studio Editorによる保存・再読込、Ownerの業務意味受理、正式Build Intentによる完全な依存閉包・Builder適格性、納品物の実行認可は別の受入事項です。既存のWails HostやGenerator、DSLは追加していません。
 
 ### Stage2でStudio Desktopそのものを構築し、新しいプロセスとして使う（Windows）
