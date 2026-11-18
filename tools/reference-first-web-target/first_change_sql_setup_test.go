@@ -182,6 +182,10 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	originalOrdersSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed-orders.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	clearTables := func() {
 		t.Helper()
 		for _, table := range []string{"public.order_lines", "public.orders"} {
@@ -223,6 +227,9 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 				// A deliberate SQL failure after the original INSERT proves
 				// that previously applied DDL and rows are rolled back.
 				seed = append(seed, []byte("\nSELECT 1 / 0;\n")...)
+			}
+			if err := os.WriteFile(filepath.Join(seedDir, "seed-orders.sql"), originalOrdersSeed, 0o644); err != nil {
+				t.Fatal(err)
 			}
 			if err := os.WriteFile(filepath.Join(seedDir, "seed.sql"), seed, 0o644); err != nil {
 				t.Fatal(err)
