@@ -64,7 +64,7 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 // establish full relation coverage by itself. The caller must roll it back.
 func beginWebReadOnlyQueryTx(ctx context.Context, db *sql.DB) (*sql.Tx, error) {
 	return db.BeginTx(ctx, &sql.TxOptions{
-		ReadOnly: true,
+		ReadOnly:  true,
 		Isolation: sql.LevelRepeatableRead,
 	})
 }
