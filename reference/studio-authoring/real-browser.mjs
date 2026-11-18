@@ -215,6 +215,19 @@ try {
       required: requiredChoice === "yes"
     }]);
     assert.equal(candidate.baseModelRevision, baseline);
+    // DevTools/JSON may change the submitted value after the form emits it.
+    // The bridge, not a browser-only check, must reject a no-op candidate.
+    const tampered = join(temporary, "required-tampered.json");
+    writeFileSync(tampered, JSON.stringify({
+      ...edit, required: selectedAttribute.required === true
+    }) + "\n", { mode: 0o600 });
+    const refused = spawnSync(process.execPath, [
+      cli, "propose", "-workspace", workspace, "-edit-file", tampered
+    ], {cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024,
+      timeout: 120_000});
+    assert.equal(refused.status, 1);
+    assert.match(refused.stderr, /INVALID_OR_UNCHANGED_REQUIRED_PROPOSAL/);
+    assert.equal(refused.stdout, "");
     assert.equal(revision(), baseline, "the offline Required form must not write Source");
     assert.deepEqual(pageErrors, []);
     assert.deepEqual(networkRequests, []);
@@ -224,6 +237,7 @@ try {
       editSchema: edit.schema, candidateSchema: candidate.schema,
       reviewSchema: null, revisionBound: true, realChromeDOMEvent: true,
       cspScriptExecuted: true, offlineNetworkRequests: networkRequests.length,
+      invalidBrowserReferenceRefused: true,
       accepted: false, sourceChanged: false,
       qualification: "candidate-only; this Source is native .tei, not tei.authoring/v1"
     });
