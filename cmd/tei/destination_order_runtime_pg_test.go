@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"html"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -727,26 +728,64 @@ FROM changed ORDER BY line_number, order_line_id`
 		}
 	})
 
-	t.Run("RLS does not qualify a positive uniqueness claim", func(t *testing.T) {
-		// The accepted Workspace and SQL do not change. PostgreSQL row
-		// security can conceal rows without changing any static Query shape.
-		if _, err := db.Exec("ALTER TABLE public.order_lines ENABLE ROW LEVEL SECURITY"); err != nil {
-			t.Fatal(err)
+	t.Run("a restricted PostgreSQL role hides a duplicate without changing the Query", func(t *testing.T) {
+		// This test creates its own disposable, non-owner read role. The seed
+		// contains line_number=2 twice for order 1001 (keys 2 and 3), but the
+		// RLS policy deliberately hides key 3 from that role.
+		const role = "tei_rls_read_probe"
+		const password = "rls_disposable_probe_only"
+		if _, err := db.Exec("CREATE ROLE " + role + " LOGIN PASSWORD '" + password + "'"); err != nil {
+			t.Fatalf("cannot create an isolated non-owner read role: %v", err)
 		}
 		defer func() {
-			if _, err := db.Exec("ALTER TABLE public.order_lines DISABLE ROW LEVEL SECURITY"); err != nil {
-				t.Errorf("cannot restore the test table RLS setting: %v", err)
+			for _, sql := range []string{
+				"ALTER TABLE public.order_lines DISABLE ROW LEVEL SECURITY",
+				"DROP POLICY IF EXISTS tei_rls_probe_select ON public.order_lines",
+				"DROP OWNED BY " + role,
+				"DROP ROLE " + role,
+			} {
+				if _, err := db.Exec(sql); err != nil {
+					t.Errorf("cannot restore the disposable RLS probe: %v", err)
+				}
 			}
 		}()
+		for _, statement := range []string{
+			"GRANT CONNECT ON DATABASE tei_destination_order_e2e TO " + role,
+			"GRANT USAGE ON SCHEMA public TO " + role,
+			"GRANT SELECT ON TABLE public.order_lines TO " + role,
+			"CREATE POLICY tei_rls_probe_select ON public.order_lines FOR SELECT TO " + role +
+				" USING (order_line_id <> 3)",
+			"ALTER TABLE public.order_lines ENABLE ROW LEVEL SECURITY",
+		} {
+			if _, err := db.Exec(statement); err != nil {
+				t.Fatalf("cannot establish the restricted PostgreSQL visibility: %v", err)
+			}
+		}
+		uri, err := url.Parse(dsn)
+		if err != nil || (uri.Scheme != "postgres" && uri.Scheme != "postgresql") {
+			t.Fatalf("the isolated PostgreSQL fixture needs a postgres URI: %v", err)
+		}
+		uri.User = url.UserPassword(role, password)
+		probeDSN := uri.String()
+		probeDB, err := sql.Open("pgx", probeDSN)
+		if err != nil {
+			t.Fatal("cannot prepare the restricted PostgreSQL reader")
+		}
+		defer probeDB.Close()
+		var visible int
+		if err := probeDB.QueryRow("SELECT count(*) FROM public.order_lines WHERE order_id = 1001").Scan(&visible); err != nil || visible != 2 {
+			t.Fatalf("the non-owner RLS role did not hide exactly one duplicate row: count=%d err=%v", visible, err)
+		}
 		root := t.TempDir()
 		copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
+		t.Setenv("TEI_VIEW_PG_DSN", probeDSN)
 		got := runCLIProcessWithStreams(t, binary,
 			"view", "-workspace", root, "-application", "order_entry",
 			"-pattern", "order_entry.order_lines", "-environment", "development",
-			"-input", "order_id=1002", "-format", "json")
-		if got.code != 0 || strings.Contains(got.stdout+got.stderr, dsn) {
-			t.Fatalf("RLS read failed or exposed a DB secret: code=%d stdout=%s stderr=%s",
-				got.code, got.stdout, got.stderr)
+			"-input", "order_id=1001", "-format", "json")
+		if got.code != 0 || strings.Contains(got.stdout+got.stderr, probeDSN) ||
+			strings.Contains(got.stdout+got.stderr, password) {
+			t.Fatalf("RLS read failed or disclosed a DB secret: code=%d", got.code)
 		}
 		var report struct {
 			OK bool `json:"ok"`
@@ -755,21 +794,27 @@ FROM changed ORDER BY line_number, order_line_id`
 				CoverageDeclared     string            `json:"coverageDeclared"`
 				CoverageBasis        string            `json:"coverageBasis"`
 				CoverageReason       string            `json:"coverageReason"`
+				Rows                 []struct{ Key string `json:"key"` } `json:"rows"`
 				PerRelation          map[string]string `json:"perRelation"`
 				PerRelationUndecided map[string]string `json:"perRelationUndecided"`
 			} `json:"result"`
 		}
 		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil {
-			t.Fatalf("RLS read did not return JSON: %v (%s)", err, got.stdout)
+			t.Fatalf("RLS read did not return JSON: %v", err)
+		}
+		var observed []string
+		for _, row := range report.Result.Rows {
+			observed = append(observed, row.Key)
 		}
 		const unique = "sales.order.lines.line_number_unique"
-		if !report.OK || report.Result.Coverage != "partial" ||
+		if !report.OK || !reflect.DeepEqual(observed, []string{"1", "2"}) ||
+			report.Result.Coverage != "partial" ||
 			report.Result.CoverageDeclared != "sales.order.lines" ||
 			report.Result.CoverageBasis != "" ||
 			!strings.Contains(report.Result.CoverageReason, "row-level security") ||
 			report.Result.PerRelation[unique] != "undecided" ||
 			report.Result.PerRelationUndecided[unique] == "" {
-			t.Fatalf("RLS visibility was silently promoted to complete: %+v", report)
+			t.Fatalf("RLS-hidden duplicate was incorrectly treated as a complete read: %+v", report)
 		}
 	})
 
