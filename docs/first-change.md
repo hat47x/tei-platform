@@ -59,7 +59,7 @@ cp -R reference/workspace/. "$TEI_FIRST_WORKSPACE/"
 
 `result.rows`に読んだ3行が、`result.perRow`に行ごとの規則の答えが出る。行は`key`（明細の主キー）で指す。数量が0の明細（`key` 2）は、`sales.order_line.quantity_positive`が`not-satisfied`になる。`result.perRelation`は受注一件の明細すべてに一度尋ねる規則の答えで、明細番号が重なっているので`not-satisfied`になる。
 
-受注1002では、明細番号の一意が`satisfied`になる。参照Workspaceの束縛には`covers sales.order.lines`があり、実行Queryが関係の保存から対象受注の全行を読むことを照合できるためである。宣言だけでは全件と判定しない。行を落とすQueryや宣言を外した束縛では`partial`のままである。
+受注1002では、選択したQueryと保存定義の対応に加え、同じ読取トランザクション内で物理表のRLS・継承・種類を確認できた場合に、明細番号の一意が`satisfied`になる。`covers sales.order.lines`という宣言だけでは全件取得を証明できない。行を落とすQueryや全件性を確認できない表では`partial`となり、成立は断定しない。
 
 ## 3. 規則を一つ足す
 
@@ -134,13 +134,13 @@ go run ./tools/reference-first-web-target \
 ブラウザで `http://127.0.0.1:8080/custom-submit` を開く。`Login ID` には `legacy-order-editor`、`Credential` には参照用の合成値 `editor-secret`、`Browse from` には `2026-09-01T00:00:00Z`、`Selected row` には `0` を入力して送信する。**明細の行ごとの答え**が出る。これらはローカルの参照実装を検査するための合成ログイン情報であり、本番用の認証情報ではない。
 
 - 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
-- `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では、CLIは宣言とQuery・保存定義を照合し、同じ読取トランザクションで実テーブルのRLS・継承・種類を確認できた場合に限り、一意性を`satisfied`と判定する。可視範囲を確認できない場合は`undecided`に留める。**第一Web Targetは現在、Relation全体の取得範囲を同じ方法では確認していないため、画面上では`undecided`と理由を表示する。** 画面に明細がすべて見えるように見えても、それだけで全件取得の資格にはならない。
+- `sales.order.lines.line_number_unique`は、受注1001の明細番号2が重複しているので**`not-satisfied`**となる。取得範囲が確定していなくても、実際に観測した重複は一意性を否定できる。受注1002を確かめるには、同じフォームの`Selected row`を`1`にして送信する。CLIと第一Webはそれぞれ自分が実行したQueryについて、同じ読取トランザクション内で保存定義との対応と物理表のRLS・継承・種類を確認する。確認できた場合、画面にも**`satisfied`**が出る（[#5571](https://github.com/hat47x/tei-platform/pull/5571)）。確認できなければ`undecided`と理由を表示する。画面に二行見えるというだけでは全件取得の根拠にならない。
 - 画面は選択した受注・実行したContract Query・行数をReadの情報として示す。行数や表示位置が回答と合わなければ描画を拒否するが、**表示したIDだけで、別のReadからの混入がすべて排除されたとは言えない**。
 
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
 
-実PostgreSQLのCIでは`TestFirstWebAcceptsARuleChangeEndToEnd`が規則変更前後のHTTP応答を、さらにその`before/chrome-dom`・`after/chrome-dom`が**実Chromeで受け取った画面**を、それぞれ手書きの期待値と業務主キーで照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。さらに[#5510](https://github.com/hat47x/tei-platform/pull/5510)では、CLIを別プロセスで実行し、同じ実PostgreSQLと実Chromeを使って五段階を一つの試験で通した。ただし、規則の編集にはGoの試験用ヘルパーを使っており、このページのシェルコマンドを一字一句そのまま実行した証拠ではない。診断用Source読込による検証であり、受理済みSourceの本番配備を立証するものでもない。
+実PostgreSQLのCIでは`TestFirstWebAcceptsARuleChangeEndToEnd`が規則変更前後のHTTP応答を、さらにその`before/chrome-dom`・`after/chrome-dom`が**実Chromeで受け取った画面**を、それぞれ手書きの期待値と業務主キーで照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。Relation全体の判定については、[#5571](https://github.com/hat47x/tei-platform/pull/5571)の実PostgreSQL試験が、全件性の成立・RLSによる保留・観測済み重複を別々に検査している。さらに[#5510](https://github.com/hat47x/tei-platform/pull/5510)では、CLIを別プロセスで実行し、同じ実PostgreSQLと実Chromeを使って五段階を一つの試験で通した。ただし、規則の編集にはGoの試験用ヘルパーを使っており、このページのシェルコマンドを一字一句そのまま実行した証拠ではない。診断用Source読込による検証であり、受理済みSourceの本番配備を立証するものでもない。
 
 ## まだできないこと
 
