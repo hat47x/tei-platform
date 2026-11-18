@@ -623,7 +623,57 @@ def self_test() -> None:
     bad_stage["partGeneration"] = step("tei1", "part", "gen")
     assert not judge(changed_desktop_stage("tei0"), bad_stage,
                      "part", changed_desktop())["reentryObserved"]
-    print("self-test: 33 judgements behaved as specified")
+    def visible_desktop() -> dict:
+        actual = changed_desktop()
+        actual["visibleBeforeSourceDigest"] = "old-data-source"
+        actual["visibleBeforeSourceAfterDigest"] = "old-data-source"
+        actual["smoke"]["visibleAuthoring"] = {
+            "before": {
+                "workspaceId": "workspace-2", "subjectTitle": "studio.inspection_response",
+                "editorEditable": "false",
+                "editorText": json.dumps({"id": "studio.inspection_response", "attributes": [
+                    {"symbol": "schemaVersion", "required": True},
+                    {"symbol": "snapshotFingerprint", "required": False}]}),
+                "inspectionReader": contract, "inspectionReaderCalls": 4,
+            },
+            "after": {
+                "workspaceId": "workspace-3", "subjectTitle": "studio.inspection_response",
+                "editorEditable": "false",
+                "editorText": json.dumps({"id": "studio.inspection_response", "attributes": [
+                    {"symbol": "schemaVersion", "required": True},
+                    {"symbol": "snapshotFingerprint", "required": True}]}),
+                "inspectionReader": contract, "inspectionReaderCalls": 5,
+            },
+        }
+        return actual
+
+    valid = judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                  "part", visible_desktop())
+    assert valid["sameNativeWebViewDisplaysChangedCanonical"] and valid["reentryObserved"], valid
+
+    for name in ("same-text", "wrong-reader", "same-source", "stale-selection",
+                 "editable-editor", "not-a-real-call", "wrong-required"):
+        invalid = visible_desktop()
+        before, after = invalid["smoke"]["visibleAuthoring"]["before"], invalid["smoke"]["visibleAuthoring"]["after"]
+        if name == "same-text":
+            after["editorText"] = before["editorText"]
+        elif name == "wrong-reader":
+            after["inspectionReader"] = "sha256:" + "0" * 64
+        elif name == "same-source":
+            invalid["visibleBeforeSourceDigest"] = "authoring-source"
+        elif name == "stale-selection":
+            after["workspaceId"] = "workspace-2"
+        elif name == "editable-editor":
+            after["editorEditable"] = "true"
+        elif name == "not-a-real-call":
+            after["inspectionReaderCalls"] = 4
+        elif name == "wrong-required":
+            after["editorText"] = json.dumps({"id": "studio.inspection_response", "attributes": [
+                {"symbol": "schemaVersion", "required": True},
+                {"symbol": "snapshotFingerprint", "required": False}]})
+        assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                         "part", invalid)["reentryObserved"], name
+    print("self-test: 41 judgements behaved as specified")
 
 
 def main() -> int:
