@@ -100,7 +100,28 @@ python3 -B tools/reference-studio-part-generator/stage_reentry.py \
   --work /tmp/tei-studio-reader-bundle-attempt --bundle-reader
 ```
 
-ここで成立するのは**Stage1とStage2が実際にNode/esbuildを起動し、生成ReaderからBundleを作ったこと**までです。新BundleはWindows Desktopへ埋め込まれません。そのため、`--bundle-reader`と`--studio-desktop`／`--desktop-smoke`は同時に指定できません。定義変更後の新BundleからStage2 Desktopを構築し、別プロセスの実WebView2で使用する最後の接続は、引き続き[#4583](https://github.com/hat47x/tei-platform/issues/4583)の未完条件です。
+ここで成立するのは**Stage1とStage2が実際にNode/esbuildを起動し、生成ReaderからBundleを作ったこと**までです。通常の`--bundle-reader`はDesktopを構築しません。実Windows Desktopの新Bundle収録・実使用には、次項の明示的な`--stage-desktop-bundle --desktop-smoke`と変更後Data Workspaceが必要です。
+
+### Data変更後の新Bundleを埋め込むStage2 Windows Desktop
+
+通常の`--desktop-smoke`はコミット済みのWorkbench Bundleを読む経路です。これとは**別の受入**として、`--stage-desktop-bundle`は`tei.authoring/v1`の変更後Dataから生成したReaderをNode/esbuildへ渡し、各Stage専用の隔離Git worktree内の`cmd/tei-studio/assets/workbench/main.js`に新Bundleを配置してから、各段のTEIにWails Desktopを構築させます。元のcheckoutを上書きせず、worktreeの変更対象はBundleファイル一つだけです。
+
+Windowsで、必要なGo moduleの供給とWorkbenchの`npm ci`を準備したうえで、変更後DataのWorkspaceを指定して実行します。例えば`studio.inspection_response`の`snapshotFingerprint`を文字列の必須項目にしたSourceを用意した場合です。
+
+```powershell
+python -B tools/reference-studio-part-generator/stage_reentry.py `
+  --repo . --supply "$((go env GOMODCACHE).Trim())\cache\download" `
+  --work "$env:RUNNER_TEMP\tei-studio-changed-desktop-attempt" `
+  --authoring-root "$env:RUNNER_TEMP\tei-studio-changed-data" `
+  --authoring-data studio.inspection_response `
+  --stage-desktop-bundle --desktop-smoke
+```
+
+このモードでは、**変更後Partの旧契約との差異、Source内容の前後一致、両段の実Node/esbuild起動、Stage専用Wails入力のdigest、Stage2 exeへの新Bundle収録、旧Bundleの非収録、別WebView2プロセスでの初回Inspect・Graph操作後のReader使用増加**をそれぞれ照合します。対象HEADも両段で同一に固定し、条件が欠ければ`reentryObserved`を成立させません。Windowsの実CIは[Stage Reader Bundle再入](../../.github/workflows/tei-studio-stage-reader-bundle-ci.yml)が所有します。
+
+**表示の受入は別です。** この試行で照合するReader契約digestはDOMの非表示属性であり、変更後の契約が実行された証拠にはなっても、Inspectorの本文が利用者に見える形で変わったことは示しません。変更前後のInspector表示内容や可視検証結果を、Reader自身の自己申告とは独立した期待値と照合する検収が必要です。これを通すまでは[#4583](https://github.com/hat47x/tei-platform/issues/4583)のStudio一巡を完了扱いしません。
+
+**ここでStudioの実編集を証明したことにはなりません。** Sourceは外部に用意した変更後のテスト用Workspaceであり、Studio Editorによる保存・再読込、Ownerの業務意味受理、正式Build Intentによる完全な依存閉包・Builder適格性、納品物の実行認可は別の受入事項です。既存のWails HostやGenerator、DSLは追加していません。
 
 ### Stage2でStudio Desktopそのものを構築し、新しいプロセスとして使う（Windows）
 
@@ -127,7 +148,7 @@ python -B tools/reference-studio-part-generator/stage_reentry.py `
 ## 主張しないこと
 
 - **Studio全体の生成**ではありません。生成したのは純関数一つです。
-- **Node/esbuildの正式Build Intent・依存閉包は未接続**です。既定のDesktop実行ではコミット済みBundleを埋め込むだけです。別モードの`--bundle-reader`ではTEIがNode/esbuildを実際に起動して新しいBundleを作りますが、そのBundleをWindows Desktopへ埋め込んだことは主張しません。
+- **Node/esbuildの正式Build Intent・依存閉包は未接続**です。既定のDesktop実行はコミット済みBundleを埋め込みます。別モードの`--bundle-reader`ではTEIがNode/esbuildを起動して新Bundleを作ります。さらに明示的な`--stage-desktop-bundle`で、新Bundleを隔離したWails Desktopへ渡し、実WebView2で使用を検査しますが、正式Build Intent、実Studio編集・保存・意味受理は主張しません。
 - Desktopを含む各Buildは`tei self-build`のprimitive形式（起動と記録）で、計画（Build Intent・catalog）は使っていません。`l2b`の五条件は主張しません。
 - Stage2で使うGo build child（`reference-go-build-with-supply`）は両段ともStage0のseedが作ったものです。Seed Trust、受理、Runtime Authorityは主張しません。
 - `studio_generated`タグの生成Goサービス（PoC B）とは別の経路です。そちらは`main`に生成物が無く、このtoolは触れていません。

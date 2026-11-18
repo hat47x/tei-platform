@@ -18,6 +18,12 @@ With --bundle-reader each stage drives the existing Node/esbuild child through
 its TEI invoker, consuming that stage's just-generated Reader Part and recording
 a separate JS Bundle artifact. It does not feed this new bundle to Wails yet.
 
+With --stage-desktop-bundle, a separate worktree at the exact same Git HEAD
+receives the new Bundle as the sole tracked Source difference for each Stage.
+That staged checkout, not the original repository, supplies Wails go:embed.
+Both desktop binaries must contain the new byte sequence and reject the
+committed Bundle. This mode also requires changed tei.authoring/v1 Data.
+
 With --studio-desktop each stage also drives a Go build of the Studio Wails
 Desktop (the nested module cmd/tei-studio) with the same child:
 
@@ -35,8 +41,9 @@ Two launches of `go build` by this script would not satisfy any of these.
 
 It claims no Seed Trust, acceptance or Runtime Authority. In the default
 Desktop mode the Node/esbuild bundle remains the committed one. The separate
---bundle-reader mode makes a real new Bundle, but does not build a Desktop
-containing it: these qualifications must not be added together.
+--bundle-reader mode makes a real new Bundle; only the explicit
+--stage-desktop-bundle mode also builds a Desktop containing it. The
+editor/source-write/meaning acceptance and formal Build Intent remain separate.
 """
 from __future__ import annotations
 
@@ -71,11 +78,40 @@ def digest_file(path: Path) -> str:
     return digest_bytes(path.read_bytes())
 
 
+def authoring_source_digest(root: Path) -> str:
+    """Fingerprint paths and exact bytes, not just the selected Data's text."""
+    if not root.is_dir() or not (root / "tei.workspace.yaml").is_file():
+        raise RuntimeError("authoring Workspace with tei.workspace.yaml is required")
+    digest = hashlib.sha256()
+    found = 0
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise RuntimeError("authoring Workspace symlinks are not accepted")
+        if not path.is_file():
+            continue
+        found += 1
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(str(path.stat().st_size).encode("ascii"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\n")
+    if found < 2:
+        raise RuntimeError("authoring Workspace has no model Source")
+    return "sha256:" + digest.hexdigest()
+
+
+def git_head(root: Path) -> str:
+    result = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                            capture_output=True, text=True, encoding="utf-8", check=True)
+    return result.stdout.strip()
+
+
 def drive(tei: Path, child: Path, child_args: list[str], artifact: Path) -> dict:
     """Start one TEI process and return what it recorded about its child."""
     completed = subprocess.run(
         [str(tei), "self-build", "-child", str(child), "-child-arg", json.dumps(child_args), "-artifact", str(artifact)],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", check=False,
     )
     if completed.returncode != 0:
         raise RuntimeError(f"{tei.name} self-build did not complete the observation: {completed.stderr.strip()}")
@@ -93,7 +129,9 @@ def drive(tei: Path, child: Path, child_args: list[str], artifact: Path) -> dict
 
 
 def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
-              studio_desktop: bool = False, node_child: Path | None = None) -> dict:
+              studio_desktop: bool = False, node_child: Path | None = None,
+              authoring_root: Path | None = None, authoring_data: str | None = None,
+              stage_desktop_bundle: bool = False, expected_head: str | None = None) -> dict:
     work.mkdir(parents=True)
 
     def go_build(package: str, name: str, module: Path = repo) -> tuple[Path, dict]:
@@ -106,10 +144,14 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
     tei_out, tei_build = go_build("./cmd/tei", "tei")
     generator, generator_build = go_build("./tools/reference-studio-part-generator", "generator")
     part = work / "inspection-reader.generated.ts"
+    authoring_args = (["-authoring-root", str(authoring_root),
+                       "-authoring-data", str(authoring_data)]
+                      if authoring_root is not None else [])
     generation = (
         drive(tei, generator, [
             "-transform", str(repo / TRANSFORM), "-contract", str(repo / CONTRACT),
             "-artifact-out", str(part), "-state", str(work / "part-state"),
+            *authoring_args,
         ], part)
         if generator.is_file() else {"failureCause": "the generator was not built"}
     )
@@ -122,6 +164,9 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
         "teiArtifactPath": str(tei_out),
         "partPath": str(part),
     }
+    if authoring_root is not None:
+        stage["authoringSourceDigest"] = authoring_source_digest(authoring_root)
+        stage["authoringData"] = authoring_data
     if node_child is not None:
         bundle = work / "workbench.generated.js"
         # This is the existing N2 child; the TEI invoker, not Python, launches
@@ -136,9 +181,46 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
         stage["partContract"] = one_contract(part)
         stage["bundleContract"] = one_contract(bundle)
     if studio_desktop:
-        # The nested Studio module is its own build root; its go.mod reaches
-        # the TEI module through a relative replace, so the same child builds it.
-        studio, studio_build = go_build(".", "tei-studio", repo / STUDIO_MODULE)
+        if stage_desktop_bundle:
+            # An isolated Git worktree preserves the exact HEAD and nested
+            # go.mod relative replace, without writing to tracked workspace
+            # assets. Only the generated main.js is changed in that worktree.
+            checkout = work / "stage-desktop-source"
+            subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach",
+                            str(checkout), expected_head], capture_output=True,
+                           text=True, encoding="utf-8", check=True)
+            try:
+                checkout_head = git_head(checkout)
+                if checkout_head != expected_head:
+                    raise RuntimeError("Stage Desktop checkout revision mismatch")
+                source_bundle = checkout / COMMITTED_BUNDLE
+                committed_digest = digest_file(repo / COMMITTED_BUNDLE)
+                if digest_file(source_bundle) != committed_digest:
+                    raise RuntimeError("Stage Desktop checkout has a different committed Bundle")
+                bundle = Path(stage["bundlePath"])
+                selected = digest_file(bundle)
+                if selected == committed_digest or stage["partContract"] != stage["bundleContract"]:
+                    raise RuntimeError("Stage Desktop must receive a changed, contract-matched Bundle")
+                source_bundle.write_bytes(bundle.read_bytes())
+                if digest_file(source_bundle) != selected:
+                    raise RuntimeError("Stage Desktop staged Bundle differs from the Builder artifact")
+                changed = subprocess.run(["git", "-C", str(checkout),
+                                          "diff", "--name-only"], check=True,
+                                         capture_output=True, text=True, encoding="utf-8").stdout.splitlines()
+                if changed != [COMMITTED_BUNDLE.as_posix()]:
+                    raise RuntimeError("Stage Desktop checkout changed other tracked Sources")
+                studio, studio_build = go_build(
+                    ".", "tei-studio-desktop-webview-smoke", checkout / STUDIO_MODULE)
+                stage["desktopInputBundleDigest"] = selected
+                stage["desktopCheckoutCommit"] = checkout_head
+                stage["desktopSourceDifference"] = changed
+            finally:
+                subprocess.run(["git", "-C", str(repo), "worktree", "remove",
+                                "--force", str(checkout)], check=True,
+                               capture_output=True, text=True, encoding="utf-8")
+        else:
+            # Historical mode: both stages embed the committed asset.
+            studio, studio_build = go_build(".", "tei-studio", repo / STUDIO_MODULE)
         stage["studioDesktopBuild"] = studio_build
         stage["studioDesktopPath"] = str(studio)
     return stage
@@ -151,12 +233,11 @@ def one_contract(path: Path) -> str | None:
 
 
 def embedded_bundle(desktop: Path, bundle: bytes, part: Path) -> dict:
-    """What the Desktop executable carries, read from its bytes.
+    """Inspect the Desktop bytes and the Reader contract independently.
 
-    go:embed stores file contents verbatim, so the committed bundle must occur
-    in the executable as one contiguous byte run. The bundle is not rebuilt by
-    TEI; the check is that this Desktop embeds exactly the committed bundle and
-    that the bundle names the contract the regenerated part names.
+    The caller supplies either the committed historical Bundle or the new
+    Bundle that the TEI-driven Node child produced. The returned observation
+    makes no assertion about who selected or accepted that input.
     """
     image = desktop.read_bytes() if desktop.is_file() else b""
     part_ids = CONTRACT_DIGEST.findall(part.read_bytes()) if part.is_file() else []
@@ -173,6 +254,8 @@ def embedded_bundle(desktop: Path, bundle: bytes, part: Path) -> dict:
 def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None = None) -> dict:
     """Each judgement is separate; agreement of bytes alone is never re-entry."""
     bundle_mode = "bundleGeneration" in stage1 or "bundleGeneration" in stage2
+    generated_desktop = (desktop is not None
+                         and desktop.get("embedded", {}).get("inputMode") == "stage-generated")
     steps = ("teiBuild", "generatorBuild", "partGeneration") + (
         ("bundleGeneration",) if bundle_mode else ()) + (
         ("studioDesktopBuild",) if desktop is not None else ())
@@ -203,8 +286,20 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
         "teiArtifactsEqual": stage1_tei == stage2["teiBuild"].get("artifactDigest"),
         "partsEqual": stage1["partGeneration"].get("artifactDigest") is not None
         and stage1["partGeneration"].get("artifactDigest") == stage2["partGeneration"].get("artifactDigest"),
-        "stage2PartIsTheCommittedPart": stage2["partGeneration"].get("artifactDigest") == committed_part,
     }
+    if generated_desktop:
+        judgement.update({
+            "stage2PartChangedFromCommittedPart": stage2["partGeneration"].get("artifactDigest") is not None
+            and stage2["partGeneration"]["artifactDigest"] != committed_part,
+            "authoringSourceStableAcrossStages": bool(stage1.get("authoringSourceDigest"))
+            and stage1.get("authoringSourceDigest") == stage2.get("authoringSourceDigest")
+            and stage1.get("authoringData") == stage2.get("authoringData")
+            and stage1.get("authoringSourceDigest") == desktop.get("authoringSourceDigest")
+            and desktop.get("authoringSourceDigest") == desktop.get("authoringSourceAfterDigest"),
+        })
+    else:
+        judgement["stage2PartIsTheCommittedPart"] = (
+            stage2["partGeneration"].get("artifactDigest") == committed_part)
     if bundle_mode:
         contract1, contract2 = stage1.get("partContract"), stage2.get("partContract")
         builder1 = stage1.get("bundleBuilderSourceDigest")
@@ -229,14 +324,38 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
         })
     if desktop is not None:
         embedded = desktop.get("embedded", {})
-        judgement.update({
-            "studioDesktopsEqual": stage1["studioDesktopBuild"].get("artifactDigest") is not None
-            and stage1["studioDesktopBuild"].get("artifactDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
-            "stage2DesktopEmbedsCommittedBundle": embedded.get("embedsCommittedBundle") is True
-            and embedded.get("desktopDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
-            "committedBundleCarriesRegeneratedPart": embedded.get("regeneratedPartContract") is not None
-            and embedded.get("bundleContract") == embedded.get("regeneratedPartContract"),
-        })
+        judgement["studioDesktopsEqual"] = (
+            stage1["studioDesktopBuild"].get("artifactDigest") is not None
+            and stage1["studioDesktopBuild"].get("artifactDigest")
+            == stage2["studioDesktopBuild"].get("artifactDigest"))
+        if generated_desktop:
+            judgement.update({
+                "eachDesktopUsedItsStageGeneratedBundle": all(
+                    stage.get("desktopInputBundleDigest") is not None
+                    and stage.get("desktopInputBundleDigest")
+                    == stage.get("bundleGeneration", {}).get("artifactDigest")
+                    and stage.get("desktopSourceDifference") == [COMMITTED_BUNDLE.as_posix()]
+                    and stage.get("desktopCheckoutCommit") == embedded.get("sourceHead")
+                    for stage in (stage1, stage2)
+                ),
+                "stage2DesktopEmbedsGeneratedBundle": embedded.get("embedsCommittedBundle") is True
+                and embedded.get("desktopDigest") == stage2["studioDesktopBuild"].get("artifactDigest")
+                and embedded.get("committedBundleDigest")
+                == stage2.get("bundleGeneration", {}).get("artifactDigest"),
+                "generatedDesktopExcludesCommittedBundle":
+                embedded.get("committedBundleAbsent") is True,
+                "generatedDesktopCarriesReaderContract":
+                embedded.get("regeneratedPartContract") is not None
+                and embedded.get("bundleContract") == embedded.get("regeneratedPartContract")
+                and embedded.get("bundleContract") == stage2.get("partContract"),
+            })
+        else:
+            judgement.update({
+                "stage2DesktopEmbedsCommittedBundle": embedded.get("embedsCommittedBundle") is True
+                and embedded.get("desktopDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
+                "committedBundleCarriesRegeneratedPart": embedded.get("regeneratedPartContract") is not None
+                and embedded.get("bundleContract") == embedded.get("regeneratedPartContract"),
+            })
         if "smoke" in desktop:
             smoke = desktop["smoke"]
             judgement["stage2DesktopUsedGeneratedReaderInNewProcess"] = (
@@ -386,7 +505,72 @@ def self_test() -> None:
     assert not judge(bundle_stage("tei0"), bad_stage2, "part")["reentryObserved"]
     # One side missing the bundle step must fail closed instead of KeyError.
     assert not judge(bundle_stage("tei0"), stage("tei1"), "part")["reentryObserved"]
-    print("self-test: 24 judgements behaved as specified")
+    def changed_desktop_stage(invoker: str) -> dict:
+        built = bundle_stage(invoker)
+        built["partGeneration"] = step(invoker, "changed-part", "gen")
+        built["studioDesktopBuild"] = step(invoker, "changed-studio")
+        built["desktopInputBundleDigest"] = "bundle"
+        built["desktopSourceDifference"] = [COMMITTED_BUNDLE.as_posix()]
+        built["desktopCheckoutCommit"] = "pinned-head"
+        built["authoringSourceDigest"] = "authoring-source"
+        built["authoringData"] = "studio.inspection_response"
+        return built
+
+    def changed_desktop() -> dict:
+        actual = desktop(exe="changed-studio")
+        actual["embedded"].update({
+            "inputMode": "stage-generated",
+            "desktopDigest": "changed-studio",
+            "committedBundleDigest": "bundle",
+            "embedsCommittedBundle": True,
+            "committedBundleAbsent": True,
+            "sourceHead": "pinned-head",
+        })
+        actual["authoringSourceDigest"] = "authoring-source"
+        actual["authoringSourceAfterDigest"] = "authoring-source"
+        return actual
+
+    changed = judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                    "part", changed_desktop())
+    assert changed["reentryObserved"] and changed["stage2DesktopEmbedsGeneratedBundle"], changed
+
+    invalid = changed_desktop()
+    invalid["embedded"]["committedBundleAbsent"] = False
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["embedded"]["embedsCommittedBundle"] = False
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["authoringSourceAfterDigest"] = "source-changed"
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["embedded"]["sourceHead"] = "other-head"
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    invalid = changed_desktop()
+    invalid["embedded"]["committedBundleDigest"] = "old-bundle"
+    assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
+                     "part", invalid)["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["desktopInputBundleDigest"] = "another-bundle"
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["desktopSourceDifference"] = [COMMITTED_BUNDLE.as_posix(), "go.mod"]
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["authoringSourceDigest"] = "other-authoring"
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    bad_stage = changed_desktop_stage("tei1")
+    bad_stage["partGeneration"] = step("tei1", "part", "gen")
+    assert not judge(changed_desktop_stage("tei0"), bad_stage,
+                     "part", changed_desktop())["reentryObserved"]
+    print("self-test: 33 judgements behaved as specified")
 
 
 def main() -> int:
@@ -405,17 +589,39 @@ def main() -> int:
                         help="have both TEI invokers drive the existing Node/esbuild child "
                              "using their generated Reader (does NOT embed it in a Desktop)")
     parser.add_argument("--node", default="node", help="Node executable for the existing esbuild child")
+    parser.add_argument("--authoring-root", type=Path,
+                        help="separate tei.authoring/v1 Workspace containing the changed Data Source")
+    parser.add_argument("--authoring-data", help="canonical Data ID bound to Inspector Reader")
+    parser.add_argument("--stage-desktop-bundle", action="store_true",
+                        help="build staged Windows Desktop with the newly generated Bundle "
+                             "and verify it in a fresh WebView2 process (requires authoring Data)")
     args = parser.parse_args()
     if args.desktop_smoke:
         args.studio_desktop = True
     if args.self_test:
         self_test()
         return 0
-    if args.bundle_reader and args.studio_desktop:
-        parser.error("--bundle-reader cannot be combined with Desktop until the new Bundle is embedded")
+    if bool(args.authoring_root) != bool(args.authoring_data):
+        parser.error("--authoring-root and --authoring-data must be supplied together")
+    if args.stage_desktop_bundle:
+        if os.name != "nt":
+            parser.error("--stage-desktop-bundle requires a Windows Wails host")
+        if not args.authoring_root or not args.desktop_smoke:
+            parser.error("--stage-desktop-bundle requires changed --authoring-root, "
+                         "--authoring-data, and --desktop-smoke")
+        args.bundle_reader = True
+        args.studio_desktop = True
+    elif args.bundle_reader and args.studio_desktop:
+        parser.error("separate Bundle and Desktop modes cannot be combined without "
+                     "--stage-desktop-bundle")
+    if args.authoring_root and not args.bundle_reader:
+        parser.error("changed authoring Data requires a TEI-driven Reader Bundle")
     if not (args.repo and args.supply and args.work):
         parser.error("--repo, --supply and --work are required")
     repo, supply, work = args.repo.resolve(), args.supply.resolve(), args.work.resolve()
+    expected_head = git_head(repo)
+    authoring_root = args.authoring_root.resolve() if args.authoring_root else None
+    authoring_before = authoring_source_digest(authoring_root) if authoring_root else None
     if work.exists():
         parser.error(f"--work already exists: {work}")
     go = shutil.which(args.go)
@@ -441,17 +647,45 @@ def main() -> int:
     tei0 = seed_build("./cmd/tei", "tei")
     go_child = seed_build("./tools/reference-go-build-with-supply", "go-build-with-supply")
 
-    stage1 = run_stage(tei0, go_child, repo, supply, work / "stage1", args.studio_desktop, node_child)
+    stage1 = run_stage(
+        tei0, go_child, repo, supply, work / "stage1", args.studio_desktop,
+        node_child, authoring_root, args.authoring_data, args.stage_desktop_bundle,
+        expected_head)
     tei1 = Path(stage1["teiArtifactPath"])
     if not tei1.is_file():
         raise RuntimeError(f"stage1 did not produce a TEI binary: {stage1['teiBuild'].get('failureCause')}")
     # The Stage2 driver is the Stage1 artifact itself, at the path Stage1 wrote it.
-    stage2 = run_stage(tei1, go_child, repo, supply, work / "stage2", args.studio_desktop, node_child)
+    stage2 = run_stage(
+        tei1, go_child, repo, supply, work / "stage2", args.studio_desktop,
+        node_child, authoring_root, args.authoring_data, args.stage_desktop_bundle,
+        expected_head)
+    authoring_after = authoring_source_digest(authoring_root) if authoring_root else None
+    if authoring_before != authoring_after:
+        raise RuntimeError("authoring Source changed during the Stage1 -> Stage2 Attempt")
+    if git_head(repo) != expected_head:
+        raise RuntimeError("Git HEAD changed during the Stage1 -> Stage2 Attempt")
     desktop = None
     if args.studio_desktop:
         studio2 = Path(stage2["studioDesktopPath"])
-        desktop = {"embedded": embedded_bundle(studio2, (repo / COMMITTED_BUNDLE).read_bytes(),
-                                               Path(stage2["partPath"]))}
+        if args.stage_desktop_bundle:
+            current_part = one_contract(Path(stage2["partPath"]))
+            original_part = one_contract(repo / COMMITTED_PART)
+            if current_part is None or original_part is None or current_part == original_part:
+                raise RuntimeError("staged Desktop must have a different generated Reader contract")
+            selected_bundle = Path(stage2["bundlePath"]).read_bytes()
+            embedded = embedded_bundle(studio2, selected_bundle, Path(stage2["partPath"]))
+            embedded.update({
+                "inputMode": "stage-generated",
+                "sourceHead": expected_head,
+                "committedBundleAbsent": (repo / COMMITTED_BUNDLE).read_bytes()
+                    not in (studio2.read_bytes() if studio2.is_file() else b""),
+            })
+            desktop = {"embedded": embedded, "authoringSourceDigest": authoring_before,
+                       "authoringSourceAfterDigest": authoring_after}
+        else:
+            desktop = {"embedded": embedded_bundle(
+                studio2, (repo / COMMITTED_BUNDLE).read_bytes(),
+                Path(stage2["partPath"]))}
         if args.desktop_smoke and studio2.is_file():
             desktop["smoke"] = desktop_smoke(repo, studio2, work / "stage2-desktop-smoke")
 
@@ -459,10 +693,14 @@ def main() -> int:
     result = {
         "schemaVersion": SCHEMA,
         "sources": {
-            "repoHead": subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True).stdout.strip() or None,
+            "repoHead": expected_head,
             "generatorSourceBytes": digest_file(repo / TRANSFORM),
             "contractSourceBytes": digest_file(repo / CONTRACT),
             "committedPart": committed,
+            **({"authoringInputDigest": authoring_before,
+                 "authoringInputDigestAfter": authoring_after,
+                 "authoringData": args.authoring_data}
+               if authoring_root is not None else {}),
             **({"bundleBuilderSourceBytes": digest_file(repo / BUNDLE_CHILD)}
                if node_child is not None else {}),
         },
@@ -470,7 +708,7 @@ def main() -> int:
             "nature": "external Go seed; not a driven process",
             "goExecutable": go,
             "goExecutableDigest": digest_file(Path(go)),
-            "goVersion": subprocess.run([go, "version"], capture_output=True, text=True).stdout.strip(),
+            "goVersion": subprocess.run([go, "version"], capture_output=True, text=True, encoding="utf-8").stdout.strip(),
             "teiDigest": digest_file(tei0),
             "goBuildChildDigest": digest_file(go_child),
             **({"nodeExecutableDigest": digest_file(node_child)} if node_child is not None else {}),
@@ -480,8 +718,11 @@ def main() -> int:
         "stage2Desktop": desktop,
         "judgement": judge(stage1, stage2, committed, desktop),
         "claimBoundary": "one host, one toolchain, one supply; the Go build child is the Stage0 seed's in both stages; "
-                         + ("Node/esbuild is driven by each TEI invoker with its generated Reader, but this new bundle is NOT embedded in a Stage2 Desktop; "
-                            if node_child is not None else "the Node/esbuild bundle is the committed one, not rebuilt by TEI; ")
+                         + ("each TEI stage drove Node/esbuild and built a Wails Desktop from its generated Bundle in an isolated same-HEAD worktree; Studio Editor writing, Owner acceptance and formal Build Intent are NOT claimed; "
+                            if args.stage_desktop_bundle else
+                            "Node/esbuild is driven by each TEI invoker with its generated Reader, but this new bundle is NOT embedded in a Stage2 Desktop; "
+                            if node_child is not None else
+                            "the Node/esbuild bundle is the committed one, not rebuilt by TEI; ")
                          + "no Seed Trust, acceptance or Runtime Authority is claimed",
     }
     json.dump(result, sys.stdout, indent=2)
