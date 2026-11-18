@@ -6,9 +6,9 @@ import (
 	"tei/internal/core"
 	"tei/internal/driver"
 	"tei/internal/driver/validationread"
+	"tei/internal/realization"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationeval"
-	"tei/internal/realization"
 )
 
 // webRelationCoverageProof is minted only by the PostgreSQL executor while the
