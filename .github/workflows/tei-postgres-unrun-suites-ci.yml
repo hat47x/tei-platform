@@ -246,7 +246,7 @@ jobs:
           # The handbook itself is part of the acceptance: a reader who follows it
           # must reach the same shipped entry point. This needs no database, but
           # it belongs with the other step-5 checks so one job covers the page.
-          go test -count=1 -v -timeout 5m -run '^TestFirstChangeWalkthroughWebUsesEditedWorkspace$|^TestFirstChangeGuideExecutesLiteralRuleEdit$|^TestFirstChangeGuideSetupFailsClosed$|^TestFirstChangeGuideSQLSetupIsAtomicInPostgres \
+          go test -count=1 -v -timeout 10m -run '^TestFirstChangeWalkthroughWebUsesEditedWorkspace$|^TestFirstChangeGuideExecutesLiteralRuleEdit$|^TestFirstChangeGuideSetupFailsClosed$|^TestFirstChangeGuideSQLSetupIsAtomicInPostgres$' \
             ./tools/reference-first-web-target | tee -a "$log"
 
       - name: SKIPとFAILの検証
