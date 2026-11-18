@@ -230,7 +230,7 @@ jobs:
           # Road item 2's remaining half: the page a browser opens must carry
           # the same answers from the same database. Kept separate so its PASS
           # line is required by name below.
-          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$|^TestFirstWebAcceptsARuleChangeEndToEnd$' \
+          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$|^TestFirstWebAcceptsARuleChangeEndToEnd$|^TestFirstWebRuleChangeReachesActualChromeDOM$' \
             ./tools/reference-first-web-target | tee -a "$log"
           # Refusal paths must be tested even without a database fixture.
           go test -count=1 -v -timeout 10m -run '^TestServeReadFromDB' \
@@ -289,6 +289,9 @@ jobs:
             'TestFirstWebAcceptsARuleChangeEndToEnd'
             'TestFirstWebAcceptsARuleChangeEndToEnd/before'
             'TestFirstWebAcceptsARuleChangeEndToEnd/after'
+            'TestFirstWebRuleChangeReachesActualChromeDOM'
+            'TestFirstWebRuleChangeReachesActualChromeDOM/before'
+            'TestFirstWebRuleChangeReachesActualChromeDOM/after'
             'TestServeReadFromDBRefusesAHostSuppliedDatabase'
             'TestServeReadFromDBRequiresTheEnvironmentDSN'
             'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
@@ -296,11 +299,13 @@ jobs:
           for name in "${required[@]}"; do
             grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
           done
-          # Before/after x three orders. Chrome must actually receive the DOM;
+          # Before/after x three orders from the CLI page, plus before/after
+          # from the first Web Target's rule-change test. Chrome must actually
+          # receive each DOM;
           # simply installing a browser or skipping the optional test is not PASS.
           browser_count="$(grep -Fc 'actual Chrome DOM verified for order' "$log" || true)"
-          test "$browser_count" -eq 6 || {
-            echo "Chrome DOM receipts: $browser_count; expected six" >&2
+          test "$browser_count" -eq 8 || {
+            echo "Chrome DOM receipts: $browser_count; expected eight" >&2
             exit 1
           }
           # The first Web Target must reach Chrome through HTTP; the CLI's
