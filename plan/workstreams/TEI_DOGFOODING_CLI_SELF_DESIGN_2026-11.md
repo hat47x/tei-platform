@@ -3846,3 +3846,41 @@ solutions   -> releases/solutions/<solution>/<ver>.tei
 ### 位置付け
 
 **「起票の主張を、再現手順の誤りまで含めて測った」回**である。
+
+## 105. 第104ラウンド（2026-11-18）: `model search` の受入条件6件を実測し、#5228 を閉じる
+
+`#4178`（第101）・`#4169`（第102）・`#4128`（第103）と同じ方法を、**最後に残った起票** [#5228](https://github.com/hat47x/tei-platform/issues/5228) に適用した。生出力は[第104ラウンドの記録](../evidence/TEI_DOGFOODING_ROUND104_ISSUE5228_CRITERIA_2026-11-18/README.md)にある。
+
+### 本文の主張は既に成立しない
+
+```text
+$ tei commands -> 30コマンド
+  search/locate-like: ['model locate', 'model search']
+```
+
+本文の「検索を表すものが1つも無い」は**現在の挙動ではない**（`0402bc2f4` 以降）。
+
+### 受入条件6件を1件ずつ測った
+
+| # | 条件 | 実測 |
+| --- | --- | --- |
+| 1 | `tei commands` に載り、広告flag＝受理flag | **PASS** |
+| 2 | `artifactPath` と `line` を返し、行が実際に語を含む | **PASS**（実例つき） |
+| 3 | 一致0件が終了コード0 | **PASS**（`exit=0`） |
+| 4 | `-kind` が結果を絞る | **PASS**（全体→11件、`kindCounts` 1種） |
+| 5 | `snapshotFingerprint` が他3コマンドと同じ値 | **PASS**（search=overview=locate=inspect） |
+| 6 | 既存 catalog 走査の再利用 | **コードの性質。CLI から観測できず NOT RUN** |
+
+### 本文の例は「見つからない」が、その理由は応答が言う
+
+`sales_core.order_legacy` は **`releases/` にしか無い**ので `total: 0`。**欠陥ではない** — `coverage.notSearchableKinds` が7種を、`coverage.notDerived` が4件を列挙している（`#5485` の `661a5da90`）。
+
+**私は最初、トップレベルの `note` を探して「説明が無い」と誤読した。実際は `coverage` の下にあった。** 同じ見落としを第103ラウンドでもしている（`sectionScope`）。
+
+### 気づいた非同値（起票しない）
+
+`snapshotFingerprint` を持つのは search・overview・locate・inspect の4つで、**`model catalog` だけ持たない**。計算は可能だが、catalog は既に `worldFingerprint` と `sourceIndexFingerprint` を**両方**返しており、呼び出し側が同じ値を作れる。**「他のコマンドと同じ欄が無い」こと自体は欠陥ではない**ので起票しない。
+
+### 位置付け
+
+**「起票の本文を信じて未解決扱いを続けるのを、4回連続でやめた」回**である。`#4178`・`#4169`・`#4128`・`#5228` はいずれも**本文が古く、実測すると状態が違った**。

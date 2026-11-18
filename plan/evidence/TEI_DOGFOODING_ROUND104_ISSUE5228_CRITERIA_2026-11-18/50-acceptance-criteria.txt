@@ -1,0 +1,20 @@
+Measured on main c64070d4f, CLI sha256:f2c9080c...
+
+  [1] tei commands has `model search`, schemaVersion tei.cli.model-search/v0,
+      -h lists -kind/-limit/-offset/-term/-workspace  -> PASS
+  [2] hit:
+        {"subject":{"kind":"application","id":"order_entry"},
+         "artifactPath":"applications/order-entry/application.tei",
+         "line":10,"text":"        target sales_core"}
+      the line really contains the term            -> PASS
+  [3] no match: exit=0, ok:true, total:0            -> PASS
+  [4] -kind semantic-data: total 11, one kind only  -> PASS
+  [5] snapshotFingerprint:
+        search    sha256:a424b52a...
+        overview  sha256:a424b52a...
+        locate    sha256:a424b52a...
+        inspect   sha256:a424b52a...                -> PASS
+        catalog   (no such field)
+
+  [6] reuses the catalog traversal -- a property of the code, not observable
+      from the CLI. NOT RUN.
