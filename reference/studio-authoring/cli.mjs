@@ -31,7 +31,7 @@ const usage = [
   "  node reference/studio-authoring/cli.mjs inspect -workspace DIR -focus relation:ID|step:ID [-business-dfd FILE]",
   "  node reference/studio-authoring/cli.mjs propose -workspace DIR -edit-file FILE",
   "  node reference/studio-authoring/cli.mjs review-edit -workspace DIR -edit-file FILE",
-  "  node reference/studio-authoring/cli.mjs edit-form -workspace DIR -focus data:ID|attribute:ID",
+  "  node reference/studio-authoring/cli.mjs edit-form -workspace DIR -focus data:ID|attribute:ID [-edit-mode required]",
   "  alternatively: -world-file FILE -revision-file FILE [-source-index-file FILE] (read-only artifacts)",
   "  inspect accepts -typed-scope OBSERVATION_SCOPE with -workspace to bind read-only Go #1120 trace",
   "  inspect -workspace DIR -focus kind:ID -business-procedure FILE -business-review FILE -business-set FILE",
@@ -43,7 +43,7 @@ function flags(argv) {
   const result = {};
   for (let i = 0; i < argv.length; i += 2) {
     if (!argv[i].startsWith("-") || !argv[i + 1] || ![
-      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd", "-source-index-file", "-format", "-typed-scope",
+      "-workspace", "-world-file", "-revision-file", "-focus", "-edit-file", "-business-dfd", "-source-index-file", "-format", "-edit-mode", "-typed-scope",
       "-business-procedure", "-business-review", "-business-set"
     ].includes(argv[i]) || Object.hasOwn(result, argv[i])) {
       throw new Error("INVALID_FLAG: " + (argv[i] || ""));
@@ -127,6 +127,7 @@ function main(argv) {
         fromFiles || !opt["-workspace"] || opt["-business-dfd"])) ||
       (opt["-typed-scope"] && (command !== "inspect" || fromFiles ||
         opt["-focus"]?.startsWith("step:"))) ||
+      (opt["-edit-mode"] && (command !== "edit-form" || opt["-edit-mode"] !== "required")) ||
       !!opt["-workspace"] === fromFiles ||
       (!!opt["-workspace"] && (opt["-world-file"] || opt["-revision-file"] ||
         opt["-source-index-file"])) ||
@@ -145,7 +146,7 @@ function main(argv) {
           ? jsonFile(opt["-source-index-file"]) : undefined }
     : fromWorkspace(opt["-workspace"], command === "inspect");
   if (command === "edit-form")
-    return renderStudioEditHTML(world, revision, opt["-focus"]);
+    return renderStudioEditHTML(world, revision, opt["-focus"], opt["-edit-mode"] || "default");
   if (command === "inspect") {
     const focus = opt["-focus"];
     const business = hasProducer ? produceBusinessDFD({
