@@ -79,3 +79,28 @@ func TestFirstChangeWalkthroughUsesTheLocallyBuiltCLI(t *testing.T) {
 		t.Fatal("the DDL step relies on the current directory being on PATH")
 	}
 }
+
+// The browser form requires all four inputs. The Go-driven Chrome acceptance
+// submits them programmatically, so it cannot reveal a missing human step.
+func TestFirstChangeGuideExplainsRequiredFormInputs(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, ok := strings.Cut(string(raw), "## 5. Webの画面で同じ答えを見る")
+	if !ok {
+		t.Fatal("the browser step is absent")
+	}
+	step5, _, _ := strings.Cut(after, "## まだできないこと")
+	for _, required := range []string{
+		"`Login ID` に`legacy-order-editor`",
+		"`Credential` に`editor-secret`",
+		"`Browse from` に`2026-09-01T00:00:00Z`",
+		"`Selected row` に`0`",
+		"参照実装のテスト専用",
+	} {
+		if !strings.Contains(step5, required) {
+			t.Errorf("the guide does not explain the required reference form input %q", required)
+		}
+	}
+}
