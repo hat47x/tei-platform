@@ -49,15 +49,16 @@ type report struct {
 	TransformSourceFingerprint string `json:"transformSourceFingerprint"`
 	TransformID                string `json:"transformId"`
 	TransformVersion           string `json:"transformVersion"`
-	// ContractBytesDigest is what was read; ContractCanonicalDigest is the
-	// value the generated part carries as its own provenance.
-	ContractBytesDigest     string         `json:"contractBytesDigest"`
-	ContractCanonicalDigest string         `json:"contractCanonicalDigest"`
-	Engine                  engineIdentity `json:"engine"`
-	Steps                   int            `json:"steps"`
-	StateDir                string         `json:"stateDir,omitempty"`
-	ClaimBoundary           string         `json:"claimBoundary"`
-	Authoring                *authoringBinding `json:"authoring,omitempty"`
+	// ContractBytesDigest identifies the effective input to the generator.
+	// If authoring Data is bound, Authoring.InputContractDigest separately
+	// identifies the on-disk contract template that was read.
+	ContractBytesDigest     string           `json:"contractBytesDigest"`
+	ContractCanonicalDigest string           `json:"contractCanonicalDigest"`
+	Engine                  engineIdentity   `json:"engine"`
+	Steps                   int              `json:"steps"`
+	StateDir                string           `json:"stateDir,omitempty"`
+	ClaimBoundary           string           `json:"claimBoundary"`
+	Authoring               *authoringBinding `json:"authoring,omitempty"`
 }
 
 func digest(raw []byte) string {
