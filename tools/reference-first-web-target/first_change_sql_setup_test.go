@@ -182,6 +182,12 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Step 0 now inserts parents first. Execute the same two seed files as
+	// the published handbook instead of testing a former one-file variant.
+	parentSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed-orders.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	clearTables := func() {
 		t.Helper()
 		for _, table := range []string{"public.order_lines", "public.orders"} {
@@ -227,6 +233,9 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(seedDir, "seed.sql"), seed, 0o644); err != nil {
 				t.Fatal(err)
 			}
+			if err := os.WriteFile(filepath.Join(seedDir, "seed-orders.sql"), parentSeed, 0o644); err != nil {
+				t.Fatal(err)
+			}
 
 			command := exec.Command("sh", "-eu", "-c", script)
 			command.Dir = root
@@ -236,18 +245,30 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if failed := runErr != nil; failed != tc.wantFailed {
 				t.Fatalf("step-0 shell failed=%v, want failure=%v", failed, tc.wantFailed)
 			}
-			var exists bool
+			var exists, parentExists bool
 			if err := db.QueryRowContext(t.Context(),
 				"SELECT to_regclass('public.order_lines') IS NOT NULL").Scan(&exists); err != nil {
 				t.Fatal("cannot inspect the isolated detail table")
 			}
+			if err := db.QueryRowContext(t.Context(),
+				"SELECT to_regclass('public.orders') IS NOT NULL").Scan(&parentExists); err != nil {
+				t.Fatal("cannot inspect the isolated parent table")
+			}
 			if tc.wantFailed {
-				if exists {
-					t.Fatal("the guide left a table behind after a failed seed transaction")
+				if exists || parentExists {
+					t.Fatal("a generated table survived the failed parent/detail seed transaction")
 				}
 			} else {
-				if !exists {
-					t.Fatal("the guide did not commit the generated detail table")
+				if !exists || !parentExists {
+					t.Fatal("the guide did not commit both generated tables")
+				}
+				var parents int
+				if err := db.QueryRowContext(t.Context(),
+					"SELECT count(*) FROM public.orders").Scan(&parents); err != nil {
+					t.Fatal("cannot inspect the committed parent rows")
+				}
+				if parents != 3 {
+					t.Fatalf("the guide committed %d parent orders, want three", parents)
 				}
 				var count int
 				if err := db.QueryRowContext(t.Context(),
