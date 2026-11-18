@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
@@ -15,6 +15,16 @@ if (process.argv.length !== 5)
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const [before, after, receiptPath] = process.argv.slice(2).map(p => resolve(p));
+// Never allow a test-only automated Accept to be pointed at a product
+// checkout or baseline. Both workspaces and the receipt live under one
+// designated scratch root (the CI runner temp or the process temp).
+const scratchRoots = [process.env.RUNNER_TEMP, tmpdir()].filter(Boolean).map(root => resolve(root));
+function inside(root, value) {
+  const rel = relative(root, value);
+  return !!rel && rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel);
+}
+if (!scratchRoots.some(root => [before, after, receiptPath].every(path => inside(root, path))))
+  throw new Error("STAGE_REQUIRED_ACCEPT_REQUIRES_ONE_SCRATCH_ROOT");
 const sourceRel = "semantic/studio/inspection-response.tei.md";
 const attributeID = "studio.inspection_response.snapshot_fingerprint";
 const dataID = "studio.inspection_response";
