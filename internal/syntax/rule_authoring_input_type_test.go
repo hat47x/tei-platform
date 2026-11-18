@@ -54,7 +54,7 @@ func TestRuleAuthoringRefusesAValueOfTheWrongType(t *testing.T) {
 			// not a later failure to transport an otherwise valid assignment.
 			cleanSource := strings.ReplaceAll(src, "string\n", "")
 			valueStart := strings.LastIndex(cleanSource, tc.value)
-			if valueStart < 0 || issues[0].Span.Start != valueStart || issues[0].Span.End != valueStart+len(tc.value) {
+			if valueStart < 0 || issues[0].Span.Start.Offset != valueStart || issues[0].Span.End.Offset != valueStart+len(tc.value) {
 				t.Fatalf("diagnostic span=%+v, want value %q at byte %d", issues[0].Span, tc.value, valueStart)
 			}
 		})
