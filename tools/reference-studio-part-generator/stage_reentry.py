@@ -18,6 +18,12 @@ With --bundle-reader each stage drives the existing Node/esbuild child through
 its TEI invoker, consuming that stage's just-generated Reader Part and recording
 a separate JS Bundle artifact. It does not feed this new bundle to Wails yet.
 
+With --stage-desktop-bundle, a separate worktree at the exact same Git HEAD
+receives the new Bundle as the sole tracked Source difference for each Stage.
+That staged checkout, not the original repository, supplies Wails go:embed.
+Both desktop binaries must contain the new byte sequence and reject the
+committed Bundle. This mode also requires changed tei.authoring/v1 Data.
+
 With --studio-desktop each stage also drives a Go build of the Studio Wails
 Desktop (the nested module cmd/tei-studio) with the same child:
 
@@ -35,8 +41,9 @@ Two launches of `go build` by this script would not satisfy any of these.
 
 It claims no Seed Trust, acceptance or Runtime Authority. In the default
 Desktop mode the Node/esbuild bundle remains the committed one. The separate
---bundle-reader mode makes a real new Bundle, but does not build a Desktop
-containing it: these qualifications must not be added together.
+--bundle-reader mode makes a real new Bundle; only the explicit
+--stage-desktop-bundle mode also builds a Desktop containing it. The
+editor/source-write/meaning acceptance and formal Build Intent remain separate.
 """
 from __future__ import annotations
 
@@ -71,6 +78,35 @@ def digest_file(path: Path) -> str:
     return digest_bytes(path.read_bytes())
 
 
+def authoring_source_digest(root: Path) -> str:
+    """Fingerprint paths and exact bytes, not just the selected Data's text."""
+    if not root.is_dir() or not (root / "tei.workspace.yaml").is_file():
+        raise RuntimeError("authoring Workspace with tei.workspace.yaml is required")
+    digest = hashlib.sha256()
+    found = 0
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise RuntimeError("authoring Workspace symlinks are not accepted")
+        if not path.is_file():
+            continue
+        found += 1
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(str(path.stat().st_size).encode("ascii"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\n")
+    if found < 2:
+        raise RuntimeError("authoring Workspace has no model Source")
+    return "sha256:" + digest.hexdigest()
+
+
+def git_head(root: Path) -> str:
+    result = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                            capture_output=True, text=True, check=True)
+    return result.stdout.strip()
+
+
 def drive(tei: Path, child: Path, child_args: list[str], artifact: Path) -> dict:
     """Start one TEI process and return what it recorded about its child."""
     completed = subprocess.run(
@@ -93,7 +129,9 @@ def drive(tei: Path, child: Path, child_args: list[str], artifact: Path) -> dict
 
 
 def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
-              studio_desktop: bool = False, node_child: Path | None = None) -> dict:
+              studio_desktop: bool = False, node_child: Path | None = None,
+              authoring_root: Path | None = None, authoring_data: str | None = None,
+              stage_desktop_bundle: bool = False, expected_head: str | None = None) -> dict:
     work.mkdir(parents=True)
 
     def go_build(package: str, name: str, module: Path = repo) -> tuple[Path, dict]:
@@ -106,10 +144,14 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
     tei_out, tei_build = go_build("./cmd/tei", "tei")
     generator, generator_build = go_build("./tools/reference-studio-part-generator", "generator")
     part = work / "inspection-reader.generated.ts"
+    authoring_args = (["-authoring-root", str(authoring_root),
+                       "-authoring-data", str(authoring_data)]
+                      if authoring_root is not None else [])
     generation = (
         drive(tei, generator, [
             "-transform", str(repo / TRANSFORM), "-contract", str(repo / CONTRACT),
             "-artifact-out", str(part), "-state", str(work / "part-state"),
+            *authoring_args,
         ], part)
         if generator.is_file() else {"failureCause": "the generator was not built"}
     )
@@ -122,6 +164,9 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
         "teiArtifactPath": str(tei_out),
         "partPath": str(part),
     }
+    if authoring_root is not None:
+        stage["authoringSourceDigest"] = authoring_source_digest(authoring_root)
+        stage["authoringData"] = authoring_data
     if node_child is not None:
         bundle = work / "workbench.generated.js"
         # This is the existing N2 child; the TEI invoker, not Python, launches
@@ -136,9 +181,46 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
         stage["partContract"] = one_contract(part)
         stage["bundleContract"] = one_contract(bundle)
     if studio_desktop:
-        # The nested Studio module is its own build root; its go.mod reaches
-        # the TEI module through a relative replace, so the same child builds it.
-        studio, studio_build = go_build(".", "tei-studio", repo / STUDIO_MODULE)
+        if stage_desktop_bundle:
+            # An isolated Git worktree preserves the exact HEAD and nested
+            # go.mod relative replace, without writing to tracked workspace
+            # assets. Only the generated main.js is changed in that worktree.
+            checkout = work / "stage-desktop-source"
+            subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach",
+                            str(checkout), expected_head], capture_output=True,
+                           text=True, check=True)
+            try:
+                checkout_head = git_head(checkout)
+                if checkout_head != expected_head:
+                    raise RuntimeError("Stage Desktop checkout revision mismatch")
+                source_bundle = checkout / COMMITTED_BUNDLE
+                committed_digest = digest_file(repo / COMMITTED_BUNDLE)
+                if digest_file(source_bundle) != committed_digest:
+                    raise RuntimeError("Stage Desktop checkout has a different committed Bundle")
+                bundle = Path(stage["bundlePath"])
+                selected = digest_file(bundle)
+                if selected == committed_digest or stage["partContract"] != stage["bundleContract"]:
+                    raise RuntimeError("Stage Desktop must receive a changed, contract-matched Bundle")
+                source_bundle.write_bytes(bundle.read_bytes())
+                if digest_file(source_bundle) != selected:
+                    raise RuntimeError("Stage Desktop staged Bundle differs from the Builder artifact")
+                changed = subprocess.run(["git", "-C", str(checkout),
+                                          "diff", "--name-only"], check=True,
+                                         capture_output=True, text=True).stdout.splitlines()
+                if changed != [COMMITTED_BUNDLE.as_posix()]:
+                    raise RuntimeError("Stage Desktop checkout changed other tracked Sources")
+                studio, studio_build = go_build(
+                    ".", "tei-studio-desktop-webview-smoke", checkout / STUDIO_MODULE)
+                stage["desktopInputBundleDigest"] = selected
+                stage["desktopCheckoutCommit"] = checkout_head
+                stage["desktopSourceDifference"] = changed
+            finally:
+                subprocess.run(["git", "-C", str(repo), "worktree", "remove",
+                                "--force", str(checkout)], check=True,
+                               capture_output=True, text=True)
+        else:
+            # Historical mode: both stages embed the committed asset.
+            studio, studio_build = go_build(".", "tei-studio", repo / STUDIO_MODULE)
         stage["studioDesktopBuild"] = studio_build
         stage["studioDesktopPath"] = str(studio)
     return stage
