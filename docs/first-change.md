@@ -94,7 +94,7 @@ rule sales.order_line.unit_price_positive:
 ./tei validate -workspace /tmp/my-workspace
 ```
 
-`ok`で終わる。参照用の作業領域が元から持つ警告が一件出るが、この変更とは関係がない。例の表の`not-satisfied`を`satisfied`へ書き換えてもう一度実行すると、`RULE_EXAMPLE_MISMATCH`で止まる。例と規則が食い違っていることを、文書の段階で見つけている。
+`ok`で終わる。参照用の作業領域が元から持つ警告が**四件**出るが、この変更とは関係がない（`APPLICATION_RELEASE_CONTRACT_NOT_CURRENT` 一件、`DATABASE_RELEASE_CONTRACT_NOT_CURRENT` 二件、`HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED` 一件）。例の表の`not-satisfied`を`satisfied`へ書き換えてもう一度実行すると、`RULE_EXAMPLE_MISMATCH`で止まる。例と規則が食い違っていることを、文書の段階で見つけている。
 
 手順2と同じコマンドをもう一度打つ。同じ行に対して、単価が0の明細（`key` 3）に`sales.order_line.unit_price_positive: not-satisfied`が増えている。データベースもプログラムも変えていない。
 
@@ -136,6 +136,10 @@ go run ./tools/reference-first-web-target \
 ## まだできないこと
 
 - 異なる属性集合を持つ**さらに別の**業務モデル。**列構成・主キー・Query入力が異なるモデルは通った**（`testdata/destination-order-change/alternate-model/`・`cmd/tei/destination_order_alternate_pg_case_test.go`・#5362）。
-- 明細番号の一意を「成立」と答えること。束縛への全件の宣言が要る。
+- 明細番号の一意を「成立」と答えること。束縛へ `covers sales.order.lines` と書けば
+  `tei validate` の警告は消え、`tei view` の `declaration` にもその宣言が出る。しかし
+  **答えは `undecided` のまま**である（理由は `relation-partially-read`）。宣言は
+  Query が何を返すかの記述であって、全行が届いた証明ではない。全行が揃ったと確かめた
+  場合にだけ「成立」と答える仕組み（資格の照合）は、まだ無い。
 
 
