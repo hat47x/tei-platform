@@ -56,7 +56,9 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 	// generator from being hidden by the final process of a shell pipeline.
 	separateSeed := strings.Contains(setup, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -f testdata/destination-order-change/seed.sql`)
 	atomicSeed := strings.Contains(setup, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -1`) &&
-		strings.Contains(setup, `-f "$schema_sql" -f testdata/destination-order-change/seed.sql`)
+		strings.Contains(setup, `-f "$schema_sql"`) &&
+		strings.Contains(setup, `-f testdata/destination-order-change/seed-orders.sql`) &&
+		strings.Contains(setup, `-f testdata/destination-order-change/seed.sql`)
 	if !separateSeed && !atomicSeed {
 		t.Fatal("step 0 can continue after a seed SQL failure instead of refusing the walkthrough")
 	}
