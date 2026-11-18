@@ -51,6 +51,64 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 	if err := requireIsolatedWebReadDatabase(t.Context(), db, readPostgresDatabase+"_unexpected"); err == nil {
 		t.Fatal("a different database name passed the isolation guard")
 	}
+
+	t.Run("the Contract Query transaction is read-only and repeatable-read", func(t *testing.T) {
+		// Use a disposable table unrelated to the order fixture. Reading its
+		// row count establishes the snapshot; a different connection then
+		// commits a second row. The selected Query's transaction must not see
+		// that later write and must refuse attempts to write itself.
+		const table = "public.tei_web_read_snapshot_probe"
+		var preexisting bool
+		if err := db.QueryRowContext(t.Context(),
+			"SELECT to_regclass($1) IS NOT NULL", table).Scan(&preexisting); err != nil || preexisting {
+			t.Fatal("snapshot probe table already exists or could not be checked")
+		}
+		if _, err := db.ExecContext(t.Context(),
+			"CREATE TABLE "+table+" (id bigint PRIMARY KEY)"); err != nil {
+			t.Fatal("cannot create isolated snapshot probe")
+		}
+		t.Cleanup(func() {
+			if _, err := db.Exec("DROP TABLE IF EXISTS " + table); err != nil {
+				t.Error("cannot clean isolated snapshot probe")
+			}
+		})
+		if _, err := db.ExecContext(t.Context(), "INSERT INTO "+table+" VALUES (1)"); err != nil {
+			t.Fatal("cannot seed isolated snapshot probe")
+		}
+
+		tx, err := beginWebReadOnlyQueryTx(t.Context(), db)
+		if err != nil {
+			t.Fatal("cannot begin PostgreSQL web-query transaction")
+		}
+		defer func() { _ = tx.Rollback() }()
+		var isolation, readOnly string
+		var initial int
+		if err := tx.QueryRowContext(t.Context(),
+			"SELECT current_setting('transaction_isolation'), current_setting('transaction_read_only'), (SELECT count(*) FROM "+table+")").
+			Scan(&isolation, &readOnly, &initial); err != nil {
+			t.Fatal("cannot inspect the actual web-query transaction")
+		}
+		if isolation != "repeatable read" || readOnly != "on" || initial != 1 {
+			t.Fatalf("web-query transaction is not a stable read-only snapshot: isolation=%q readOnly=%q count=%d",
+				isolation, readOnly, initial)
+		}
+		if _, err := db.ExecContext(t.Context(), "INSERT INTO "+table+" VALUES (2)"); err != nil {
+			t.Fatal("cannot commit independent snapshot probe write")
+		}
+		var after, outside int
+		if err := tx.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&after); err != nil {
+			t.Fatal("cannot reread inside web-query snapshot")
+		}
+		if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&outside); err != nil {
+			t.Fatal("cannot read from an independent connection")
+		}
+		if after != 1 || outside != 2 {
+			t.Fatalf("different snapshots were conflated: query=%d independent=%d", after, outside)
+		}
+		if _, err := tx.ExecContext(t.Context(), "INSERT INTO "+table+" VALUES (3)"); err == nil {
+			t.Fatal("the web-query transaction accepted a write")
+		}
+	})
 	if err := seedReadFixture(t, db); err != nil {
 		t.Fatal(err)
 	}
