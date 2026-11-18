@@ -195,12 +195,13 @@ jobs:
             "$RUNNER_TEMP/tei-studio-playwright" "$shots"
           test -s "$shots/er.png"
           test -s "$shots/table.png"
+          test -s "$shots/required.png"
           jq -e --arg sha "$GITHUB_SHA" '
             .schema == "tei.reference.studio-real-browser-receipt/v0"
             and .head == $sha
             and .browser == "real-chrome-headless"
             and .sourceRevisionAfter == .revision
-            and (.cases | length == 2)
+            and ([.cases[].name] | sort == ["er", "required", "table"])
             and ([.cases[] | .revisionBound == true
               and .realChromeDOMEvent == true
               and .cspScriptExecuted == true
@@ -211,6 +212,42 @@ jobs:
             and .authority.humanAcceptance == "not-observed"
             and .authority.acceptedBusiness == "not-established"
           ' "$shots/real-browser-receipt.json" >/dev/null
+
+      - name: 実ChromeのData編集から共通Review・明示Accept・実Inspect再読込までを一試行で検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          shots="$RUNNER_TEMP/tei-studio-real-browser"
+          receipt="$RUNNER_TEMP/tei-studio-required-source-loop.json"
+          node reference/studio-authoring/required-source-loop.mjs \
+            "$RUNNER_TEMP/tei-studio-playwright" "$shots" > "$receipt"
+          test -s "$shots/required-source-before.png"
+          test -s "$shots/required-source-after.png"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.studio-required-source-loop/v0"
+            and .head == $sha
+            and .browser == "real-chrome-headless"
+            and .subject == "studio.inspection_response"
+            and .attributeID == "studio.inspection_response.snapshot_fingerprint"
+            and .beforeRequired == false
+            and .afterRequired == true
+            and .beforeRevision != .afterRevision
+            and .sourceBefore != .sourceAfter
+            and .chromeSubmitted == true
+            and .reviewWithoutSourceWrite == true
+            and .unreviewedAcceptRejected == true
+            and .wrongFingerprintRejected == true
+            and .acceptedViaSharedCLI == true
+            and .exactSourceCellOnly == true
+            and .inspectorBeforeAndAfter == true
+            and .reopenedEditorShowsNewState == true
+            and .staleCandidateRejected == true
+            and .offlineNetworkRequests == 0
+            and .authority.humanAcceptance == "not-observed"
+            and .authority.ownerMeaningAcceptance == "not-established"
+            and .authority.productWailsEditor == "not-observed"
+            and .authority.testHarnessAccept == "automated"
+          ' "$receipt" >/dev/null
 
       - name: 実Chromeのオフライン編集画面証跡を添付
         if: success()
