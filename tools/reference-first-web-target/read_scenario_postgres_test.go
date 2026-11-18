@@ -129,6 +129,38 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 	if !foundDuplicate {
 		t.Fatal("no relation-wide line_number_unique answer for the database read")
 	}
+
+	t.Run("a covers declaration does not prove full Web relation coverage", func(t *testing.T) {
+		// Browse row 1 names order 1002 in the independently seeded orders:
+		// it has two distinct line_numbers. The Workspace declares covers, so
+		// CLI can qualify complete in the ordinary unfiltered PostgreSQL case.
+		// The first Web runner currently has no same-attempt physical coverage
+		// qualification, and must not borrow the CLI's positive answer.
+		second, err := runner.Run(t.Context(), readScenarioInput{
+			From: "2026-09-01T00:00:00Z", RowIndex: 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(second.OrderLineRows) != 2 {
+			t.Fatalf("order 1002 returned %d detail rows, want 2", len(second.OrderLineRows))
+		}
+		const rule = "sales.order.lines.line_number_unique"
+		found := false
+		for _, answer := range second.RelationAnswers {
+			if !strings.HasPrefix(answer, rule+" ") {
+				continue
+			}
+			found = true
+			if !strings.Contains(answer, " undecided (") ||
+				!strings.Contains(answer, "relation-partially-read") {
+				t.Fatalf("Web read used unqualified relation coverage: %q", answer)
+			}
+		}
+		if !found {
+			t.Fatal("the Web read omitted the relation-wide uniqueness answer")
+		}
+	})
 }
 
 // requireIsolatedWebReadDatabase checks the ACTUAL PostgreSQL database, not
