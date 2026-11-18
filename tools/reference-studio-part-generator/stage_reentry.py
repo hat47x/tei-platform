@@ -678,7 +678,7 @@ def self_test() -> None:
                 {"symbol": "snapshotFingerprint", "required": False}]})
         assert not judge(changed_desktop_stage("tei0"), changed_desktop_stage("tei1"),
                          "part", invalid)["reentryObserved"], name
-    print("self-test: 41 judgements behaved as specified")
+    print("self-test: 43 judgements behaved as specified")
 
 
 def main() -> int:
