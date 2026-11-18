@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -122,6 +123,52 @@ func TestStudioRequiredCandidatePreviewAcceptAndRealReload(t *testing.T) {
 	stale, err := evaluate(root, raw)
 	if err != nil || stale.preview.Acceptable || !hasCode(diagnosticCodes(stale.preview), "STALE_BASE_MODEL_REVISION") {
 		t.Fatalf("previous Studio draft was accepted after Source moved: err=%v diag=%v", err, diagnosticCodes(stale.preview))
+	}
+}
+
+// This is the actual public Reference command boundary. A UI may create a
+// candidate, but it may not silently skip the human Review fingerprint.
+func TestStudioRequiredCandidateUsesExistingReviewAndAcceptCLI(t *testing.T) {
+	root, _ := requiredAuthoringWorkspace(t)
+	yes := true
+	raw := mustJSON(t, requiredCandidate(revisionOfDir(t, root), &yes))
+	candidatePath := filepath.Join(t.TempDir(), "reviewable-change.json")
+	if err := os.WriteFile(candidatePath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	baseline := treeDigest(t, root)
+	reviewFingerprint := reviewFingerprintViaCLI(t, root, candidatePath)
+	assertTreeUnchanged(t, baseline, treeDigest(t, root))
+
+	invoke := func(expected string) (int, string, string) {
+		t.Helper()
+		var stdout, stderr bytes.Buffer
+		code := runCLI([]string{
+			"accept", "-workspace", root, "-candidate", candidatePath,
+			"-expected-review-fingerprint", expected,
+		}, &stdout, &stderr)
+		return code, stdout.String(), stderr.String()
+	}
+	// Review is mandatory; an empty fingerprint cannot be inferred from a
+	// changed file or from an Editor control.
+	if status, _, _ := invoke(""); status == 0 {
+		t.Fatal("Shared Acceptance allowed a Source edit without Review fingerprint")
+	}
+	assertTreeUnchanged(t, baseline, treeDigest(t, root))
+
+	status, response, stderr := invoke(reviewFingerprint)
+	if status != 0 {
+		t.Fatalf("Source edit refused after review: code=%d stderr=%s response=%s", status, stderr, response)
+	}
+	if !inspectedRequired(t, root) {
+		t.Fatal("real Studio Inspector Source has not changed after the CLI acceptance")
+	}
+	current := treeDigest(t, root)
+	if current[authoringRequiredFile] == baseline[authoringRequiredFile] {
+		t.Fatal("the typed change never reached the authored Markdown Source")
+	}
+	if status, _, _ := invoke(reviewFingerprint); status == 0 {
+		t.Fatal("an old reviewed candidate was reaccepted after Source revision advanced")
 	}
 }
 
