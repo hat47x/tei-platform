@@ -246,7 +246,114 @@ jobs:
           # The handbook itself is part of the acceptance: a reader who follows it
           # must reach the same shipped entry point. This needs no database, but
           # it belongs with the other step-5 checks so one job covers the page.
-          go test -count=1 -v -timeout 5m -run '^TestFirstChangeWalkthroughWebUsesEditedWorkspace$|^TestFirstChangeGuideExecutesLiteralRuleEdit$|^TestFirstChangeGuideSetupFailsClosed$' \
+          go test -count=1 -v -timeout 5m -run '^TestFirstChangeWalkthroughWebUsesEditedWorkspace$|^TestFirstChangeGuideExecutesLiteralRuleEdit$|^TestFirstChangeGuideSetupFailsClosed$|^TestFirstChangeGuideSQLSetupIsAtomicInPostgres \
+            ./tools/reference-first-web-target | tee -a "$log"
+
+      - name: SKIPとFAILの検証
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/go-test.log"
+          # The DSN-gated tests are the reason this workflow exists: a SKIP that
+          # names the DSN means the environment did not reach the test.
+          if grep -Eq -- '^[[:space:]]*--- SKIP: .*(PostgreSQL|PG_DSN|tenant PostgreSQL)' "$log"; then
+            echo "a DSN-gated test skipped although the DSNs are set:" >&2
+            grep -E -- '^[[:space:]]*--- SKIP:' "$log" >&2
+            exit 1
+          fi
+          if grep -Eq -- '^[[:space:]]*--- FAIL:' "$log"; then
+            echo "unexpected FAIL in the real-PostgreSQL run:" >&2
+            grep -E -- '^[[:space:]]*--- FAIL:' "$log" >&2
+            exit 1
+          fi
+          # Name the tests so a rename or a removed call cannot turn this job
+          # green by running nothing.
+          required=(
+            'TestStorePersistsStagesAcrossReconnect'
+            'TestRowLockBlocksASecondWriter'
+            'TestTwoProcessesCannotBothDispatch'
+            'TestTwoProcessesCannotBothTakeOver'
+            'TestStandardCRUDUpdateAgainstIsolatedPostgres'
+            'TestPGConflictIsABusinessResultAndKeepsTheFirstUpdate'
+            'TestPGTwoConnectionsApplyExactlyOneUpdate'
+            'TestPGCommitAcknowledgementLossOverSocket'
+            'TestPGRuntimeStageUnknownTakeoverEndToEnd'
+            'TestScopedPostgresAgainstIsolatedDatabase'
+            'TestScopedTenantPostgresAgainstIsolatedDatabase'
+            'TestPostgresStoreStartsAtZero'
+            'TestPostgresRefusesAStaleVersion'
+            'TestPostgresReservesAcrossReopen'
+            'TestPostgresRefusesAForeignFirstWrite'
+            'TestPostgresRefusesANegativeCounter'
+            'TestPostgresLoadRequiresARuleID'
+            'TestScopedPostgresDefaultOrderRevealsUnpublishedOrderedAt'
+            'TestScopedTenantPostgresDefaultOrderRevealsUnpublishedOrderedAt'
+            'TestOrgAxisAsOfActualPostgresOptIn'
+            'TestOrgAxisAsOfRevisionKeyCandidateOptIn'
+            'TestOrgAxisAsOfBitemporalRectangleCandidateOptIn'
+            'TestOrgAxisAsOfExclusionConstraintCandidateOptIn'
+            'TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn'
+            'TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs'
+            'TestDestinationOrderChangeReadViaCLIFromPostgres'
+            'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
+            'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
+            'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
+            'TestShippedWebPageShowsRealPostgresRowAnswers'
+            'TestFirstChangeWalkthroughWebUsesEditedWorkspace'
+            'TestFirstChangeGuideExecutesLiteralRuleEdit'
+            'TestFirstChangeGuideSetupFailsClosed'
+            'TestFirstChangeGuideSetupFailsClosed/DDL_failure_prevents_psql'
+            'TestFirstChangeGuideSetupFailsClosed/psql_failure_stops_setup'
+            'TestFirstChangeGuideSetupFailsClosed/both_steps_succeed'
+            'TestFirstChangeGuideSQLSetupIsAtomicInPostgres'
+            'TestFirstChangeGuideSQLSetupIsAtomicInPostgres/valid_seed_commits_rows'
+            'TestFirstChangeGuideSQLSetupIsAtomicInPostgres/late_seed_error_rolls_back_DDL_and_rows'
+            'TestFirstWebAcceptsARuleChangeEndToEnd'
+            'TestFirstWebAcceptsARuleChangeEndToEnd/before'
+            'TestFirstWebAcceptsARuleChangeEndToEnd/after'
+            'TestFirstWebAcceptsARuleChangeEndToEnd/before/chrome-dom'
+            'TestFirstWebAcceptsARuleChangeEndToEnd/after/chrome-dom'
+            'TestFirstChangeGuideRunsEndToEnd'
+            'TestServeReadFromDBRefusesAHostSuppliedDatabase'
+            'TestServeReadFromDBRequiresTheEnvironmentDSN'
+            'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
+          )
+          for name in "${required[@]}"; do
+            grep -Eq -- "^[[:space:]]*--- PASS: ${name} \(" "$log" || { echo "required test did not PASS: ${name}" >&2; exit 1; }
+          done
+          # Before/after x three orders. Chrome must actually receive the DOM;
+          # simply installing a browser or skipping the optional test is not PASS.
+          browser_count="$(grep -Fc 'actual Chrome DOM verified for order' "$log" || true)"
+          test "$browser_count" -eq 6 || {
+            echo "Chrome DOM receipts: $browser_count; expected six" >&2
+            exit 1
+          }
+          # The first Web Target must reach Chrome through HTTP; the CLI's
+          # static HTML Chrome test and the HTTP body assertion are separate.
+          guide_count="$(grep -Fc 'first-change guide steps 0-5 verified end to end' "$log" || true)"
+          test "$guide_count" -eq 1 || {
+            echo "first-change guide end-to-end receipt: $guide_count; expected one" >&2
+            exit 1
+          }
+          rule_change_chrome_count="$(grep -Fc 'actual rule-change Chrome DOM verified for order 1001' "$log" || true)"
+          test "$rule_change_chrome_count" -eq 2 || {
+            echo "rule-change Chrome DOM receipts: $rule_change_chrome_count; expected two (before and after)" >&2
+            exit 1
+          }
+          first_web_chrome_count="$(grep -Fc 'actual first Web HTTP Chrome DOM verified for order 1001' "$log" || true)"
+          test "$first_web_chrome_count" -eq 1 || {
+            echo "first Web real PostgreSQL HTTP Chrome DOM receipt is missing" >&2
+            exit 1
+          }
+
+      - name: 検証後の変更を検出
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"
+ \
             ./tools/reference-first-web-target | tee -a "$log"
 
       - name: SKIPとFAILの検証
