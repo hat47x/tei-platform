@@ -230,7 +230,13 @@ jobs:
           # Road item 2's remaining half: the page a browser opens must carry
           # the same answers from the same database. Kept separate so its PASS
           # line is required by name below.
-          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$|^TestFirstWebAcceptsARuleChangeEndToEnd$' \
+          go test -count=1 -v -timeout 10m -run '^TestShippedWebPageShowsRealPostgresRowAnswers$' \
+            ./tools/reference-first-web-target | tee -a "$log"
+          # The rule change in plan/NOW.md step 3 must show up on the same page,
+          # through the same route, before and after. Its Chrome receipts carry
+          # the stage name, so the count below stays six for the CLI/chrome pair
+          # and this new pair is required by its own name.
+          go test -count=1 -v -timeout 15m -run '^TestShippedWebPageShowsTheRuleEditThroughChrome$' \
             ./tools/reference-first-web-target | tee -a "$log"
           # Refusal paths must be tested even without a database fixture.
           go test -count=1 -v -timeout 10m -run '^TestServeReadFromDB' \
@@ -286,9 +292,7 @@ jobs:
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
             'TestShippedWebPageShowsRealPostgresRowAnswers'
-            'TestFirstWebAcceptsARuleChangeEndToEnd'
-            'TestFirstWebAcceptsARuleChangeEndToEnd/before'
-            'TestFirstWebAcceptsARuleChangeEndToEnd/after'
+            'TestShippedWebPageShowsTheRuleEditThroughChrome'
             'TestServeReadFromDBRefusesAHostSuppliedDatabase'
             'TestServeReadFromDBRequiresTheEnvironmentDSN'
             'TestServeReadFromDBUnusableDoesNotLeakTheDSN'
