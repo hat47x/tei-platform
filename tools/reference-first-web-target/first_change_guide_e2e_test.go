@@ -88,8 +88,9 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		// leave their order fixtures behind. Reset only the two known order
 		// tables, and only after verifying the ACTUAL isolated database name.
 		// This is test setup, not a hidden replacement for the guide's DDL.
+		// Do not cascade into objects owned by another fixture, even in this DB.
 		for _, table := range []string{"public.order_lines", "public.orders"} {
-			if _, err := db.Exec("DROP TABLE IF EXISTS " + table + " CASCADE"); err != nil {
+			if _, err := db.Exec("DROP TABLE IF EXISTS " + table); err != nil {
 				t.Fatal("cannot reset the isolated order tables before step 0")
 			}
 		}
@@ -103,7 +104,7 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	// This cleanup is never registered against an arbitrary user database.
 	t.Cleanup(func() {
 		for _, table := range []string{"public.order_lines", "public.orders"} {
-			if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
+			if _, err := db.Exec("drop table if exists " + table); err != nil {
 				t.Errorf("cannot clean up generated %s table: %v", table, err)
 			}
 		}
