@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/tei-studio-stage-reader-bundle-ci.yml
       - tools/reference-studio-part-generator/**
+      - cmd/tei-studio/test/desktop_webview_smoke.py
       - tools/reference-go-build-with-supply/**
       - tools/reference-studio-static-composition/build-generated-workbench.mjs
       - reference/tei-studio-workbench/**
@@ -152,6 +153,18 @@ jobs:
           ) -join "`n") + "`n"
           [System.IO.File]::WriteAllText(
             (Join-Path $sourceDir 'inspection-response.tei.md'), $dataText, $utf8)
+          # A separately addressable read-only Workspace with exactly the
+          # required: no -> yes Source change. Both are supplied to the same
+          # real Stage2 Wails process and inspected through the product UI.
+          $beforeRoot = Join-Path $env:RUNNER_TEMP 'tei-studio-before-data'
+          $beforeDir = Join-Path $beforeRoot 'semantic/studio'
+          New-Item -ItemType Directory -Force -Path $beforeDir | Out-Null
+          [System.IO.File]::WriteAllText((Join-Path $beforeRoot 'tei.workspace.yaml'), $workspaceText, $utf8)
+          $oldRow = '| snapshotFingerprint | std.text | yes | Snapshot |'
+          $newRow = '| snapshotFingerprint | std.text | no | Snapshot |'
+          if (($dataText.Split($oldRow)).Count -ne 2) { throw 'The changed Data row is ambiguous' }
+          [System.IO.File]::WriteAllText(
+            (Join-Path $beforeDir 'inspection-response.tei.md'), $dataText.Replace($oldRow, $newRow), $utf8)
 
       - name: Stage1 and Stage2 build the new Wails Desktop and inspect it in WebView2
         shell: pwsh
@@ -161,11 +174,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $attempt = Join-Path $env:RUNNER_TEMP 'tei-studio-generated-desktop-stage'
           $source = Join-Path $env:RUNNER_TEMP 'tei-studio-changed-data'
+          $before = Join-Path $env:RUNNER_TEMP 'tei-studio-before-data'
           $supply = Join-Path ((go env GOMODCACHE).Trim()) 'cache/download'
           $reportFile = Join-Path $env:RUNNER_TEMP 'tei-studio-staged-desktop-evidence.json'
           python -B tools/reference-studio-part-generator/stage_reentry.py `
             --repo . --supply $supply --work $attempt `
             --authoring-root $source --authoring-data studio.inspection_response `
+            --visible-before-root $before `
             --bundle-reader --stage-desktop-bundle --desktop-smoke > $reportFile
           if ($LASTEXITCODE -ne 0) { throw 'TEI-driven changed Data -> new Stage2 Desktop -> WebView2 failed' }
           $report = Get-Content -LiteralPath $reportFile -Raw | ConvertFrom-Json
@@ -180,7 +195,9 @@ jobs:
             'stage2DesktopEmbedsGeneratedBundle',
             'generatedDesktopExcludesCommittedBundle',
             'generatedDesktopCarriesReaderContract',
-            'stage2DesktopUsedGeneratedReaderInNewProcess'
+            'stage2DesktopUsedGeneratedReaderInNewProcess',
+            'visibleBeforeSourceUnchanged',
+            'sameNativeWebViewDisplaysChangedCanonical'
           )) {
             if ($report.judgement.$name -ne $true) { throw "Missing Stage2 acceptance: $name" }
           }
@@ -189,7 +206,11 @@ jobs:
           }
           $head = (git rev-parse HEAD).Trim()
           if ($report.sources.repoHead -ne $head) { throw 'Attempt Source revision mismatch' }
-          Write-Host "Stage2 changed Data / generated Bundle / new native WebView2: PASS at $head"
+          $shown = $report.stage2Desktop.smoke.visibleAuthoring
+          if ($shown.before.snapshotRequired -ne $false -or $shown.after.snapshotRequired -ne $true) {
+            throw 'Actual WebView2 Editor did not show the independent required flag delta'
+          }
+          Write-Host "Stage2 changed Data / generated Bundle / visible before-after Canonical: PASS at $head"
 
       - name: Keep exact staged Desktop evidence
         if: always()

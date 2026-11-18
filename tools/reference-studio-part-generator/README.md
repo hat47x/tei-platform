@@ -119,7 +119,20 @@ python -B tools/reference-studio-part-generator/stage_reentry.py `
 
 このモードでは、**変更後Partの旧契約との差異、Source内容の前後一致、両段の実Node/esbuild起動、Stage専用Wails入力のdigest、Stage2 exeへの新Bundle収録、旧Bundleの非収録、別WebView2プロセスでの初回Inspect・Graph操作後のReader使用増加**をそれぞれ照合します。対象HEADも両段で同一に固定し、条件が欠ければ`reentryObserved`を成立させません。Windowsの実CIは[Stage Reader Bundle再入](../../.github/workflows/tei-studio-stage-reader-bundle-ci.yml)が所有します。
 
-**表示の受入は別です。** この試行で照合するReader契約digestはDOMの非表示属性であり、変更後の契約が実行された証拠にはなっても、Inspectorの本文が利用者に見える形で変わったことは示しません。変更前後のInspector表示内容や可視検証結果を、Reader自身の自己申告とは独立した期待値と照合する検収が必要です。これを通すまでは[#4583](https://github.com/hat47x/tei-platform/issues/4583)のStudio一巡を完了扱いしません。
+**表示の受入は別です。** 通常の`--stage-desktop-bundle --desktop-smoke`では、Reader契約の非表示digestと呼出回数までを確認し、Inspector本文の変化は主張しません。変更前の`tei.authoring/v1` Data Workspaceを`--visible-before-root`で追加指定すると、**同じStage2 Wails実行ファイル・WebView2セッション**で変更前後の二つのWorkspaceを選択し、実Hostの`InspectSubject`が返す`studio.inspection_response`のCanonicalを読みます。実画面の読取り専用Inspector本文で`snapshotFingerprint.required`が`false→true`に変わったことを、独立した期待値で照合します。隠しdigestだけ、同じ本文、旧Reader、異なるWorkspace、Sourceの途中変更では成功にしません。
+
+```powershell
+# --authoring-root は変更後（required: yes）、こちらは変更前（required: no）
+python -B tools/reference-studio-part-generator/stage_reentry.py `
+  --repo . --supply "$((go env GOMODCACHE).Trim())\cache\download" `
+  --work "$env:RUNNER_TEMP\tei-studio-visible-attempt" `
+  --authoring-root "$env:RUNNER_TEMP\tei-studio-changed-data" `
+  --authoring-data studio.inspection_response `
+  --visible-before-root "$env:RUNNER_TEMP\tei-studio-before-data" `
+  --stage-desktop-bundle --desktop-smoke
+```
+
+ここで検証するのは、あらかじめ用意した二つのSourceを**実Studioが読み分け、画面に反映すること**です。同じStudio上で編集して保存したわけではありません。
 
 **ここでStudioの実編集を証明したことにはなりません。** Sourceは外部に用意した変更後のテスト用Workspaceであり、Studio Editorによる保存・再読込、Ownerの業務意味受理、正式Build Intentによる完全な依存閉包・Builder適格性、納品物の実行認可は別の受入事項です。既存のWails HostやGenerator、DSLは追加していません。
 
