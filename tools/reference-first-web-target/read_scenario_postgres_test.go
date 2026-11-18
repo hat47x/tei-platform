@@ -273,7 +273,6 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 		}
 	})
 
-
 	t.Run("a non-owner hides the duplicate from the actual Web read", func(t *testing.T) {
 		// The existing owner-connection test only establishes that the RLS
 		// flag blocks a positive claim. This case proves that a real
