@@ -134,9 +134,9 @@ func TestAuthoringBindingFailsClosedBeforeWriting(t *testing.T) {
 		fields string
 		id     string
 	}{
-		"unsupported type": {"| snapshotFingerprint | std.decimal | yes | Snapshot |\n", "studio.inspection_response"},
-		"unresolved alias": {"| snapshotFingerprint | custom.text | yes | Snapshot |\n", "studio.inspection_response"},
-		"unknown subject": {"| snapshotFingerprint | std.text | yes | Snapshot |\n", "studio.other"},
+		"unsupported type":      {"| snapshotFingerprint | std.decimal | yes | Snapshot |\n", "studio.inspection_response"},
+		"unresolved alias":      {"| snapshotFingerprint | custom.text | yes | Snapshot |\n", "studio.inspection_response"},
+		"unknown subject":       {"| snapshotFingerprint | std.text | yes | Snapshot |\n", "studio.other"},
 		"no required attribute": {"| schemaVersion | std.text | no | Schema |\n", "studio.inspection_response"},
 	} {
 		t.Run(name, func(t *testing.T) {
