@@ -403,10 +403,6 @@ func environmentHeaderSource(world ir.World, resolved driver.ResolvedHeaderDetai
 	return source, nil
 }
 
-// environmentHeaderInputValue does not use the appearance of a literal to
-// select its Go type. A physical int64 column gives an explicit conversion
-// rule; text-like and unknown storage retain the original string. Conversion
-// failure is reported rather than silently changing or truncating the input.
 // postgresBaseTableVisibilityQualified checks the real base table associated
 // with the mapped Data, not a table name inferred from an HTTP input. The
 // caller already executed the accepted SQL on tx, which holds its table lock
@@ -453,6 +449,10 @@ WHERE n.nspname = $1 AND c.relname = $2
 	return true, ""
 }
 
+// environmentHeaderInputValue does not use the appearance of a literal to
+// select its Go type. A physical int64 column gives an explicit conversion
+// rule; text-like and unknown storage retain the original string. Conversion
+// failure is reported rather than silently changing or truncating the input.
 func environmentHeaderInputValue(world ir.World, databaseID, dataID, attributeID core.CanonicalID, raw string) (any, error) {
 	found := false
 	var storage persistence.StorageType
