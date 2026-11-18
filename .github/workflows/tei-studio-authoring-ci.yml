@@ -213,6 +213,37 @@ jobs:
             and .authority.acceptedBusiness == "not-established"
           ' "$shots/real-browser-receipt.json" >/dev/null
 
+      - name: 実Chromeで編集した同じMarkdown正本を共通審査で受理・再読込
+        shell: bash
+        run: |
+          set -euo pipefail
+          shots="$RUNNER_TEMP/tei-studio-real-browser"
+          node reference/studio-authoring/required-accepted-browser.mjs \
+            "$RUNNER_TEMP/tei-studio-playwright" "$shots"
+          test -s "$shots/required-accepted-scratch.png"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.studio-required-source-roundtrip/v0"
+            and .head == $sha
+            and .browser == "real-chrome-headless"
+            and .initialModelRevision != .acceptedModelRevision
+            and .sourcePath == "semantic/studio/inspection-response.tei.md"
+            and .sourceFingerprintBefore != .sourceFingerprintAfter
+            and .sourceOnlyOneCellChanged == true
+            and .realChromeDOMEvent == true
+            and .sourceIndexOwned == true
+            and .reviewFingerprintBound == true
+            and .previewSourceUnchanged == true
+            and .unreviewedWriteRefused == true
+            and .staleCandidateRefused == true
+            and .inspectBeforeRequired == false
+            and .inspectAfterRequired == true
+            and .sourceChangedByExplicitAcceptance == true
+            and .authority.humanAcceptance == "not-observed"
+            and .authority.ownerMeaningAcceptance == "not-observed"
+            and .authority.productionHostWrite == "not-observed"
+            and .authority.generatedDesktopReentry == "not-observed"
+          ' "$shots/required-accepted-receipt.json" >/dev/null
+
       - name: 実Chromeのオフライン編集画面証跡を添付
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
