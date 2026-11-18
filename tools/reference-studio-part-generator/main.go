@@ -52,12 +52,12 @@ type report struct {
 	// ContractBytesDigest identifies the effective input to the generator.
 	// If authoring Data is bound, Authoring.InputContractDigest separately
 	// identifies the on-disk contract template that was read.
-	ContractBytesDigest     string           `json:"contractBytesDigest"`
-	ContractCanonicalDigest string           `json:"contractCanonicalDigest"`
-	Engine                  engineIdentity   `json:"engine"`
-	Steps                   int              `json:"steps"`
-	StateDir                string           `json:"stateDir,omitempty"`
-	ClaimBoundary           string           `json:"claimBoundary"`
+	ContractBytesDigest     string            `json:"contractBytesDigest"`
+	ContractCanonicalDigest string            `json:"contractCanonicalDigest"`
+	Engine                  engineIdentity    `json:"engine"`
+	Steps                   int               `json:"steps"`
+	StateDir                string            `json:"stateDir,omitempty"`
+	ClaimBoundary           string            `json:"claimBoundary"`
 	Authoring               *authoringBinding `json:"authoring,omitempty"`
 }
 
