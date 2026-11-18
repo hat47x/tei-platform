@@ -86,3 +86,21 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 		}
 	}
 }
+
+// The handbook pipes generated DDL to psql with ON_ERROR_STOP, but the seed
+// command is a separate psql process. It too must fail on a SQL error rather
+// than exiting successfully after later statements ran.
+func TestFirstChangeGuideStopsOnSeedSQLError(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	step0, ok := strings.Cut(string(raw), "## 0. 表を作り、明細を入れる")
+	if !ok {
+		t.Fatal("the guide has no database setup step")
+	}
+	step0, _, _ = strings.Cut(step0, "## 1. 作業領域の写しを作る")
+	if !strings.Contains(step0, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -f testdata/destination-order-change/seed.sql`) {
+		t.Fatal("the seed command can report success despite a SQL error")
+	}
+}
