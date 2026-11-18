@@ -1787,8 +1787,7 @@ return true;
                         {"script": inspect_script, "args": []},
                     ).get("value", {})
                     if (observation.get("subjectTitle") == "studio.inspection_response"
-                            and observation.get("sourceStatus", "").startswith("参照情報：")
-                            and observation.get("notice") == "選択したモデルの投影を表示しています。"):
+                            and observation.get("sourceStatus", "").startswith("参照情報：")):
                         try:
                             canonical = json.loads(observation.get("editor", ""))
                         except (TypeError, ValueError):
