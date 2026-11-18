@@ -134,7 +134,7 @@ go run ./tools/reference-first-web-target \
 ブラウザで `http://127.0.0.1:8080/custom-submit` を開く。`Login ID` には `legacy-order-editor`、`Credential` には参照用の合成値 `editor-secret`、`Browse from` には `2026-09-01T00:00:00Z`、`Selected row` には `0` を入力して送信する。**明細の行ごとの答え**が出る。これらはローカルの参照実装を検査するための合成ログイン情報であり、本番用の認証情報ではない。
 
 - 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
-- `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では、CLIは宣言とQuery・保存定義を照合し、同じ読取トランザクションで実テーブルのRLS・継承・種類を確認できた場合に限り、一意性を`satisfied`と判定する。可視範囲を確認できない場合は`undecided`に留める。**第一Web Targetは現在、Relation全体の取得範囲を同じ方法では確認していないため、画面上では`undecided`と理由を表示する。** 画面に明細がすべて見えるように見えても、それだけで全件取得の資格にはならない。
+- `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では、CLIと第一Webのどちらも、宣言したQueryと保存定義の対応を確認し、**実際に明細を読んだ同じPostgreSQLトランザクション**でテーブルのRLS・継承・種類を検査できた場合に限り、一意性を`satisfied`と判定する（[#5571](https://github.com/hat47x/tei-platform/pull/5571)）。第一Webの通常の実PostgreSQL試験では、受注1002の答えも`satisfied`となる。RLSで一部の行が見えない可能性がある場合や、取得範囲を確認できない場合は`partial`として`undecided`に留める。別のHTTP要求で得た資格や、画面上にすべての明細が見えるように見えることを、全件取得の証拠にはしない。
 - 画面は選択した受注・実行したContract Query・行数をReadの情報として示す。行数や表示位置が回答と合わなければ描画を拒否するが、**表示したIDだけで、別のReadからの混入がすべて排除されたとは言えない**。
 
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
