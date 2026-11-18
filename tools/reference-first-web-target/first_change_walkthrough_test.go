@@ -78,6 +78,9 @@ func TestFirstChangeWalkthroughUsesTheLocallyBuiltCLI(t *testing.T) {
 	if strings.Contains(step0, "\ntei desired-schema ") {
 		t.Fatal("the DDL step relies on the current directory being on PATH")
 	}
+	if !strings.Contains(step0, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -f testdata/destination-order-change/seed.sql`) {
+		t.Fatal("the seed step can report success after a SQL error")
+	}
 }
 
 // The browser form requires all four inputs. The Go-driven Chrome acceptance
