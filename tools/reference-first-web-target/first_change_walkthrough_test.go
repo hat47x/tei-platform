@@ -50,9 +50,14 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 		t.Fatal("step 0 did not use the locally built ./tei executable")
 	}
 	// psql normally continues after an error in a SQL file unless
-	// ON_ERROR_STOP is set. A partial seed must not look like a successful
-	// first-use read or provide misleading Rule evidence.
-	if !strings.Contains(setup, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -f testdata/destination-order-change/seed.sql`) {
+	// ON_ERROR_STOP is set. Accept either a standalone fail-fast seed
+	// invocation or the stricter single transaction that applies both the
+	// generated schema and seed together. The latter also prevents a failed
+	// generator from being hidden by the final process of a shell pipeline.
+	separateSeed := strings.Contains(setup, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -f testdata/destination-order-change/seed.sql`)
+	atomicSeed := strings.Contains(setup, `psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -1`) &&
+		strings.Contains(setup, `-f "$schema_sql" -f testdata/destination-order-change/seed.sql`)
+	if !separateSeed && !atomicSeed {
 		t.Fatal("step 0 can continue after a seed SQL failure instead of refusing the walkthrough")
 	}
 	parts := strings.SplitN(doc, "## 5. Webの画面で同じ答えを見る", 2)
