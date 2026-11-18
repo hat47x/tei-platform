@@ -20,8 +20,8 @@ import (
 )
 
 // TestFirstChangeGuideRunsEndToEnd checks the handbook's five semantic steps
-// in order against one real PostgreSQL database. Editing uses a Go helper,
-// not the literal shell commands printed in the handbook.
+// against one real PostgreSQL database. Setup, Workspace copy and rule editing
+// execute the actual POSIX shell blocks from the handbook in one attempt.
 //
 // The guide is the acceptance document for plan/NOW.md's destination, so it has
 // to be checked as a sequence: step 2's answers, step 3's three-file edit,
@@ -45,18 +45,36 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 
+
 	fixtures := destinationFixtureRoot(t)
-	ruleDocument, err := os.ReadFile(filepath.Join(fixtures, "edit", "unit-price.tei.md"))
+	guide, err := os.ReadFile(filepath.Join(repoRootForGuide(t), "docs", "first-change.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	handbook := string(guide)
+	if runtime.GOOS == "windows" {
+		t.Skip("the documented POSIX shell and symlinks are tested by the PostgreSQL Linux CI")
+	}
 
-	// Step 0: use the actual generated tables. The previous fixture helper
-	// dropped those tables and recreated both by hand, masking a missing parent
-	// order seed in the published walkthrough.
-	root := t.TempDir()
-	copyWorkspaceForRuleChange(t, referenceWorkspacePath(t), root)
-	applySchemaFromDefinitions(t, binary, root, db)
+	// Step 0: execute the handbook's actual ./tei + psql -1 script. The
+	// earlier test generated and seeded the database through Go helpers instead.
+	// A disposable directory preserves the handbook's relative CLI and seed
+	// paths without modifying the repository or introducing a second fixture.
+	attempt := t.TempDir()
+	for _, dir := range []string{"reference", "testdata"} {
+		if err := os.MkdirAll(filepath.Join(attempt, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for target, source := range map[string]string{
+		"tei": binary,
+		"reference/workspace": filepath.Join(repoRootForGuide(t), "reference", "workspace"),
+		"testdata/destination-order-change": fixtures,
+	} {
+		if err := os.Symlink(source, filepath.Join(attempt, target)); err != nil {
+			t.Fatal(err)
+		}
+	}
 	t.Cleanup(func() {
 		for _, table := range []string{"public.order_lines", "public.orders"} {
 			if _, err := db.Exec("drop table if exists " + table + " cascade"); err != nil {
@@ -64,37 +82,87 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 			}
 		}
 	})
-	seedTx, err := db.BeginTx(context.Background(), nil)
+	var preexistingParents, preexistingDetails bool
+	if err := db.QueryRowContext(t.Context(),
+		"SELECT to_regclass('public.orders') IS NOT NULL, to_regclass('public.order_lines') IS NOT NULL").
+		Scan(&preexistingParents, &preexistingDetails); err != nil {
+		t.Fatal("cannot verify the disposable database starts empty")
+	}
+	if preexistingParents || preexistingDetails {
+		t.Fatal("the first-change walkthrough requires an empty isolated PostgreSQL database")
+	}
+	setup := exec.Command("sh", "-eu", "-c", documentedGuideShellStep(t, handbook,
+		"## 0. 表を作り、明細を入れる", "## 1. 作業領域の写しを作る"))
+	setup.Dir = attempt
+	setup.Env = append(os.Environ(), "TEI_VIEW_PG_DSN="+dsn, "TMPDIR="+attempt)
+	if _, err := setup.CombinedOutput(); err != nil {
+		// psql output may include a connection URL. Never include its raw
+		// stderr or the environment in the CI failure record.
+		t.Fatalf("step 0's documented CLI and atomic psql script failed: %v (output withheld)", err)
+	}
+	var ordersInBrowse, linesInRead int
+	if err := db.QueryRow("SELECT count(*) FROM public.orders WHERE order_id IN (1001, 1002, 1003)").Scan(&ordersInBrowse); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow("SELECT count(*) FROM public.order_lines").Scan(&linesInRead); err != nil {
+		t.Fatal(err)
+	}
+	if ordersInBrowse != 3 || linesInRead != 5 {
+		t.Fatalf("step 0's actual shell committed %d parent orders and %d detail rows, want 3 and 5",
+			ordersInBrowse, linesInRead)
+	}
+
+	// Step 1: execute the published mktemp/cp commands. Capture only the
+	// scratch path; later steps use this exact Workspace, not a Go copy.
+	receipt := filepath.Join(attempt, "guide-workspace.path")
+	copyScript := documentedGuideShellStep(t, handbook,
+		"## 1. 作業領域の写しを作る", "## 2. 明細を読み、規則の答えを見る")
+	copyScript += "\nprintf '%s\\n' \"$TEI_FIRST_WORKSPACE\" > \"$TEI_GUIDE_RECEIPT\"\n"
+	copyCmd := exec.Command("sh", "-eu", "-c", copyScript)
+	copyCmd.Dir = repoRootForGuide(t)
+	copyCmd.Env = append(os.Environ(), "TMPDIR="+attempt, "TEI_GUIDE_RECEIPT="+receipt)
+	if output, err := copyCmd.CombinedOutput(); err != nil {
+		t.Fatalf("step 1's literal shell copy failed: %v\n%s", err, output)
+	}
+	workspaceReceipt, err := os.ReadFile(receipt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = seedTx.Rollback() }()
-	for _, name := range []string{"seed-orders.sql", "seed.sql"} {
-		seed, err := os.ReadFile(filepath.Join(fixtures, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := seedTx.Exec(string(seed)); err != nil {
-			t.Fatalf("step 0: generated tables did not accept %s: %v", name, err)
-		}
-	}
-	if err := seedTx.Commit(); err != nil {
-		t.Fatal(err)
-	}
-	var ordersInBrowse int
-	if err := db.QueryRow("select count(*) from public.orders where order_id in (1001, 1002, 1003)").Scan(&ordersInBrowse); err != nil {
-		t.Fatal(err)
-	}
-	if ordersInBrowse != 3 {
-		t.Fatalf("step 0: the real Web browse table has %d parent orders, want 3", ordersInBrowse)
+	root := strings.TrimSpace(string(workspaceReceipt))
+	if !strings.HasPrefix(root, attempt+string(os.PathSeparator)) {
+		t.Fatalf("the guide copy did not make a fresh isolated Workspace: %q", root)
 	}
 
 	// Step 2: read the detail and see the answers.
 	before := readOrderThroughCLI(t, binary, root, dsn, "1001")
 	requireCLIAnswersMatchExpectation(t, before, expectedAnswersForOrder(t, filepath.Join(fixtures, "expected-before.json"), "1001"))
 
-	// Step 3: add the unit-price rule, exactly the three edits the guide writes.
-	applyUnitPriceRule(t, root, string(ruleDocument))
+	// Step 3: run the actual handbook commands in the same Workspace the
+	// preceding CLI read. Check the copied Rule against its independent fixture.
+	editScript := documentedGuideShellStep(t, handbook,
+		"## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	edit := exec.Command("sh", "-eu", "-c", editScript)
+	edit.Dir = repoRootForGuide(t)
+	edit.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+root)
+	if output, err := edit.CombinedOutput(); err != nil {
+		t.Fatalf("step 3's documented shell edits failed: %v\n%s", err, output)
+	}
+	wantRule, err := os.ReadFile(filepath.Join(fixtures, "edit", "unit-price.tei.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotRule, err := os.ReadFile(filepath.Join(root, "semantic", "sales", "unit-price.tei.md"))
+	if err != nil || !bytes.Equal(gotRule, wantRule) {
+		t.Fatal("step 3 did not place the exact documented rule and example")
+	}
+	application, err := os.ReadFile(filepath.Join(root, "applications", "order-entry", "application.tei"))
+	if err != nil || strings.Count(string(application), "uses validation sales.order_line.unit_price_positive") != 1 {
+		t.Fatal("step 3 did not register the rule exactly once in the Application")
+	}
+	workspaceSettings, err := os.ReadFile(filepath.Join(root, "tei.workspace.yaml"))
+	if err != nil || !strings.Contains(string(workspaceSettings), "  - tei.authoring/v1") {
+		t.Fatal("step 3 did not register the authoring language")
+	}
 
 	// Step 4a: validate. The edit must not be rejected.
 	if validated := runGuideCLI(t, binary, "validate", "-workspace", root); validated.code != 0 {
@@ -169,6 +237,25 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	// Workspace. Handing it the original Workspace would show the pre-edit rules.
 	requirePageAnswersMatchExpectation(t, pageLines, expectedAnswersForOrder(t, filepath.Join(fixtures, "expected-after.json"), "1001"))
 	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome")
+}
+
+
+// documentedGuideShellStep returns the commands from the published POSIX
+// handbook, without replacing them with equivalent Go test helpers.
+func documentedGuideShellStep(t *testing.T, handbook, from, to string) string {
+	t.Helper()
+	section := sectionBetween(handbook, from, to)
+	fence := strings.Repeat(string(rune(96)), 3)
+	start := strings.Index(section, fence+"bash\n")
+	if start < 0 {
+		t.Fatalf("documented section %q has no bash block", from)
+	}
+	body := section[start+len(fence+"bash\n"):]
+	end := strings.Index(body, fence)
+	if end < 0 {
+		t.Fatalf("documented section %q has an unterminated bash block", from)
+	}
+	return body[:end]
 }
 
 // cliOrderRead is the part of `tei view -environment` this acceptance reads.
