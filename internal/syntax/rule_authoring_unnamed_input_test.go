@@ -7,12 +7,9 @@ import (
 	"tei/internal/syntax"
 )
 
-// One operator signature must read the same whichever way it is written. The
-// unnamed single-input form `takes number` is the contract the surface already
-// calls "value", so `value:` is a recognized name rather than an undeclared
-// input. The current semantic normalization cannot carry ANY operator input
-// value, however: both the unnamed and explicitly named form must reach that
-// explicit refusal instead of silently dropping the assignment (#4362).
+// The unnamed `takes number` and named `takes value: number` forms both
+// supply their first input from the rule subject. `value:` recognizes that
+// input name, but cannot assign a second value to the same input (#4362).
 //
 // The expected diagnostic is different for a known input name and an
 // undeclared one. Neither can emit a validation until value transport exists.
@@ -24,16 +21,16 @@ func TestRuleAuthoringNormalizesUnnamedInputBeforeRefusal(t *testing.T) {
 		wantIssue  string
 	}{
 		{
-			name:       "the unnamed form recognizes value before rejecting unsupported value transport",
+			name:       "the unnamed form recognizes value before rejecting a second subject-input binding",
 			operator:   "operator probe.non_negative: takes number",
 			assignment: "value: 0",
-			wantIssue:  "the meaning has no place for an operator input value yet",
+			wantIssue:  "the meaning has already supplied by the rule subject yet",
 		},
 		{
-			name:       "the named form recognizes value before rejecting unsupported value transport",
+			name:       "the named form recognizes value before rejecting a second subject-input binding",
 			operator:   "operator probe.non_negative: takes value: number",
 			assignment: "value: 0",
-			wantIssue:  "the meaning has no place for an operator input value yet",
+			wantIssue:  "the meaning has already supplied by the rule subject yet",
 		},
 		{
 			name:       "the unnamed form still refuses another name",
@@ -71,7 +68,7 @@ func TestRuleAuthoringNormalizesUnnamedInputBeforeRefusal(t *testing.T) {
 				return
 			}
 			if len(issues) == 0 {
-				t.Fatal("assignment was silently accepted despite an absent semantic value transport")
+				t.Fatal("assignment was silently accepted despite an already-bound subject input")
 			}
 		})
 	}
@@ -87,8 +84,8 @@ func TestRuleAuthoringDoesNotDeclareValueForTheUnnamedForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	namespace, issues := syntax.RuleNamespace(file)
-	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "the meaning has no place for an operator input value yet") {
-		t.Fatalf("expected the explicit value-transport refusal, issues=%+v", issues)
+	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "the meaning has already supplied by the rule subject yet") {
+		t.Fatalf("expected the subject-input rebinding refusal, issues=%+v", issues)
 	}
 	if len(namespace.Validations) != 0 {
 		t.Fatalf("rejected assignment unexpectedly produced validations: %+v", namespace.Validations)
