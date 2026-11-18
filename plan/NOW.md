@@ -47,7 +47,9 @@
 
 「生成器には触れずに」が要である。当初は34行の契約からReader一つを作るために約690行の生成手続きを要し、必須項目一つの追加にも生成器の改修が必要だった。現在は[#5325](https://github.com/hat47x/tei-platform/pull/5325)で生成Readerを製品の唯一のReaderへ戻し、[#5365](https://github.com/hat47x/tei-platform/pull/5365)で未対応の宣言を拒否した。[#5389](https://github.com/hat47x/tei-platform/pull/5389)ではJSON契約の`requiredResponseFields`へ`schemaVersion`を足すだけでReaderの必須性・型検査が変わり、生成器の実装byteを変えずに正規Bundleと実Windows WebView2で使用された。**ただし、JSON契約はTEIのData・Ruleから導かれておらず、変更後の契約でStage1がStage2を構築したわけでもない。**
 
-**次のコード変更は[#4583](https://github.com/hat47x/tei-platform/issues/4583)で一巡を閉じる。** 既存の`tei.authoring/v1`で記述したData項目・Ruleから必須応答項目を取り出し、同じReader契約と生成経路へ渡す。定義変更の前後を独立した期待と照合し、**生成器本体の差分ゼロ、古いReaderの拒否、生成Readerの動作変更**を確認する。その変更をStage1の実Build・実Builder呼出しからStage2の新しいWindows実行物へ結び、画面で変更後のReaderが使われたことまで同一の実行単位で確かめる。[#5373](https://github.com/hat47x/tei-platform/pull/5373)のStage2実起動の限定実測は変更前の契約による別の記録であり、今回の完了には足し合わせない。第二の言語・Host・生成器は増やさない。
+**StudioのData定義からReaderへ届く最初の変更は動く。** main統合済み[#5516](https://github.com/hat47x/tei-platform/pull/5516)により、既存`tei.authoring/v1`の一意なData定義とSource位置を選び、`required: yes/no`を変えると、**生成器本体を変えず**生成Readerの必須項目が変わる。未対応型・別Subject・曖昧なSourceは成果物を出す前に拒否する。ただし、これは限定Fixtureと生成部品の検証であり、実`InspectSubject`の応答、正規Bundle、変更後のStage2実Windows画面へつながった証拠ではない。今回のData検証を、既存Ruleを使ったWebの五段階受入と混同しない。
+
+**次のコード変更は[#4583](https://github.com/hat47x/tei-platform/issues/4583)で残る接続を閉じる。** 既存`tools/reference-studio-part-generator/stage_reentry.py`から、#5516の`-authoring-root / -authoring-data`をStage1・Stage2で**実際に選んだData Source**へ束縛する。定義前後の必須項目・Source Revision・Reader契約・生成TS・正規JS/埋込Bundleを同じ変更として照合し、**実Hostが返さないFieldを生成Readerが要求するときは不適合として停止**する。次に、生成器Sourceの差分ゼロと古いReaderの拒否を確認し、Stage1実TEI／実Builder→変更後のStage2 Windows Desktop→別Process WebView2で新Readerを実使用したことを**同一Attempt**で検査する。#5373の変更前契約による再入実測と、#5516の限定Fixture成功を足し合わせて完了とはしない。Source Writerや汎用Rule→Reader拡張、新Host／Generatorは先行追加しない。
 
 ## 到達点まで止めるもの
 
