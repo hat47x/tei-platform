@@ -37,9 +37,9 @@
 
 道の1は[#5327](https://github.com/hat47x/tei-platform/pull/5327)（固定名の決め打ちを外す）、[#5339](https://github.com/hat47x/tei-platform/pull/5339)（Data・Relationの意味IDと参照テーブルを変える）、[#5362](https://github.com/hat47x/tei-platform/pull/5362)（別の属性・Query入力・複合主キーを持つ独立モデル）で通った。#5362は`checkDestinationAlternateModel`を`TestDestinationOrderChangeReadViaCLIFromPostgres`の中から呼び、CIが実PostgreSQLで走らせる。
 
-道の2は、実PostgreSQLのQueryを第一Web TargetのHTTP画面へ渡し、その画面を実Chrome DOMで受けるところまで進んだ（#5492）。CLIの静的HTMLをChromeが受領した試験、第一WebのHTTP本文の試験、第一WebのHTTP画面をChromeで受けた試験は、**それぞれ実際に走った範囲を分けて記録する**。#5492は規則変更の前後をそれぞれ別の実行で照合したものであり、複数のHTTP要求のスナップショット一致や通常利用者による全手順の完走を証明するものではない。
+道の2は、実PostgreSQLのQueryを第一Web TargetのHTTP画面へ渡し、その画面を実Chrome DOMで受けるところまで進んだ（#5492）。[#5510](https://github.com/hat47x/tei-platform/pull/5510)では、DDL適用、CLIによる読取り、規則と例の編集、`tei validate`と再読取り、実Chromeでの画面確認を**一つのCI試験で順に実行**し、独立した期待と照合した。これは個別試験を足し合わせたものではない。ただし編集操作はGoの試験ヘルパーで行い、手順書のシェルコマンドを文字どおりに実行した証拠でも、複数HTTP要求の同一Snapshotを保証するものでもない。
 
-**道の2で守る対応関係**：表示行番号は読取時の位置であり、業務キーやノードの意味IDではない。行別Ruleの回答は実際の明細行と同じReadから作る（[#5424](https://github.com/hat47x/tei-platform/pull/5424)）。Readの対象Query・親Scope・入力と実行Providerを区別し、画面とCommandが同じ選択済Readerを使う（[#5439](https://github.com/hat47x/tei-platform/pull/5439)）。ただし、二つのHTTP要求やReadが同一スナップショットであるとの証拠にはしない。実DBのHTTP画面では主キー`order_line_id`ごとに値とRule三値を独立Expectedで検査し、同じ`line_number`の二行を混同しない。**次の検収**は、[`docs/first-change.md`](../docs/first-change.md)の手順どおり、初めて使う人が実PostgreSQLで五段階を通せるか確認すること。手順と製品コマンドが食い違う場合はその箇所を修正し、成立後に通常開発で触るファイルの数と手数を比較する。取得範囲を証明できない全体Ruleは、理由付きの「判定できない」を保つ。標準Graphや新しいRuntimeは前提にしない。
+**道の2で守る対応関係**：表示行番号は読取時の位置であり、業務キーやノードの意味IDではない。行別Ruleの回答は実際の明細行と同じReadから作る（[#5424](https://github.com/hat47x/tei-platform/pull/5424)）。Readの対象Query・親Scope・入力と実行Providerを区別し、画面とCommandが同じ選択済Readerを使う（[#5439](https://github.com/hat47x/tei-platform/pull/5439)）。ただし、二つのHTTP要求やReadが同一スナップショットであるとの証拠にはしない。実DBのHTTP画面では主キー`order_line_id`ごとに値とRule三値を独立Expectedで検査し、同じ`line_number`の二行を混同しない。**次の検収**は、[`docs/first-change.md`](../docs/first-change.md)のコマンドと編集手順を実際にたどり、初めて使う人が実PostgreSQLで五段階を通せるか確かめること。製品と手順が食い違えばその箇所を修正し、成立後に通常開発と変更ファイル数・操作手数を比較する。取得範囲を証明できない全体Ruleは、理由付きの「判定できない」を保つ。標準Graphや新しいRuntimeは前提にしない。
 
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
