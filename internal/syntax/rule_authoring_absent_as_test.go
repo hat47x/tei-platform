@@ -25,11 +25,12 @@ rule sales.item.probe:
 	if len(parsed.Value.Operators) != 1 || parsed.Value.Operators[0].AbsentAs != "open" {
 		t.Fatalf("operators=%+v, want the declared mapping", parsed.Value.Operators)
 	}
-	// The mapping is declared, so the rule is refused only for the separate
-	// reason that the value has nowhere to go yet.
+	// The mapping is declared, but the subject already supplies the
+	// operator's first input. The explicit end: assignment binds it again.
+	// Reject that ambiguity before attempting unsupported value transport.
 	_, issues := syntax.RuleNamespace(parsed.File)
-	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "no place for an operator input value") {
-		t.Fatalf("issues=%+v, want the value-transport refusal only", issues)
+	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "already supplied by the rule subject") {
+		t.Fatalf("issues=%+v, want the subject-input rebinding refusal", issues)
 	}
 }
 
