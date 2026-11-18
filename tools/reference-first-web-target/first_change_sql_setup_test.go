@@ -123,7 +123,6 @@ func TestFirstChangeGuideSetupFailsClosed(t *testing.T) {
 	}
 }
 
-
 // TestFirstChangeGuideSQLSetupIsAtomicInPostgres runs the documented step-0
 // shell block with the actual generated CLI, psql and isolated PostgreSQL.
 // Stubbed command exits prove control flow; this checks that a late seed
