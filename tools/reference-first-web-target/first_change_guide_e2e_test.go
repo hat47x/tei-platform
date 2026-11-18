@@ -164,7 +164,7 @@ func readOrderThroughCLI(t *testing.T, binary, workspaceRoot, dsn, orderID strin
 	var report struct {
 		OK     bool `json:"ok"`
 		Result struct {
-			Rows     []struct {
+			Rows []struct {
 				Key string `json:"key"`
 			} `json:"rows"`
 			PerRow map[string]map[string]string `json:"perRow"`
