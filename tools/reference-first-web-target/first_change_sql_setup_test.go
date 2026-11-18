@@ -182,6 +182,10 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	parentSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed-orders.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	clearTables := func() {
 		t.Helper()
 		for _, table := range []string{"public.order_lines", "public.orders"} {
@@ -218,6 +222,11 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if err := os.MkdirAll(seedDir, 0o755); err != nil {
 				t.Fatal(err)
 			}
+			// The guide runs the parent seed before the detail seed.
+			// Missing parent input is not a legitimate rollback test.
+			if err := os.WriteFile(filepath.Join(seedDir, "seed-orders.sql"), parentSeed, 0o644); err != nil {
+				t.Fatal(err)
+			}
 			seed := append([]byte(nil), originalSeed...)
 			if tc.breakSeed {
 				// A deliberate SQL failure after the original INSERT proves
@@ -236,18 +245,28 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if failed := runErr != nil; failed != tc.wantFailed {
 				t.Fatalf("step-0 shell failed=%v, want failure=%v", failed, tc.wantFailed)
 			}
-			var exists bool
+			var detailsExist, parentsExist bool
 			if err := db.QueryRowContext(t.Context(),
-				"SELECT to_regclass('public.order_lines') IS NOT NULL").Scan(&exists); err != nil {
-				t.Fatal("cannot inspect the isolated detail table")
+				"SELECT to_regclass('public.order_lines') IS NOT NULL, to_regclass('public.orders') IS NOT NULL").
+				Scan(&detailsExist, &parentsExist); err != nil {
+				t.Fatal("cannot inspect the isolated parent and detail tables")
 			}
 			if tc.wantFailed {
-				if exists {
-					t.Fatal("the guide left a table behind after a failed seed transaction")
+				if detailsExist || parentsExist {
+					t.Fatal("the guide left a parent or detail table after a failed detail seed")
 				}
 			} else {
-				if !exists {
-					t.Fatal("the guide did not commit the generated detail table")
+				if !detailsExist || !parentsExist {
+					t.Fatal("the guide did not commit both generated tables")
+				}
+				var parentCount int
+				if err := db.QueryRowContext(t.Context(),
+					"SELECT count(*) FROM public.orders WHERE order_id IN (1001, 1002, 1003)").
+					Scan(&parentCount); err != nil {
+					t.Fatal("cannot read committed parent orders")
+				}
+				if parentCount != 3 {
+					t.Fatalf("committed parent orders=%d, want 3", parentCount)
 				}
 				var count int
 				if err := db.QueryRowContext(t.Context(),
