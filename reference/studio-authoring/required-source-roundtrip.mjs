@@ -83,11 +83,15 @@ const failed = (bin, args, expected) => {
   assert.match(result.stderr + "\n" + result.stdout, expected);
 };
 mkdirSync(join(workspace, "semantic/studio"), { recursive: true });
+mkdirSync(join(workspace, "applications/studio-reader"), { recursive: true });
 mkdirSync(outputDir, { recursive: true });
 writeFileSync(join(workspace, "tei.workspace.yaml"), [
   "workspace: studio_reader", "formatVersion: 1",
-  "sources:", "  - semantic", "languages:", "  - tei.authoring/v1", ""
+  "sources:", "  - semantic", "  - applications",
+  "languages:", "  - tei.authoring/v1", ""
 ].join("\n"));
+writeFileSync(join(workspace, "applications/studio-reader/application.tei"),
+  "application studio_reader {\n    uses semantic studio\n}\n");
 writeFileSync(source, documentBefore);
 const sourceFingerprintBefore = digest(readFileSync(source));
 const revisionBefore = revision();
