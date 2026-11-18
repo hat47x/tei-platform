@@ -15,7 +15,7 @@ export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータ�
 
 ## 0. 表を作り、明細を入れる
 
-表を作るSQLは、保存の定義から出す。DDLを生成してから、表の作成と初期データの投入を一つのトランザクションで実行する。生成・実行のどちらかが失敗した場合は次へ進まず、DBへの変更を確定しない。SQLの一時ファイルは終了時に削除する。
+表を作るSQLは、保存の定義から出す。第一Webの受注一覧は親の`orders`表を読むので、受注3件と明細5行をともに投入する。DDLを生成してから、表の作成と初期データの投入を一つのトランザクションで実行する。生成・実行のどちらかが失敗した場合は次へ進まず、DBへの変更を確定しない。SQLの一時ファイルは終了時に削除する。
 
 ```bash
 (
@@ -24,7 +24,9 @@ schema_sql="$(mktemp)"
 trap 'rm -f "$schema_sql"' 0
 ./tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql > "$schema_sql"
 psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1 -1 \
-  -f "$schema_sql" -f testdata/destination-order-change/seed.sql
+  -f "$schema_sql" \
+  -f testdata/destination-order-change/seed-orders.sql \
+  -f testdata/destination-order-change/seed.sql
 )
 ```
 
