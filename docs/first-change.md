@@ -8,6 +8,8 @@
 
 Go、PostgreSQL（`psql`を含む）、このリポジトリ。以下のコマンドは`awk`を使うPOSIXシェル向けで、WindowsではWSLなどの環境で実行する。PowerShell上での実行は未検証である。試してよい空のデータベースを一つ作り、接続先を環境変数へ入れる。接続先は作業領域へ書かない。
 
+リポジトリのルートディレクトリで実行する。以下では、作成した実行ファイルを一貫して`./tei`で呼び出す。
+
 ```bash
 go build -o tei ./cmd/tei
 export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータベース>?sslmode=disable'
@@ -18,7 +20,7 @@ export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータ�
 表を作るSQLは、保存の定義から出す。
 
 ```bash
-tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
+./tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
   | psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1
 psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 ```
