@@ -72,29 +72,24 @@ test("Data required flag changes the actual esbuild Reader behavior; Generator S
         bundle: true, format: "esm", platform: "browser", target: "es2022",
         logLevel: "silent",
       });
-      // Build the real product Workbench entrypoint with a test-only Source
-      // overlay. No committed generated Reader or embedded asset is changed.
-      // The production main.ts -> presentation.ts import closure is preserved.
-      let overlayLoads = 0;
-      const built = await build({
-        absWorkingDir: here, entryPoints: [resolve(here, "main.ts")],
-        outfile: join(folder, "workbench.mjs"), bundle: true, write: false,
-        format: "esm", platform: "browser", target: "es2022",
-        nodePaths: [resolve(here, "node_modules")], logLevel: "silent",
-        plugins: [{
-          name: "test-only-data-derived-reader",
-          setup(api) {
-            api.onLoad({ filter: /inspection-reader\.generated\.ts$/ }, async () => {
-              overlayLoads++;
-              return { contents: await readFile(part, "utf8"), loader: "ts", resolveDir: here };
-            });
-          },
-        }],
-      });
-      assert.equal(overlayLoads, 1, "production Workbench must use exactly one model-derived Reader");
-      assert.equal(built.outputFiles.length, 1, "expected one assembled Workbench JS");
-      return { report, part: await readFile(part), bundle: await readFile(bundle),
-        workbench: Buffer.from(built.outputFiles[0].contents),
+      // Use the existing CLI esbuild child, not a second copy of its plugin.
+      // The child selects the real main.ts -> presentation.ts entrypoint.
+      const workbenchArtifact = join(folder, "workbench.mjs");
+      const adapter = join(repo, "tools/reference-studio-static-composition/build-generated-workbench.mjs");
+      const builderReport = JSON.parse(execFileSync(process.execPath, [
+        adapter, "--inspection-reader", part, "--artifact-out", workbenchArtifact,
+      ], { cwd: repo, encoding: "utf8", timeout: 60_000 }));
+      assert.equal(builderReport.readerPartDigest, sha256(await readFile(part)));
+      assert.equal(builderReport.artifactDigest, sha256(await readFile(workbenchArtifact)));
+      assert.equal(builderReport.schemaVersion, "tei.builder.studio-workbench-esbuild/v0");
+      // Exclusive artifact creation: a second invocation must not overwrite the
+      // original bundle even when the same Reader is selected.
+      assert.throws(() => execFileSync(process.execPath, [
+        adapter, "--inspection-reader", part, "--artifact-out", workbenchArtifact,
+      ], { cwd: repo, stdio: "pipe", timeout: 60_000 }));
+      assert.equal(builderReport.artifactDigest, sha256(await readFile(workbenchArtifact)));
+      return { report, builderReport, part: await readFile(part), bundle: await readFile(bundle),
+        workbench: await readFile(workbenchArtifact),
         reader: await import(pathToFileURL(bundle).href) };
     }
 
@@ -113,6 +108,11 @@ test("Data required flag changes the actual esbuild Reader behavior; Generator S
     assert.equal(after.report.artifactDigest, sha256(after.part));
     assert.notEqual(sha256(before.bundle), sha256(after.bundle));
     assert.notEqual(sha256(before.workbench), sha256(after.workbench));
+    assert.equal(before.builderReport.readerContractDigest,
+      before.reader.inspectionReaderProvenance.contractDigest);
+    assert.equal(after.builderReport.readerContractDigest,
+      after.reader.inspectionReaderProvenance.contractDigest);
+    assert.notEqual(before.builderReport.readerPartDigest, after.builderReport.readerPartDigest);
     for (const generated of [before, after]) {
       const expected = generated.reader.inspectionReaderProvenance.contractDigest;
       assert.ok(generated.workbench.includes(Buffer.from('contractDigest: "' + expected + '"')),
