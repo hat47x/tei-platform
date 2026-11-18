@@ -779,6 +779,12 @@ func validateRecordPatternInteraction(
 	}
 
 	seenHookPhases := map[string]bool{}
+	// All row-scoped hooks of one pattern share one supplier: the runner is
+	// handed one row set per invocation, so two different sources cannot both be
+	// applied. Validation has to say that here, because otherwise a pattern with
+	// two sources passes validation and every execution refuses it - admitted
+	// and never applied, which is the shape this repository keeps removing.
+	rowSourceQuery := core.CanonicalID("")
 	for _, hook := range pattern.Interaction.Hooks {
 		switch hook.Phase {
 		case "before-read", "before-create", "after-create", "before-update", "after-update", "before-delete", "after-delete":
@@ -826,6 +832,11 @@ func validateRecordPatternInteraction(
 		if hook.Rows != nil {
 			if hook.Scope != "row" {
 				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SOURCE_SCOPE_MISMATCH", "record pattern %s hook %s declares a row source but scope %q is not row", pattern.ID, hook.Phase, hook.Scope))
+			}
+			if rowSourceQuery == "" {
+				rowSourceQuery = hook.Rows.Query
+			} else if hook.Rows.Query != rowSourceQuery {
+				out = append(out, errFor(patternSubject, "APPLICATION_PATTERN_INTERACTION_HOOK_ROW_SOURCE_DIFFERS", "record pattern %s hook %s declares row source query %s but another row-scoped hook of the same pattern already declares %s; one invocation carries one row set", pattern.ID, hook.Phase, hook.Rows.Query, rowSourceQuery))
 			}
 			out = append(out, validateHookRowSource(pattern, patternSubject, app, hook, queries, dataAttributes)...)
 		}

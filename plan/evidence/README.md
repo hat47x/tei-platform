@@ -505,6 +505,7 @@
 - [行スコープのフックへ渡す行集合の変換](XTEA_LOWCODE_ROW_ROWS_CONVERSION_2026-11.md)（参照実装の試験記録。driver結果から行集合への変換を hook 側に置いた。ホストの配線は未実装）
 - [行スコープのフックを browse で使えるようにするか](XTEA_LOWCODE_ROW_HOOK_DECLARATION_SITE_2026-11.md)（設計判断。`interaction`はrecord限定のため一覧で行フックを宣言できない。既定案B（`Hook`へ行の出所を足す）を実装し、出所を宣言した`scope row`は警告を出さない。既定の参照実行はQueryを実行しないためskipは残る）
 - [行スコープのフックが行の出所を宣言する](XTEA_LOWCODE_HOOK_ROW_SOURCE_2026-11.md)（参照実装の試験記録。`rows from query <id>`を足し、出所の解決を検証で強制、変換とホスト入口まで実装。実Query実行からの配線と空ページの区別は未実装）
+- [行フックの出所宣言への独立レビュー](XTEA_LOWCODE_HOOK_ROW_SOURCE_REVIEW_2026-11.md)（出所の食い違いを宣言時に拒否。境界での強制は無いまま）
 - [postgres-suitesが赤かった理由](XTEA_LOWCODE_POSTGRES_SUITES_PATHS_2026-11.md)（paths絞り込みのため見えていなかった失敗が、paths追加で露見した記録）
 - [paths絞り込みで隠れている失敗の全面監査](XTEA_LOWCODE_WORKFLOW_PATHS_AUDIT_2026-11.md)（95本のworkflowのpathsとgo test対象を突き合わせ、6本を追加修正し、17組を理由付きで据え置き、変数一覧2本を登録。同じ穴は`tools/repository-architecture-check`のラチェットが落とす）
 - [例のWorkspaceで期間の要件を宣言する確認](XTEA_LOWCODE_EXAMPLE_PERIOD_REQUIREMENT_2026-11.md)（参照実装の試験記録。例で宣言・検証・投影・実行が一致。宣言時に矛盾検査が実例で発火し、`closed-rejects`を狭めた）
