@@ -788,13 +788,13 @@ FROM changed ORDER BY line_number, order_line_id`
 			t.Fatalf("RLS read failed or disclosed a DB secret: code=%d", got.code)
 		}
 		var report struct {
-			OK bool `json:"ok"`
+			OK     bool `json:"ok"`
 			Result struct {
-				Coverage             string            `json:"coverage"`
-				CoverageDeclared     string            `json:"coverageDeclared"`
-				CoverageBasis        string            `json:"coverageBasis"`
-				CoverageReason       string            `json:"coverageReason"`
-				Rows                 []struct {
+				Coverage         string `json:"coverage"`
+				CoverageDeclared string `json:"coverageDeclared"`
+				CoverageBasis    string `json:"coverageBasis"`
+				CoverageReason   string `json:"coverageReason"`
+				Rows             []struct {
 					Key string `json:"key"`
 				} `json:"rows"`
 				PerRelation          map[string]string `json:"perRelation"`
