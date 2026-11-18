@@ -249,6 +249,31 @@ jobs:
           ' "$receipt" >/dev/null
           jq '{status, head, checks, caseNames: [.cases[].name], businessReference, claimLimits}' "$receipt"
 
+      - name: 実Studioフォームの候補から共通審査を経てData Source一セルを保存・再読込
+        shell: bash
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/tei-studio-required-source-loop.json"
+          TEI_STUDIO_E2E=1 node reference/studio-authoring/required-source-e2e.mjs > "$receipt"
+          jq -e '
+            .schema == "tei.reference.studio-required-source-loop/v0"
+            and .status == "PASS"
+            and (.checks >= 12)
+            and .editedSubject == "studio.inspection_response.snapshot_fingerprint"
+            and .reviewedSource.changedSourcePath == "semantic/studio/inspection-response.tei.md"
+            and .reviewedSource.requiredBefore == false
+            and .reviewedSource.requiredAfter == true
+            and .reviewedSource.beforeRevision != .reviewedSource.afterRevision
+            and .reviewedSource.sourceBeforeDigest != .reviewedSource.sourceAfterDigest
+            and .authority.editor == "reference-offline-script-vm"
+            and .authority.sourceWriteByForm == false
+            and .authority.acceptance == "automated-scratch-test-only"
+            and .authority.humanAcceptance == "not-observed"
+            and .authority.studioDesktop == "not-invoked"
+            and .authority.buildIntent == "not-authorized"
+          ' "$receipt" >/dev/null
+          jq '{status, checks, editedSubject, reviewedSource, authority}' "$receipt"
+
       - name: 実行後の版と作業領域を確認
         if: always()
         shell: bash
