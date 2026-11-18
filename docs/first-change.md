@@ -123,8 +123,7 @@ go run ./tools/reference-first-web-target \
 （作業領域を未受理として読む診断経路を使う）。CI の
 `TestShippedWebPageShowsRealPostgresRowAnswers` も同じフラグで起動している。
 
-ブラウザで `http://127.0.0.1:8080/custom-submit` を開き、`from` に
-`2026-09-01T00:00:00Z`、`row` に `0` を入れて送る。**明細の行ごとの答え**が出る。
+ブラウザで `http://127.0.0.1:8080/custom-submit` を開き、`Login ID` に`legacy-order-editor`、`Credential` に`editor-secret`、`Browse from` に`2026-09-01T00:00:00Z`、`Selected row` に`0`を入力して送信する。**明細の行ごとの答え**が出る。ここに記した認証情報は参照実装のテスト専用であり、実際の利用者の認証情報として使わない。
 
 - 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
 - `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では、取得範囲の宣言と実行Queryの照合が通るため、一意性は`satisfied`になる。
