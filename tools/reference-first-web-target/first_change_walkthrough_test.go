@@ -43,7 +43,9 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 	// A bare 'tei desired-schema' used to fail for a first-time reader even
 	// when the Go integration test (which calls the binary by full path) passed.
 	setup := strings.SplitN(doc, "## 1. 作業領域の写しを作る", 2)[0]
-	if !strings.Contains(setup, "./tei desired-schema -workspace reference/workspace") ||
+	if !strings.Contains(setup, "go build -o tei ./cmd/tei") ||
+		!strings.Contains(setup, "リポジトリのルートディレクトリ") ||
+		!strings.Contains(setup, "./tei desired-schema -workspace reference/workspace") ||
 		strings.Contains(setup, "\ntei desired-schema ") {
 		t.Fatal("step 0 did not use the locally built ./tei executable")
 	}
@@ -60,7 +62,7 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 		"sales.order_line.unit_price_positive",
 		"sales.order.lines.line_number_unique",
 		"`not-satisfied`",
-		"`undecided`",
+		"`satisfied`",
 	} {
 		if !strings.Contains(webStep, required) {
 			t.Errorf("the Web walkthrough omitted %q", required)
@@ -71,5 +73,16 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 	}
 	if strings.Contains(webStep, "-read-pg-dsn") {
 		t.Fatal("step 5 documents a removed DB connection flag")
+	}
+	for _, required := range []string{
+		"`Login ID`", "`legacy-order-editor`",
+		"`Credential`", "`editor-secret`",
+		"`Browse from`", "`2026-09-01T00:00:00Z`",
+		"`Selected row`", "`0`",
+		"本番用の認証情報ではない",
+	} {
+		if !strings.Contains(webStep, required) {
+			t.Errorf("the browser instructions omit %q", required)
+		}
 	}
 }
