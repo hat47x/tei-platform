@@ -37,9 +37,9 @@ func requiredCandidate(revision string, value *bool) Candidate {
 	return Candidate{
 		Schema: candidateSchema, ID: "studio-required-change",
 		BaseModelRevision: revision,
-		Origin: Origin{Kind: "studio", Actor: "test"},
-		Intent: "Change the required property of the existing Data attribute without touching other Source",
-		Delta: []Operation{{Op: opSetAttributeRequired, ID: authoringRequiredID, Required: value}},
+		Origin:            Origin{Kind: "studio", Actor: "test"},
+		Intent:            "Change the required property of the existing Data attribute without touching other Source",
+		Delta:             []Operation{{Op: opSetAttributeRequired, ID: authoringRequiredID, Required: value}},
 	}
 }
 
@@ -174,9 +174,9 @@ func TestStudioRequiredCandidateUsesExistingReviewAndAcceptCLI(t *testing.T) {
 
 func TestStudioRequiredCandidateFailsClosed(t *testing.T) {
 	for _, tc := range []struct {
-		name string
+		name   string
 		change func(*Candidate)
-		code string
+		code   string
 	}{
 		{"missing explicit boolean", func(c *Candidate) { c.Delta[0].Required = nil }, "CANDIDATE_NORMALIZE"},
 		{"unknown attribute", func(c *Candidate) { c.Delta[0].ID = "studio.unknown" }, "ATTRIBUTE_NOT_FOUND"},
