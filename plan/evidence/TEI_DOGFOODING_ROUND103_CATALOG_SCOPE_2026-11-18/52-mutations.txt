@@ -1,0 +1,9 @@
+M1 drop out.SectionScope = sectionScope(out, world)
+   -> FAIL scope does not name its selection rule
+
+M2 make the shared covered set empty
+   -> BOTH tests passed at first.
+      My test only checked "covered and not-covered never overlap"; an empty
+      covered set makes that trivially true.
+   -> added the reverse direction (a kind WITH an entry must not be not-covered,
+      and coveredKinds must match the entry kind count); M2 then failed.
