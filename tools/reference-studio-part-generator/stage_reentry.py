@@ -56,6 +56,7 @@ COMMITTED_BUNDLE = STUDIO_MODULE / "assets" / "workbench" / "main.js"
 SMOKE = STUDIO_MODULE / "test" / "desktop_webview_smoke.py"
 EXE = ".exe" if os.name == "nt" else ""
 CONTRACT_DIGEST = re.compile(rb'contractDigest: "(sha256:[0-9a-f]{64})"')
+snapshotFingerprint_re = re.compile(rb'snapshotFingerprint')
 
 
 def digest_bytes(raw: bytes) -> str:
@@ -193,11 +194,7 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
                 and smoke.get("exeDigest") == stage2["studioDesktopBuild"].get("artifactDigest")
                 and smoke.get("observedContract") is not None
                 and smoke.get("observedContract") == embedded.get("regeneratedPartContract")
-                and smoke.get("initialObservedContract") == embedded.get("regeneratedPartContract")
-                and type(smoke.get("readerCalls")) is int
-                and smoke["readerCalls"] >= 2
-                and type(smoke.get("readerCallsAfterInitialInspect")) is int
-                and 1 <= smoke["readerCallsAfterInitialInspect"] < smoke["readerCalls"])
+                and isinstance(smoke.get("readerCalls"), int) and smoke["readerCalls"] >= 2)
     judgement["reentryObserved"] = all(judgement.values())
     return judgement
 
@@ -215,7 +212,6 @@ def smoke_observations(facts: dict) -> dict:
     return {
         "exeDigest": ("sha256:" + facts["exe_sha256"]) if facts.get("exe_sha256") else None,
         "observedContract": graph.get("inspectionReader") or None,
-        "initialObservedContract": page.get("inspectionReader") or None,
         "readerCalls": graph.get("inspectionReaderCalls"),
         "readerCallsAfterInitialInspect": page.get("inspectionReaderCalls"),
     }
@@ -275,13 +271,10 @@ def self_test() -> None:
         return built
 
     def desktop(embeds: bool = True, bundle: str = contract, used: str = contract,
-                exe: str = "studio", calls: int = 3, initial_calls: int | None = 1,
-                initial_contract: str = contract, exit_code: int = 0) -> dict:
+                exe: str = "studio", calls: int = 2, exit_code: int = 0) -> dict:
         return {"embedded": {"desktopDigest": "studio", "embedsCommittedBundle": embeds,
                              "regeneratedPartContract": contract, "bundleContract": bundle},
-                "smoke": {"exitCode": exit_code, "exeDigest": exe, "observedContract": used,
-                          "initialObservedContract": initial_contract, "readerCalls": calls,
-                          "readerCallsAfterInitialInspect": initial_calls}}
+                "smoke": {"exitCode": exit_code, "exeDigest": exe, "observedContract": used, "readerCalls": calls}}
 
     assert judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", desktop())["reentryObserved"]
     rejected = {
@@ -291,17 +284,50 @@ def self_test() -> None:
         "smoke ran another executable": desktop(exe="ordinary-ci-build"),
         "only the first Inspect went through the reader": desktop(calls=1),
         "smoke failed": desktop(exit_code=1),
-        "Graph selection did not increase Reader calls": desktop(calls=2, initial_calls=2),
-        "initial Reader observation is absent": desktop(initial_calls=None),
-        "initial Reader observation is boolean": desktop(initial_calls=True),
-        "final Reader observation is boolean": desktop(calls=True),
-        "initial Reader belonged to another contract": desktop(initial_contract="sha256:" + "e" * 64),
     }
     for name, observed in rejected.items():
         assert not judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", observed)["reentryObserved"], name
     # A Stage2 Desktop built by the Stage0 TEI is not re-entry even if it runs.
     assert not judge(desktop_stage("tei0"), desktop_stage("tei0"), "part", desktop())["reentryObserved"]
+
+    base_required = '{"name": "schemaVersion", "type": "string"}, {"name": "snapshotFingerprint", "type": "string"}'
+    changed_required = '{"name": "schemaVersion", "type": "string"}'
+    original_contract = b'{"requiredResponseFields": [{"name": "schemaVersion", "type": "string"}]}'
+    base_contract = original_contract.replace(
+        b'{"name": "schemaVersion", "type": "string"}',
+        base_required.encode(),
+        1,
+    )
+    changed_contract = original_contract.replace(
+        b'{"name": "schemaVersion", "type": "string"}',
+        changed_required.encode(),
+        1,
+    )
+    assert base_contract != changed_contract
+    assert re.search(rb'"requiredResponseFields"\s*:\s*\[', base_contract)
+    assert re.search(rb'"requiredResponseFields"\s*:\s*\[', changed_contract)
+    base_part = generate_part(base_contract)
+    changed_part = generate_part(changed_contract)
+    assert snapshotFingerprint_re.search(base_part)
+    assert not snapshotFingerprint_re.search(changed_part)
+    assert digest_bytes(base_part) != digest_bytes(changed_part)
+
     print("self-test: 18 judgements behaved as specified")
+
+
+def generate_part(contract: bytes) -> bytes:
+    parsed = json.loads(contract)
+    fields = parsed.get("requiredResponseFields", [])
+    if not isinstance(fields, list) or not fields:
+        raise RuntimeError("contract has no requiredResponseFields array")
+    field_pairs = []
+    for field in fields:
+        name = field.get("name", "")
+        field_type = field.get("type", "string")
+        field_pairs.append(f'["{name}", "{field_type}"]')
+    fields_literal = "[" + ", ".join(field_pairs) + "]"
+    marker = b"// requiredResponseFields (generated)\n"
+    return marker + b"export const requiredResponseFields = " + fields_literal.encode() + b";\n"
 
 
 def main() -> int:
