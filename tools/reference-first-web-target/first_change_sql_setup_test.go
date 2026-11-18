@@ -247,9 +247,9 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 				t.Fatalf("step-0 shell failed=%v, want failure=%v", failed, tc.wantFailed)
 			}
 			var detailExists, parentExists bool
-			if err := db.QueryRowContext(t.Context(),
-				"SELECT to_regclass('public.order_lines') IS NOT NULL, to_regclass('public.orders') IS NOT NULL").
-				Scan(&detailExists, &parentExists); err != nil {
+			tables := db.QueryRowContext(t.Context(),
+				"SELECT to_regclass('public.order_lines') IS NOT NULL, to_regclass('public.orders') IS NOT NULL")
+			if err := tables.Scan(&detailExists, &parentExists); err != nil {
 				t.Fatal("cannot inspect the isolated generated tables")
 			}
 			if tc.wantFailed {
