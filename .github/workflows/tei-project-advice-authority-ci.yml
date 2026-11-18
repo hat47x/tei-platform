@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - "tools/reference-runtime-capability-identity/**"
-      - "internal/plugin/runtime/process_host_start_admission*.go"
+      - "internal/plugin/runtime/**"
       - "plugins/reference-project-customer-advice/**"
       - "tools/check-reference-project-plugin-isolation.sh"
       - "tools/reference-project-advice-lit/contract_bridge.go"

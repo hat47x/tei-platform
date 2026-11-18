@@ -8,9 +8,11 @@ on:
       - '.github/workflows/tei-ra1-browse-preexecutor-tests.yml'
       - 'internal/driver/**'
       - 'internal/query/**'
+      - 'internal/syntax/**'
       - 'internal/validation/**'
       - 'reference/workspace/**'
       - 'tools/reference-first-web-target/**'
+      - 'tools/reference-browse-read/**'
 
 permissions:
   contents: read
