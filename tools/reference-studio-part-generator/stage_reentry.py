@@ -194,7 +194,11 @@ def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None 
                 and smoke.get("exeDigest") == stage2["studioDesktopBuild"].get("artifactDigest")
                 and smoke.get("observedContract") is not None
                 and smoke.get("observedContract") == embedded.get("regeneratedPartContract")
-                and isinstance(smoke.get("readerCalls"), int) and smoke["readerCalls"] >= 2)
+                and smoke.get("initialObservedContract") == embedded.get("regeneratedPartContract")
+                and type(smoke.get("readerCalls")) is int
+                and smoke["readerCalls"] >= 2
+                and type(smoke.get("readerCallsAfterInitialInspect")) is int
+                and 1 <= smoke["readerCallsAfterInitialInspect"] < smoke["readerCalls"])
     judgement["reentryObserved"] = all(judgement.values())
     return judgement
 
@@ -212,6 +216,7 @@ def smoke_observations(facts: dict) -> dict:
     return {
         "exeDigest": ("sha256:" + facts["exe_sha256"]) if facts.get("exe_sha256") else None,
         "observedContract": graph.get("inspectionReader") or None,
+        "initialObservedContract": page.get("inspectionReader") or None,
         "readerCalls": graph.get("inspectionReaderCalls"),
         "readerCallsAfterInitialInspect": page.get("inspectionReaderCalls"),
     }
@@ -271,10 +276,13 @@ def self_test() -> None:
         return built
 
     def desktop(embeds: bool = True, bundle: str = contract, used: str = contract,
-                exe: str = "studio", calls: int = 2, exit_code: int = 0) -> dict:
+                exe: str = "studio", calls: int = 3, initial_calls: int | None = 1,
+                initial_contract: str = contract, exit_code: int = 0) -> dict:
         return {"embedded": {"desktopDigest": "studio", "embedsCommittedBundle": embeds,
                              "regeneratedPartContract": contract, "bundleContract": bundle},
-                "smoke": {"exitCode": exit_code, "exeDigest": exe, "observedContract": used, "readerCalls": calls}}
+                "smoke": {"exitCode": exit_code, "exeDigest": exe, "observedContract": used,
+                          "initialObservedContract": initial_contract, "readerCalls": calls,
+                          "readerCallsAfterInitialInspect": initial_calls}}
 
     assert judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", desktop())["reentryObserved"]
     rejected = {
@@ -284,6 +292,11 @@ def self_test() -> None:
         "smoke ran another executable": desktop(exe="ordinary-ci-build"),
         "only the first Inspect went through the reader": desktop(calls=1),
         "smoke failed": desktop(exit_code=1),
+        "Graph selection did not increase Reader calls": desktop(calls=2, initial_calls=2),
+        "initial Reader observation is absent": desktop(initial_calls=None),
+        "initial Reader observation is boolean": desktop(initial_calls=True),
+        "final Reader observation is boolean": desktop(calls=True),
+        "initial Reader belonged to another contract": desktop(initial_contract="sha256:" + "e" * 64),
     }
     for name, observed in rejected.items():
         assert not judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", observed)["reentryObserved"], name
