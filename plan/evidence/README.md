@@ -25,6 +25,7 @@
 - [TEI Studio PoCの証拠採取手順](TEI_STUDIO_POC_EVIDENCE_RUNBOOK_20261014.md)
 - [Studioの部品一つをTEIのSourceから生成し、実Desktopで使われたことを観測した](TEI_STUDIO_SELF_BUILD_S1_INSPECTION_READER_2026-11-13.md)（Inspector readerを契約Sourceから既存transformで生成。実Windows WebView2で使用を観測し、生成前bundleでは同じ確認だけが失敗。Stage1のTEI実プロセスによる再生成も一致。bundlingとWails BuildはBuild graphの外、CIは未実行）
 - [Inspect応答の必須項目を、契約の定義だけで一つ足した](TEI_STUDIO_READER_REQUIRED_FIELD_BY_DEFINITION_2026-11-17.md)（transform実行機構に有界の`join-array`を加え、Generator Sourceが契約の`requiredResponseFields`を読む汎用規則を持つ。`schemaVersion`の追加はGenerator Source・生成tool・実行機構の差分0で、旧部品・digest付け替えは拒否され、実Windows WebView2で新契約のReaderが使われた。他の規則はまだ名前付きスロット）
+- [Stage1のTEIがStage2でStudio Desktopを構築し、新しいプロセスで生成Readerが使われた](TEI_STUDIO_SELF_BUILD_STAGE2_DESKTOP_2026-11-17.md)（Windows。`tei self-build`の起動記録でStage2の起動主体がStage1の生成物であることを確かめ、Stage2のDesktop実行ファイルのbyte列にコミット済みbundleが入り、実WebView2で現契約の生成Readerが複数回使われた。bundleはTEIが作り直していない。Build Intent・catalogは不使用）
 - [E1合成証拠の索引（JSON）](TEI_E1_SYNTHETIC_MANIFEST_20261012_38267656696.json)と、その原本[`tei-e1-synthetic-38267656696/`](tei-e1-synthetic-38267656696/)（試験用証拠。製品Gateは未資格。バイト列で照合するため[`.gitattributes`](../../.gitattributes)で改行変換を除外している）
 - [E2a-1実PostgreSQL先行証拠の受領記録（JSON）](TEI_E2A1_REAL_POSTGRES_RECEIPT_38311557882.json)（上の保全文書が参照する原本。製品G2は未資格）
 - [#1803 新規作成DDLの実PostgreSQL実行の記録（JSON）](POSTGRES_DDL_ENTRY_REAL_DB_20261020.json)（上の説明文書が参照する、生の結果）

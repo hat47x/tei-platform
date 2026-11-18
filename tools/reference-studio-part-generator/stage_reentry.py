@@ -14,12 +14,25 @@ Stage0 seed, starts those TEI processes, and compares what they recorded.
           tei1 drives: Go build of the part generator           -> gen2
           tei1 drives: gen2 over the same contract Source       -> part2
 
+With --studio-desktop each stage also drives a Go build of the Studio Wails
+Desktop (the nested module cmd/tei-studio) with the same child:
+
+  stage1  tei0 drives: Go build of cmd/tei-studio               -> studio1
+  stage2  tei1 drives: Go build of cmd/tei-studio               -> studio2
+
+and with --desktop-smoke the Stage2 Desktop is then started as a new process
+and driven through the existing WebView2 smoke, which requires the generated
+Inspector reader of the current contract to render real Inspect results.
+Both are Windows-only: the Wails Desktop builds there with CGO disabled.
+
 Re-entry is observed only when the Stage2 invoker is the Stage1 artifact, the
 Stage2 part was produced by the generator Stage2 rebuilt, and the bytes agree.
 Two launches of `go build` by this script would not satisfy any of these.
 
-It claims no Seed Trust, acceptance, Runtime Authority, or Desktop use. The
-Node/esbuild bundling and the Wails build are not driven here.
+It claims no Seed Trust, acceptance or Runtime Authority. The Node/esbuild
+bundling is still not driven: the Desktop embeds the committed bundle, and the
+judgement only checks that it is that bundle and that it carries the identity
+of the part Stage2 regenerated.
 """
 from __future__ import annotations
 
@@ -27,6 +40,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -37,6 +51,11 @@ WORKBENCH = Path("reference/tei-studio-workbench")
 TRANSFORM = WORKBENCH / "builder-sources" / "inspection-reader-v1.transform.json"
 CONTRACT = WORKBENCH / "inspection-reader.contract.json"
 COMMITTED_PART = WORKBENCH / "inspection-reader.generated.ts"
+STUDIO_MODULE = Path("cmd/tei-studio")
+COMMITTED_BUNDLE = STUDIO_MODULE / "assets" / "workbench" / "main.js"
+SMOKE = STUDIO_MODULE / "test" / "desktop_webview_smoke.py"
+EXE = ".exe" if os.name == "nt" else ""
+CONTRACT_DIGEST = re.compile(rb'contractDigest: "(sha256:[0-9a-f]{64})"')
 
 
 def digest_bytes(raw: bytes) -> str:
@@ -68,13 +87,13 @@ def drive(tei: Path, child: Path, child_args: list[str], artifact: Path) -> dict
     }
 
 
-def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path) -> dict:
+def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path, studio_desktop: bool = False) -> dict:
     work.mkdir(parents=True)
 
-    def go_build(package: str, name: str) -> tuple[Path, dict]:
-        out = work / name
+    def go_build(package: str, name: str, module: Path = repo) -> tuple[Path, dict]:
+        out = work / (name + EXE)
         return out, drive(tei, go_child, [
-            "-repo", str(repo), "-package", package, "-supply", str(supply),
+            "-repo", str(module), "-package", package, "-supply", str(supply),
             "-artifact-out", str(out), "-state", str(work / (name + "-state")),
         ], out)
 
@@ -88,19 +107,48 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path) -
         ], part)
         if generator.is_file() else {"failureCause": "the generator was not built"}
     )
-    return {
+    stage = {
         "invokerPath": str(tei),
         "invokerOnDisk": digest_file(tei),
         "teiBuild": tei_build,
         "generatorBuild": generator_build,
         "partGeneration": generation,
         "teiArtifactPath": str(tei_out),
+        "partPath": str(part),
+    }
+    if studio_desktop:
+        # The nested Studio module is its own build root; its go.mod reaches
+        # the TEI module through a relative replace, so the same child builds it.
+        studio, studio_build = go_build(".", "tei-studio", repo / STUDIO_MODULE)
+        stage["studioDesktopBuild"] = studio_build
+        stage["studioDesktopPath"] = str(studio)
+    return stage
+
+
+def embedded_bundle(desktop: Path, bundle: bytes, part: Path) -> dict:
+    """What the Desktop executable carries, read from its bytes.
+
+    go:embed stores file contents verbatim, so the committed bundle must occur
+    in the executable as one contiguous byte run. The bundle is not rebuilt by
+    TEI; the check is that this Desktop embeds exactly the committed bundle and
+    that the bundle names the contract the regenerated part names.
+    """
+    image = desktop.read_bytes() if desktop.is_file() else b""
+    part_ids = CONTRACT_DIGEST.findall(part.read_bytes()) if part.is_file() else []
+    bundle_ids = CONTRACT_DIGEST.findall(bundle)
+    return {
+        "desktopDigest": digest_bytes(image) if image else None,
+        "committedBundleDigest": digest_bytes(bundle),
+        "embedsCommittedBundle": bool(image) and image.count(bundle) == 1,
+        "regeneratedPartContract": part_ids[0].decode() if len(part_ids) == 1 else None,
+        "bundleContract": bundle_ids[0].decode() if len(bundle_ids) == 1 else None,
     }
 
 
-def judge(stage1: dict, stage2: dict, committed_part: str) -> dict:
+def judge(stage1: dict, stage2: dict, committed_part: str, desktop: dict | None = None) -> dict:
     """Each judgement is separate; agreement of bytes alone is never re-entry."""
-    steps = ("teiBuild", "generatorBuild", "partGeneration")
+    steps = ("teiBuild", "generatorBuild", "partGeneration") + (
+        ("studioDesktopBuild",) if desktop is not None else ())
 
     def clean(stage: dict) -> bool:
         return all(
@@ -128,8 +176,62 @@ def judge(stage1: dict, stage2: dict, committed_part: str) -> dict:
         and stage1["partGeneration"].get("artifactDigest") == stage2["partGeneration"].get("artifactDigest"),
         "stage2PartIsTheCommittedPart": stage2["partGeneration"].get("artifactDigest") == committed_part,
     }
+    if desktop is not None:
+        embedded = desktop.get("embedded", {})
+        judgement.update({
+            "studioDesktopsEqual": stage1["studioDesktopBuild"].get("artifactDigest") is not None
+            and stage1["studioDesktopBuild"].get("artifactDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
+            "stage2DesktopEmbedsCommittedBundle": embedded.get("embedsCommittedBundle") is True
+            and embedded.get("desktopDigest") == stage2["studioDesktopBuild"].get("artifactDigest"),
+            "committedBundleCarriesRegeneratedPart": embedded.get("regeneratedPartContract") is not None
+            and embedded.get("bundleContract") == embedded.get("regeneratedPartContract"),
+        })
+        if "smoke" in desktop:
+            smoke = desktop["smoke"]
+            judgement["stage2DesktopUsedGeneratedReaderInNewProcess"] = (
+                smoke.get("exitCode") == 0
+                and smoke.get("exeDigest") == stage2["studioDesktopBuild"].get("artifactDigest")
+                and smoke.get("observedContract") is not None
+                and smoke.get("observedContract") == embedded.get("regeneratedPartContract")
+                and isinstance(smoke.get("readerCalls"), int) and smoke["readerCalls"] >= 2)
     judgement["reentryObserved"] = all(judgement.values())
     return judgement
+
+
+def smoke_observations(facts: dict) -> dict:
+    """Read what the WebView2 smoke observed, without trusting its verdict.
+
+    The values come from the page itself: the generated reader writes the
+    contract digest and a call count on the document element only when it
+    accepts a projection. The count after the Graph selection is the second
+    Inspect, so it shows the part was used more than once in that process.
+    """
+    page = facts.get("page_state") or {}
+    graph = page.get("graphSelection") or {}
+    return {
+        "exeDigest": ("sha256:" + facts["exe_sha256"]) if facts.get("exe_sha256") else None,
+        "observedContract": graph.get("inspectionReader") or None,
+        "readerCalls": graph.get("inspectionReaderCalls"),
+        "readerCallsAfterInitialInspect": page.get("inspectionReaderCalls"),
+    }
+
+
+def desktop_smoke(repo: Path, desktop: Path, evidence: Path) -> dict:
+    """Start the Stage2 Desktop as a new process through the existing smoke."""
+    completed = subprocess.run([sys.executable, str(repo / SMOKE), str(desktop), str(evidence)],
+                               cwd=repo, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", check=False)
+    result_lines = [line for line in completed.stdout.splitlines() if line.startswith("SMOKE_RESULT=")]
+    observed: dict = {}
+    summary = evidence / "summary.json"
+    if summary.is_file():
+        observed = smoke_observations(json.loads(summary.read_text(encoding="utf-8-sig")))
+    return {
+        "exitCode": completed.returncode,
+        "result": result_lines[-1] if result_lines else None,
+        "evidenceDir": str(evidence),
+        **observed,
+    }
 
 
 def self_test() -> None:
@@ -159,7 +261,34 @@ def self_test() -> None:
     lying = stage("tei1")
     lying["partGeneration"]["artifactOnDisk"] = "different"
     assert not judge(stage("tei0"), lying, "part")["reentryObserved"]
-    print("self-test: 5 judgements behaved as specified")
+
+    contract = "sha256:" + "c" * 64
+
+    def desktop_stage(invoker: str) -> dict:
+        built = stage(invoker)
+        built["studioDesktopBuild"] = step(invoker, "studio")
+        return built
+
+    def desktop(embeds: bool = True, bundle: str = contract, used: str = contract,
+                exe: str = "studio", calls: int = 2, exit_code: int = 0) -> dict:
+        return {"embedded": {"desktopDigest": "studio", "embedsCommittedBundle": embeds,
+                             "regeneratedPartContract": contract, "bundleContract": bundle},
+                "smoke": {"exitCode": exit_code, "exeDigest": exe, "observedContract": used, "readerCalls": calls}}
+
+    assert judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", desktop())["reentryObserved"]
+    rejected = {
+        "Desktop does not embed the committed bundle": desktop(embeds=False),
+        "bundle was built from another contract": desktop(bundle="sha256:" + "d" * 64),
+        "WebView ran a reader of another contract": desktop(used="sha256:" + "e" * 64),
+        "smoke ran another executable": desktop(exe="ordinary-ci-build"),
+        "only the first Inspect went through the reader": desktop(calls=1),
+        "smoke failed": desktop(exit_code=1),
+    }
+    for name, observed in rejected.items():
+        assert not judge(desktop_stage("tei0"), desktop_stage("tei1"), "part", observed)["reentryObserved"], name
+    # A Stage2 Desktop built by the Stage0 TEI is not re-entry even if it runs.
+    assert not judge(desktop_stage("tei0"), desktop_stage("tei0"), "part", desktop())["reentryObserved"]
+    print("self-test: 13 judgements behaved as specified")
 
 
 def main() -> int:
@@ -169,7 +298,14 @@ def main() -> int:
     parser.add_argument("--supply", type=Path, help="Go module supply (a GOPROXY file root, e.g. $GOMODCACHE/cache/download)")
     parser.add_argument("--work", type=Path, help="new directory for every stage's outputs; must not exist")
     parser.add_argument("--go", default="go", help="Stage0 seed Go executable")
+    parser.add_argument("--studio-desktop", action="store_true",
+                        help="also drive a Go build of the Studio Wails Desktop in each stage (Windows)")
+    parser.add_argument("--desktop-smoke", action="store_true",
+                        help="start the Stage2 Desktop as a new process through the WebView2 smoke "
+                             "(Windows; implies --studio-desktop)")
     args = parser.parse_args()
+    if args.desktop_smoke:
+        args.studio_desktop = True
     if args.self_test:
         self_test()
         return 0
@@ -185,7 +321,7 @@ def main() -> int:
     stage0.mkdir(parents=True)
 
     def seed_build(package: str, name: str) -> Path:
-        out = stage0 / name
+        out = stage0 / (name + EXE)
         subprocess.run([go, "build", "-trimpath", "-o", str(out), package], cwd=repo, check=True,
                        env={**os.environ, "CGO_ENABLED": "0", "GOFLAGS": "", "GOTOOLCHAIN": "local"})
         return out
@@ -193,12 +329,19 @@ def main() -> int:
     tei0 = seed_build("./cmd/tei", "tei")
     go_child = seed_build("./tools/reference-go-build-with-supply", "go-build-with-supply")
 
-    stage1 = run_stage(tei0, go_child, repo, supply, work / "stage1")
+    stage1 = run_stage(tei0, go_child, repo, supply, work / "stage1", args.studio_desktop)
     tei1 = Path(stage1["teiArtifactPath"])
     if not tei1.is_file():
         raise RuntimeError(f"stage1 did not produce a TEI binary: {stage1['teiBuild'].get('failureCause')}")
     # The Stage2 driver is the Stage1 artifact itself, at the path Stage1 wrote it.
-    stage2 = run_stage(tei1, go_child, repo, supply, work / "stage2")
+    stage2 = run_stage(tei1, go_child, repo, supply, work / "stage2", args.studio_desktop)
+    desktop = None
+    if args.studio_desktop:
+        studio2 = Path(stage2["studioDesktopPath"])
+        desktop = {"embedded": embedded_bundle(studio2, (repo / COMMITTED_BUNDLE).read_bytes(),
+                                               Path(stage2["partPath"]))}
+        if args.desktop_smoke and studio2.is_file():
+            desktop["smoke"] = desktop_smoke(repo, studio2, work / "stage2-desktop-smoke")
 
     committed = digest_bytes((repo / COMMITTED_PART).read_bytes().replace(b"\r\n", b"\n"))
     result = {
@@ -219,9 +362,11 @@ def main() -> int:
         },
         "stage1": stage1,
         "stage2": stage2,
-        "judgement": judge(stage1, stage2, committed),
+        "stage2Desktop": desktop,
+        "judgement": judge(stage1, stage2, committed, desktop),
         "claimBoundary": "one host, one toolchain, one supply; the Go build child is the Stage0 seed's in both stages; "
-                         "no Seed Trust, acceptance, Runtime Authority, bundling, Wails build or Desktop use is claimed",
+                         "the Node/esbuild bundle is the committed one, not rebuilt by TEI; "
+                         "no Seed Trust, acceptance or Runtime Authority is claimed",
     }
     json.dump(result, sys.stdout, indent=2)
     print()
