@@ -109,25 +109,35 @@ func postgresPhysicalReadAllowsComplete(
 	resolution driver.ResolvedHeaderDetailContractQuery,
 ) (bool, string) {
 	var physicalTable string
+	matches := 0
 	for _, mapping := range world.Persistence {
 		if mapping.Database != resolution.Binding.Target.Database ||
 			mapping.SemanticData != resolution.Relation.Target.ID {
 			continue
 		}
-		if physicalTable != "" {
+		matches++
+		if matches != 1 {
 			return false, "the PostgreSQL persistence table is ambiguous"
 		}
 		physicalTable = mapping.Table
 	}
-	if physicalTable == "" {
+	if matches != 1 || physicalTable == "" {
 		return false, "the PostgreSQL persistence table was not identified"
+	}
+	// A name resolved through search_path can refer to a different table
+	// than the one the SQL execution actually read. Require an explicit
+	// schema and compare names via pg_namespace instead of to_regclass.
+	schema, name, qualified := strings.Cut(physicalTable, ".")
+	if !qualified || schema == "" || name == "" || strings.Contains(name, ".") {
+		return false, "the PostgreSQL persistence table needs an unambiguous schema-qualified name"
 	}
 	var kind string
 	var rlsEnabled, rlsForced, hasChildren bool
 	err := tx.QueryRowContext(ctx, `SELECT c.relkind::text, c.relrowsecurity,
 		c.relforcerowsecurity, c.relhassubclass
 		FROM pg_catalog.pg_class AS c
-		WHERE c.oid = pg_catalog.to_regclass($1)`, physicalTable).
+		JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+		WHERE n.nspname = $1 AND c.relname = $2`, schema, name).
 		Scan(&kind, &rlsEnabled, &rlsForced, &hasChildren)
 	if err != nil {
 		return false, "the physical PostgreSQL table could not be verified"
