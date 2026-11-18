@@ -57,6 +57,7 @@ type report struct {
 	Steps                   int            `json:"steps"`
 	StateDir                string         `json:"stateDir,omitempty"`
 	ClaimBoundary           string         `json:"claimBoundary"`
+	Authoring                *authoringBinding `json:"authoring,omitempty"`
 }
 
 func digest(raw []byte) string {
@@ -262,6 +263,8 @@ func run(args []string, stdout io.Writer) error {
 	contractPath := fs.String("contract", "", "exact contract Source of the Studio part")
 	artifactOut := fs.String("artifact-out", "", "path to write the generated part to; never overwritten")
 	stateDir := fs.String("state", "", "state directory named by the entry; reported back, not used")
+	authoringRoot := fs.String("authoring-root", "", "Workspace root for selected tei.authoring/v1 Data required fields")
+	authoringData := fs.String("authoring-data", "", "exact canonical Data ID to bind to the Reader contract")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -275,6 +278,16 @@ func run(args []string, stdout io.Writer) error {
 	contractRaw, err := os.ReadFile(*contractPath)
 	if err != nil {
 		return fmt.Errorf("read contract Source: %w", err)
+	}
+	var authoring *authoringBinding
+	if *authoringRoot != "" || *authoringData != "" {
+		if *authoringRoot == "" || *authoringData == "" {
+			return errors.New("-authoring-root and -authoring-data must be provided together")
+		}
+		contractRaw, authoring, err = bindAuthoringData(*authoringRoot, *authoringData, contractRaw)
+		if err != nil {
+			return err
+		}
 	}
 	artifact, result, err := generate(transformRaw, contractRaw)
 	if err != nil {
@@ -293,6 +306,7 @@ func run(args []string, stdout io.Writer) error {
 		return fmt.Errorf("write generated part: %w", err)
 	}
 	result.StateDir = *stateDir
+	result.Authoring = authoring
 	encoder := json.NewEncoder(stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(result)
