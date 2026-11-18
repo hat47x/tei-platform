@@ -2,7 +2,7 @@
 
 受注明細を実際のPostgreSQLから読み、設計文書へ規則を一つ足して、答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の到達点の1〜5を通す。
 
-2026年11月17日に、main `3ae3507c`とPostgreSQL 16で、この順に打って通ることを確かめた。**Webの画面で同じ答えを見る手順（到達点の5）も、下の5に書いた。**
+2026年11月17日には、main `3ae3507c`とPostgreSQL 16で手順1〜4を確認した。その後、実PostgreSQLと実Chromeを使ったCIで五段階を一続きに検査した（#5510）。ただし、編集はGoの試験用ヘルパーで行っており、このページのシェルコマンドを人が文字どおりに実行した検収はまだ終わっていない。
 
 ## 用意するもの
 
@@ -18,7 +18,7 @@ export TEI_VIEW_PG_DSN='postgres://<利用者>@localhost:5432/<空のデータ�
 表を作るSQLは、保存の定義から出す。
 
 ```bash
-tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
+./tei desired-schema -workspace reference/workspace -database sales_core -provider postgres -format sql \
   | psql "$TEI_VIEW_PG_DSN" -v ON_ERROR_STOP=1
 psql "$TEI_VIEW_PG_DSN" -f testdata/destination-order-change/seed.sql
 ```
@@ -121,8 +121,7 @@ go run ./tools/reference-first-web-target \
 （作業領域を未受理として読む診断経路を使う）。CI の
 `TestShippedWebPageShowsRealPostgresRowAnswers` も同じフラグで起動している。
 
-ブラウザで `http://127.0.0.1:8080/custom-submit` を開き、`from` に
-`2026-09-01T00:00:00Z`、`row` に `0` を入れて送る。**明細の行ごとの答え**が出る。
+ブラウザで `http://127.0.0.1:8080/custom-submit` を開き、`Login ID` に `legacy-order-editor`、`Credential` に参照用の合成値 `editor-secret`、`Browse from` に `2026-09-01T00:00:00Z`、`Selected row` に `0` を入力して送信する。**明細の行ごとの答え**が出る。これらのログイン情報はローカルの参照実装を検査するための値であり、本番用の認証情報ではない。
 
 - 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
 - `sales.order.lines.line_number_unique`は、受注1001の明細番号2が実際に重複しているので**`not-satisfied`**となる。取得範囲が未確定でも、観測した重複は一意性の反証になる。一方、受注1002では、取得範囲の宣言と実行Queryの照合が通るため、一意性は`satisfied`になる。
