@@ -267,7 +267,11 @@ func (r Runner) runReachable(ctx context.Context, applicationID, patternID core.
 				// hook with a declared source and a hook without one are different
 				// declarations, and the same wording for both hides that.
 				if declaration.Rows != nil {
-					report.Reasons[phase] = fmt.Sprintf("the hook declares scope row from query %s, so it needs the row set; pass the source's rows to apply it", declaration.Rows.Query)
+					// A source declared but no rows passed means the caller has
+					// not supplied them yet. A source declared and an empty row set
+					// passed never reaches here, so this wording is only about the
+					// missing row set, not about a query that returned nothing.
+					report.Reasons[phase] = fmt.Sprintf("the hook declares scope row from query %s, so it needs the row set; the declared source's rows were not passed to this run", declaration.Rows.Query)
 				} else {
 					report.Reasons[phase] = "the hook declares scope row, so it needs the row set; pass the rows to apply it"
 				}
