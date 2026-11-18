@@ -11,7 +11,9 @@ function requireID(id, context) {
   return id;
 }
 function array(value, context) {
-  if (value === undefined) return [];
+  // Go's encoding/json writes a nil slice as null, not []. Both represent
+  // the empty collection in a correctly loaded Canonical World.
+  if (value === undefined || value === null) return [];
   if (!Array.isArray(value)) throw new Error(context + ": array required");
   return value;
 }
@@ -28,12 +30,14 @@ function exactRevision(revision) {
 // The accepted World is caller-supplied; this tool does not authenticate its
 // provenance. Callers must obtain World and modelRevision from the same workspace.
 export function indexWorld(world) {
-  if (!world || typeof world !== "object" || !Array.isArray(world.semantics) ||
-      !Array.isArray(world.applications)) throw new Error("INVALID_WORLD");
+  if (!world || typeof world !== "object" ||
+      !(Array.isArray(world.semantics) || world.semantics === null) ||
+      !(Array.isArray(world.applications) || world.applications === null))
+    throw new Error("INVALID_WORLD");
   const data = new Map(), relations = new Map(), attributes = new Map();
   const patterns = new Map(), namespaces = new Map(), validations = new Map();
   const applications = new Map(), validationConsumers = new Map();
-  for (const ns of world.semantics) {
+  for (const ns of array(world.semantics, "world.semantics")) {
     insert(namespaces, ns.id, ns, "namespace");
     for (const validation of array(ns.validations, "namespace.validations")) {
       insert(validations, validation.id, { ...validation, namespace: ns.id }, "validation");
@@ -48,7 +52,7 @@ export function indexWorld(world) {
       }
     }
   }
-  for (const app of world.applications) {
+  for (const app of array(world.applications, "world.applications")) {
     insert(applications, app.id, app, "application");
     for (const validationID of array(app.validations, "application.validations")) {
       requireID(validationID, "application.validation");
