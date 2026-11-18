@@ -221,6 +221,52 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+      - name: 実Chromeの属性必須指定をShared Acceptanceで明示Review・Source保存・再読込
+        shell: bash
+        env:
+          TEI_STUDIO_ACCEPTED_SOURCE_LOOP: '1'
+        run: |
+          set -euo pipefail
+          shots="$RUNNER_TEMP/tei-studio-required-accepted-source"
+          mkdir -p "$shots"
+          node reference/studio-authoring/required-source-loop.mjs \
+            "$RUNNER_TEMP/tei-studio-playwright" "$shots"
+          test -s "$shots/required-editor.png"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .schema == "tei.reference.studio-required-source-loop/v0"
+            and .head == $sha
+            and .status == "PASS"
+            and .actualBrowser == "chrome-headless"
+            and .editorMode == "required"
+            and .browserDraftSchema == "tei.reference.studio-edit/v0"
+            and .candidateSchema == "tei.reference.change-candidate/v0"
+            and (.modelRevisionBefore != .modelRevisionAfter)
+            and .changedManagedSourceFiles == ["semantic/studio/inspection-response.tei.md"]
+            and (.sourceBytesBefore != .sourceBytesAfter)
+            and .readerSourceIsRealTEIWorld == true
+            and .independentCanonicalRequiredBefore == false
+            and .independentCanonicalRequiredAfter == true
+            and .previewNonMutating == true
+            and .reviewNonMutating == true
+            and .explicitFingerprintAccepted == true
+            and .missingFingerprintRefused == true
+            and .staleReviewRefused == true
+            and .offlineNetworkRequests == 0
+            and .humanMeaningAcceptance == "not-observed"
+            and .productWailsEditor == "not-observed"
+            and .windowsSelfBuildAfterAcceptance == "not-observed"
+            and .buildAuthority == "not-established"
+          ' "$shots/required-source-loop-receipt.json" >/dev/null
+
+      - name: 実ChromeとShared Acceptanceから作成した保存後Sourceの証拠を添付
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: studio-required-source-loop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/tei-studio-required-accepted-source/
+          retention-days: 7
+          if-no-files-found: error
+
       - name: 一時作業領域で正本受理と再投影を検証
         shell: bash
         run: |
