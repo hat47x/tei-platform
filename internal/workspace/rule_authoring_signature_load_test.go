@@ -37,6 +37,18 @@ func TestRuleAuthoringSignatureDiagnosticsReachLoad(t *testing.T) {
 			ruleID: "sales.item.probe",
 		},
 		{
+			name:   "input read over all rows",
+			body:   "namespace sales\noperator sales.op:\n  takes start: number of each row\n",
+			want:   "no place for an input read over all rows",
+			ruleID: "sales.op",
+		},
+		{
+			name:   "refutation statement",
+			body:   "namespace sales\noperator sales.op:\n  takes start: number\n  refutes on some rows\n",
+			want:   "no place for a refutation statement",
+			ruleID: "sales.op",
+		},
+		{
 			name: "undeclared value-absent mapping",
 			body: "namespace sales\noperator sales.op: takes end: number\n" +
 				"rule sales.item.probe:\n  sales.item.amount is sales.op end: 1 or open\n",

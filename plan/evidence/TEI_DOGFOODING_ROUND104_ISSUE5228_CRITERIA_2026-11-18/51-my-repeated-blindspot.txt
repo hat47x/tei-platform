@@ -1,0 +1,17 @@
+The issue's own example, sales_core.order_legacy, lives only in releases/.
+`model search -term order_legacy` returns total: 0.
+
+That is not a defect. The response names where it did not look:
+
+  coverage.notSearchableKinds:
+    ['migration','application-release','database-release','solution-release',
+     'database','environment','persistence-mapping']
+  coverage.notDerived:
+    ['sources-without-an-indexed-declaration',
+     'lines-before-the-first-declaration-of-a-source',
+     'sources-beyond-the-work-bound','acceptance-and-edit-authority']
+
+My first probe looked for a top-level "note" and concluded the zero was
+unexplained. It was explained -- under `coverage`. I made the same mistake in
+round 103 with sectionScope: I looked at the top of the response and missed the
+field that answered my question.
