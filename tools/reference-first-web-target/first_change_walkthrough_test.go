@@ -87,6 +87,17 @@ func TestFirstChangeWalkthroughWebUsesEditedWorkspace(t *testing.T) {
 	if strings.Contains(webStep, "-read-pg-dsn") {
 		t.Fatal("step 5 documents a removed DB connection flag")
 	}
+	// The PostgreSQL Web read qualifies Relation coverage in its own read
+	// transaction. The guide must not keep claiming the former partial-only
+	// outcome after that behavior changes.
+	for _, required := range []string{"CLIと第一Web Target", "受注1002", "同じ読取トランザクション", "`satisfied`", "RLS", "`undecided`"} {
+		if !strings.Contains(webStep, required) {
+			t.Errorf("the Web guide does not describe qualified Relation coverage: %q", required)
+		}
+	}
+	if strings.Contains(webStep, "第一Web Targetは現在、Relation全体の取得範囲を同じ方法では確認していない") {
+		t.Fatal("the Web guide describes the obsolete partial-only relation coverage")
+	}
 	for _, required := range []string{
 		"`Login ID`", "`legacy-order-editor`",
 		"`Credential`", "`editor-secret`",
