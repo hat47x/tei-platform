@@ -255,6 +255,8 @@ func resolveCandidate(s snapshot, c Candidate) []Diagnostic {
 			out = append(out, resolveSetSymbol(s, op)...)
 		case opSetAttributeType:
 			out = append(out, resolveSetAttributeType(s, op)...)
+		case opSetAttributeRequired:
+			out = append(out, resolveSetAttributeRequired(s, op)...)
 		}
 	}
 
