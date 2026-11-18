@@ -103,7 +103,7 @@ def authoring_source_digest(root: Path) -> str:
 
 def git_head(root: Path) -> str:
     result = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
-                            capture_output=True, text=True, check=True)
+                            capture_output=True, text=True, encoding="utf-8", check=True)
     return result.stdout.strip()
 
 
@@ -111,7 +111,7 @@ def drive(tei: Path, child: Path, child_args: list[str], artifact: Path) -> dict
     """Start one TEI process and return what it recorded about its child."""
     completed = subprocess.run(
         [str(tei), "self-build", "-child", str(child), "-child-arg", json.dumps(child_args), "-artifact", str(artifact)],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, encoding="utf-8", check=False,
     )
     if completed.returncode != 0:
         raise RuntimeError(f"{tei.name} self-build did not complete the observation: {completed.stderr.strip()}")
@@ -188,7 +188,7 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
             checkout = work / "stage-desktop-source"
             subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach",
                             str(checkout), expected_head], capture_output=True,
-                           text=True, check=True)
+                           text=True, encoding="utf-8", check=True)
             try:
                 checkout_head = git_head(checkout)
                 if checkout_head != expected_head:
@@ -206,7 +206,7 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
                     raise RuntimeError("Stage Desktop staged Bundle differs from the Builder artifact")
                 changed = subprocess.run(["git", "-C", str(checkout),
                                           "diff", "--name-only"], check=True,
-                                         capture_output=True, text=True).stdout.splitlines()
+                                         capture_output=True, text=True, encoding="utf-8").stdout.splitlines()
                 if changed != [COMMITTED_BUNDLE.as_posix()]:
                     raise RuntimeError("Stage Desktop checkout changed other tracked Sources")
                 studio, studio_build = go_build(
@@ -217,7 +217,7 @@ def run_stage(tei: Path, go_child: Path, repo: Path, supply: Path, work: Path,
             finally:
                 subprocess.run(["git", "-C", str(repo), "worktree", "remove",
                                 "--force", str(checkout)], check=True,
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, encoding="utf-8")
         else:
             # Historical mode: both stages embed the committed asset.
             studio, studio_build = go_build(".", "tei-studio", repo / STUDIO_MODULE)
@@ -708,7 +708,7 @@ def main() -> int:
             "nature": "external Go seed; not a driven process",
             "goExecutable": go,
             "goExecutableDigest": digest_file(Path(go)),
-            "goVersion": subprocess.run([go, "version"], capture_output=True, text=True).stdout.strip(),
+            "goVersion": subprocess.run([go, "version"], capture_output=True, text=True, encoding="utf-8").stdout.strip(),
             "teiDigest": digest_file(tei0),
             "goBuildChildDigest": digest_file(go_child),
             **({"nodeExecutableDigest": digest_file(node_child)} if node_child is not None else {}),
