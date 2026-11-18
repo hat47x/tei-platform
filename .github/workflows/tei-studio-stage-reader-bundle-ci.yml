@@ -114,7 +114,6 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $requiredGo = ((Get-Content -LiteralPath go.mod | Select-String -Pattern '^go ([0-9]+\.[0-9]+\.[0-9]+)$').Matches.Groups[1].Value)
           go mod download
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Push-Location cmd/tei-studio
