@@ -358,6 +358,7 @@ Evaluation artifactはcandidateの意味を変えないため、`candidateFinger
 | `add-application-validation-use` | **既存の**Applicationが評価するValidationを`uses validation`として一件宣言する。宣言順が評価順になる（ADR-0029） | 既存のApplication source fileの、最後の`uses`宣言の後ろへ一行挿入（`placement`は必須で、そのApplicationを宣言しているfileに限る）。同じApplicationへの複数の宣言は、candidateが指定した順序を保つ（この順序はfingerprintにも入る） |
 | `set-symbol` | **既存の**subject（`data` / `attribute` / `relation` / `candidate-key` / `functional-dependency`）の表示名symbolだけを変える。Canonical IDは変えない | 対象subjectを宣言した既存semantic fileの、該当symbolトークン一件を置換（`placement`は持たない） |
 | `set-attribute-type` | **既存の**属性が指す型を、同じ基の表現を持つ別の型へ付け替える。属性のCanonical IDは変えない | 対象属性を宣言した既存semantic fileの、型参照トークン一件を置換（`placement`は持たない） |
+| `set-attribute-required` | **既存の**`tei.authoring/v1` Data表にある属性の`required`を、明示的な`true`または`false`へ変更する。Canonical IDは維持 | Source Indexで一意に特定した`.tei.md`の`required`セル一箇所だけを置換する。文章・他表・整形は保持。`placement`を受け付けず、ネイティブ`.tei`や列の欠落は拒否する |
 
 - 一つのcandidate内で`add-validation`と、そのValidationを使う`add-application-validation-use`を同時に記述できます。参照先のIDは既存のCanonical Worldまたは**同じcandidateで宣言された追加**から決定論的に解決し、未知のIDを黙って認めません。重複するoperation identityは既存の`normalizeCandidate`で拒否します。この経路は、業務規則だけを追加してApplicationが評価しない状態を避けるためのReferenceです。実装・テストが含まれるDraft PR #985の資格確認が完了するまでは、動作確認済みとは扱いません。
 - 新しいfileを作るoperationのplacementは、意味を所有する層のprefix（semantic / applications）とloaderが読む形式に合い、まだ存在せず、他のoperationと重ならない必要があります。PatternはそのPatternを所有するApplicationのdirectoryに置きます（loaderはApplication manifestと同じdirectoryの`patterns/`をそのApplicationのものとして読みます）。
