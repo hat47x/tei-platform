@@ -182,6 +182,10 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	parentSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed-orders.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	clearTables := func() {
 		t.Helper()
 		for _, table := range []string{"public.order_lines", "public.orders"} {
@@ -218,6 +222,12 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if err := os.MkdirAll(seedDir, 0o755); err != nil {
 				t.Fatal(err)
 			}
+			// The published setup runs the parent seed before the detail seed.
+			// A test that omits it would fail even when the actual guide works,
+			// or worse, validate only a private test-only setup.
+			if err := os.WriteFile(filepath.Join(seedDir, "seed-orders.sql"), parentSeed, 0o644); err != nil {
+				t.Fatal(err)
+			}
 			seed := append([]byte(nil), originalSeed...)
 			if tc.breakSeed {
 				// A deliberate SQL failure after the original INSERT proves
@@ -236,26 +246,38 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if failed := runErr != nil; failed != tc.wantFailed {
 				t.Fatalf("step-0 shell failed=%v, want failure=%v", failed, tc.wantFailed)
 			}
-			var exists bool
-			if err := db.QueryRowContext(t.Context(),
-				"SELECT to_regclass('public.order_lines') IS NOT NULL").Scan(&exists); err != nil {
-				t.Fatal("cannot inspect the isolated detail table")
-			}
-			if tc.wantFailed {
-				if exists {
-					t.Fatal("the guide left a table behind after a failed seed transaction")
-				}
-			} else {
-				if !exists {
-					t.Fatal("the guide did not commit the generated detail table")
-				}
-				var count int
+			// Both physical tables are generated in the same transaction.
+			// A late error must leave neither behind; a successful setup must
+			// commit the parent and detail rows together.
+			for _, table := range []string{"public.orders", "public.order_lines"} {
+				var exists bool
 				if err := db.QueryRowContext(t.Context(),
-					"SELECT count(*) FROM public.order_lines").Scan(&count); err != nil {
-					t.Fatal("cannot inspect the committed seed rows")
+					"SELECT pg_catalog.to_regclass($1) IS NOT NULL", table).Scan(&exists); err != nil {
+					t.Fatal("cannot inspect the isolated table")
 				}
-				if count != tc.wantRows {
-					t.Fatalf("the guide committed %d rows, want %d", count, tc.wantRows)
+				if tc.wantFailed && exists {
+					t.Fatalf("the guide left %s behind after a failed seed transaction", table)
+				}
+				if !tc.wantFailed && !exists {
+					t.Fatalf("the guide did not commit %s", table)
+				}
+			}
+			if !tc.wantFailed {
+				for _, check := range []struct {
+					table string
+					want  int
+				}{
+					{"public.orders", 3},
+					{"public.order_lines", tc.wantRows},
+				} {
+					var count int
+					if err := db.QueryRowContext(t.Context(),
+						"SELECT count(*) FROM "+check.table).Scan(&count); err != nil {
+						t.Fatal("cannot inspect the committed seed rows")
+					}
+					if count != check.want {
+						t.Fatalf("%s committed %d rows, want %d", check.table, count, check.want)
+					}
 				}
 			}
 			leftovers, err := filepath.Glob(filepath.Join(root, "tmp.*"))
