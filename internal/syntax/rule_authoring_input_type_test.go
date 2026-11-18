@@ -21,6 +21,9 @@ func TestRuleAuthoringRefusesAValueOfTheWrongType(t *testing.T) {
 		{name: "decimal constant", value: "100"},
 		{name: "negative fraction", value: "-0.5"},
 		{name: "attribute id", value: "sales.order_line.unit_price"},
+		{name: "attribute id with an empty segment", value: "sales..unit_price", want: "takes a number"},
+		{name: "attribute id with an uppercase segment", value: "sales.Item.unit_price", want: "takes a number"},
+		{name: "attribute id with a trailing dot", value: "sales.item.", want: "takes a number"},
 		{name: "a word is not a number", value: "ITEM-A", want: "takes a number"},
 		{name: "a bare boolean is not a number", value: "true", want: "takes a number"},
 		{name: "leading zero is ambiguous", value: "007", want: "takes a number"},
@@ -46,6 +49,13 @@ func TestRuleAuthoringRefusesAValueOfTheWrongType(t *testing.T) {
 			}
 			if !strings.Contains(issues[0].Msg, tc.want) {
 				t.Fatalf("message=%q, want it to mention %q", issues[0].Msg, tc.want)
+			}
+			// A malformed reference is a value error at the authored bytes,
+			// not a later failure to transport an otherwise valid assignment.
+			cleanSource := strings.ReplaceAll(src, "string\\n", "")
+			valueStart := strings.LastIndex(cleanSource, tc.value)
+			if valueStart < 0 || issues[0].Span.Start != valueStart || issues[0].Span.End != valueStart+len(tc.value) {
+				t.Fatalf("diagnostic span=%+v, want value %q at byte %d", issues[0].Span, tc.value, valueStart)
 			}
 		})
 	}
