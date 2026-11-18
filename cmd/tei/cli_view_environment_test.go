@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"path/filepath"
@@ -244,5 +245,45 @@ func TestEnvironmentRejectsContradictoryCoverageBeforeConnection(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "TEI_VIEW_PG_DSN") {
 		t.Fatalf("the database connection was considered before rejecting the contradiction: %v", err)
+	}
+}
+
+// A table name without an explicit schema must not qualify a relation-wide
+// positive claim, even if another table with that name appears in search_path.
+// This guard runs before any catalog query; a nil transaction in this test
+// makes an accidental implicit name lookup fail rather than pass.
+func TestPostgresPhysicalCoverageRejectsUnqualifiedMappings(t *testing.T) {
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := driver.NewResolver(loaded.World).ResolveHeaderDetailContractQuery(
+		"order_entry", "order_entry.order_lines")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, physicalTable := range []string{"order_lines", "public.order_lines.extra"} {
+		t.Run(physicalTable, func(t *testing.T) {
+			world := loaded.World
+			world.Persistence = append([]persistence.Mapping(nil), loaded.World.Persistence...)
+			found := 0
+			for i := range world.Persistence {
+				m := &world.Persistence[i]
+				if m.Database == resolved.Binding.Target.Database &&
+					m.SemanticData == resolved.Relation.Target.ID {
+					m.Table = physicalTable
+					found++
+				}
+			}
+			if found != 1 {
+				t.Fatalf("expected exactly one reference mapping, found %d", found)
+			}
+			allowed, reason := postgresPhysicalReadAllowsComplete(
+				context.Background(), nil, world, resolved)
+			if allowed || !strings.Contains(reason, "schema-qualified") {
+				t.Fatalf("unqualified or ambiguous PostgreSQL table %q was allowed: allowed=%v reason=%q",
+					physicalTable, allowed, reason)
+			}
+		})
 	}
 }
