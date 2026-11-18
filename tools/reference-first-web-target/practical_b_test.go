@@ -355,6 +355,8 @@ const (
 	practicalBApplicationSource = "applications/order-entry/application.tei"
 	practicalBValidationSource  = "semantic/sales/validation.tei"
 	practicalBQuerySource       = "applications/order-entry/queries/recent_orders.tei"
+	practicalBBindingSource     = "applications/order-entry/realizations/header-detail/order-lines.tei"
+	practicalBBindingCovers    = "    covers sales.order.lines\n"
 	practicalBQueryBefore       = "sha256:a7c1c4f6fc55bf93ba775c444c1b2576cc2e979e4e0d93aeeecbe508c61fe3ac"
 	practicalBQueryInputInsert  = "    input from std.datetime\n"
 	practicalBApplicationBefore = "sha256:d9152277abbeb0fdc1ea23e5d54084b8c2ef1ebb5e45e3d32b2340fe04eff71a"
@@ -371,6 +373,20 @@ func revertPracticalBAcceptance(t *testing.T, tool, scratch string) {
 	// この受理候補は旧R0 Sourceを固定した歴史Fixture。追加したQuery inputだけは
 	// scratchの中で旧bytesへ戻す。現在WorkspaceへのWriter/Acceptanceを復活させない。
 	revertPracticalBSource(t, scratch, practicalBQuerySource, practicalBQueryInputInsert, practicalBQueryBefore)
+	// This synthetic acceptance candidate pins a historical baseline. Restore
+	// only the scratch copy of the newly accepted coverage declaration; never
+	// revert the current reference Workspace or revise its evidence silently.
+	bindingPath := filepath.Join(scratch, filepath.FromSlash(practicalBBindingSource))
+	binding, err := os.ReadFile(bindingPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Count(binding, []byte(practicalBBindingCovers)) != 1 {
+		t.Fatalf("historical scratch binding has no single covers declaration: %s", binding)
+	}
+	if err := os.WriteFile(bindingPath, bytes.Replace(binding, []byte(practicalBBindingCovers), nil, 1), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Remove(filepath.Join(scratch, filepath.FromSlash(practicalBAcceptedRecord))); err != nil {
 		t.Fatalf("受理記録をscratch copyから外せません: %v", err)
 	}
