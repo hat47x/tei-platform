@@ -487,6 +487,19 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
 			"unexpected %q after the operator declaration; an operator takes exactly one input", nt.Text))
 	}
+	// The declaration covers every authored modifier, not just the input
+	// type. Otherwise Source Index and local edits would miss the trailing
+	// part of the declaration.
+	declarationEnd := inputTok.End
+	if ofEachRow {
+		declarationEnd = ofEachRowSpan.End
+	}
+	if absentAs != "" {
+		declarationEnd = absentAsSpan.End
+	}
+	if refutes {
+		declarationEnd = refutesSpan.End
+	}
 	return OperatorAuthoring{
 		Namespace:             namespace,
 		ID:                    id,
@@ -494,7 +507,7 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		Input:                 OperatorInputWord(inputTok.Text),
 		InputName:             inputName,
 		AbsentAs:              absentAs,
-		DeclarationSpan:       Anchor{Start: keyword.Start, End: inputTok.End},
+		DeclarationSpan:       Anchor{Start: keyword.Start, End: declarationEnd},
 		IDSpan:                tokenAnchor(nameTok),
 		InputSpan:             tokenAnchor(inputTok),
 		InputNameSpan:         inputNameSpan,
@@ -703,6 +716,9 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 				NameSpan:  tokenAnchor(nameTok),
 				ValueSpan: tokenAnchor(valueTok),
 			}
+			// A later assignment extends the declaration even when it has no
+			// absent-value mapping of its own.
+			lastTok = valueTok
 			// `or <name>` asks the operator to read an absent value this way.
 			// Whether the operator declared that mapping is checked against the
 			// declarations, not here.
