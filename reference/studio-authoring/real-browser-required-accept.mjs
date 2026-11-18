@@ -3,7 +3,7 @@
 // Automated Review/Accept does not establish human or business authority.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -160,7 +160,8 @@ try {
   assert.equal(revision(), initialRevision);
 
   const acceptArgs = ["-candidate", candidateFile];
-  const withoutReview = acceptance("accept", acceptArgs, 2);
+  // go run maps a child process exit(2) to exit(1), preserving stderr.
+  const withoutReview = acceptance("accept", acceptArgs, 1);
   assert.match(withoutReview.stderr, /expected-review-fingerprint/);
   assert.equal(sha(readFileSync(sourceFile)), initialSourceDigest);
 
