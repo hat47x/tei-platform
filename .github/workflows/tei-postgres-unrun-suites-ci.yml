@@ -21,6 +21,8 @@ on:
       - 'tools/reference-first-web-target/read_scenario_postgres.go'
       - 'tools/reference-first-web-target/read_scenario_postgres_test.go'
       - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
+      - 'tools/reference-first-web-target/first_change_walkthrough_test.go'
+      - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -50,6 +52,8 @@ on:
       - 'tools/reference-first-web-target/read_scenario_postgres.go'
       - 'tools/reference-first-web-target/read_scenario_postgres_test.go'
       - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
+      - 'tools/reference-first-web-target/first_change_walkthrough_test.go'
+      - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -235,6 +239,11 @@ jobs:
           # Refusal paths must be tested even without a database fixture.
           go test -count=1 -v -timeout 10m -run '^TestServeReadFromDB' \
             ./tools/reference-first-web-target | tee -a "$log"
+          # The handbook itself is part of the acceptance: a reader who follows it
+          # must reach the same shipped entry point. This needs no database, but
+          # it belongs with the other step-5 checks so one job covers the page.
+          go test -count=1 -v -timeout 5m -run '^TestFirstChangeWalkthroughWebUsesEditedWorkspace$' \
+            ./tools/reference-first-web-target | tee -a "$log"
 
       - name: SKIPとFAILの検証
         shell: bash
@@ -286,6 +295,7 @@ jobs:
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
             'TestShippedWebPageShowsRealPostgresRowAnswers'
+            'TestFirstChangeWalkthroughWebUsesEditedWorkspace'
             'TestFirstWebAcceptsARuleChangeEndToEnd'
             'TestFirstWebAcceptsARuleChangeEndToEnd/before'
             'TestFirstWebAcceptsARuleChangeEndToEnd/after'
