@@ -182,6 +182,10 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	parentSeed, err := os.ReadFile(filepath.Join(destinationFixtureRoot(t), "seed-orders.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	clearTables := func() {
 		t.Helper()
 		for _, table := range []string{"public.order_lines", "public.orders"} {
@@ -227,6 +231,9 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(seedDir, "seed.sql"), seed, 0o644); err != nil {
 				t.Fatal(err)
 			}
+			if err := os.WriteFile(filepath.Join(seedDir, "seed-orders.sql"), parentSeed, 0o644); err != nil {
+				t.Fatal(err)
+			}
 
 			command := exec.Command("sh", "-eu", "-c", script)
 			command.Dir = root
@@ -236,26 +243,37 @@ func TestFirstChangeGuideSQLSetupIsAtomicInPostgres(t *testing.T) {
 			if failed := runErr != nil; failed != tc.wantFailed {
 				t.Fatalf("step-0 shell failed=%v, want failure=%v", failed, tc.wantFailed)
 			}
-			var exists bool
-			if err := db.QueryRowContext(t.Context(),
-				"SELECT to_regclass('public.order_lines') IS NOT NULL").Scan(&exists); err != nil {
-				t.Fatal("cannot inspect the isolated detail table")
-			}
-			if tc.wantFailed {
-				if exists {
-					t.Fatal("the guide left a table behind after a failed seed transaction")
+			// The guide now inserts the three parent orders before five detail
+			// rows. Both generated tables must commit or roll back together,
+			// not merely the detail table that the CLI reads.
+			for _, table := range []struct {
+				name string
+				rows int
+			}{
+				{name: "public.orders", rows: 3},
+				{name: "public.order_lines", rows: tc.wantRows},
+			} {
+				var exists bool
+				if err := db.QueryRowContext(t.Context(),
+					"SELECT to_regclass($1) IS NOT NULL", table.name).Scan(&exists); err != nil {
+					t.Fatal("cannot inspect the isolated generated table")
 				}
-			} else {
+				if tc.wantFailed {
+					if exists {
+						t.Fatalf("failed seed left generated table %s behind", table.name)
+					}
+					continue
+				}
 				if !exists {
-					t.Fatal("the guide did not commit the generated detail table")
+					t.Fatalf("successful seed did not commit generated table %s", table.name)
 				}
 				var count int
 				if err := db.QueryRowContext(t.Context(),
-					"SELECT count(*) FROM public.order_lines").Scan(&count); err != nil {
+					"SELECT count(*) FROM "+table.name).Scan(&count); err != nil {
 					t.Fatal("cannot inspect the committed seed rows")
 				}
-				if count != tc.wantRows {
-					t.Fatalf("the guide committed %d rows, want %d", count, tc.wantRows)
+				if count != table.rows {
+					t.Fatalf("table %s has %d committed rows, want %d", table.name, count, table.rows)
 				}
 			}
 			leftovers, err := filepath.Glob(filepath.Join(root, "tmp.*"))
