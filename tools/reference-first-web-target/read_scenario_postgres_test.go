@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -268,6 +270,120 @@ func TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned(t *testing.T) {
 		}
 		if !found {
 			t.Fatalf("an observed duplicate was lost under RLS: %v", first.RelationAnswers)
+		}
+	})
+
+	t.Run("a non-owner hides the duplicate from the actual Web read", func(t *testing.T) {
+		// The existing owner-connection test only establishes that the RLS
+		// flag blocks a positive claim. This case proves that a real
+		// non-owner sees fewer rows while the read is still successful.
+		const role = "tei_web_rls_reader_probe"
+		const password = "tei_web_rls_disposable_only"
+		if _, err := db.ExecContext(t.Context(),
+			"CREATE ROLE "+role+" LOGIN PASSWORD '"+password+"'"); err != nil {
+			t.Fatal("cannot create the disposable PostgreSQL non-owner role")
+		}
+		t.Cleanup(func() {
+			for _, statement := range []string{
+				"DROP POLICY IF EXISTS tei_web_hide_duplicate ON public.order_lines",
+				"ALTER TABLE public.order_lines DISABLE ROW LEVEL SECURITY",
+				"REVOKE SELECT ON public.orders FROM " + role,
+				"REVOKE SELECT ON public.order_lines FROM " + role,
+				"REVOKE USAGE ON SCHEMA public FROM " + role,
+				"DROP ROLE IF EXISTS " + role,
+			} {
+				if _, err := db.Exec(statement); err != nil {
+					t.Error("cannot clean the isolated Web RLS probe")
+				}
+			}
+		})
+		for _, statement := range []string{
+			"GRANT USAGE ON SCHEMA public TO " + role,
+			"GRANT SELECT ON public.orders TO " + role,
+			"GRANT SELECT ON public.order_lines TO " + role,
+			"CREATE POLICY tei_web_hide_duplicate ON public.order_lines FOR SELECT TO " + role + " USING (order_line_id <> 3)",
+			"ALTER TABLE public.order_lines ENABLE ROW LEVEL SECURITY",
+		} {
+			if _, err := db.ExecContext(t.Context(), statement); err != nil {
+				t.Fatal("cannot configure the isolated Web RLS probe")
+			}
+		}
+		connection, err := url.Parse(dsn)
+		if err != nil || (connection.Scheme != "postgres" && connection.Scheme != "postgresql") {
+			t.Fatal("the disposable PostgreSQL DSN must be a PostgreSQL URL")
+		}
+		connection.User = url.UserPassword(role, password)
+		limitedDSN := connection.String()
+		limited, err := postgresdb.OpenSQL(limitedDSN)
+		if err != nil {
+			t.Fatal("cannot open the isolated non-owner connection")
+		}
+		t.Cleanup(func() { _ = limited.Close() })
+		var currentUser string
+		if err := limited.QueryRowContext(t.Context(), "SELECT current_user").Scan(&currentUser); err != nil || currentUser != role {
+			t.Fatal("the isolated Web RLS query did not use its non-owner role")
+		}
+		var allRows, visibleRows int
+		if err := db.QueryRowContext(t.Context(),
+			"SELECT count(*) FROM public.order_lines WHERE order_id = 1001").Scan(&allRows); err != nil {
+			t.Fatal("cannot inspect the isolated owner read")
+		}
+		if err := limited.QueryRowContext(t.Context(),
+			"SELECT count(*) FROM public.order_lines WHERE order_id = 1001").Scan(&visibleRows); err != nil {
+			t.Fatal("cannot inspect the isolated non-owner read")
+		}
+		if allRows != 3 || visibleRows != 2 {
+			t.Fatalf("RLS probe did not hide exactly one seeded row: owner=%d non-owner=%d",
+				allRows, visibleRows)
+		}
+
+		limitedRunner, err := newPostgresReadRunner(loaded.World, limited)
+		if err != nil {
+			t.Fatal("cannot bind the first Web's PostgreSQL reader")
+		}
+		read, err := limitedRunner.Run(t.Context(), readScenarioInput{
+			From: "2026-09-01T00:00:00Z", RowIndex: 0,
+		})
+		if err != nil {
+			t.Fatal("the first Web could not read as the isolated non-owner")
+		}
+		if len(read.OrderLineRows) != 2 || len(read.RowAnswers) != 2 {
+			t.Fatalf("a hidden line was substituted or the Web lost its answer alignment: rows=%d answers=%d",
+				len(read.OrderLineRows), len(read.RowAnswers))
+		}
+		seen := map[string]bool{}
+		for _, row := range read.OrderLineRows {
+			id, ok := orderLineAttribute(row, "sales.order_line.order_line_id")
+			if !ok || (id != "1" && id != "2") || seen[id] {
+				t.Fatal("the Web did not return exactly the two independently expected visible line identities")
+			}
+			seen[id] = true
+		}
+		if !seen["1"] || !seen["2"] {
+			t.Fatal("the RLS-filtered Web read lost an expected visible line")
+		}
+		const uniqueness = "sales.order.lines.line_number_unique"
+		found := false
+		for _, answer := range read.RelationAnswers {
+			if !strings.HasPrefix(answer, uniqueness+" ") {
+				continue
+			}
+			found = true
+			if !strings.Contains(answer, " undecided (") ||
+				!strings.Contains(answer, "relation-partially-read") {
+				t.Fatalf("a hidden duplicate became a false Web uniqueness decision: %q", answer)
+			}
+		}
+		if !found {
+			t.Fatal("the Web omitted the relation-wide answer for the hidden duplicate")
+		}
+		emitted, err := json.Marshal(read)
+		if err != nil {
+			t.Fatal("cannot encode the non-owner Web read")
+		}
+		if strings.Contains(string(emitted), limitedDSN) ||
+			strings.Contains(string(emitted), password) {
+			t.Fatal("the Web read exposed disposable connection credentials")
 		}
 	})
 
