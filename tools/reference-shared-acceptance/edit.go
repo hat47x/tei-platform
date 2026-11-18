@@ -365,6 +365,18 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 				continue
 			}
 			path = location.File
+		case opSetAttributeRequired:
+			_, owner, ok := attributeOf(s, op.ID)
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "ATTRIBUTE_NOT_FOUND", Message: fmt.Sprintf("attribute %s is missing", op.ID), Subject: key})
+				continue
+			}
+			location, ok := s.loaded.Sources["semantic-data:"+owner]
+			if !ok {
+				diagnostics = append(diagnostics, Diagnostic{Code: "ATTRIBUTE_SOURCE_NOT_FOUND", Message: fmt.Sprintf("Data %s has no Source Index location", owner), Subject: key})
+				continue
+			}
+			path = location.File
 		default:
 			path = op.Placement
 			if path == "" {
@@ -429,6 +441,24 @@ func planEdits(s snapshot, ops []Operation) ([]SourceEdit, []Diagnostic) {
 					return nil, []Diagnostic{{Code: "ATTRIBUTE_TYPE_REPLACEMENT_FAILED", Message: err.Error(), Subject: operationKey(op)}}
 				}
 				inserted.WriteString(op.AttributeType)
+				removed.WriteString(removedText)
+				continue
+			}
+			if op.Op == opSetAttributeRequired {
+				_, owner, ok := attributeOf(s, op.ID)
+				if !ok {
+					return nil, []Diagnostic{{Code: "ATTRIBUTE_NOT_FOUND", Message: "required cell's Data owner disappeared", Subject: operationKey(op)}}
+				}
+				var removedText string
+				content, removedText, err = replaceAttributeRequiredCell(content, owner, op)
+				if err != nil {
+					return nil, []Diagnostic{{Code: "ATTRIBUTE_REQUIRED_REPLACEMENT_FAILED", Message: err.Error(), Subject: operationKey(op)}}
+				}
+				if *op.Required {
+					inserted.WriteString("yes")
+				} else {
+					inserted.WriteString("no")
+				}
 				removed.WriteString(removedText)
 				continue
 			}
