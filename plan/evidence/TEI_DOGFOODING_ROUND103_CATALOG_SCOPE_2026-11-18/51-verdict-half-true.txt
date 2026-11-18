@@ -1,0 +1,10 @@
+Half true.
+
+  declarationCounts: counts them (migrations 1->2, total 79->82)
+  entries:           72 -> 72. No entry kind migration/database-release/solution-release
+  model overview:    sectionScope lists all three in notCoveredKinds, plus
+                     readableWithoutSection
+  model catalog:     no such field; authorityLimits never says what it omits
+
+So "does not handle them" is too strong, but "you cannot reach them as entries"
+is exact -- and the catalog could not explain why.

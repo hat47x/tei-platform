@@ -50,7 +50,14 @@ type ModelCatalog struct {
 	// navigation projection and still answers for a Workspace with findings,
 	// so a caller that needs "is this model sound" must read this field
 	// instead of inferring it from ok or the fingerprints (#3674).
-	Validation      CatalogValidation `json:"validation"`
+	Validation CatalogValidation `json:"validation"`
+	// SectionScope names the subject kinds this catalog lists and the kinds the
+	// Workspace declares that it does not. A designer who adds a migration sees
+	// declarationCounts.migrations move while no entry appears; without this
+	// field the catalog cannot say whether the declaration failed to load or
+	// simply is not addressable here (#4128). It is the same projection
+	// model overview already publishes, so the two commands answer together.
+	SectionScope    ModelSectionScope `json:"sectionScope"`
 	AuthorityLimits []string          `json:"authorityLimits"`
 }
 
@@ -391,5 +398,7 @@ func CatalogWorld(world ir.World, idx sourceindex.Index, namespace, worldFP, sou
 		}
 		return a.Detail < b.Detail
 	})
+	// Entries are final here, so the covered-kind set is knowable.
+	out.SectionScope = sectionScope(out, world)
 	return out
 }
