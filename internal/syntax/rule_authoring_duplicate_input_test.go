@@ -22,7 +22,7 @@ func TestRuleAuthoringRejectsRepeatedOperatorInputAtSecondName(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			src := "namespace probe\n" +
-				"operator probe.within: takes value: number takes low: number takes high: number\n" +
+				"operator probe.within: takes number\n" +
 				"rule probe.r: probe.amount is probe.within " + tc.assignments + "\n"
 			_, err := syntax.ParseRuleAuthoringFile(src)
 			if err == nil {
@@ -51,7 +51,7 @@ func TestRuleAuthoringRejectsRepeatedOperatorInputAtSecondName(t *testing.T) {
 // transport into semantic.Validation is still unsupported.
 func TestRuleAuthoringInputNamesAreScopedToOneRule(t *testing.T) {
 	src := "namespace probe\n" +
-		"operator probe.within: takes value: number takes low: number takes high: number\n" +
+		"operator probe.within: takes number\n" +
 		"rule probe.first: probe.amount is probe.within low: 0 high: 10\n" +
 		"rule probe.second: probe.amount is probe.within low: 20 high: 30\n"
 	file, err := syntax.ParseRuleAuthoringFile(src)
