@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -47,14 +48,26 @@ func inspectedRequired(t *testing.T, root string) bool {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The Canonical bytes are what the existing Inspector Reader makes visible.
-	// Test the expected boolean by inspecting a focused real Operation result.
-	text := string(v.Canonical)
-	if !strings.Contains(text, "\"id\":\"studio.inspection_response\"") {
-		t.Fatalf("wrong Canonical Data: %s", text)
+	var canonical struct {
+		ID         string `json:"id"`
+		Attributes []struct {
+			ID       string `json:"id"`
+			Required bool   `json:"required"`
+		} `json:"attributes"`
 	}
-	return strings.Contains(text, "\"id\":\"studio.inspection_response.snapshot_fingerprint\",\"symbol\":\"snapshotFingerprint\"") &&
-		strings.Contains(text, "\"required\":true")
+	if err := json.Unmarshal(v.Canonical, &canonical); err != nil {
+		t.Fatal(err)
+	}
+	if canonical.ID != "studio.inspection_response" || len(canonical.Attributes) != 2 {
+		t.Fatalf("unexpected real Inspector canonical data: %s", v.Canonical)
+	}
+	for _, attribute := range canonical.Attributes {
+		if attribute.ID == authoringRequiredID {
+			return attribute.Required
+		}
+	}
+	t.Fatalf("InspectSubject did not return the target attribute %s: %s", authoringRequiredID, v.Canonical)
+	return false
 }
 
 func TestStudioRequiredCandidatePreviewAcceptAndRealReload(t *testing.T) {
@@ -142,9 +155,18 @@ func TestStudioRequiredCandidateFailsClosed(t *testing.T) {
 func TestStudioRequiredCandidateDoesNotRewriteNativeTEISource(t *testing.T) {
 	root := scratchWorkspace(t)
 	before := treeDigest(t, root)
-	yes := true
-	c := requiredCandidate(revisionOfDir(t, root), &yes)
-	c.Delta[0].ID = "sales.order_line.order_line_id"
+	ident := "sales.order_line.order_line_id"
+	snapshot, err := takeSnapshot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attr, _, ok := attributeOf(snapshot, ident)
+	if !ok {
+		t.Fatalf("native attribute %s is missing", ident)
+	}
+	opposite := !attr.Required
+	c := requiredCandidate(revisionOfDir(t, root), &opposite)
+	c.Delta[0].ID = ident
 	ev, err := evaluate(root, mustJSON(t, c))
 	if err != nil || ev.preview.Acceptable || !hasCode(diagnosticCodes(ev.preview), "ATTRIBUTE_SOURCE_FORMAT_UNSUPPORTED") {
 		t.Fatalf("native .tei Source was not refused: err=%v diag=%+v", err, allDiagnostics(ev.preview))
