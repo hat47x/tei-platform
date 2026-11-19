@@ -140,7 +140,7 @@ go run ./tools/reference-first-web-target \
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
 
-CIでは、規則変更前後の行別Rule回答を実PostgreSQLとChromeで業務主キーごとの独立した期待値へ照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)・[#5588](https://github.com/hat47x/tei-platform/pull/5588)）。第一Webも実際の読取トランザクションで全件性を確認できる場合だけ一意性を成立とし、RLSで確認できないときは保留する（[#5571](https://github.com/hat47x/tei-platform/pull/5571)・[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。出荷用Web入口を実ビルド・別OSプロセスで使う検査は[#5602](https://github.com/hat47x/tei-platform/pull/5602)、手順5の`go run`で同じ実DBとChromeを使う検査は[#5633](https://github.com/hat47x/tei-platform/pull/5633)で追加した。ブラウザーからの送信には試験用フォームを使っており、製品画面の入力欄を実際に操作した検収とは区別する。試験時のSource読込は診断用であり、正式なSource受理や本番認可を保証しない。
+CIでは、規則変更前後の行別Rule回答を実PostgreSQLとChromeで業務主キーごとの独立した期待値へ照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)・[#5588](https://github.com/hat47x/tei-platform/pull/5588)）。第一Webも実際の読取トランザクションで全件性を確認できる場合だけ一意性を成立とし、RLSで確認できないときは保留する（[#5571](https://github.com/hat47x/tei-platform/pull/5571)・[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。出荷用Web入口を実ビルド・別OSプロセスで使う検査は[#5602](https://github.com/hat47x/tei-platform/pull/5602)、手順5の`go run`で同じ実DBとChromeを使う検査は[#5633](https://github.com/hat47x/tei-platform/pull/5633)で追加した。加えて、実PostgreSQLを使う公開手順のE2Eでは、製品の`GET /custom-submit`を実Chromeで開き、四つの入力欄に値を入れ、表示されたSubmitボタンを押して受注1001／1002を照合する（[#5642](https://github.com/hat47x/tei-platform/pull/5642)）。出荷相当のWebバイナリと公開した`go run`の両方で確かめ、判定は独立した期待値に照合する。これはブラウザーの**自動操作**であり、初回利用者自身が手順0〜5を完走したことではない。試験時のSource読込は診断用であり、正式なSource受理や本番認可を保証しない。
 
 ## まだできないこと
 
