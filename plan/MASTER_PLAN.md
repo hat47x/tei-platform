@@ -1,5 +1,7 @@
 # TEIの開発全体計画
 
+- [KaTeX数式の表示・意味・計算の受入境界（2026-11-19）](design/CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md#25-katexの表示とteiの式意味を分ける受入契約2026-11-19)：KTX-01〜12を既存#1180/#2514の独立Expected候補として整理。Markdown式Source/OccurrenceとKaTeX表示、Expression/Operator/Contextの意味受理、Targetの実計算、Studio/SHO・各出力先の資格を分ける。通貨・Fence・マクロ・安全設定・NULL／欠損・改版・アクセシビリティを段階検収する。P1のread-only表示から着手し、#2586通常CLI実Readと#2831 Studio Stage1→Stage2の並行P0にHard Dependencyを追加しない（docs-only、実表示・実計算・Owner受理はNOT RUN）。
+
 - [Pluginと製品Consumerの資格境界（2026-11-19）](design/PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)：§末尾でNode／三要素／組織／Rule／協業UIの選択・実Read・Preview/Review・明示Accept/Source保存・Build/実Consumerを分離。PCA-01〜07を既存#1180/#2514の独立Expected候補としてOwnerに配分する。最初は通常CLIの実PostgreSQL一Functionと、StudioのSource再読込→Stage1→Stage2→実Windows WebView2を別々の製品縦断として検収する。Writer／Grant／Source pinが不適格な場合は保存unsupportedとし、第二Resolver／Writer／Hostを増やさない（設計統合のみ、追加製品試験・Owner受理はNOT RUN）。
 
 ## 目的

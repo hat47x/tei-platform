@@ -797,3 +797,70 @@ Solver・実験計画法は、同じ計算契約・観測・受理の分離を�
 次の最小接続は、既存#2621/#988の製品S0-Aにおいて、**Manifestで選択した同じPinned Sourceを正式Frontendが実消費し、どの表・Cellからどの型付き意味候補を作ったか**を確認することにある。Graph／Ruleを先行し、次にWindowの観測・Frame／Partition／Order／NULLを受理済み意味から生成SQLへLoweringし、通常CLI→実Provider／独立Consumerまで照合する。Studio Desktop Stage1→Stage2の実セルフビルドは全体P0として維持する。
 
 数学・統計・Solver、実験計画法、専門科学Provider、NoSQLとの意味同等性、R／Python等の外部実行は本節の局所回帰によって完成したわけではない。新しいReader、専用Runtime／Host、Scenario正本や一括Hard Gateは追加せず、型・精度・作用範囲・ライセンスを含む採否判断は既存OwnerのIssue／ADRと実Evidenceへ引き渡す。
+## 25. KaTeXの表示とTEIの式意味を分ける受入契約（2026-11-19）
+
+### 位置づけと最小の縦断
+
+KaTeXは、Markdownに書かれた数式と、TEIが受理した式を読みやすく示す**表示Projection**である。数式の解析器、計算器、意味正本、業務上の受理者として扱わない。自由な数式を表示できることと、それがTEIのExpression／Operator／Function Data Contextに適格な定義であることは独立する。専門家が読み慣れたTeX表記は残し、Goの構文やRenderer独自の構文をDSLへ露出させない。
+
+一つの式について、次の四つを混同しない。
+
+1. **原文**：Markdownの原byte、式の出現位置（occurrence）、文書版、明示されたAuthoring Role。コード例・引用・通貨記号を自動的に式定義として取り込まない。Raw Draftなら解釈できなくても保存できる。
+2. **表示**：選択した式断片、マクロの有効範囲と版、KaTeX/CSS/font版、表示設定、出力先から生成したHTML/MathML等。Rendererの成功は表示資格だけを示す。
+3. **式の意味**：必要な場合にだけ、既存のRole／式サブ文法と型付きExpression・Operator・Context・Owner受理に束縛する。等式・代入・制約・関数定義を見た目の記号だけで推定しない。単位・精度・定義域・NULL／欠損・入力の完全性・適用時点は意味契約側に置く。
+4. **計算と検証**：実際に選択・呼び出したTarget／Providerの入力と結果、独立Expected、実Consumerの受領を個別に照合する。式の表示と評価値の一致だけで、計算・証明・業務受理・実行権限を保証しない。
+
+StudioのInspector／SHOの引用／帳票は、この四つのうち実際に観測した資格だけを示す。例えば意味未受理の式もDraftプレビューには表示できるが、生成GoやRuleの実行対象としては未受理のままにする。式表示に共通の新AST、専用数式DB、第二Renderer RegistryやHostを設けない。
+
+### Authoring・表示・編集の条件
+
+- Markdown全体への無差別なAuto-renderではなく、Markdown Readerが認識した数式領域、または利用者が明示的に選択した範囲だけをRendererへ渡す。通貨表記、インラインコード、Fenced/インデントコード、引用中の例示、未閉Fenceを誤認しない。単一`$`区切りの扱いはAuthoring Profileに明示し、通貨`$100`のような文章を数式へ昇格させない。`\(...\)`、`\[...\]`の表示可否もSourceの役割と切り離して判定する。
+- Source Spanと表示要素の対応は「**当該出現を開くためのread-only位置**」とし、編集対象を決めるWriter資格とは別に保つ。No-op保存では原文byte・糖衣記法を変えない。編集する場合も現在のSource Revision・対象Occurrence・Writer/Grant・Preview/Review/Accept・保存後再Readが確定しなければ提案表示で停止する。別出現へ誤書戻ししない。
+- マクロは明示的な文書／対象範囲の構成として保存し、同じ描画設定を再現できるよう版と依存を保持する。KaTeXの`\gdef`などによる共有`macros`オブジェクトの変更は、文書間や無関係Consumerに漏らさない。同一文書内で順序依存マクロを認める場合は、そのスコープと依存順序を可視化する。マクロ変更は影響する表示を再生成するが、それだけでAccepted Meaningを変更しない。
+- 未信頼Sourceの描画では`trust: false`を既定とし、`maxExpand`／サイズ上限・出力HTMLの取扱い・CSPを限定する。`throwOnError`、`strict`の選択をProfileで固定し、未知コマンドやレンダリング失敗を「空白なので式なし」に変換しない。Rendererのエラーを元Spanへ示し、Raw Draftの原文は保持する。
+- WebView2等のStudioではローカル配布のRenderer/CSS/fontを基準とし、オフラインでの表示と再現性を確認する。標準の出力候補は`htmlAndMathml`としてアクセシビリティを検証する。ただしMathMLが出力された事実だけでは読み上げ品質・印刷品質の合格としない。HTMLプレビュー、PDF、DOCX、書籍、Excel等は別々のTarget／出力資格として照合し、HTMLを出せたから他形式も同等とは扱わない。
+
+### 選択的失効を、既存のBuild／Evidence契約で扱う
+
+| 単独変更 | 再確認するもの | 無条件に失効させないもの |
+| --- | --- | --- |
+| 空白・配置・表示モード、CSS/font・KaTeX版 | 変更した出力先の描画とアクセシビリティ | 式のOwner受理、意味から生成したGo、計算結果 |
+| マクロ定義・適用順序 | 依存する表示断片と出力物（依存不明なら文書全体の再描画） | 依存しない意味・Target計算 |
+| Expression／Operator、単位、丸め、定義域、適用時点 | 型付き意味、影響する生成物・実計算・独立Expected | 無関係な原文出現・表示部品 |
+| Provider入力、NULL、欠損、取得範囲・Snapshot | Contextの充足、結果・Claim、Consumerの現在資格 | 固定された原文・過去の表示結果の履歴 |
+| Source移動・A→B→A、RoleやOccurrenceの再選択 | 現在のSource位置、束縛・受理資格、編集対象の再解決 | 過去の受理記録そのもの |
+
+ここでいう「表示の入力組」は既存Artifact／Build Evidenceに記録する比較要素であり、新たな独立Fingerprint正本ではない。**World Fingerprint、Model Revision、Artifact Revision、受理資格は一つの描画hashへ統合しない**。文字列や画像が同一でも、式の出現位置・意味・実入力が同じとは限らない。
+
+### 最初に固定する独立Expected候補（KTX-01〜12）
+
+| ID | 対照 | 受入条件／拒否条件 |
+| --- | --- | --- |
+| KTX-01 | 通貨`$100`、インラインコード、Fence内の`\frac{1}{2}`、通常の表示対象 | コード・文章を式定義へ自動昇格しない。明示した数式のみ表示対象にする |
+| KTX-02 | 正常に描画された未受理のTeX | 表示可、Meaning/Buildは未受理。生成Go・Ruleへ勝手に昇格しない |
+| KTX-03 | `\sqrt{x^2}=\lvert x\rvert`と定義域、等式／代入／制約の異なる意味 | 実数の仮定や演算Roleを保持し、表示記号だけの同値受理・Target生成を拒否 |
+| KTX-04 | `\gdef`の再定義・式順変更・別文書への切替 | スコープをまたぐマクロ汚染を拒否。表示版／依存差分を検出 |
+| KTX-05 | TeX原文は同一でKaTeX版・CSS/font・出力先のみ変更 | 表示と出力資格を再確認し、計算Meaningは変更済みと誤判定しない |
+| KTX-06 | 同じ`x`という表示で単位・精度・適用時点・Expression参照が異なる | 表示一致を意味一致とみなさず、必要な契約が未確定なら意味昇格を保留 |
+| KTX-07 | 値`0`、NULL、未取得、partial、時点違い | 数値表示から「取得済み・完全・現在の値」を捏造しない |
+| KTX-08 | Source移動、同じ式の二出現、改版A→B→A、古いEditor応答 | Source locatorとMeaning/Writer資格を再解決し、別出現への書戻しを拒否 |
+| KTX-09 | 未信頼TeXの外部リソース／HTML拡張、過大展開マクロ | `trust: false`と制限設定で危険な描画を許さず、診断と原文を保持 |
+| KTX-10 | 未対応コマンド、閉じていない数式、レンダリング失敗 | エラーを表示し、黙って空欄・正常な式・未観測値へ変換しない |
+| KTX-11 | WebView2／オフライン／MathML、PDF・DOCX別Target | 元の式参照・代替テキスト・出力品質を出力先別に検証。DOM描画だけでは合格しない |
+| KTX-12 | Raw DraftのNo-op保存と明示編集、Role未束縛／Writer不在 | 原byte保持。Writer未対応ならread-only提案で停止し、保存後再Readを省略しない |
+
+KTX-01〜12は**既存#1180／#2514に渡す独立Expected候補**であり、ここで新たなScenario Storeや試験Runnerを作らない。実受入にはSourceのexact revision、必要に応じたMacro構成・Renderer版、期待値の根拠、実Consumer、最初に失敗した境界、判定語彙（PASS／FAIL／NOT RUN／UNSUPPORTED／UNKNOWN／STALE）を記録する。
+
+### 実装順とOwner
+
+1. **P1・K0（Source／Roleのread-only確認）**：#2621／#4370／#988で、式領域・例示領域・Source spanを抽出する候補と正式Readerを区別して、KTX-01/02/08/10/12の停止条件を固定する。正式`*.tei.md` Readerが未接続なら、それを明記してSource選択だけを合格にしない。
+2. **P1・K1（最小のStudio/SHO表示）**：#4133／#4353／#2497で、意味未受理のRaw Draftも含めて限定数式をread-onlyで表示する。マクロの隔離、描画エラー、オフライン、表示元Span、`htmlAndMathml`の実確認を行う。KaTeXの表示を製品Meaning受理に昇格しない。
+3. **P1・K2（型付き意味との束縛）**：#2620／#988／#2506／#2495で、既存Expression／Operator／Contextから式とデータ取得条件を検査する。KTX-03/06/07をOwner受理と生成Targetの前提として検収する。式の自由文章を暗黙の契約へ変換しない。
+4. **P2・K3（計算と複数の出力先）**：既存#951／#1251／#2514／#2831と各Output Target担当で、正式選択した式→実Target計算→独立Expected→実Consumer、Studioの実Windows WebView2、必要なPDF／DOCX等の資格を個別に検証する。
+
+**製品全体のP0は変更しない**。Studio Desktop Stage1→Stage2（#2831/#4583）、通常CLI→実Provider／独立Consumer（#2586/#1251）、Graph／RuleのCLI先行生成が優先。数式・表示・SHO・専門科学ProviderはこれらのHard Dependencyではない。
+
+**今回の状態**：設計・受入条件の追補のみ。新しいKaTeX描画実装、MathML読み上げ、PDF/DOCX出力、数式Reader／型付き意味受理、実計算、Go生成、Studio/SHO実Consumer、Owner採用、KTX試験実行は**NOT RUN**。
+
+KaTeX公式仕様（表示オプションと安全性）：https://katex.org/docs/options ／ https://katex.org/docs/security ／ https://katex.org/docs/autorender
+
