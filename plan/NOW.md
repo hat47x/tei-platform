@@ -43,6 +43,8 @@
 
 **道の2の自動フォーム検証**：既存`tools/reference-first-web-target/first_change_guide_e2e_test.go`の実`go run`／実PostgreSQL／Chrome試行に、出荷Web自身の`GET /custom-submit`を開いて四つの可視入力欄（Login ID・Credential・Browse from・Selected row）を埋め、Submitを押す検査を追加した（[#5642](https://github.com/hat47x/tei-platform/pull/5642)）。受注1001／1002の業務主キー別Rule三値を独立Expectedで照合し、出荷Webバイナリと公開`go run`の両方を使う。試験用Bootstrap POSTによる送信はこの資格に数えない。**次の受入は、初回利用者自身が公開手順0〜5を完走できるか**を別に確認し、その後に通常開発と変更ファイル数・手数を比べる。**Readの資格は流用しない。** 行位置と業務主キー、QueryのScopeと実行Attempt、業務対象集合とDBロールの可視集合を区別する。Relation全件の成立はCLIとWebそれぞれの**同じ読取トランザクション**で取得範囲を確認できた場合だけ認める（[#5571](https://github.com/hat47x/tei-platform/pull/5571)）。非所有者RLSで重複行が隠れる実DB負例でも一意性は`undecided`に留める（[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。観測済み重複は`not-satisfied`、資格のある受注1002は`satisfied`。複数HTTP要求の共通Snapshot、Owner意味受理、Host認可は別の受入条件とする。
 
+**第一Webの表示とTarget生成は別に受け入れる。** 現在の`/custom-submit`は`tools/reference-first-web-target/custom_ui.go`の手書きHTMLテンプレートに、設計モデルから読んだ投影とRuleの答えを載せるReference画面である。実PostgreSQLとChromeでの表示が動いても、`*.tei.md`からWebの画面構造を生成した証拠にはならない。初回利用者による公開手順0〜5の完走を先に検収し、Target生成の資格は同一Source版に結び付いた生成Artifactの閉包と実Consumerを別に検収する。
+
 入口は増やさない。接続の秘密は環境変数から受け取り、作業領域へ書かない。
 
 並行して進めてよいのは一本だけである。**Studioが次の自分を作る一巡**（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）。完了の条件は一文にする。Studioで定義を一つ変え、**生成器には触れずに**、Studio自身が作った次のStudioがWindowsで起動し、その変更が画面に出ること。
