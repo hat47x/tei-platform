@@ -157,6 +157,8 @@ go run ./tools/reference-first-web-target \
 
 ブラウザで `http://127.0.0.1:8080/custom-submit` を開く。`Login ID` には `legacy-order-editor`、`Credential` には参照用の合成値 `editor-secret`、`Browse from` には `2026-09-01T00:00:00Z`、`Selected row` には `0` を入力して送信する。**明細の行ごとの答え**が出る。これらはローカルの参照実装を検査するための合成ログイン情報であり、本番用の認証情報ではない。
 
+このフォームの送信は、明細の読取とRule評価に続いて、参照用の受注確定Commandとその後のObservationも呼び出す。ただし、この手順で起動するWebには業務書込み用のStoreが渡されないため、**受注確定とそのObservationは合成状態で行われ、PostgreSQLの受注ステータスは変わらない**。明細とRuleの回答は実PostgreSQLから取得した結果である。画面の`completed`やHTTP 200を、実DBへの受注確定・Commit・Receiptの証拠と解釈しない。
+
 - 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
 - `sales.order.lines.line_number_unique`は、受注1001の明細番号2が重複しているので**`not-satisfied`**となる。取得範囲が確定していなくても、実際に観測した重複は一意性を否定できる。受注1002を確かめるには、同じフォームの`Selected row`を`1`にして送信する。CLIと第一Webはそれぞれ自分が実行したQueryについて、同じ読取トランザクション内で保存定義との対応と物理表のRLS・継承・種類を確認する。確認できた場合、画面にも**`satisfied`**が出る（[#5571](https://github.com/hat47x/tei-platform/pull/5571)）。確認できなければ`undecided`と理由を表示する。画面に二行見えるというだけでは全件取得の根拠にならない。
 - 画面は選択した受注・実行したContract Query・行数をReadの情報として示す。行数や表示位置が回答と合わなければ描画を拒否するが、**表示したIDだけで、別のReadからの混入がすべて排除されたとは言えない**。
