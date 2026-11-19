@@ -73,12 +73,31 @@ printf 'languages:\n  - tei.authoring/v1\n' >> "$TEI_FIRST_WORKSPACE/tei.workspa
 cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPACE/semantic/sales/"
 
 # 受注入力のApplicationが、その規則を使うと書く
-awk '{
-  print
-  if ($0 == "    uses validation sales.order_line.quantity_positive")
-    print "    uses validation sales.order_line.unit_price_positive"
-}' "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei" > "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei.next"
-mv "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei.next" "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei"
+# 登録元がちょうど1行で、新しい規則が未登録の場合だけ置き換える
+(
+set -eu
+app="$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei"
+next="$(mktemp "${app}.next.XXXXXX")"
+trap 'rm -f "$next"' 0
+awk '
+  {
+    print
+    if ($0 == "    uses validation sales.order_line.quantity_positive") {
+      anchor_count++
+      print "    uses validation sales.order_line.unit_price_positive"
+    }
+    if ($0 == "    uses validation sales.order_line.unit_price_positive")
+      already_count++
+  }
+  END {
+    if (anchor_count != 1 || already_count != 0) {
+      printf "Application登録を中止しました（登録元%d件、新規規則の既存登録%d件）。\n", anchor_count, already_count > "/dev/stderr"
+      exit 1
+    }
+  }
+' "$app" > "$next"
+mv "$next" "$app"
+)
 ```
 
 置いた設計文書は、規則一行と例の表でできている。
