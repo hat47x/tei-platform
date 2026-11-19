@@ -140,7 +140,8 @@ test('new generated Inspector closure is qualified separately from historical na
   // The earlier generated-Reader pin keeps its exact closure: the part
   // regenerated from the changed contract is not qualified by it.
   const earlier = WORKBENCH_PINS.find(value => value.head === WORKBENCH_GENERATED_READER_HEAD);
-  assert.equal(earlier.mainBlob, pin.mainBlob);
+  assert.equal(earlier.mainBlob, WORKBENCH_GENERATED_READER_MAIN_BLOB);
+  assert.notEqual(earlier.mainBlob, pin.mainBlob);
   const earlierClosure = Object.fromEntries(
     Object.keys(earlier.closureBlobs).map(path => [path, closureSources[path]]));
   assert.throws(() => inspectPinnedDependencies(earlier, commandSource, responsesSource, graphSource, earlierClosure),
