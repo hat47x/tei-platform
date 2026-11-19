@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,6 +34,8 @@ test("offline Studio candidate passes one real Review/Accept and reloads exact S
     const proof = JSON.parse(readFileSync(receipt, "utf8"));
     assert.equal(proof.schema, "tei.reference.studio-stage-source-accept/v0");
     assert.equal(proof.editorTransport, "exact-offline-form-script-vm");
+    assert.equal(proof.realBrowserEditing, "not-observed-in-this-attempt");
+    assert.equal(proof.browserScreenshotDigest, null);
     assert.equal(proof.ownerMeaningAcceptance, "not-established");
     assert.equal(proof.formalBuildIntent, "not-established");
     assert.equal(proof.sourceChangedOneCell, true);
@@ -52,6 +54,23 @@ test("offline Studio candidate passes one real Review/Accept and reloads exact S
     });
     assert.notEqual(repeated.status, 0);
     assert.equal(readFileSync(join(after, source), "utf8"), revised);
+
+    // If real-browser mode was requested, missing Playwright MUST fail before
+    // Preview/Review/Accept rather than quietly reverting to a simulated DOM.
+    const browserAfter = join(temp, "browser-required-after");
+    const missingReceipt = join(temp, "missing-browser-receipt.json");
+    const missingBrowser = spawnSync(process.execPath,
+      [driver, before, browserAfter, missingReceipt], {
+        cwd: repo, encoding: "utf8", timeout: 240_000,
+        env: {
+          ...process.env, TEI_STAGE_PLAYWRIGHT_ROOT: join(temp, "not-installed"),
+          GOWORK: "off", GOTOOLCHAIN: "local"
+        },
+      });
+    assert.notEqual(missingBrowser.status, 0, "browser-required mode fell back to VM");
+    assert.match(missingBrowser.stderr, /PLAYWRIGHT_CORE_NOT_INSTALLED/);
+    assert.equal(readFileSync(join(browserAfter, source), "utf8"), baseline);
+    assert.equal(existsSync(missingReceipt), false);
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
