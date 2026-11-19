@@ -780,3 +780,77 @@ func TestFirstChangeGuideExecutesLiteralRuleEdit(t *testing.T) {
 			validated.code, validated.stdout, validated.stderr)
 	}
 }
+
+// TestFirstChangeGuideApplicationRegistrationRejectsDrift executes the exact
+// published step-3 shell block against deliberately changed Application sources.
+// The public recipe must fail closed, keep the original Application byte-for-byte,
+// and clean up its temporary file, rather than silently registering nothing or
+// registering the same rule twice.
+func TestFirstChangeGuideApplicationRegistrationRejectsDrift(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the handbook requires a POSIX shell, mktemp and awk")
+	}
+	guide, err := os.ReadFile(filepath.Join(repoRootForGuide(t), "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := documentedGuideShellStep(t, string(guide),
+		"## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	const anchor = "    uses validation sales.order_line.quantity_positive"
+	const added = "    uses validation sales.order_line.unit_price_positive"
+	cases := []struct {
+		name   string
+		before string
+		valid  bool
+	}{
+		{"one-anchor", "validation:\n" + anchor + "\n", true},
+		{"missing-anchor", "validation:\n    uses validation sales.order_line.other\n", false},
+		{"duplicate-anchor", "validation:\n" + anchor + "\n" + anchor + "\n", false},
+		{"already-registered", "validation:\n" + anchor + "\n" + added + "\n", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			application := filepath.Join(root, "applications", "order-entry", "application.tei")
+			for _, dir := range []string{filepath.Dir(application), filepath.Join(root, "semantic", "sales")} {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(application, []byte(tc.before), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			command := exec.Command("sh", "-eu", "-c", script)
+			command.Dir = repoRootForGuide(t)
+			command.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+root)
+			output, runErr := command.CombinedOutput()
+			if tc.valid && runErr != nil {
+				t.Fatalf("documented step 3 rejected its one valid anchor: %v\n%s", runErr, output)
+			}
+			if !tc.valid && runErr == nil {
+				t.Fatal("documented step 3 silently succeeded with a drifted Application")
+			}
+			if !tc.valid && !strings.Contains(string(output), "Application登録を中止") {
+				t.Fatalf("documented step 3 failed without explaining the anchor drift: %v\n%s", runErr, output)
+			}
+			got, err := os.ReadFile(application)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := tc.before
+			if tc.valid {
+				want = strings.Replace(want, anchor, anchor+"\n"+added, 1)
+			}
+			if string(got) != want {
+				t.Fatal("the Application was changed unexpectedly, or the new Rule was not registered exactly once")
+			}
+			temporary, err := filepath.Glob(application + ".next.*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(temporary) != 0 {
+				t.Fatal("documented step 3 left an intermediate Application behind")
+			}
+		})
+	}
+}
