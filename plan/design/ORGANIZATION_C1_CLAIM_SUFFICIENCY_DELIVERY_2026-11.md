@@ -101,3 +101,44 @@ G1とG2のOwner作業は並行可能。G3は必要な正式Linkが整ってか�
 **最初の比較票**：業務as-of（validAt/knownAt）、各Source/Meaning版、実Read Snapshot/Cohort、必要RelationのCoverage、Result IDと入力依存・Generation、公開された組または「未確認」、実ConsumerのPin/受領/開示Scope、Claim別Expected/Observedを列として照合する。Readerが複数要求の固定Snapshotを提供しなければ、その能力を仮定したテストはPASSにしない。実Targetで原子的な組の公開ができない場合も、個別Resultの成功と共同公開の成功は別に報告する。
 
 **実装順**：#2586の一Function・一Consumerの実Readを先行。次にr7の旧新所属＋FTEを独立Expectedでread-only照合し、#2506/#2516で二Consumer/ページを比較。現行GrantとHandoffは既存#1174/#1444で別検収する。main統合済み#5431のWeb実ReaderとDraft #5382のCoverageを、追加のOrg専用Routerなしで利用可能か検査する。#2831のStudioセルフビルドは並行P0。**本節は設計のみで、実Page Pin・Org共同公開・Host実行の新しい試験はNOT RUN。**
+
+<!-- org-gate-witness-minimal-20261119 -->
+## 9. G1からG5へ渡す最小Witnessと、実装を止める条件（2026-11-19）
+
+[段階計画§10.27](ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)の変更影響・再利用資格を、既存Gateの**実行可能な判別票**へ落とす。新しいOrg Test Runnerや常設Evidence Schemaは作らず、既存Scenario/Expected、Function Data Context、実行Attempt、Consumerの受領観測に必要な列だけを添える。
+
+### 9.1 まず通常CLIの一往復を成立させる
+
+**G1の最小成功例は組織C1ではなく既存の合成受注**とする。固定HEADで通常CLIからFunctionを選び、採用されたQuery/Providerが実行したSQL・引数・Result Row Identity・Scope・Read Cohortを同じAttemptへ束縛する。Function Data Contextへ格納したResultを**同一Attemptの一Consumerが実受領した事実**を、独立Expectedと比較する。
+
+| Case | 入力／変化 | 必要なObserved | 合格としない結果 |
+| --- | --- | --- | --- |
+| G1-01 正常受領 | 一Function、一Query、一実Provider、一Consumer | 選択ID・Source/Query版・実SQL/params・Scope・Row Identity・Context格納・Consumer受領が同一Attempt | ProviderのSQL実行成功だけ、別RunのConsumer受領、Mockだけの成功 |
+| G1-02 空結果 | 同一Queryで対象0件 | 実Providerが空を返し、Consumerが空Resultを受け取ったこと。Coverage未確認ならClaimはunknown | 空結果を即座に「対象なし」と断定 |
+| G1-03 部分取得／拒否 | ページ未完了、Scope不足、Provider拒否を個別に与える | partial／permission-denied／unavailable等を、観測に応じて区別して伝える | 失敗を空集合やfalseへ変換 |
+| G1-04 版・受信不一致 | Source/QueryまたはSelection epochを変更、旧応答が後着 | 旧Resultの実受領を記録しても、新Attemptの確定結果に採用しない | A→B→Aの表示一致だけで旧受信資格を復活 |
+
+**G1の完了条件**：実Providerが選択されたこと、同一Attemptの一Consumerが実受領したこと、固定HEADの非SKIP試験と独立Expectedが一致したことを別々に示す。Contextの型やログだけを作ってもConsumer実受領とはしない。通常CLI経路が未完成ならG2〜G5の局所試験でG1を代替しない。
+
+### 9.2 組織C1へ進む際の差分検査
+
+| Gate／Case | 同じ合成C1の変更 | 必須Expected | 必要な実証がなければ |
+| --- | --- | --- | --- |
+| G2／ORG-XD-02 | 同一4 Membershipから3／4 Personとなる候補二世界 | 正式Link未受理ならdistinct Personはunknown。正式受理後は同一Scope/時点の実Readで別判定 | 人物数は未確定 |
+| G3／ORG-XD-06 | r7の旧4所属/FTE 3.0と新3所属/FTE 2.4 | 各Cut内の組は許容。新3所属＋旧FTE 3.0を現行同世代として拒否 | 複数Resultの共同公開は未合格 |
+| G3／ORG-XD-07 | 表示Rowを変えずPerson Link／Ruleの否定条件を変更 | Membership観測の再利用候補と人物数／承認Claimの再検証を分離 | 依存の非交差を証明できないClaimはunknown |
+| G4／ORG-XD-08 | 同じ内部Resultを別Audience／Tenant／Purposeへ配送 | 受領と開示可能Sliceを用途ごとに再照合。非開示Count/Edge/Sourceを出さない | 配送／開示は未合格 |
+| G5／ORG-XD-09 | A→B→A、旧通知ACK・Grant/Receipt、遅延Reply | 現在Grant、対象Operation、Effect Fence、ACK/Receiptを独立確認 | 現行許可／Effect／移管完了は未確定 |
+
+**再利用判定の順序**：①対象Claimと必要Relation/Rule・否定条件を定める、②実Readの時点・Scope・Coverage・Snapshotを照合する、③変更が必要依存に交差するか調べる、④再利用候補であってもConsumerのPurpose/Audience/Policyを再検査する、⑤Hostの現在Grant・Effectを独立に判定する。途中のunknownをsuccessに丸めない。
+
+### 9.3 受入票の最小列と報告単位
+
+- **入力資格**：exact HEAD、Attempt、World/Source/Meaning/Query revision、Function、Provider、実SQL/params、validAt/knownAt、Snapshot/Read Cohort、Scope、Row Identity、Coverage根拠。
+- **Claim資格**：問いと量化、必要Relation/Rule・非出力依存、粒度、独立Expected、Observed、true/false/unknown、片側証人または反例。
+- **配送・作用資格**：ContextのResult revision、Consumerの実受領・Selection epoch、Purpose/Audience/Disclosure、Hostの現在Grant、ACK、Effect Fence/Receiptを**該当Gateのみ**記録。
+- **判定**：PASS／FAIL／NOT RUN／NOT ACCEPTEDを混同せず、実行した試験の固定HEAD、非SKIP、対象Provider/Consumer、残った未実証の接続を明記。
+
+実装担当は#2586/#2506でG1-01を最小PRとし、G1-02〜04を負例として拡張する。#2514がG3の独立Expected、#2386/#1126が正式Person意味受理、#2516/#1124がG4、#1174/#2499/#1125/#1444がG5を引き受ける。#2831のStudioセルフビルドは引き続き独立P0。**組織モデルの追加要件を通常CLI・Studioの起動条件へ昇格しない**。
+
+**本節の状態**：受入票と判別ケースの計画。G1-01〜04、ORG-XD-06〜09の新しい製品縦断試験は未実施。既存の隔離PostgreSQL局所PASSやWeb Readerの限定実証を、ここで定めたConsumer・Host受入の合格に読み替えない。
