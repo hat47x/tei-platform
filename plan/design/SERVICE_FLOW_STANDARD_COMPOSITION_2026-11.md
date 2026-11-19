@@ -700,3 +700,24 @@ NM-01は既存のREA候補取込にあるEdge identityの実例を参照でき�
 - **Studio側のP0**：既存Stage1→Stage2の実Windows Wails再入を先に検証する。Node Viewはその上に載せるread-only Consumerとし、Drag、Patch、Flow Dispatchを前提にしない。
 
 **マージの条件**：設計文書は出典・Owner・停止線と既存P0への接続を静的レビューすればdocs-onlyとしてマージ可能。Go変更は正負の独立Expected、同一HEADのテスト／CI、実Consumerの必要な観測がそろって初めて実装済みとする。docs-onlyマージをNM-01〜04や正式Owner AcceptanceのPASSと記録しない。
+
+---
+
+## 13. Node Viewの差分説明を実際のGraph Referenceへ接続する（2026-11-19）
+
+ノードモデルの採用判断を先に広げず、まず既存のMarkdown Graph Referenceに、**定義した関係と導出した図の差を、辺の出現IDで説明する**小さな読取り専用の検査を加える。既存の `reference/tei-md-graph-reader` は正式なWorkspace Language Readerではなく、固定されたMarkdown表とMermaid部分集合を読む検証用Referenceである。この境界を変えない。
+
+`AuditDerivedView` は、元のMarkdown表のEdge occurrenceを基準に、図から欠けた辺、図にだけ現れた辺、同じIDで端点が変わった辺を別々に返す。従来の `CheckDerivedView` の一致判定は互換性を保つ。同名の二ノード、同一端点の並列二辺を別IDとして扱うこと、原byteとSource spanを変えないこと、曖昧な表示Aliasと図上の重複Edge IDを拒否することを回帰試験で確認する。**一致はEdgeに限る**ため、孤立したNodeが図に現れることまでは保証しない。
+
+| 反証 | Referenceで確かめること | Studio・意味モデルへ引き渡す条件 |
+| --- | --- | --- |
+| ND-V01：同名二Node・並列Edge | Edge ID `e-1`／`e-2`が独立に一致 | 表示ラベルをSubject IDへ昇格しない |
+| ND-V02：定義は同じで図の向きが古い | `EndpointChanges`に`e-2`を返す | 図から定義を書き換えず、Source差分を説明する |
+| ND-V03：並列Edgeの一方を図から除外 | `MissingEdgeIDs`に`e-2`を返す | Graph→Tree／折畳みの情報損失を隠さない |
+| ND-V04：図だけにEdgeを追加 | `UnexpectedEdgeIDs`に`e-3`を返す | 未受理の線を新たなRelationとしない |
+| ND-V05：孤立Nodeを定義に追加 | Edge一致でもNode表示の完全性は未確認 | `Exact`をモデル全体の同値・編集資格に転用しない |
+| ND-V06：Alias欠落・図内のEdge ID重複 | 診断で拒否 | 表示上の対象を推測してSource Patchしない |
+
+これは**局所Go Referenceの実装と回帰**であり、正式なPort Schema、Node View製品画面、Generator入力、業務Relation、Owner意味受理、Windows WebView2での検収を追加したものではない。次の製品側作業は、#1124／#1824が既存のInspectSubject・Source位置・Workspace／epochを使って差分をread-only表示する際、#2497のLoss分類と本検査のEdge単位の理由を参考にすること。編集は#2500の業務Actionと混同せず、既存のPreview／Review／明示Accept／再読込の資格が揃うまで候補に留める。独立Expectedの正式採否は#1180／#2514のOwnerが判断する。
+
+`plan/NOW.md`の最優先は引き続き「受注の一変更」と製品WailsのStudio Stage1→Stage2であり、Node View専用Engineや新たな並行P0は設けない。
