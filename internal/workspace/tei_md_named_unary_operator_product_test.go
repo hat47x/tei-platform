@@ -20,7 +20,6 @@ import (
 // a multi-input evaluator, or an implicit choice of Plugin implementation.
 func TestNamedUnaryOperatorPreservesSubjectMeaningAndSourceRevision(t *testing.T) {
 	const operatorPath = "semantic/sales/zz-operators.tei.md"
-	const rulePath = "semantic/sales/discount-rules.tei.md"
 	const operatorID = "sales.non_negative"
 	const ruleID = "sales.order_line.discount_non_negative"
 
@@ -152,7 +151,6 @@ func TestNamedUnaryOperatorPreservesSubjectMeaningAndSourceRevision(t *testing.T
 			validationsOf(renamed, core.CanonicalID("sales"))) {
 		t.Fatalf("input-name edit was lost or incorrectly changed the rule: old=%+v new=%+v", operators, declared)
 	}
-	_ = rulePath // The rule remains in a distinct, unchanged Markdown source.
 }
 
 // A named unary operator does not make a second value legitimate merely
