@@ -142,6 +142,8 @@ function submitOfflineEditor(html, edit, baseRevision) {
   controls.set("notice", notice);
   let submit;
   controls.set("studio-edit", { addEventListener(event, handler) {
+    // The form also clears a stale candidate when its input changes.
+    if (event === "input") return;
     assert.equal(event, "submit");
     assert.equal(submit, undefined);
     submit = handler;
