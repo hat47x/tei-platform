@@ -1,0 +1,7 @@
+contract sales_core.receipt v1.0 {
+    read warehouse.receipt
+    query find_by_zone {
+        input zone_code type std.identifier
+        result warehouse.receipt many
+    }
+}

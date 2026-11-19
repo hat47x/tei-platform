@@ -1,0 +1,9 @@
+header-detail-contract-query-binding {
+    application warehouse_count
+    pattern warehouse_count.receipts
+    datasource stock
+    database sales_core
+    contract sales_core.receipt
+    query find_by_zone
+    input warehouse.bin.zone_id to zone_code
+}
