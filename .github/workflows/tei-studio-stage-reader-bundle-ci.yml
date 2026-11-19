@@ -91,8 +91,8 @@ jobs:
     # In one scratch-only attempt the existing Studio form emits a typed
     # candidate. Shared Acceptance reviews and saves the exact Data cell;
     # both TEI invokers then rebuild the Reader/Bundle, and an isolated Wails
-    # Desktop shows the saved Source. Form interaction is VM-backed here,
-    # not proof of a human acceptance or a Wails UI editing session.
+    # Desktop shows the accepted Source after a real Edge form submission.
+    # This does not establish human acceptance or an in-Wails Editor session.
     runs-on: windows-2022
     timeout-minutes: 65
     env:
@@ -134,6 +134,13 @@ jobs:
             npm ci --no-audit --no-fund
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally { Pop-Location }
+          # Browser dependency outside the repository and authored Workspaces.
+          $playwrightRoot = Join-Path $env:RUNNER_TEMP 'tei-studio-playwright'
+          npm install --prefix $playwrightRoot --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $playwrightRoot 'node_modules/playwright-core/index.mjs'))) {
+            throw 'Pinned Playwright installation failed'
+          }
+          $env:TEI_STAGE_PLAYWRIGHT_ROOT = $playwrightRoot
           # Only the old Data is authored directly by this test. The changed
           # Source MUST come from the existing offline Editor → typed candidate
           # → Shared Acceptance Review/Accept; never write required: yes here.
@@ -168,7 +175,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Studio form → Shared Acceptance failed' }
           $accepted = Get-Content -LiteralPath $acceptReceipt -Raw | ConvertFrom-Json
           if ($accepted.schema -ne 'tei.reference.studio-stage-source-accept/v0' -or
-              $accepted.sourceChangedOneCell -ne $true -or
+              $accepted.realBrowserEditing -ne 'observed-in-this-attempt' -or
+              $accepted.browserScreenshotDigest -notmatch '^sha256:[0-9a-f]{64} -or
               $accepted.previewAndReviewDidNotWriteSource -ne $true -or
               $accepted.unreviewedAcceptRefused -ne $true -or
               $accepted.ownerMeaningAcceptance -ne 'not-established') {
@@ -203,7 +211,7 @@ jobs:
           }
           if ($accepted.expectedModelRevision -eq $accepted.savedModelRevision -or
               $accepted.beforeSourceDigest -eq $accepted.afterSourceDigest -or
-              $accepted.editorTransport -ne 'exact-offline-form-script-vm') {
+              $accepted.editorTransport -ne 'real-edge-offline-form-playwright') {
             throw 'Source revision or Studio form provenance was not established'
           }
           foreach ($name in @(
@@ -242,6 +250,89 @@ jobs:
           path: |
             ${{ runner.temp }}/tei-studio-staged-desktop-evidence.json
             ${{ runner.temp }}/tei-studio-source-accept-receipt.json
+            ${{ runner.temp }}/tei-studio-stage-required-edit.json
+            ${{ runner.temp }}/tei-studio-stage-required-candidate.json
+            ${{ runner.temp }}/tei-studio-generated-desktop-stage/stage2-desktop-smoke/**
+          retention-days: 7
+          if-no-files-found: warn
+ -or
+              @($accepted.browserPageErrors).Count -ne 0 -or
+              @($accepted.browserNetworkRequests).Count -ne 0 -or
+              $accepted.sourceChangedOneCell -ne $true -or
+              $accepted.previewAndReviewDidNotWriteSource -ne $true -or
+              $accepted.unreviewedAcceptRefused -ne $true -or
+              $accepted.ownerMeaningAcceptance -ne 'not-established') {
+            throw 'Missing exact Editor → Source acceptance boundary'
+          }
+
+      - name: Stage1 and Stage2 build the new Wails Desktop and inspect it in WebView2
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -B tools/reference-studio-part-generator/stage_reentry.py --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $attempt = Join-Path $env:RUNNER_TEMP 'tei-studio-generated-desktop-stage'
+          $source = Join-Path $env:RUNNER_TEMP 'tei-studio-changed-data'
+          $before = Join-Path $env:RUNNER_TEMP 'tei-studio-before-data'
+          $supply = Join-Path ((go env GOMODCACHE).Trim()) 'cache/download'
+          $reportFile = Join-Path $env:RUNNER_TEMP 'tei-studio-staged-desktop-evidence.json'
+          python -B tools/reference-studio-part-generator/stage_reentry.py `
+            --repo . --supply $supply --work $attempt `
+            --authoring-root $source --authoring-data studio.inspection_response `
+            --visible-before-root $before `
+            --bundle-reader --stage-desktop-bundle --desktop-smoke > $reportFile
+          if ($LASTEXITCODE -ne 0) { throw 'TEI-driven changed Data -> new Stage2 Desktop -> WebView2 failed' }
+          $report = Get-Content -LiteralPath $reportFile -Raw | ConvertFrom-Json
+          $acceptReceipt = Join-Path $env:RUNNER_TEMP 'tei-studio-source-accept-receipt.json'
+          $accepted = Get-Content -LiteralPath $acceptReceipt -Raw | ConvertFrom-Json
+          if ($report.sources.authoringInputDigest -ne $accepted.afterWorkspaceDigest -or
+              $report.sources.authoringInputDigestAfter -ne $accepted.afterWorkspaceDigest -or
+              $report.sources.visibleBeforeSourceDigest -ne $accepted.beforeWorkspaceDigest -or
+              $report.sources.visibleBeforeSourceAfterDigest -ne $accepted.beforeWorkspaceDigest) {
+            throw 'Stage2 generated Reader/visible Inspector used a different Source than the accepted Editor candidate'
+          }
+          if ($accepted.expectedModelRevision -eq $accepted.savedModelRevision -or
+              $accepted.beforeSourceDigest -eq $accepted.afterSourceDigest -or
+              $accepted.editorTransport -ne 'real-edge-offline-form-playwright') {
+            throw 'Source revision or Studio form provenance was not established'
+          }
+          foreach ($name in @(
+            'reentryObserved',
+            'stage1TeiArtifactIsStage2Invoker',
+            'eachBundleCarriesItsOwnGeneratedReader',
+            'bundlesWereMadeByTheRecordedNodeChild',
+            'stage2PartChangedFromCommittedPart',
+            'authoringSourceStableAcrossStages',
+            'eachDesktopUsedItsStageGeneratedBundle',
+            'stage2DesktopEmbedsGeneratedBundle',
+            'generatedDesktopExcludesCommittedBundle',
+            'generatedDesktopCarriesReaderContract',
+            'stage2DesktopUsedGeneratedReaderInNewProcess',
+            'visibleBeforeSourceUnchanged',
+            'sameNativeWebViewDisplaysChangedCanonical'
+          )) {
+            if ($report.judgement.$name -ne $true) { throw "Missing Stage2 acceptance: $name" }
+          }
+          if ($report.stage2Desktop.embedded.inputMode -ne 'stage-generated') {
+            throw 'The committed Bundle was used instead of the changed Bundle'
+          }
+          $head = (git rev-parse HEAD).Trim()
+          if ($report.sources.repoHead -ne $head) { throw 'Attempt Source revision mismatch' }
+          $shown = $report.stage2Desktop.smoke.visibleAuthoring
+          if ($shown.before.snapshotRequired -ne $false -or $shown.after.snapshotRequired -ne $true) {
+            throw 'Actual WebView2 Editor did not show the independent required flag delta'
+          }
+          Write-Host "Stage2 changed Data / generated Bundle / visible before-after Canonical: PASS at $head"
+
+      - name: Keep exact staged Desktop evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tei-stage-generated-windows-desktop-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/tei-studio-staged-desktop-evidence.json
+            ${{ runner.temp }}/tei-studio-source-accept-receipt.json
+            ${{ runner.temp }}/tei-studio-stage-required-form.png
             ${{ runner.temp }}/tei-studio-stage-required-edit.json
             ${{ runner.temp }}/tei-studio-stage-required-candidate.json
             ${{ runner.temp }}/tei-studio-generated-desktop-stage/stage2-desktop-smoke/**
