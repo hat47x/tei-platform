@@ -368,11 +368,18 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 	if !strings.Contains(dom, `id="read-result"`) {
 		t.Fatal("real shipped-form Chrome did not render the target's read result")
 	}
-	// The shipped form exercises a Command as well as a real PostgreSQL Read.
-	// With no Host-supplied submitStore its Command/Observation are synthetic.
-	if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
+	// The real Read is shared by both selections, but they take different
+	// business paths: order 1001 stops on Validation; order 1002 reaches the
+	// synthetic Command/Observation because the shipped CLI injects no store.
+	if row == 0 {
+		if !strings.Contains(dom, "validation-not-satisfied") ||
+			strings.Contains(dom, `id="command-result"`) ||
+			strings.Contains(dom, `id="observation-result"`) {
+			t.Fatal("step 5: a Validation denial was reported as Command/Observation execution")
+		}
+	} else if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
 		!strings.Contains(dom, `<span class="pill">synthetic</span>`) {
-		t.Fatal("step 5: the shipped form misrepresented its synthetic Command observation")
+		t.Fatal("step 5: the successful reference Command was not identified as synthetic")
 	}
 	return dom
 }
