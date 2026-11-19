@@ -987,3 +987,38 @@ P0/P1がPASSしてもP2〜P5をPASSにしない。P2の解消は**現在の正�
 **受入票**：P0（Pin純粋状態＋lane契約）= PASS at `a9c91e56`、P1（全体repository-health）= FAIL（Plan Index）、P2（生成Bundle byte一致）= FAIL、P3（Workbench Pin UI）= NOT IMPLEMENTED、P4（実Windows Pin E2E）= NOT RUN。いずれも別の証拠で更新する。
 
 **修正優先順位**：先にPR baseと`plan/design/README.md`の差分を同期し、全体健全性を再試験する。並行して生成Bundleの差分原因を検証する。UIへの接続は#4515のOwnerで進めるが、単体PASSを全体PASSとして扱わない。関連PRの成果物を安易に上書きしない。
+
+
+## 30. 2026-11-19 main実装への追随と次期受入計画
+
+この節は過去の実装計画を上書きせず、**現在のmainで確認できる事実**を追記する。§21〜29の「未実装」「CI失敗」は当時のHEADに対する観測であり、現在の到達点と混同しない。
+
+### 30.1 実装済みと未証明を分ける
+
+- [#4597](https://github.com/hat47x/tei-platform/pull/4597)（Pin Intent/ABA）と[#4479](https://github.com/hat47x/tei-platform/pull/4479)（本計画）はGitHub上で**merged**を確認した。
+- 現在の`reference/tei-studio-workbench/main.ts`には`pin-current`、`unpin-current`、`inspect-pinned`、`renderPin`、`refreshPinnedSubject`、`responses.run("pinned-inspection")`がある。したがって旧節の「Pin UI未実装」は**現行mainには当てはまらない**。
+- `pin-reader.ts`は`catalogIdentity`にModel Revision、World Fingerprint、Source Index Fingerprintの3値を要求し、`inspectEligibility`と`readInspection`で同じProduct Readerの返答を検査する。空のrevisionを継続性の証拠として認めない。ただしFingerprint一致は権限・Source Rootの許可・Disclosure Grantを意味しない。
+- `package.json`の標準`npm test`にはPin状態、独立lane、配線契約、Reader、選択とPinの結合試験が登録されている。**登録と現在のmain HEADでのCI PASSは別の事実**である。今回の調査では後者を確認していない。
+
+### 30.2 設計の収束点
+
+Pinは**現在選択中のSubjectとは別の、作業者が保持する参照意図**である。観測はCatalogとReaderの資格を満たす場合にだけ更新し、Workspace/Revisionが変われば再確認を要求する。PinをAI文脈へ含めること、外部へ送ること、生成候補を適用することは**それぞれ別の明示操作**とする。Pin済みであることからAI送信許可・編集権限・業務意味の受理を導出しない。
+
+UIの認知順序は「対象を選ぶ→固定する→別の対象を調べる→固定対象を再確認する→必要な場合だけ文脈候補に追加する」。データの表示、固定、検証、提案、適用、外部送信の境界を一つの汎用権限状態にまとめない。既存のGo Host Readerと生成契約を再利用し、Pin専用Hostや重複Storeを追加しない。
+
+### 30.3 次期検収ゲート
+
+| Gate | 必要な証拠 | 現在の扱い |
+| --- | --- | --- |
+| G0 コード存在 | 現mainのPin UI/Reader/状態モジュール | **確認済み** |
+| G1 回帰試験 | 同一HEADのNode24 `npm test`、型検査、Pin/通常Inspectの並立・ABA負例 | **今回未実行** |
+| G2 生成物の再現性 | Source→esbuild→Desktop埋込み4ファイルのbyte一致、Recipe/依存版 | **今回未検証** |
+| G3 実Desktop | Windows実WebView2でPin A→Inspect B→A再確認、Workspace切替・遅延応答 | **今回未検証** |
+| G4 AI文脈 | Pin候補の明示選択、送信前プレビュー、失効時の再資格化、外部送信の明示許可 | **設計・受入対象。Pinから自動許可しない** |
+| G5 セルフビルド | `*.tei.md`→生成物→外部Host実行の追跡可能なReceipt、Go delegateだけでは不可 | **別途実証** |
+
+次の作業はG1/G2の**現在HEAD**での検証を先に確定し、G3のWindows操作をOwnerと実施すること。G4はSUI/SHO/TEI横断の候補レビューと出典・失効モデルを共有するが、表示用のPinと承認済み文脈を同一視しない。G5は#2831のBuild Graphと結び、World/Model/Artifact Revisionの別管理を保つ。
+
+### 30.4 マージ判定
+
+本節は既存実装と計画の齟齬を訂正する文書更新であり、コード・実Desktopの新たな受入を宣言しない。文書索引、差分、必須CIを確認したうえで単独マージできる。一方、G1〜G5は個別の実装・検収票で追跡し、文書マージを完了証拠へ転用しない。
