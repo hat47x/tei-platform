@@ -1,6 +1,7 @@
 package studiohost
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -213,5 +214,78 @@ func TestReadOnlyPinsTheResolvedRootNotTheConfiguredAlias(t *testing.T) {
 		if entry.Subject.Kind == "semantic" && entry.Subject.ID == "secret" {
 			t.Fatal("allowlisted Workspace ID followed the replaced alias into the outside Workspace")
 		}
+	}
+}
+
+func TestFailureClassifyCompletesMissingRetryWithoutDiscardingExplicitContract(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       Failure
+		wantKind    string
+		wantRetry   string
+		wantUnknown bool
+	}{
+		{
+			name:     "code only technical",
+			input:    Failure{Code: "COMMAND_FAILED", Message: "failed"},
+			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
+		},
+		{
+			name:     "explicit technical kind with missing retry",
+			input:    Failure{Code: "COMMAND_FAILED", Message: "failed", Kind: "technical_failure"},
+			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
+		},
+		{
+			name:     "explicit retry policy with missing kind",
+			input:    Failure{Code: "COMMAND_FAILED", Message: "failed", Retryable: "lookup_first"},
+			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
+		},
+		{
+			name:     "explicit business kind with missing retry",
+			input:    Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "denied", Kind: "business_rejection"},
+			wantKind: "business_rejection", wantRetry: "not_retryable", wantUnknown: false,
+		},
+		{
+			name:     "disagreeing explicit kind fails closed",
+			input:    Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "failed", Kind: "technical_failure"},
+			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
+		},
+		{
+			name:     "unknown code and explicit business kind fail closed",
+			input:    Failure{Code: "FUTURE_CODE", Message: "failed", Kind: "business_rejection"},
+			wantKind: "business_rejection", wantRetry: "lookup_first", wantUnknown: true,
+		},
+		{
+			name: "all explicit axes win",
+			input: Failure{Code: "COMMAND_FAILED", Message: "refused by provider",
+				Kind: "business_rejection", Retryable: "not_retryable", EffectUnknown: false},
+			wantKind: "business_rejection", wantRetry: "not_retryable", wantUnknown: false,
+		},
+		{
+			name:     "explicit effect uncertainty is never cleared",
+			input:    Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "unknown", EffectUnknown: true},
+			wantKind: "business_rejection", wantRetry: "not_retryable", wantUnknown: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inProcess := tt.input
+			got := inProcess.classify()
+			if got.Kind != tt.wantKind || got.Retryable != tt.wantRetry || got.EffectUnknown != tt.wantUnknown {
+				t.Fatalf("in-process failure: got %+v; want kind=%q retry=%q effectUnknown=%t", got, tt.wantKind, tt.wantRetry, tt.wantUnknown)
+			}
+			wireInput := tt.input
+			b, err := json.Marshal(&wireInput)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var wire Failure
+			if err := json.Unmarshal(b, &wire); err != nil {
+				t.Fatal(err)
+			}
+			if wire.Kind != tt.wantKind || wire.Retryable != tt.wantRetry || wire.EffectUnknown != tt.wantUnknown {
+				t.Fatalf("wire failure: %s; want kind=%q retry=%q effectUnknown=%t", b, tt.wantKind, tt.wantRetry, tt.wantUnknown)
+			}
+		})
 	}
 }
