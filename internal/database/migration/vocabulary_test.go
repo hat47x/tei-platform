@@ -1,6 +1,9 @@
 package migration
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // Tool is the migration runner a database release may name. A reader selects a
 // runner by this value, so the set is part of the contract (#4032).
@@ -40,11 +43,13 @@ func TestMigrationRecoveryAndStepKindsAreCovered(t *testing.T) {
 				t.Fatalf("%q is declared but not accepted by Valid", strategy)
 			}
 		}
-		if len(RecoveryStrategies) != len(strategies) {
-			t.Fatalf("RecoveryStrategies has %d values, the constants say %d", len(RecoveryStrategies), len(strategies))
+		if !slices.Equal(RecoveryStrategies, strategies) {
+			t.Fatalf("RecoveryStrategies=%v, want %v", RecoveryStrategies, strategies)
 		}
-		if RecoveryStrategy("shadow-write").Valid() {
-			t.Fatal("an undeclared recovery strategy was accepted")
+		for _, bad := range []RecoveryStrategy{"", "ForwardFix", "rollback", "shadow-write"} {
+			if bad.Valid() {
+				t.Fatalf("an undeclared recovery strategy %q was accepted", bad)
+			}
 		}
 	})
 
@@ -62,11 +67,13 @@ func TestMigrationRecoveryAndStepKindsAreCovered(t *testing.T) {
 				t.Fatalf("%q is declared but not accepted by Valid", kind)
 			}
 		}
-		if len(StepKinds) != len(kinds) {
-			t.Fatalf("StepKinds has %d values, the constants say %d", len(StepKinds), len(kinds))
+		if !slices.Equal(StepKinds, kinds) {
+			t.Fatalf("StepKinds=%v, want %v", StepKinds, kinds)
 		}
-		if StepKind("rollback").Valid() {
-			t.Fatal("an undeclared step kind was accepted")
+		for _, bad := range []StepKind{"", "Schema", "migrate", "rollback"} {
+			if bad.Valid() {
+				t.Fatalf("an undeclared step kind %q was accepted", bad)
+			}
 		}
 	})
 }
