@@ -177,3 +177,31 @@ G1とG2のOwner作業は並行可能。G3は必要な正式Linkが整ってか�
 **レビューで要求する事実**：固定HEAD、実際に呼んだ製品コマンド、実Providerと実SQL、同一AttemptのContext/Consumer観測、独立Expectedの出典、非SKIP試験、負例のFAIL→修正後PASS、未実施範囲。Go単体テストや隔離ReferenceのPASSだけなら「局所PASS」と記載する。
 
 **現時点の状態**：実装の着手順とマージ条件を確定した計画。通常CLIのG1-01製品縦断・上記負例は本追補では実行していない。#2831のStudioセルフビルドは独立P0のままとする。
+
+<!-- org-g1-edge-diagnosis-20261119 -->
+## 11. G1-01の切断点を一つずつ特定する診断手順（2026-11-19）
+
+§10の実装PRを、既存Referenceと通常CLIの差分を埋める**最短の接続修復**として扱う。成功した部品を列挙するのではなく、同一Attemptのどの受渡し辺が未成立かを特定する。#2586のHJ-01〜04と#2506のContext、#2514の独立Expectedを再利用し、新しい証拠保存基盤は設けない。
+
+| 辺 | 実際に観測するもの | 切れていた場合の判定と次の作業 |
+| --- | --- | --- |
+| E0 CLI→Function | 製品`tei`入口で選択したFunction ID、入力、Source/Meaning版 | 入口がない／別Referenceへ迂回ならE0未接続。既存CLIの選択経路を先に修復 |
+| E1 Function→Query | 選択されたQuery、Dialect/Binding、SQL候補と実選択理由 | Query宣言だけならE1未接続。#2387の既存Resolverへ戻す |
+| E2 Query→Provider | 実接続先、実SQL/params、実DBのRow Identityと取得Scope | Mock/隔離ReaderだけならE2製品未接続。#4539の既存経路を流用 |
+| E3 Provider→Context | Result Slice、grain、NULL/empty/partial、Read Cohort、同一Attempt | ログだけでContextへ渡らなければE3未接続。#2506の既存境界を使う |
+| E4 Context→Consumer | ConsumerがContextのResultを読み、受領したAttempt/Result版を照合 | Provider直後のprintや別RunのJSONはE4未接続。まず一Consumerに限定 |
+| E5 Consumer→Expected | 手書きFixtureから導いた業務Entity 2件、D1合計200と、実受領の比較 | 実装値からWantを生成したら独立性不成立。#2514の既存基準へ戻す |
+
+**判定の原則**：E0〜E5は同じSource/World/Query、Scope、実行Attemptに結ばれたときだけ一往復のPASS候補とする。各辺の局所PASSが別HEAD・別Fixture・別Attemptなら、全体判定はNOT RUN／未接続。E0から順に**最初に切れた辺**を修復し、後段の未観測をFAILと混同しない。逆に実行された辺でObservedがExpectedに反した場合はFAILとする。
+
+### 既存の局所証拠を再利用する条件
+
+PR #4539の実PostgreSQL→一時ContextはE2/E3の限定的な先行証拠だが、E0/E1/E4の通常CLI経路を保証しない。#2586の合成D1/D2のJOIN 6行、D1単独SUM 200、JOIN単純SUM 600、SUM(DISTINCT amount) 100という**互いに異なる問い**を保持する。SQLの値が合っていても、粒度やClaimを取り違えたらE5を合格にしない。空集合・partial・permission-deniedも同じJSON nullへ潰さない。
+
+### レビュー時に残す一枚の結果票
+
+`HEAD / CLI実コマンド / Fixture / Attempt / E0〜E5各Observedと根拠 / Expectedの独立出典 / 実Provider・SQL・params / Context Result ID・Scope・Completeness / Consumer受領 / 非SKIP試験 / 最初の切断辺 / 未実施の後段`。
+
+この票は既存Issue/PR本文とScenario出力で十分であり、常設Schemaを先に採用しない。正常例でE0〜E5を閉じてから、§9のG1-02〜04（空結果・partial/拒否・遅延応答）を順に加える。組織C1の人物数・二時点公開・現在Grantは別Gateのまま維持する。
+
+**状態**：診断手順の確定のみ。E0〜E5を同一製品Attemptで新たに実行したわけではない。#2831のStudioセルフビルドは独立P0。
