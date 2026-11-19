@@ -481,3 +481,12 @@ footer p {
 #pin-version {
   overflow-wrap: anywhere;
 }
+
+/* A read-only unreviewed candidate, never a Source Writer. */
+#required-draft-result {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+#required-draft-result:empty { display: none; }
+#required-choice { margin: 7px 0 10px; }
