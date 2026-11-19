@@ -16,11 +16,11 @@ func TestDerivedViewAuditDistinguishesEdgeLossAndEndpointChange(t *testing.T) {
 		name, src string
 		want      DerivedViewAudit
 	}{
-		{"unchanged parallel edges", base, DerivedViewAudit{Exact: true}},
-		{"layout-only", string(fixtureSource(t, "layout-only.tei.md")), DerivedViewAudit{Exact: true}},
-		{"endpoint change", string(fixtureSource(t, "diagram-stale.tei.md")), DerivedViewAudit{EndpointChanges: []string{"e-2"}}},
-		{"missing parallel edge", strings.Replace(base, removed, "", 1), DerivedViewAudit{MissingEdgeIDs: []string{"e-2"}}},
-		{"unexpected edge", strings.Replace(base, removed, removed+extra, 1), DerivedViewAudit{UnexpectedEdgeIDs: []string{"e-3"}}},
+		{"unchanged parallel edges", base, DerivedViewAudit{Exact: true, NodesExact: true}},
+		{"layout-only", string(fixtureSource(t, "layout-only.tei.md")), DerivedViewAudit{Exact: true, NodesExact: true}},
+		{"endpoint change", string(fixtureSource(t, "diagram-stale.tei.md")), DerivedViewAudit{NodesExact: true, EndpointChanges: []string{"e-2"}}},
+		{"missing parallel edge", strings.Replace(base, removed, "", 1), DerivedViewAudit{NodesExact: true, MissingEdgeIDs: []string{"e-2"}}},
+		{"unexpected edge", strings.Replace(base, removed, removed+extra, 1), DerivedViewAudit{NodesExact: true, UnexpectedEdgeIDs: []string{"e-3"}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -63,8 +63,11 @@ func TestDerivedViewAuditDoesNotClaimNodeCoverageOrSemanticAcceptance(t *testing
 	if err != nil || !audit.Exact {
 		t.Fatalf("edge-only diagram should remain exact, got %#v, %v", audit, err)
 	}
-	// Exact means that every *edge* matches; it does not establish that all
-	// nodes were drawn, nor authorize a model edit.
+	if audit.NodesExact || !reflect.DeepEqual(audit.MissingNodeIDs, []string{"n-3"}) {
+		t.Fatalf("isolated node disappeared from coverage report: %#v", audit)
+	}
+	// Exact remains edge-only; NodesExact separately checks whether all
+	// authored nodes are visible. Neither grants Source write authority.
 }
 
 func TestDerivedViewAuditFailsClosedForAmbiguousDisplayIdentity(t *testing.T) {
@@ -78,4 +81,53 @@ func TestDerivedViewAuditFailsClosedForAmbiguousDisplayIdentity(t *testing.T) {
 	duplicate := strings.Replace(string(source), "    N1 -->|e-2| N2\n", "    N1 -->|e-1| N2\n", 1)
 	_, err = AuditDerivedView([]byte(duplicate), candidate, map[string]string{"N1": "n-1", "N2": "n-2"})
 	errCode(t, err, "DUPLICATE_VIEW_EDGE")
+}
+
+func TestDerivedViewAuditRecognizesExplicitIsolatedNodesByID(t *testing.T) {
+	base := string(fixtureSource(t, "baseline.tei.md"))
+	withNode := strings.Replace(base, "| n-2 | 対象 |", "| n-2 | 対象 |\n| n-3 | 対象 |", 1)
+	withNode = strings.Replace(withNode,
+		"    N1 -->|e-2| N2\n",
+		"    N1 -->|e-2| N2\n    N3[\"対象\"]\n", 1)
+	candidate, err := ParseCandidate([]byte(withNode))
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := map[string]string{"N1": "n-1", "N2": "n-2", "N3": "n-3"}
+	audit, err := AuditDerivedView([]byte(withNode), candidate, aliases)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !audit.Exact || !audit.NodesExact || len(audit.MissingNodeIDs) != 0 {
+		t.Fatalf("explicit isolated node not recognized: %#v", audit)
+	}
+	legacy, err := CheckDerivedView([]byte(withNode), candidate, aliases)
+	if err != nil || !legacy {
+		t.Fatalf("legacy edge comparator should accept a standalone node: %t, %v", legacy, err)
+	}
+	// A second, different view alias with the same display label is not
+	// silently merged with n-1 or n-2.
+}
+
+func TestDerivedViewAuditReportsUnknownNodeAndRefusesUnboundStandaloneAlias(t *testing.T) {
+	base := string(fixtureSource(t, "baseline.tei.md"))
+	source := strings.Replace(base,
+		"    N1 -->|e-2| N2\n",
+		"    N1 -->|e-2| N2\n    N4[\"対象\"]\n", 1)
+	candidate, err := ParseCandidate([]byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := map[string]string{"N1": "n-1", "N2": "n-2", "N4": "n-4"}
+	audit, err := AuditDerivedView([]byte(source), candidate, aliases)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !audit.Exact || audit.NodesExact ||
+		!reflect.DeepEqual(audit.UnexpectedNodeIDs, []string{"n-4"}) {
+		t.Fatalf("unrecognized diagram node needs a separate report: %#v", audit)
+	}
+	delete(aliases, "N4")
+	_, err = AuditDerivedView([]byte(source), candidate, aliases)
+	errCode(t, err, "UNBOUND_DISPLAY_ALIAS")
 }
