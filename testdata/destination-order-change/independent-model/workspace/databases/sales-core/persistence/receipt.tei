@@ -1,0 +1,12 @@
+persist sales_core.receipt {
+    database sales_core
+    semantic warehouse.receipt
+    table public.stock_receipts
+
+    column warehouse.receipt.lot_code -> lot_code storage varchar required
+    column warehouse.receipt.receipt_seq -> receipt_seq storage int64 required
+    column warehouse.receipt.units -> units storage decimal required
+
+    primary-key warehouse.receipt.lot_code
+    primary-key warehouse.receipt.receipt_seq
+}

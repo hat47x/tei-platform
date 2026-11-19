@@ -18,6 +18,7 @@ on:
       - 'cmd/tei/cli_view_environment_test.go'
       - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
+      - 'cmd/tei/destination_data_form_independent_pg_test.go'
       - 'tools/reference-first-web-target/read_scenario_postgres.go'
       - 'tools/reference-first-web-target/read_scenario_postgres_test.go'
       - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
@@ -52,6 +53,7 @@ on:
       - 'cmd/tei/cli_view_environment_test.go'
       - 'cmd/tei/cli_view_environment_names_test.go'
       - 'cmd/tei/destination_order_runtime_pg_test.go'
+      - 'cmd/tei/destination_data_form_independent_pg_test.go'
       - 'tools/reference-first-web-target/read_scenario_postgres.go'
       - 'tools/reference-first-web-target/read_scenario_postgres_test.go'
       - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
@@ -162,6 +164,7 @@ jobs:
           set -euo pipefail
           gofmt -d cmd/tei/cli_view.go cmd/tei/cli_view_environment.go \
             cmd/tei/cli_view_environment_test.go cmd/tei/destination_order_runtime_pg_test.go \
+            cmd/tei/destination_data_form_independent_pg_test.go \
             tools/reference-first-web-target/read_scenario_postgres.go \
             tools/reference-first-web-target/read_scenario_postgres_test.go \
             tools/reference-first-web-target/read_scenario_page_postgres_test.go \
@@ -246,7 +249,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$' ./cmd/tei | tee -a "$log"
           go test -count=1 -v -timeout 10m -run 'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned' \
             ./tools/reference-first-web-target | tee -a "$log"
           # Road item 2's remaining half: the page a browser opens must carry
@@ -309,6 +312,7 @@ jobs:
             'TestOrgAxisAsOfTwoWriterExclusionCandidateOptIn'
             'TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs'
             'TestDestinationOrderChangeReadViaCLIFromPostgres'
+            'TestIndependentWarehouseDataFormThroughProductView'
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'

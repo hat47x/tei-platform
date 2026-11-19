@@ -1,0 +1,3 @@
+pattern warehouse_count.receipts header-detail {
+    relation warehouse.bin.receipts
+}
