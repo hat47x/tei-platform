@@ -2,7 +2,7 @@
 
 受注明細を実際のPostgreSQLから読み、設計文書へ規則を一つ足して、答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の到達点の1〜5を通す。
 
-2026年11月17日に手順0〜4をPostgreSQL 16で確認した。その後、[#5588](https://github.com/hat47x/tei-platform/pull/5588)で、手順0・1・3のシェルコマンドをこのページから読み取り、同じ実DB・作業領域で実行した。手順2・4のCLIと手順5の実Chromeも一つの試行で検査した。[#5602](https://github.com/hat47x/tei-platform/pull/5602)では第一Webを実行ファイルとしてビルドし、別プロセスから実DBの答えを画面へ返した。ただし、掲載した`go run`の逐語実行、ブラウザ欄への人手入力、初回利用者の完走はまだ確認していない。
+2026年11月17日に手順0〜4をPostgreSQL 16で確認した。その後、[#5588](https://github.com/hat47x/tei-platform/pull/5588)で、手順0・1・3のシェルコマンドをこのページから読み取り、同じ実DB・作業領域で実行した。手順2・4のCLIと手順5の実Chromeも一つの試行で検査した。[#5602](https://github.com/hat47x/tei-platform/pull/5602)では第一Webを実行ファイルとしてビルドし、別プロセスから実DBの答えを画面へ返した。さらに[#5627](https://github.com/hat47x/tei-platform/pull/5627)では、同じ実PostgreSQL・編集済み作業領域・Chromeの試行で、受注1001と1002の画面をそれぞれ独立した期待に照合した。[#5632](https://github.com/hat47x/tei-platform/pull/5632)では、手順5に掲載した`go run`のコマンドも、同じ試行で実行する。ブラウザ操作には試験用の自動送信フォームを使っており、製品の画面上で各欄を入力する操作と、初回利用者の完走は別の検収として残る。
 
 ## 用意するもの
 
@@ -140,7 +140,7 @@ go run ./tools/reference-first-web-target \
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
 
-CIでは、規則変更前後の行別Rule回答を実PostgreSQLとChromeで業務主キーごとの独立した期待値へ照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)・[#5588](https://github.com/hat47x/tei-platform/pull/5588)）。第一Webも実際の読取トランザクションで全件性を確認できる場合だけ一意性を成立とし、RLSで確認できないときは保留する（[#5571](https://github.com/hat47x/tei-platform/pull/5571)・[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。出荷用Web入口を実ビルド・別OSプロセスで使う検査は[#5602](https://github.com/hat47x/tei-platform/pull/5602)で追加したが、`go run`とフォーム手入力は依然として別検収である。試験時のSource読込は診断用であり、正式なSource受理や本番認可を保証しない。
+CIでは、規則変更前後の行別Rule回答を実PostgreSQLとChromeで業務主キーごとの独立した期待値へ照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)・[#5588](https://github.com/hat47x/tei-platform/pull/5588)）。第一Webも実際の読取トランザクションで全件性を確認できる場合だけ一意性を成立とし、RLSで確認できないときは保留する（[#5571](https://github.com/hat47x/tei-platform/pull/5571)・[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。出荷用Web入口を実ビルド・別OSプロセスで使う検査は[#5602](https://github.com/hat47x/tei-platform/pull/5602)で追加し、手順5の掲載`go run`を同じ実DBで実行する検査を[#5632](https://github.com/hat47x/tei-platform/pull/5632)で追加した。Chromeからの送信は試験専用の自動フォームによるもので、出荷した画面の入力欄を操作した証拠ではない。初回利用者が自分で最後まで通せるかも、別途検収する。試験時のSource読込は診断用であり、正式なSource受理や本番認可を保証しない。
 
 ## まだできないこと
 
