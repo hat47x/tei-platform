@@ -303,7 +303,9 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 			}
 		})
 	}
-	t.Log("first-change steps 0-4 ran as published; shipped Web and Chrome verified both documented order selections with automated POST")
+	// Keep the established CI receipt prefix, but do not imply that step 5's
+	// published go-run command or real form entry was executed verbatim.
+	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; shipped Web with automated bootstrap POST for orders 1001 and 1002 (not human form input)")
 }
 
 // documentedGuideShellStep returns the commands from the published POSIX
