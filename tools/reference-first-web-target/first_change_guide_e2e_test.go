@@ -834,7 +834,7 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 			if err == nil {
 				t.Fatal("published shell silently accepted an ambiguous Application anchor")
 			}
-			want := "規則の登録先が"+tc.count+"件です（1件必要）"
+			want := "規則の登録先が" + tc.count + "件です（1件必要）"
 			if tc.name == "already-registered" {
 				want = "追加する規則は既に1件登録されています"
 			}
