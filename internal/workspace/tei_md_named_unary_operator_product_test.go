@@ -153,9 +153,11 @@ func TestNamedUnaryOperatorPreservesSubjectMeaningAndSourceRevision(t *testing.T
 	}
 }
 
-// A named unary operator does not make a second value legitimate merely
-// because that value has the correct type or repeats the declared name.
-func TestNamedUnaryOperatorRejectsSecondSubjectBindingAtProductLoad(t *testing.T) {
+// A rule in a different authoring document has no local declaration input
+// index. It must fail closed on any assigned input value rather than promise
+// the more specific subject-rebinding diagnostic that a co-located
+// declaration can provide.
+func TestNamedUnaryOperatorRefusesCrossDocumentValueAtProductLoad(t *testing.T) {
 	const operatorPath = "semantic/sales/zz-operators.tei.md"
 	const rulePath = "semantic/sales/discount-rules.tei.md"
 	root := teiMDOperatorWorkspace(t)
@@ -166,9 +168,9 @@ func TestNamedUnaryOperatorRejectsSecondSubjectBindingAtProductLoad(t *testing.T
 		"sales.order_line.discount is sales.non_negative",
 		"sales.order_line.discount is sales.non_negative amount: 0")
 	_, err := Load(root)
-	if err == nil || !strings.Contains(err.Error(), "already supplied by the rule subject") ||
+	if err == nil || !strings.Contains(err.Error(), "the meaning has no place for an operator input value yet") ||
 		!strings.Contains(err.Error(), "sales.order_line.discount_non_negative") ||
 		!strings.Contains(err.Error(), "discount-rules.tei.md:") {
-		t.Fatalf("a second named value escaped product diagnostics: %v", err)
+		t.Fatalf("a cross-document input value escaped product fail-closed diagnostics: %v", err)
 	}
 }
