@@ -50,6 +50,13 @@
           Go操作が返したモデルのJSONです。ソース本文の編集・保存・受理は行いません。
         </p>
         <div id="editor" class="editor"></div>
+        <section class="required-preview" aria-labelledby="required-preview-heading">
+          <h2 id="required-preview-heading">必須指定の変更候補</h2>
+          <p class="hint">現在のData属性から候補を作ります。ここではSourceの編集・審査・保存を行いません。</p>
+          <button id="preview-required" type="button" disabled>必須にする候補を表示</button>
+          <p id="required-preview-status" class="hint" role="status" aria-live="polite">Data属性をInspectしてから、候補を作成できます。</p>
+          <pre id="required-preview-json" hidden></pre>
+        </section>
         <div class="graph-head">
           <h2>親子関係</h2>
           <span class="tag">表示・選択のみ</span>

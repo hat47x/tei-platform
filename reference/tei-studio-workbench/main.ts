@@ -13,6 +13,7 @@ import {
   pinRequest, acceptPinObservation,
 } from "./pin-state.ts";
 import { handleXeadPathKeydown } from "./keyboard.ts";
+import { previewRequiredEditDraft } from "./source-locations.ts";
 import {
   readCatalog,
   inspectEligibility,
@@ -58,6 +59,57 @@ let pinnedCatalogIdentity: string | null = null;
 const pinnedCatalogMatches = () => pinnedCatalogIdentity !== null &&
   pinnedCatalogIdentity === catalogIdentity(catalogSnapshot);
 let commandContext = 0;
+type RequiredPreviewContext = {
+  workspaceID: string;
+  workspaceEpoch: number;
+  inspectionEpoch: number;
+  subject: Subject;
+  catalog: Catalog;
+  inspection: unknown;
+};
+let requiredPreviewContext: RequiredPreviewContext | null = null;
+function clearRequiredPreview() {
+  requiredPreviewContext = null;
+  element<HTMLButtonElement>("preview-required").disabled = true;
+  element("required-preview-status").textContent =
+    "Data属性をInspectしてから、候補を作成できます。";
+  const output = element<HTMLElement>("required-preview-json");
+  output.hidden = true;
+  output.textContent = "";
+}
+function showRequiredPreview() {
+  const current = requiredPreviewContext;
+  const output = element<HTMLElement>("required-preview-json");
+  if (!current || disposed || current.workspaceID !== workspace.value ||
+      current.workspaceEpoch !== workspaceEpoch ||
+      current.inspectionEpoch !== inspectionEpoch ||
+      current.catalog !== catalogSnapshot || !selected ||
+      subjectKey(current.subject) !== subjectKey(selected)) {
+    clearRequiredPreview();
+    return;
+  }
+  try {
+    const draft = previewRequiredEditDraft(
+      current.inspection, current.subject, current.catalog,
+      current.workspaceID,
+      `required-${current.workspaceEpoch}-${current.inspectionEpoch}`,
+      "選択したData属性を必須にする候補", true,
+    );
+    // The UI shows only the typed proposal; neither a Source byte range nor
+    // read-only Inspector metadata is converted into an editing authority.
+    output.textContent = JSON.stringify(draft.edit, null, 2);
+    output.hidden = false;
+    element("required-preview-status").textContent =
+      "未審査の変更候補です。Sourceの確認・Review・保存は行っていません。";
+  } catch (error) {
+    output.textContent = "";
+    output.hidden = true;
+    element<HTMLButtonElement>("preview-required").disabled = true;
+    element("required-preview-status").textContent =
+      "候補を作成できません：" +
+      (error instanceof Error ? error.message : "INVALID_REQUIRED_EDIT");
+  }
+}
 const editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
   version: "0",
@@ -328,6 +380,7 @@ function renderList() {
 }
 async function inspect(subject: Subject) {
   if (!client || !workspace.value || disposed) return;
+  clearRequiredPreview();
   const eligibility = inspectEligibility(catalogSnapshot, subject);
   if (!eligibility.ok) {
     // All existing selection routes meet here. Never issue an unqualified
@@ -352,7 +405,8 @@ async function inspect(subject: Subject) {
   }
   const context = workspaceEpoch,
     request = ++inspectionEpoch,
-    id = workspace.value;
+    id = workspace.value,
+    catalog = catalogSnapshot!;
   selected = subject;
   title.textContent = subject.id;
   renderList();
@@ -370,7 +424,20 @@ async function inspect(subject: Subject) {
     ? `親子関係のうち8件を表示（ほか${related.hidden}件）`
     : "選択要素と、一覧に含まれる直接の親子関係";
   return responses.run("inspection", () => client!.inspectSubject(id, subject.kind, subject.id), (reply) => {
-    const view = readInspection(unwrap(reply), subject, catalogSnapshot!);
+    if (context !== workspaceEpoch || request !== inspectionEpoch ||
+        catalog !== catalogSnapshot || !selected ||
+        subjectKey(subject) !== subjectKey(selected)) return;
+    const raw = unwrap(reply);
+    const view = readInspection(raw, subject, catalog);
+    if (subject.kind === "semantic-attribute") {
+      requiredPreviewContext = {
+        workspaceID: id, workspaceEpoch: context, inspectionEpoch: request,
+        subject, catalog, inspection: raw,
+      };
+      element<HTMLButtonElement>("preview-required").disabled = false;
+      element("required-preview-status").textContent =
+        "現在のInspect結果から、未審査の候補を作成できます。";
+    }
     editor.setDocument({
       id: `${id}/${subjectKey(subject)}`,
       version: view.version,
@@ -424,6 +491,7 @@ async function loadWorkspace() {
   if (!client || !workspace.value || disposed) return;
   const context = ++workspaceEpoch,
     id = workspace.value;
+  clearRequiredPreview();
   responses.reset();
   pinState = invalidatePin(pinState);
   pinnedVersion = null;
@@ -581,6 +649,7 @@ element("inspect-pinned").addEventListener("click", () => {
 });
 renderPin();
 search.addEventListener("input", renderList);
+element("preview-required").addEventListener("click", showRequiredPreview);
 element("validate").addEventListener(
   "click",
   () => void panel.execute("validate"),
@@ -589,6 +658,7 @@ window.addEventListener(
   "pagehide",
   () => {
     disposed = true;
+    clearRequiredPreview();
     responses.dispose();
     ++workspaceEpoch;
     ++inspectionEpoch;

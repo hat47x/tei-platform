@@ -481,3 +481,20 @@ footer p {
 #pin-version {
   overflow-wrap: anywhere;
 }
+
+.required-preview {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid #dce4e5;
+  border-radius: 7px;
+}
+.required-preview h2 {
+  margin-bottom: 8px;
+}
+#required-preview-json {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #eef3f3;
+  border-radius: 5px;
+  padding: 10px;
+}
