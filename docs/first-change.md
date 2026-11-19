@@ -85,9 +85,15 @@ cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPAC
       found++
       print "    uses validation sales.order_line.unit_price_positive"
     }
+    if ($0 == "    uses validation sales.order_line.unit_price_positive")
+      already++
   } END {
     if (found != 1) {
       printf "規則の登録先が%d件です（1件必要）。Applicationは変更しません。\n", found > "/dev/stderr"
+      exit 1
+    }
+    if (already != 0) {
+      printf "追加する規則は既に%d件登録されています。Applicationは変更しません。\n", already > "/dev/stderr"
       exit 1
     }
   }' "$application" > "$next"
@@ -112,7 +118,7 @@ rule sales.order_line.unit_price_positive:
 | 0 | not-satisfied |
 ````
 
-Applicationへの登録行が見つからない、または複数ある場合は、元の`application.tei`を上書きせずにエラーで止まる。規則文書や言語宣言は先に配置されるため、エラーが出たら後続の検証へ進まず、作業領域の版を確認する。挿入途中の`.next`は削除する。
+Applicationへの登録先が見つからない、複数ある、または追加する規則が既に登録されている場合は、元の`application.tei`を上書きせずにエラーで止まる。規則文書や言語宣言は先に配置されるため、エラーが出たら後続の検証へ進まず、作業領域の版を確認する。挿入途中の`.next`は削除する。
 
 この手順で行うのは、既存規則の書換えではなく**新しい規則の追加**である。変更するのは、言語の指定、規則を記した設計文書、Applicationの利用登録の3ファイル。通常開発との作業量の比較でも、この3ファイルをすべて数える。既存規則と例だけを書き換える二回目以降の変更は、別の受入として評価する。
 
