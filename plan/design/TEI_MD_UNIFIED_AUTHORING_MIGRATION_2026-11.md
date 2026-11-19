@@ -431,4 +431,23 @@ KaTeXは表示Adapterの候補とし、**式の出現ID、元byte span、Documen
 
 **Owner境界**：MarkdownのSourceとRole選択は#2621/#988/#4370、表現型・逆写像と束縛は#2497/#4353、MeaningとTarget実行は#2620/#4660および既存Operator/Provider、独立Expectedは#1180/#2514、著作文書と納品物はSHO #5とする。Reader/Renderer/Target/受入の第二正本を増やさない。この作業はP1であり、#2831/#4583のStudio Stage1→Stage2と#1251/#2586の通常CLI実ProviderのP0を妨げない。
 
+### 10.17.1 製品実装への最小引渡し（追加契約）
+
+**Markdown Readerが式を選び、KaTeXは選ばれたTeX断片だけを描く。** KaTeXの`renderToString`へ渡すのはDelimiterを除いた式本体であり、DOM全体へのauto-renderを正式なSource認識経路に使わない。引用中の数式は文書として表示してよいが、引用というRoleを保持し、実行定義としては受理しない。説明用式の表示、意味候補の提示、受理済み式のInspector表示は、外観を共用しても受理資格を共用しない。
+
+新しいCanonical型やRegistryを設けず、既存Source Index／Projection／Build Evidenceへ以下の観測情報を渡す。
+
+| 境界 | 必ず受け渡す情報 | 未対応時の扱い |
+| --- | --- | --- |
+| Source → 表示選択 | 選択済みの元byte列・Source Revision、UTF-8 byte span、出現ID、Authoring Role、Delimiter Profile、TeX原文 | 正式Reader未接続なら`unsupported`。Reference抽出の成功を製品成功としない |
+| 選択 → KaTeX Adapter | 上記出現の式本体、inline/display、文書単位Macroと実効版、固定したKaTeX/CSS/font版・安全設定 | Macro依存が不明なら該当文書の表示を保守的に失効。古い描画応答は現在版へ昇格しない |
+| Adapter → Studio/SHO | HTML+MathMLまたは位置付き診断、使用した資産版、Sourceに戻るread-only locator、出力先別loss | 不正TeXを空の成功表示にせず、原文を保持。画像化／MathML欠落／式参照断絶を黙認しない |
+| 表示 → 意味編集・Target | 現在のSource/Occurrence/Writer/Grant、明示ReviewとAccept、受理済みExpression／Operator参照、実Consumer別Evidence | プレビュー選択から直接書き戻さない。Meaning未受理ならBuild／実行へ進めない |
+
+**最初の固定Fixture**は、①通貨`$100`・コード・引用・式が共存するMarkdown、②同一TeXを文書A/Bの異なるMacro定義で描く二文書、③原文は同一だが単位・定義域・Roleが異なる二つの意味候補、の三組に絞る。各組についてRaw Source・選択されたMath範囲・表示結果／エラー・意味受理状態・出力先資格を別欄に記録し、期待値は製品出力から生成しない。最初はReference表示と実Wails表示の結果を明確に区別する。
+
+**受入IDの二重管理を避ける。** 数理Toolkit計画§25の`KTX-01〜12`は領域横断の受入条件、#5683の`KTEI-01〜12`はSource/Renderer/Studio側の具体的な反例である。対応する試験は既存#1180／#2514の同じ独立Expected・同じ実Attemptに結び、名前だけ異なる二つのOracleやRunnerを作らない。SHO #5のA1〜A5は文書Targetの追加Consumer条件であり、TEIのMeaning受理条件を代行しない。
+
+KaTeXの依存を製品に入れる際は、固定版と配布資産（CSS・fontを含む）のハッシュ／ライセンス／CSPと実オフライン読込みを確認する。設定候補は`trust:false`、有限`maxExpand`・`maxSize`、明示`strict`、失敗を捕捉する`throwOnError:true`、`output:htmlAndMathml`であり、制限値は負荷・互換性試験の結果に基づき確定する。共有Macroオブジェクトは`\gdef`等による状態変更を含むため、文書・表示Attempt間で使い回さない。安全な版の採用と安全な描画結果の実証は別々に判定する。
+
 **現況（2026-11-19）**：設計の引渡しと試験計画まで。KaTeXの新規製品導入・実Wails表示・数理的Claim検証・PDF/DOCX生成・Owner受理はNOT RUN。
