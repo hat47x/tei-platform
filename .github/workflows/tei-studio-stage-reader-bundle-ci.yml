@@ -175,8 +175,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Studio form → Shared Acceptance failed' }
           $accepted = Get-Content -LiteralPath $acceptReceipt -Raw | ConvertFrom-Json
           if ($accepted.schema -ne 'tei.reference.studio-stage-source-accept/v0' -or
+              $accepted.editorTransport -ne 'real-edge-offline-form-playwright' -or
               $accepted.realBrowserEditing -ne 'observed-in-this-attempt' -or
-              $accepted.browserScreenshotDigest -notmatch '^sha256:[0-9a-f]{64} -or
+              $accepted.browserScreenshotDigest -notmatch '^sha256:[0-9a-f]{64}$' -or
+              @($accepted.browserPageErrors).Count -ne 0 -or
+              @($accepted.browserNetworkRequests).Count -ne 0 -or
+              $accepted.sourceChangedOneCell -ne $true -or
               $accepted.previewAndReviewDidNotWriteSource -ne $true -or
               $accepted.unreviewedAcceptRefused -ne $true -or
               $accepted.ownerMeaningAcceptance -ne 'not-established') {
