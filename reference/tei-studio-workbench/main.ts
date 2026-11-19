@@ -648,8 +648,8 @@ element("inspect-pinned").addEventListener("click", () => {
   void refreshPinnedSubject();
 });
 renderPin();
-element("preview-required").addEventListener("click", showRequiredPreview);
 search.addEventListener("input", renderList);
+element("preview-required").addEventListener("click", showRequiredPreview);
 element("validate").addEventListener(
   "click",
   () => void panel.execute("validate"),
