@@ -1,12 +1,12 @@
 # はじめての一変更
 
-受注明細を実際のPostgreSQLから読み、設計文書へ規則を一つ足して、答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の到達点の1〜5を通す。
+受注明細を実際のPostgreSQLから読み、設計文書へ新しい規則を追加し、CLIとWebで答えが増えることを確かめる手順である。[いま進めること](../plan/NOW.md)の五段階を試す最初の例であり、既存規則の書換えは扱わない。
 
-2026年11月17日に手順0〜4をPostgreSQL 16で確認した。その後、[#5588](https://github.com/hat47x/tei-platform/pull/5588)で、手順0・1・3のシェルコマンドをこのページから読み取り、同じ実DB・作業領域で実行した。手順2・4のCLIと手順5の実Chromeも一つの試行で検査した。[#5602](https://github.com/hat47x/tei-platform/pull/5602)では第一Webを実行ファイルとしてビルドし、別プロセスから実DBの答えを画面へ返した。さらに[#5633](https://github.com/hat47x/tei-platform/pull/5633)では、手順5の`go run`も同じ実PostgreSQL・編集済み作業領域・実Chromeの試行で検査した。待受ポートだけは他の試験と衝突しない値に変えている。画面の入力欄を使った操作と、初めて使う人自身による完走はまだ確認していない。
+2026年11月17日に手順0〜4をPostgreSQL 16で確認した。その後、[#5588](https://github.com/hat47x/tei-platform/pull/5588)で、手順0・1・3のシェルコマンドをこのページから読み取り、同じ実DB・作業領域で実行した。手順2・4のCLIと手順5の実Chromeも一つの試行で検査した。[#5602](https://github.com/hat47x/tei-platform/pull/5602)では第一Webを実行ファイルとしてビルドし、別プロセスから実DBの答えを画面へ返した。さらに[#5633](https://github.com/hat47x/tei-platform/pull/5633)では、手順5の`go run`も同じ実PostgreSQL・編集済み作業領域・実Chromeの試行で検査した。待受ポートだけは他の試験と衝突しない値に変えている。さらに[#5642](https://github.com/hat47x/tei-platform/pull/5642)で、出荷Webのフォームを実Chromeで開き、四つの入力欄を自動操作して送信する検査も通った。初めて使う人自身による手順0〜5の完走は、引き続き未確認である。
 
 ## 用意するもの
 
-Go、PostgreSQL（`psql`を含む）、このリポジトリ。以下のコマンドは`awk`を使うPOSIXシェル向けで、WindowsではWSLなどの環境で実行する。PowerShell上での実行は未確認である。リポジトリのルートディレクトリで、手順0〜5を同じシェルから順に実行する。試してよい空のデータベースを一つ作り、接続先を環境変数へ入れる。接続先は作業領域へ書かない。
+Go、PostgreSQL（`psql`を含む）、Git、およびGitの履歴を参照できるこのリポジトリの作業コピー。手順5は`git rev-parse HEAD`を使うため、ZIPを展開しただけのファイル一式では実行できない。以下のコマンドは`awk`を使うPOSIXシェル向けで、WindowsではWSLなどの環境で実行する。PowerShell上での実行は未確認である。リポジトリのルートディレクトリで、手順0〜5を同じシェルから順に実行する。試してよい空のデータベースを一つ作り、接続先を環境変数へ入れる。接続先は作業領域へ書かない。
 
 ```bash
 go build -o tei ./cmd/tei
@@ -98,6 +98,8 @@ rule sales.order_line.unit_price_positive:
 | 0 | not-satisfied |
 ````
 
+この手順で行うのは、既存規則の書換えではなく**新しい規則の追加**である。変更するのは、言語の指定、規則を記した設計文書、Applicationの利用登録の3ファイル。通常開発との作業量の比較でも、この3ファイルをすべて数える。既存規則と例だけを書き換える二回目以降の変更は、別の受入として評価する。
+
 ## 4. 確かめて、読み直す
 
 ```bash
@@ -141,6 +143,12 @@ go run ./tools/reference-first-web-target \
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
 
 CIでは、規則変更前後の行別Rule回答を実PostgreSQLとChromeで業務主キーごとの独立した期待値へ照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)・[#5588](https://github.com/hat47x/tei-platform/pull/5588)）。第一Webも実際の読取トランザクションで全件性を確認できる場合だけ一意性を成立とし、RLSで確認できないときは保留する（[#5571](https://github.com/hat47x/tei-platform/pull/5571)・[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。出荷用Web入口を実ビルド・別OSプロセスで使う検査は[#5602](https://github.com/hat47x/tei-platform/pull/5602)、手順5の`go run`で同じ実DBとChromeを使う検査は[#5633](https://github.com/hat47x/tei-platform/pull/5633)で追加した。加えて、実PostgreSQLを使う公開手順のE2Eでは、製品の`GET /custom-submit`を実Chromeで開き、四つの入力欄に値を入れ、表示されたSubmitボタンを押して受注1001／1002を照合する（[#5642](https://github.com/hat47x/tei-platform/pull/5642)）。出荷相当のWebバイナリと公開した`go run`の両方で確かめ、判定は独立した期待値に照合する。これはブラウザーの**自動操作**であり、初回利用者自身が手順0〜5を完走したことではない。試験時のSource読込は診断用であり、正式なSource受理や本番認可を保証しない。
+
+## 初回利用者による完走の受入
+
+自動Chrome試験が成功しても、初回利用者が公開手順を実行できることの証明にはならない。初めてTEIを使う検収者が、空の検証用PostgreSQLデータベースと新しい作業領域を使い、このページの手順0〜5を同じシェルで順に進める。開発者によるコマンドの修正や、事前に編集したWorkspace・起動済みWebを使った代行は、完走として数えない。手順の不明点や失敗箇所も記録し、途中で追加の説明が必要になった場合は未完了とする。
+
+受入記録には、使用した版、手順0〜5の実行結果、編集前後で増えたRule、受注1001の主キー2（数量0）と主キー3（単価0）の判定、受注1002の明細とRelation判定、Webフォームの選択値と画面上の回答を残す。SourceやDBの接続情報そのもの、合成Credentialは記録に転記しない。RLSなどの理由で全件取得を確認できなければ、`undecided`を正しい留保として扱い、成立したことにはしない。これは初回利用者の操作性と回答の受入であり、Ownerによる業務意味受理、正式なSource受理、Hostの実行認可を代替しない。
 
 ## まだできないこと
 
