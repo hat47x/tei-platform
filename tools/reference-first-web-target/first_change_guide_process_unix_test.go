@@ -4,7 +4,6 @@ package main
 
 import (
 	"io"
-	"os"
 	"os/exec"
 	"syscall"
 	"testing"
