@@ -64,6 +64,18 @@ const WORKBENCH_PIN_INSPECTION_TESTS_CLOSURE = Object.freeze({
   ...WORKBENCH_REQUIRED_FIELDS_READER_CLOSURE,
   'reference/tei-studio-workbench/package.json': 'd48621814bdc690e6da2cfb8a6a26a68dc90653a',
 });
+// Qualified, explicit new Workbench revision: preserve historical pins and
+// bind the new Source-backed draft preview to its exact source, UI assets
+// and test entry. This is a source closure identity, not a Writer Grant.
+export const WORKBENCH_REQUIRED_PREVIEW_HEAD = '58251bcf61938b585287450ce7949b8ea855b480';
+export const WORKBENCH_REQUIRED_PREVIEW_MAIN_BLOB = '557bb1f46755a0233324406b23db942af36e9e26';
+const WORKBENCH_REQUIRED_PREVIEW_CLOSURE = Object.freeze({
+  ...WORKBENCH_PIN_INSPECTION_TESTS_CLOSURE,
+  'reference/tei-studio-workbench/source-locations.ts': '431c11efb09c1a2aa37c5a086501cf611fcc0426',
+  'reference/tei-studio-workbench/source-locations.test.mjs': '5c776d20b557cf345c5ec17eddf302acdaa4c907',
+  'reference/tei-studio-workbench/index.html': 'a9baa5018f83161439c99eacf4f41e2b5004d71a',
+  'reference/tei-studio-workbench/style.css': 'b990387707078f8b76e24cab0719c107c176a50d',
+});
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -109,6 +121,13 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_PIN_INSPECTION_TESTS_CLOSURE}),
+  Object.freeze({head: WORKBENCH_REQUIRED_PREVIEW_HEAD,
+    mainBlob: WORKBENCH_REQUIRED_PREVIEW_MAIN_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    closureBlobs: WORKBENCH_REQUIRED_PREVIEW_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
