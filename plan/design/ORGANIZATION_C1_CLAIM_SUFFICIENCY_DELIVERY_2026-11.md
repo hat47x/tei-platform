@@ -219,3 +219,24 @@ PR #4539の実PostgreSQL→一時ContextはE2/E3の限定的な先行証拠だ�
 4. Function→Queryの辺が未接続なら、既存`relation-query`の選択・実行処理と#4539の実Provider Readerを**再利用できる最小箇所**でつなぐ。新コマンド、新Provider、新Context Schemaを先に追加しない。
 
 **受入の差**：`relation-query`単独の正常応答は「Query直指定の局所PASS」。Function選択と実Provider、Context、Consumerの同一Attemptが観測できて初めてG1-01の製品縦断PASS候補。実コードの存在は静的確認であり、この追補ではGoテスト・CLI起動・PostgreSQL実行はNOT RUN。§11のE0〜E5はこの差を残して適用する。
+
+<!-- org-g1-noop-query-correction-20261119 -->
+## 13. `relation-query`の実行能力を訂正する：現行CLIはno-op Executor（2026-11-19）
+
+§12の「Query直指定入口が実在する」は正しいが、**実Providerを使っているという意味ではない**。mainの`cmd/tei/cli_relation_query.go`を静的に追跡すると、`runRelationQueryCommand`は`driver.NewResolver(w)`から`ExecuteRelationQuery(..., noopRelationQueryExecutor{}, nil)`を呼ぶ。`noopRelationQueryExecutor.ExecuteRelationQuery`は`queryresult.RawResult{}`と`MappedResult{}`を空で返し、`Payload`に解決済みSQL文字列を載せるだけである。したがって、このCLIの`ok: true`は**Query解決とno-op応答の成功**であり、実SQLの発行・実Rowset取得・Context格納・Consumer受領の証拠ではない。
+
+| 現行の実コード | 確認できること | まだ確認できないこと |
+| --- | --- | --- |
+| `cmd/tei/cli_commands.go`の`relation-query`登録 | 通常CLIにQuery直指定の入口がある | Functionからその入口への実呼出し |
+| `cmd/tei/cli_relation_query.go`のResolver | Workspace/WorldからQueryを解決する | 実DBへのSQL発行、ProviderのRow Identity、Scope/Coverage |
+| `noopRelationQueryExecutor` | 解決済みSQLをPayloadへ返す | Raw/Mappedの実データ、NULL/空/partialの実観測 |
+| `cliRelationQueryResponse`の`ok` | コマンドが定義した限定処理の成否 | Function Data Context・独立Consumerの受領 |
+
+### #2586の最初の接続修復を再設定する
+
+1. **E0はQuery直指定入口として存在**。Function選択の入口と混同しない。既存Function→Queryの呼出し経路を探し、未接続ならE1として報告する。
+2. **E2はこのCLIでは未成立**。`noopRelationQueryExecutor`を実Providerの成功例として扱わず、#4539の実PostgreSQL Readerを現行Resolver/Driverのどこへ接続できるか確認する。実DBへの接続情報・認可・ScopeをCLIから推測して自動決定しない。
+3. **E3/E4は別検証**。実RowsetがContextへ渡り、同一Attemptの一Consumerが受領したことを実観測する。SQL PayloadだけをResultとして送ってもG1-01にはならない。
+4. **負例を追加**：no-opの`ok: true`を製品実Read PASSと誤判定する実装／検収票を必ず落とす。既存no-op経路はQuery解決・SQL選択の診断用途として保持してよいが、実Readerと明示的に区別する。
+
+**停止線**：`relation-query`のコマンド存在、`ok: true`、SQL Payload、または#4539の別Referenceでの実PG局所PASSを合算して、通常CLI→実Provider→Context→Consumerの同一Attempt合格と呼ばない。実行コマンド・固定HEAD・Providerの実SQL・受信した行Identity・Context・Consumer・独立Expectedが揃うまでG1はNOT RUN／未接続。今回の確認はソースの静的読取であり、Goテスト・実PG・CLI実行は行っていない。
