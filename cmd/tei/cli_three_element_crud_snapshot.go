@@ -29,12 +29,12 @@ func runThreeElementCRUDSnapshot(args []string, out io.Writer) (int, error) {
 		OK:            true,
 		OKScope:       "projection-produced-only",
 		Result: struct {
-			SchemaVersion      string `json:"schemaVersion"`
+			SchemaVersion string `json:"schemaVersion"`
 			threeelement.CRUDSnapshotProjection
 			StructuralOK       bool   `json:"structuralOk"`
 			CRUDConflictStatus string `json:"crudConflictStatus"`
 		}{
-			SchemaVersion:           "tei.three-element.crud-snapshot/v0",
+			SchemaVersion:          "tei.three-element.crud-snapshot/v0",
 			CRUDSnapshotProjection: projection,
 			StructuralOK:           report.OK,
 			CRUDConflictStatus:     report.CRUDConflictStatus,
