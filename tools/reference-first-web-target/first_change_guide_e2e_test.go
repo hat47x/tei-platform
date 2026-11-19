@@ -307,9 +307,9 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	t.Run("documented-step-5-go-run", func(t *testing.T) {
 		verifyDocumentedGuideGoRunWeb(t, handbook, root, dsn, browser, fixtures)
 	})
-	// Keep the established CI receipt prefix, but do not imply that step 5's
-	// published go-run command or real form entry was executed verbatim.
-	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; shipped Web with automated bootstrap POST for orders 1001 and 1002 (not human form input)")
+	// Keep the established CI receipt prefix while distinguishing the actual
+	// documented go run (isolated listen address) from real Web form entry.
+	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; step 5 documented go run and shipped Web binary (both selected orders via automated bootstrap POST, not real form entry)")
 }
 
 // verifyDocumentedGuideGoRunWeb exercises the published step-5 shell, not
