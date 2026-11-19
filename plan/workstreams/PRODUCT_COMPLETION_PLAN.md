@@ -758,11 +758,29 @@ Webの要求、CLIの起動、タイマー、Message、画面操作には、そ�
 
 **新しい共通機構をそのままHeadの適格性にしない**：main統合[#5166](https://github.com/hat47x/tei-platform/pull/5166)では、暦日の`not-after` Ruleは既存評価Pで扱える一方、生成Gでは`unsupported generated kind`として止まる。このためEP-0bでは、**対象のRule/Operatorごとに選択したG/P/D方式の能力、失敗分類、実Targetでの実行位置**を判定する。Pの存在からGへの暗黙Fallbackを認めない。mainの[Web-P1a設計 #5157](https://github.com/hat47x/tei-platform/pull/5157)にあるread-only ViewModelも、Head向けの生成器や外部Releaseを代替しない。
 
-**公開FieldはWhole Recordの見た目から決めない**：[PluginのField Projection試験候補 #5156](https://github.com/hat47x/tei-platform/pull/5156)は、Record全体を扱うと`internalNote`など追加列を含む一方、明示二Field投影では含めないことを既存純粋Transformで対照する。現時点ではPRの統合資格は別確認であり、TEIの公開Host適格性を実証したものではない。B2CではProduct全体を`meta description`へ暗黙渡しせず、必要な公開Fieldを最小に選ぶ。NULL・未取得・部分取得とRead Footprint、Audience/Disclosure、生成Memberに残った原Source/埋込JSONも検証する。匿名Page/本人注文/運用者画面の各Audienceへ同じ結果を再公開しない。
+**公開FieldはWhole Recordの見た目から決めない**：[PluginのField Projection試験候補 #5156](https://github.com/hat47x/tei-platform/pull/5156)は、Record全体を扱うと`internalNote`など追加列を含む一方、明示二Field投影では含めないことを既存純粋Transformで対照する。[#5156](https://github.com/hat47x/tei-platform/pull/5156)はmainへ統合済みだが、これは純粋Transformの出力整形試験であり、TEIの公開Host適格性を実証したものではない。B2CではProduct全体を`meta description`へ暗黙渡しせず、必要な公開Fieldを最小に選ぶ。NULL・未取得・部分取得とRead Footprint、Audience/Disclosure、生成Memberに残った原Source/埋込JSONも検証する。匿名Page/本人注文/運用者画面の各Audienceへ同じ結果を再公開しない。
 
 **実Targetの入口を一段ずつ確認する**：現行`internal/buildintent/resolve.go`の`TargetCatalog.Check(target, profile)`はTarget/Profileの存在確認であって、Route/Head Slot/Builder出力Memberの存在証明ではない。Targetの存在、提供されたSlot、選択したBuilderと実消費、Member/BOMのReadbackを段階別の証拠として記録する。公開用のNative Headを案件側で任意に利用するH1と、TEIが標準Targetとして提供するSlotとを同一能力と数えない。
 
 **現時点の資格**：この節は既存ソースの限定的な棚卸しと実装順の更新である。新規のB2C Head/Builder/Browser/Commerce/Consent/実験のGo試験、外部公開、Ownerによる業務意味の受理は**NOT RUN / NOT ACCEPTED**。
+
+<!-- g49-b2c-ep0-read-projection-realization-20261117 -->
+### G49 EP-0b→EP-1：必要な情報を読み、公開用の一Memberへ渡すまでを分けて確かめる（2026-11-17）
+
+**次の一往復**：公開可能な合成商品案内の`meta description`一つを使い、Source選択→値と取得状態の確認→公開Fieldだけの投影→実現方式の選択→Target／Builderの実消費→一Member読戻しを、一つの問いに対する別々の証拠として接続する。Record全体の転送や単なるHTML文字列の存在を、公開適格性・配布成功と読み替えない。既存のG49 EP-0a（Target／Route／Head Slotの実在調査）に合格していない場合、EP-1は実行せず`unbound/unsupported`を記録する。
+
+| 確かめる境界 | 現行mainで利用できる限定基線 | B2Cで追加すべき独立Expected・停止条件 |
+| --- | --- | --- |
+| **SourceとRuleの同一性** | [#5179](https://github.com/hat47x/tei-platform/pull/5179)の同一`Workspace.Load`→Source Index→Inspector→`validationeval.Decide`。Read対象ID、Source位置、NULL／未取得と判断理由を同じ試行で記録 | 公開説明の値が一致しても、別Attributeを読んだ実装は不適合。Source版が変われば元の選択を現在資格へ自動継承しない。これは実Provider Readではない |
+| **値・範囲の取得** | [#5149](https://github.com/hat47x/tei-platform/pull/5149)のContract Query行に対する`validationread`。`present`／`null`／`not-fetched`とRelationの`complete`／`partial`を区別 | 空文字、NULL、未取得、対象外、非開示を同じ値にしない。全件取得という申告だけで公開Audienceの全データを読んだと認定しない。未取得でも結論が変わらない場合はRuleごとに判定する |
+| **公開Fieldの絞込み** | [#5156](https://github.com/hat47x/tei-platform/pull/5156)の既存純粋Transform。Whole Recordには追加`internalNote`が残るが、明示二Field投影では残らない | 商品説明に必要な一Fieldだけを選び、非公開Field・原文・埋込JSONの余分な同梱を拒否。投影結果の安全性と、Sourceの開示権限・実HTTP公開は別資格 |
+| **実現方式と能力** | [#5166](https://github.com/hat47x/tei-platform/pull/5166)のRuleごとのP対応・G未対応の区別、[#5204](https://github.com/hat47x/tei-platform/pull/5204)のPlugin Capability述語の限定負例 | `Supports*`の宣言やPでの評価成功だけで、生成G・外部D・Head Slotへの配置を成功としない。未対応のRule／Targetは理由を付けて停止する。暗黙Fallbackで結果を作らない |
+| **実成果物と利用者** | `internal/buildintent`のTarget/Profile確認、`internal/artifact`のManifest、[#5188](https://github.com/hat47x/tei-platform/pull/5188)のCLI／Studio同一Subject照合は互いに異なる限定基線 | 実Route／Slotの公開Contract、Builderが消費したSourceとPin、生成一Member、BOM／Manifest読戻し、配信Response・Browserの実受領を段階別に確認する。CLI／Studio一致からB2C Browser受領を推定しない |
+
+**最小の負例**：同じ説明文を返す誤Attribute、必要Fieldが未取得、公開Field投影に秘匿Fieldを追加、Pでは扱えるがGでは未対応のRule、Targetだけ存在してHead Slotが無い、選択したSourceとは異なるBuilder入力、旧RevisionのMember、生成物はあるが配信Responseに無い――これらを一因子ずつ変え、[#1180](https://github.com/hat47x/tei-platform/issues/1180)／[#2514](https://github.com/hat47x/tei-platform/issues/2514)の独立Expectedへ渡す。新しい検収表の正本、公開権限台帳、SEO生成器は作らない。
+
+**現在資格と優先順位**：[#5173](https://github.com/hat47x/tei-platform/pull/5173)の純粋Presenterはmainに存在するが、旧Workbenchへ未接続の実装であり、B2C Headの出力先ではない。[#5198](https://github.com/hat47x/tei-platform/pull/5198)のCLI読取Snapshot前提指紋は審査中であり、現在のB2C受入で利用可能な正式資格として前提化しない。今回の記載は**既存実装の検収順とOwnerの引渡し**である。新しいB2C実Target/Builder/HTTP/Browser/Commerce/Consentの試験、業務Owner受理は`NOT RUN / NOT ACCEPTED`。全体P0のStudio Stage1→Stage2（#2831/#4583）と通常`tei`実Provider Read→二Consumer（#2586/#1251）は維持する。
+
 
 ## 最新の作業単位へ接続する
 

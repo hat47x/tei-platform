@@ -245,3 +245,73 @@ DW-17〜19は今回のGo試験で扱う限定的な範囲、DW-20は現行`valid
 5. **変更に耐えるか確かめる**：関数名・図の配置・説明文の変更と、Read ID・RuleのLaw・実装選択・Source byteの変更で、必要な再資格化が異なることを確認する。
 
 実装優先度は既存のP0（通常CLIの実Provider／独立Consumer、正式Source→Builder、Studio Stage1→Stage2実Windows）を変更しない。設計が検証すべき対象を増やすほど、**追加するのは新しい共通実行機構ではなく、既存Scenarioの一因子反例と正しい観測範囲**である。
+<!-- tei-abstraction-claim-sufficiency-20261118 -->
+## 13. 抽象化の適用範囲を、利用目的に必要な根拠から決める（2026-11-18）
+
+第4節で合成可能性を構造・意味・表現・実現・現在資格に分け、第11〜12節で抽象経路と独立Expectedを接続した。次は、**何の判断に使うための抽象化なのか**を先に確定する。単に同じ型の値を渡せる、同じ結果を得られる、同じ図を描けるという条件では、その利用目的に適格とは限らない。
+
+ここでいう「判断」は、業務判断だけでなく、画面上で表示してよい、特定の対象へ編集を戻せる、生成物を再利用できる、外部作用を確定したと説明できる、といったConsumerの主張を含む。汎用の「抽象レイヤー合格」フラグは設けない。**主張ごとに必要な観測と、その観測が届いている範囲を照合する**。
+
+### 13.1 同じ観測から異なる結論が成立するなら、その結論はまだ出せない
+
+組織C1の[実PostgreSQL反例（#5210）](https://github.com/hat47x/tei-platform/pull/5210)では、実Queryが観測した四つの所属行の投影を変えずに、別途与えた仮想Person対応によってdistinct Personが「4人」と「3人」に分かれた。所属行の読取りと、そのQueryでの比較が成功しても、**人物数や唯一の承認者を決定するためのRelationは足りない**。この反例は仮想対応を使った観測十分性の検査であり、正式Person Linkや業務上の人数を実装・受理したものではない。
+
+この構造は、ほかのConsumerでも現れる。
+
+| Consumerが主張したいこと | 同じ観測に残る別の可能性 | 足りない根拠 |
+| --- | --- | --- |
+| 所属行から「人物は4人」と確定する | 同じ四所属行が3人に属する | Person Identityと対応Relation、必要な時点・範囲 |
+| Tree上の線から「この関係を編集する」と確定する | 同名・同端点の複数Edgeが同じ表示に畳まれる | 元Edgeの一意なIdentityと逆編集できるSlot |
+| 部分取得の結果0件から「対象は存在しない」と確定する | 未取得範囲に該当行がある | 否定対象のQuery Scopeと必要集合の完全性 |
+| 二つの集計表から「同じ世代の結果」と確定する | 明細と集計が別の公開世代から読まれる | ResultごとのGenerationとConsumerが固定した共通の読取Cut |
+| 型付きPort接続から「この判断を実行してよい」と確定する | Mappingが粒度を落とす、選択Providerが失効している | 必須入力の保存、実Call、現在Grantと必要なReceipt |
+
+逆に、**不足する根拠が当該主張に関係しないなら、無関係な資格まで取り消さない**。たとえば人物数を確定できなくても、限定されたScope内で観測したMembership行の存在や、その行について確認できた値が消えるわけではない。抽象化の再利用は、全体を一律に許可・禁止するのではなく、主張の射程を守ることによって成立する。
+
+### 13.2 検査単位は「主張・必要入力・観測・利用先」の組にする
+
+既存のDriver Scenario／独立Expectedに、検査したい主張とその成立条件を対応付ける。**新しいClaim型、共通Proof Engine、常設Evidence台帳を追加するという提案ではない。** 現在のSource Index、Function Context、Query／Read証拠、Projection Loss、BuildPlan／Artifact、Provider／Receiptを必要な範囲で参照する。
+
+| 問い | 必ず区別する情報 | ここまでしか言えない境界 |
+| --- | --- | --- |
+| 何を判断するか | Qualified Subject、Claim、業務または表示上の適用条件、独立Expected | 名前・型・同じResultだけでは主張を識別できない |
+| 何を読めば足りるか | 必須Field／Relation、Identity、粒度・多重度、Presence、NULL／未取得、Scope、Coverage、時点・同一Cohort | 部分取得や欠けたRelationでは、全体に関する否定・集計を確定できない |
+| どう実現したか | 選択Reader／Role／Operator、P（直接評価）・G（生成）・D（委譲）の実選択、実Builder入力または実Provider Call、Attempt | 静的な接続、同じ値、旧Artifactから実通過を推定できない |
+| どこで使うか | Consumerの必要情報、ProjectionのLoss、編集の対象Slot、Disclosure、現在Grant、実受領と必要なEffect／Receipt | 表示成功から逆編集・公開・Commitを推定できない |
+
+**観測の十分性はConsumer相対である。** 同じQuery Resultでも一覧表示には足り、人数集計には足りない場合がある。同じGraphのTree投影でも閲覧はでき、Edge更新はできない場合がある。したがって、判定時に「何のために十分か」を欠かさない。これは[Function Context #2506](https://github.com/hat47x/tei-platform/issues/2506)、[構造保存写像 #2497](https://github.com/hat47x/tei-platform/issues/2497)、[独立期待値 #2514](https://github.com/hat47x/tei-platform/issues/2514)の既存責務へ返す。
+
+### 13.3 不明・不成立・成立を混同しない
+
+観測された違反のWitnessが独立Expectedの適用条件を満たすなら、取得範囲が部分的でも**観測済みのその違反**を主張できる。一方、違反を観測しなかった部分集合から、全体正常や不存在を主張することはできない。ただしWitness自体の同一性、参照先、時点が失効した場合は、その違反の現在性も再確認が必要である。
+
+実装側の判定は、既存Evaluator／検証機構が持つ成立・不成立・判定不能と、Provider／Consumerの「未観測・未受理」を区別して記録する。すべてを単一の三値型へ置き換えない。**「偽である」「まだ分からない」「実際に通った証拠がない」は異なる**。また、負の作用が起きなかったと主張するには、その作用を観測できる境界が閉じていなければならない。
+
+変更時も同様で、意味のRevisionが不変でもSource occurrence、Role／Operatorの実装、生成器、実消費byte、Provider選択、Read Cohort、現在Grant、Consumerの読取Cutは別々に再資格化する。A→B→Aで同じbyteや同じ値に戻っても、過去の許可・受領・Evidenceを現在のものとして復活させない（[#2600](https://github.com/hat47x/tei-platform/issues/2600)）。
+
+### 13.4 追加する反証は、横断的な二世界比較から始める
+
+DW-22〜27は第6・10・11節と同じく**既存Scenario／独立Expectedへ渡す候補**であり、この追補によってテストを実行・合格させたものではない。
+
+| ケース | 一因子だけ変えること | 拒否または保留すべき結論 | 引渡し先 |
+| --- | --- | --- | --- |
+| **DW-22 観測不能な人物数** | 所属4行とQuery Resultを固定し、仮想Person対応だけを4人／3人へ変更 | Membership件数を人物数や唯一承認者へ昇格しない。既存#5210の反例を再利用 | #2506／#2514／#2593 |
+| **DW-23 不存在の早計** | Queryと0件結果は固定し、Coverageだけcomplete→partialへ | 全体の不存在・正常を確定しない | #2582／#2514 |
+| **DW-24 部分取得中の違反** | 違反Witnessは固定し、無関係な取得範囲だけcomplete→partialへ | 確定済みの当該Witness違反まで不明扱いにしない | #988／#2514 |
+| **DW-25 逆編集の非一意性** | 同じ表示を保ち、元Graphで同名・同端点Edgeを一つ→二つへ | 表示上の線を一意な元Edgeへ無条件に書き戻さない | #2497／#2500／#1124 |
+| **DW-26 実現資格の再確認** | MeaningとResultを固定し、Operator／Provider選択またはGrantを変更 | 旧Plan・旧Callを現在資格として再利用しない。選択と実呼出しを別に検証 | #951／#2595／#2600／#4495 |
+| **DW-27 複数結果の読取世代** | 明細・集計の各内容は妥当なまま、Consumerの読取世代だけを混在させる | 個別Artifactの正しさから「同じ結果の組」を確定しない | #2482／#2622／#2514 |
+
+初回は**DW-22とDW-23**を同じ「観測だけでは全体Claimを確定できない」という問いの二つの異質な反例として固定し、DW-24を対照の正例にする。実装済みの#5210、Ruleの部分取得／不成立区別、既存Source／Query Fixtureを利用する。DW-25以降はGraph更新・Provider実Call・Result Publishの各Ownerで行い、独立ExpectedやRunnerを横断側に複製しない。
+
+### 13.5 実装計画への引渡しと停止線
+
+1. **read-onlyでClaimと必要情報の差を示す。** #2506／#2497／#2514で、同じ観測が支える主張と支えない主張を並べる。Lookup／Person Relation／Projectionに欠落があれば、推測で補完しない。
+2. **一つの実Consumerへ接続する。** #2586／#4495／#1251で、通常`tei` CLIのFunction→実Query・Provider Read→Consumerを同一Attemptで追い、Read ID・Scope・Coverage・受領を各境界で確認する。組織C1の限定実PostgreSQL成功をこの経路の完成とは数えない。
+3. **生成・画面・編集へ横展開する。** #2595／#4544の実Builder閉包、#1124の一意Slot Patch、#2831／#4583のStudio Stage1→Stage2実Windowsを**それぞれ別資格**として検収する。
+4. **必要な作用だけ別途検収する。** #1174／#1129で、現在Grant、実Commit、Receipt、回復判断を確かめる。閲覧用の抽象化が有効だからといってEffectまで許可しない。
+
+**採否の条件**は、既存の標準データ構造とRole／Operator／Projection／Providerを用い、異なるConsumerの過剰なClaimを独立反例で拒否でき、実装者が必要な証拠を既存の検収票で確認できること。新たなCoreの階層、普遍的なReady API、Graph Runtime、独自Hostは不要である。異質なConsumerで既存契約では必要情報を表せない反例が得られた場合だけ、その不足を担当Issueへ返して拡張の是非を判断する。
+
+**現時点の資格**：#5210の実DB二世界反例と#5438の実Go Case ID／Read State比較は、それぞれ限定された既存実証として参照する。本節による追加のGo／DB／CLI／Windows試験、正式な人物同定・業務判断のOwner受理、Provider／Effectの本番適格性は **NOT RUN／NOT ACCEPTED**。全体のP0順位は変更しない。
+
