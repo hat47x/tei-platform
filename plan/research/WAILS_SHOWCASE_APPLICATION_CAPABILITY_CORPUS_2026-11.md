@@ -383,7 +383,7 @@ Modal File Manager、LTools、Larvyn、WailsTermから得るべき価値は、�
 - **Build/Run**：選択されたBuilder、Toolchain、実Source byte、生成Frontend/Backend Artifact、実Consumerは別々の資格。#5059の実TEI CLI→N2→生成JS→Windows/WebView2成功を保持する一方、正式な非Plugin BuildIntentからStage1自身がStage2を再構築したとはしない。
 - **AI/他Worktree**：提案、Apply、Commit、Review、Mergeを混同しない。複数の変更が揃って初めて対象HEADの検証が成立する場合、片方のPRのPASSで統合受理済みと表示しない。
 
-#5105の後継#5122（Workbench状態・API境界・Stage2受入）は現在Openである。第13節のread-only二表現試験では、Focus A→B→AとSource A→B→Aを区別する。表示を元へ戻してもReader/Provider/Grantの現在資格は自動回復しない。また非Plugin Stage1→Stage2の正式な証拠を、BuildIntent→実Builder選択→実入力／Invoker／Artifact→Stage2実起動→Windows受領の順に求める。新しいStudio Hostや別のBuild Engineは設けない。
+#5105の後継#5122（Workbench状態・API境界・Stage2受入）は未マージで閉鎖された。計画の要点は、現在のStudio実装・P0の受入条件に照らして別途確認する。第13節のread-only二表現試験では、Focus A→B→AとSource A→B→Aを区別する。表示を元へ戻してもReader/Provider/Grantの現在資格は自動回復しない。また非Plugin Stage1→Stage2の正式な証拠を、BuildIntent→実Builder選択→実入力／Invoker／Artifact→Stage2実起動→Windows受領の順に求める。新しいStudio Hostや別のBuild Engineは設けない。
 
 ## 23. 標準化の効果を「TEIへ移せた判断」から測る
 
@@ -428,7 +428,7 @@ Modal File Manager、LTools、Larvyn、WailsTermから得るべき価値は、�
 | [#5146](https://github.com/hat47x/tei-platform/pull/5146) | 同一Dataの二つの`std.date`に対して`not-after`と`if present`を検査 | 業務履歴／Restic Browser：日付の順序と終期の欠損を区別。実DBからの日付読取・日時型・複数行の重複禁止は別 |
 | [#5147](https://github.com/hat47x/tei-platform/pull/5147) | 定数で宣言された診断コードも被覆検査の対象にし、未被覆のものを理由付きで管理 | GUI/CLI/Pluginの失敗表示：宣言・試験への言及・入力を変えて実際に発生することを分けて検証 |
 
-複数行の期間が重なることを扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)は確認時点でOpenであり、#5146の到達点から製品採用済みとは推定しない。一方、[#5140](https://github.com/hat47x/tei-platform/pull/5140)は未マージで閉じられているものの、**Builder実行前のファイルDigest照合と任意のToolchain Closure Pinは現在のmainに存在する**。PR表示と実コードは別に確認する。前者は起動直前に読んだファイルとPlanの比較に限られ、OSの実Process Image保証でも、正式Studio Stage1→Stage2の保証でもない（起動契約§35、[#5167](https://github.com/hat47x/tei-platform/pull/5167)）。
+複数行の期間重複を扱う[#5148](https://github.com/hat47x/tei-platform/pull/5148)はmainへ統合済み。ただし、関係の行と期間を読むFixture/記録例の判定と、実DBの取得範囲・並行更新・制約保証は別の資格である。一方、[#5140](https://github.com/hat47x/tei-platform/pull/5140)は未マージで閉じられているものの、**Builder実行前のファイルDigest照合と任意のToolchain Closure Pinは現在のmainに存在する**。PR表示と実コードは別に確認する。前者は起動直前に読んだファイルとPlanの比較に限られ、OSの実Process Image保証でも、正式Studio Stage1→Stage2の保証でもない（起動契約§35、[#5167](https://github.com/hat47x/tei-platform/pull/5167)）。
 
 ## 26. 値・取得状態・現在資格を同じ画面で扱う
 
@@ -487,10 +487,10 @@ WailsショーケースのSQL Editor、Redis Viewer、MQ Studio、LToolsでは�
 
 Plugin接続のWhole Record／Field／明示Adapterは標準型を使い続けるが、**型が合うだけで情報を開示してよいわけではない**。レコード全体を接続すると`internalNote`等の余分なFieldを含みうる。Fieldを絞ったProjectionでは、必須Fieldの欠損、明示NULL、未取得、partial、Audience・Disclosureがそれぞれ別の意味になる。
 
-- [#5156](https://github.com/hat47x/tei-platform/pull/5156)は現行の純粋TransformでWhole Recordと二Field Projectionを比較するGo試験候補であり、確認時点でOpen。型付きPort／実Providerの動作完了として数えない。採用時は、**Whole Recordでは余分なFieldが残る／Field Projectionでは開示対象を絞る／必須欠損は拒否／明示NULLは保存**という四つの異なるExpectedを基線にする。
-- [#5149](https://github.com/hat47x/tei-platform/pull/5149)の`validationread`はSQL Executorから受け取ったContract Query行の`nil`・項目不在を区別するReader候補だが、確認時点でOpen。正式Contract QueryのResolver／Bindingから実Provider／Contextまでの一貫した状態付Reader受入は未達であり、`complete`を呼出し側が申告するだけでは全件取得の証明にならない。
+- [#5156](https://github.com/hat47x/tei-platform/pull/5156)はmainへ統合され、現行の純粋TransformでWhole Recordと二Field Projectionを比較する試験を持つ。ただし型付きPort／実Providerの動作完了ではない。次の段階では、**Whole Recordでは余分なFieldが残る／Field Projectionでは開示対象を絞る／必須欠損は拒否／明示NULLは保存**という四つの異なるExpectedを基線にする。
+- [#5149](https://github.com/hat47x/tei-platform/pull/5149)の`validationread`はmainへ統合済み。SQL Executorから受け取った行の`nil`・項目不在を別状態に写すSQLite試験を持つ。ただし正式Contract QueryのResolver／Bindingから実Provider／Function Contextまで一貫した読取ではなく、`complete`を呼出し側が申告するだけでは全件取得の証明にならない。
 - [#5157](https://github.com/hat47x/tei-platform/pull/5157)でmainへ入ったWeb UI計画は、意味／Operation／UI Projection／Layout／Target Adapterと、Source／Focus／Pin／Dirtyの版を分離し、read-only Inspector ViewModel→後着非干渉→Host/API公開の順に進める。Source位置からのジャンプを実Workbenchへ接続済みと見なさない。
-- [#5168](https://github.com/hat47x/tei-platform/pull/5168)は既存`responses.ts`／epoch／Pinガードの**実装を変更せず、独立Expectedと変異検出の試験を追加**するOpen PR。A→B→Aの遅延応答が最新のWorkspace/Subjectを上書きしないこと、Pinが意図せず外れないこと、描画用`parent:`辺IDを意味IDへ昇格させないことを、実際の応答レーンに沿って検査する。既存Windows PoCの固定11資産Closureを試験登録のためだけに変更しない。
+- [#5168](https://github.com/hat47x/tei-platform/pull/5168)はmainへ統合され、既存`responses.ts`／epoch／Pinガードの**実装を変更せず、独立Expectedと変異検出の試験を追加**した。A→B→Aの遅延応答が最新のWorkspace/Subjectを上書きしないこと、Pinが意図せず外れないこと、描画用`parent:`辺IDを意味IDへ昇格させないことを、実際の応答レーンに沿って検査する。既存Windows PoCの固定11資産Closureを試験登録のためだけに変更しない。
 
 この成果をWailsショーケースへ結びつける際は、**Readerが何を知るか、Ruleが何を判断できるか、Projectionが何を表示するか、Hostが何を公開・実行できるか**を段階的に表示する。StudioのノードビューでPortがつながっていることは、Function/Providerを実行した証拠ではない。
 
@@ -500,7 +500,7 @@ Plugin接続のWhole Record／Field／明示Adapterは標準型を使い続け�
 
 | Packet | 最初に使う実物と受入の下限 | 次段を保留する理由 |
 | --- | --- | --- |
-| **WA-1／Read・Rule・表示** | Markdown Data＋Ruleの正式Source/Inspectorと`Decide`・記録例を共通型で扱い、既存CLI/Studioのread-only Consumerに`present/null/not-fetched`、partial、`undecided`理由を混同せず表示させる。実Readerで申告できる範囲と未確認範囲を明記する | #5149の実Readerは未統合。Studio表示に接続しただけでは実DBの全件性・開示/Grantが成立しない。#5156のpure Projectionは型/開示の次段 |
+| **WA-1／Read・Rule・表示** | Markdown Data＋Ruleの正式Source/Inspectorと`Decide`・記録例を共通型で扱い、既存CLI/Studioのread-only Consumerに`present/null/not-fetched`、partial、`undecided`理由を混同せず表示させる。実Readerで申告できる範囲と未確認範囲を明記する | #5149のReaderと#5156のpure Projectionはmain収録済み。ただしこの二つを同一実DB・同一Attemptへ連結した証拠ではなく、Studio表示だけでは全件性・開示/Grantは成立しない |
 | **WA-2／Rule・P/G・Build** | #5166の`not-after`（P成立/G未対応）と既存`quantity_positive`（P/G）を同じ実現方式一覧へ投影。#5129の元Markdown・#5109のGo入力失効、Builder/File Digestの照合を対象Source/Attemptごとに記録する | 「正しい値」だけでは正しい実入力・選択方式・実Generator/Builderを証明しない。正式R2-P、R3実Provider、G4資格は別 |
 | **WA-3／Host・Workbench・自己再入** | #5155/#5165の実PG抽象経路PASSと#5168のWorkbench応答ガードを**別々の既得証拠**として維持したうえで、既存`Operation`／CLI／`studiohost.ReadOnly`の三入口から同じ対象・Authority Limits・失敗分類を読めるか検証する | Wails HTTPの公開Scope/Grant、実Provider→二Consumer、生成Stage1→Stage2の実Windows再構築、D2更新はそれぞれ独立に検収。現行のPoC N2成功と合算しない |
 
@@ -511,10 +511,66 @@ Plugin接続のWhole Record／Field／明示Adapterは標準型を使い続け�
 | ID | 条件と変える一因子 | 期待と証拠の上限 |
 | --- | --- | --- |
 | WC-41 | 同じ`not-after` RuleをPで評価したあと、実現方式SelectionだけGへ変える | 現行Generatorは未対応と拒否する。Pの成功をGの成功へ転用しない。#5166のFocused回帰を基線とする |
-| WC-42 | Whole RecordをField二項目の明示Projectionに変え、追加`internalNote`を入力へ入れる | 公開するField二つだけが出力され、欠損・明示NULL・未取得が混ざらない。#5156のpure試験候補から実Disclosureは別検収 |
-| WC-43 | Contract Query Readerに`complete`を申告するが、実Queryの取得範囲がpartialである | 申告の存在を実Coverageの証明とみなさず、成立可能性を保留する。#5149のReader候補と実Providerを分ける |
-| WC-44 | WorkbenchでWorkspace A→B→Aを切り替え、最初のAへのInspect成功が最後に到着する | 応答のWorkspace/Inspection epochを再照合し、最新A・Pin・Bの編集状態を上書きしない。#5168の独立Expected候補 |
+| WC-42 | Whole RecordをField二項目の明示Projectionに変え、追加`internalNote`を入力へ入れる | 公開するField二つだけが出力され、欠損・明示NULL・未取得が混ざらない。#5156のmain収録済みpure試験を基線とし、実Disclosureは別検収 |
+| WC-43 | Contract Query Readerに`complete`を申告するが、実Queryの取得範囲がpartialである | 申告の存在を実Coverageの証明とみなさず、成立可能性を保留する。#5149のmain収録済みReaderと実Providerの取得完全性を分ける |
+| WC-44 | WorkbenchでWorkspace A→B→Aを切り替え、最初のAへのInspect成功が最後に到着する | 応答のWorkspace/Inspection epochを再照合し、最新A・Pin・Bの編集状態を上書きしない。#5168の統合済み独立Expected |
 | WC-45 | 組織C1の同一型付きSource/Queryは保持し、実ReadのDatasourceまたはResult Mappingだけ変える | 静的Pathは成立しても、同Attemptの実PG Readと独立Expectedの不一致を検出。#5155の実PG成功からOrgUnit JOIN／Function二Consumerへ拡張したことにしない |
 | WC-46 | Planが名指すBuilderのファイルDigestだけを違う`-child`にして実行する | 既存Builder BindingのL2-bを保留し、実Processの同一性やG4資格の証明に拡大しない。名指したToolchain変更は別の一因子試験 |
 
-**着手順**：WA-1は現行Inspectorと検証済みのRule Readerから、WA-2は既存Go回帰を再利用してP/G適用行列を整理するところから始める。WA-3は#5168のOpen試験の合否とFrontend Closureを先に確認する。実Provider／Stage2のP0は同時に継続し、ショーケース向けに新たな専用Hostを構築するまで待たない。
+**着手順**：WA-1は現行Inspectorと検証済みのRule Readerから、WA-2は既存Go回帰を再利用してP/G適用行列を整理するところから始める。WA-3は#5168の統合済み非同期回帰とFrontend Closureの現在性を確認する。実Provider／Stage2のP0は同時に継続し、ショーケース向けに新たな専用Hostを構築するまで待たない。
+
+## 33. 同じ結果から同じ業務判断ができるとは限らない
+
+WailsのSQL Editor、グラフビューア、ファイル比較、管理画面は、画面に表示された集合が同じなら同じ事実を示しているように見えやすい。しかし、**表示した射影が業務上の問いを決めるのに十分か**は、値の一致とは別である。
+
+mainへ統合済みの[#5184](https://github.com/hat47x/tei-platform/pull/5184)は、組織C1のas-of Queryが同じ`membership_id/org_unit_id/allocation`を返しても、別の候補世界では`COUNT(DISTINCT person_id)`が異なりうることを実PostgreSQLの一時表で示す反例を追加した。これは正式なPerson Linkを導入した証拠ではない。**Queryの既存投影から人物数を決定できない**という反証である。
+
+この考え方を、表示と推論の両方に使う。
+
+| 問い | 値・構造だけで分かること | 追加で必要な観測 |
+| --- | --- | --- |
+| 「同じ人は何人か」 | Membership行数、各行の組織とAllocation | Personを識別する正式Key／Link、重複排除の単位、時点、対象集合の完全性 |
+| 「関係に重複がないか」 | 部分取得中に見つかった重複二行は違反Witnessになりうる | 「重複なし」を確定するには、規則が要求する範囲の完全性。見えていない行の有無 |
+| 「期間が重ならないか」 | main済み[#5148](https://github.com/hat47x/tei-platform/pull/5148)の`no-overlap`は、同じGroup内の期間の交差をRuleとして判定できる | as-of条件、Group Key、終期の意味、NULL・未取得・部分取得、実DBからの全行取得、書込競合の扱い |
+| 「型付きPluginの出力は公開できるか」 | main済み[#5156](https://github.com/hat47x/tei-platform/pull/5156)のWhole Record／Field Projectionは出力Valueの違いを示せる | Fieldの意味ID、Audience、秘密情報の開示範囲、現在Grant、実Provider／Consumer |
+
+十分性の検査は、**業務Question→必要なIdentity/Attribute/Relation/時間/取得範囲→実際のObservation→現在のClaim**の順に書く。足りないときは`unknown`／`undecided`と理由を保持し、テーブルの見た目やLLMの推論だけで補完しない。同じObservationを与えて異なる答えになる二世界の反例は、必要条件が欠けていることを示す独立Expectedとして有効である。
+
+## 34. WA-1とWA-3を、実製品の入口へ引き上げる
+
+前回のWA-1〜3は維持し、重複したHost・Reader・Presenterを追加せず、今回mainに統合された実物で検査の入口を更新する。
+
+| Packet | 利用する製品入口 | 今回確定した下限／次に残る一段 |
+| --- | --- | --- |
+| **WA-1：Source→Stateful Rule→表示** | [#5179](https://github.com/hat47x/tei-platform/pull/5179)の`Workspace.Load`／Source Index／Inspector／`validationeval.Decide`、[#5181](https://github.com/hat47x/tei-platform/pull/5181)の記録例と期待セル位置、[#5149](https://github.com/hat47x/tei-platform/pull/5149)の`validationread` | 同じMarkdown Loadの属性ID・位置・判断理由はFocused試験へ収録済み。ただし`validationread`のSQLite試験とは別のAttempt。次は実Providerの読取範囲とReader状態を同一Query結果に結び、意味上のClaimを二つのConsumerに渡す |
+| **WA-2：Rule→実現方式→Build** | [#5166](https://github.com/hat47x/tei-platform/pull/5166)のP対応/G未対応、[#5129](https://github.com/hat47x/tei-platform/pull/5129)のSource改版拒否、現行Builder実ファイル照合 | Pで判断できてもGで生成できないRuleを明示。生成できるRuleは実Artifactへ進め、元Source・Generator・Builder・Toolchainと実Consumerの版を段階別に照合。Stage2とG4の資格は未受理 |
+| **WA-3：CLI→Studio Host→Workbench** | [#5188](https://github.com/hat47x/tei-platform/pull/5188)の実`tei inspect`別Processと本番経路のStudio Host、[#5168](https://github.com/hat47x/tei-platform/pull/5168)の応答epoch／Pin負例、[#5173](https://github.com/hat47x/tei-platform/pull/5173)の純粋Presenter | CLIとStudioの共通Operationを実入口で比較する試験がmainへ収録。Presenterは**まだ実Workbenchに未接続**。次は同じSource/Revisionの現在性を再確認してから実Viewへ渡し、後着応答がFocus/Pin/Dirtyを壊さないことを実Consumerで検証する |
+
+[#5198](https://github.com/hat47x/tei-platform/pull/5198)は、`inspect`／`model locate`／`model overview`と`trace`へ現在のSnapshot前提を渡し、違えば`STALE_SNAPSHOT`で拒否するOpen実装候補である。この機能はAIによる「読む→判断する→もう一度読む」に有用だが、現時点ではmainの完成した共通API契約として書かない。また、[#5188](https://github.com/hat47x/tei-platform/pull/5188)のCLI／Studio一致は**同じProduct Inspector系統の比較**であり、異なる実DB Providerの資格や現在Grantの独立証明とは異なる。
+
+StudioのSourceジャンプは`Source Indexの位置投影→Ownerによる現在byte再読取→EditorがCaretを受領`の順に進める。旧Sourceの位置表示、Presenterへの投影、Wails画面への接続、編集のApply/Saveは別の段階である。**未保存BufferのPreviewは実Source変更ではない。**
+
+## 35. Plugin／Processの失敗を「不在」へ縮約しない
+
+Wails/CLI/MCPの一つの画面に複数のProviderやConnectorを並べるとき、**選択できない理由**が分からなければ、型が合う別Providerへ勝手に切り替える事故が起こる。現行実装の限界を隠さず、将来のContract修正対象として残す。
+
+- main済み[#5197](https://github.com/hat47x/tei-platform/pull/5197)の回帰では、`ResolvedSet.Capability`が「0件で不在」と「2件以上で曖昧」を同じ`false`として返す。**試験は現行の情報欠落を固定したもの**であり、曖昧さを正しく区別する機能の完成ではない。
+- main済み[#5160](https://github.com/hat47x/tei-platform/pull/5160)の回帰では、Pluginの不正Versionが「適合Pluginなし」と報告されうる。版文字列の解析失敗、互換Version不在、実装未選択は別原因として扱うべきであり、現行Resolverのメッセージだけで断定しない。
+- main済み[#5201](https://github.com/hat47x/tei-platform/pull/5201)の回帰では、Lock経由解決の失敗が元Resolverの理由コードを落とすことを確認している。古いLockと依存が満たせない状態、Permission不足などは同じ「失敗」でも復旧方法が違う。
+- [#5194](https://github.com/hat47x/tei-platform/pull/5194)は、ルート`go test ./...`では入れ子`go.mod`のテストが実行されない問題を検出・管理するOpen PR。独立Moduleで配布するPluginを、RootがGreenだから試験済みとみなさない。
+- main済み[#5205](https://github.com/hat47x/tei-platform/pull/5205)／[#5199](https://github.com/hat47x/tei-platform/pull/5199)は、未選択`*.tei.md` Parserや未知Rule Kindの診断で、有効な選択肢を明示する改善を収録した。これは作者が回復できる診断であり、対象文書の意味を勝手に補完する動作ではない。
+
+検収票では少なくとも**not-found／ambiguous／invalid-version／incompatible／stale-lock／permission-denied／unknown-effect**を同一語へ潰さず、現行APIが区別できない項目は「原因未確定」と表示する。現時点で無い診断コードを製品実装済みと主張したり、別のResolver／Registryを新設して取り繕ったりしない。既存Plugin Resolverの原因伝達を改善する小さなOwner作業に渡す。
+
+## 36. 次の反証・実装判断を小さくまとめる
+
+| ID | 一因子の変更 | 受入条件と証拠の上限 |
+| --- | --- | --- |
+| WC-47 | Person Linkが見えないas-of投影を固定して、候補世界だけ4人→3人へ変える | Query投影が全行一致しても人物数を確定しない。#5184の実PG反例に基づく。正式Person Linkの受理は未済 |
+| WC-48 | 同一Source/Ruleで`validationread`の行から数値項目だけを抜く | NULLではなく`not-fetched`とし、`Decide`は根拠に応じて判定を保留。現行のSQLite Reader試験とMarkdown同一Load試験を異なるAttemptとして区別 |
+| WC-49 | CLIとStudioで同名・別IDの対象を選び、応答の見かけの本文だけを一致させる | Qualified Subject/Workspace/Source/Scopeが違うことを拒否。#5188のIEP-2/3を実入口の基線にする |
+| WC-50 | Presenterの`partial`状態を`complete`として実Workbenchへ接続する | 実Readerの取得完全性をUIが勝手に昇格させない。#5173の純粋Presenter試験を実画面/新Source Closureへ接続してから検収 |
+| WC-51 | Plugin Capabilityを同じKind/IDで二Providerが宣言し、UIには「見つからない」と表示する | 不在と曖昧を分け、実Callerに根拠が不足している場合はProviderを選ばず保留。#5197は現行`false`を固定しただけ |
+| WC-52 | 入れ子Plugin Moduleのテストだけを失敗させ、Root`go test ./...`は成功させる | 対象Scopeの全件性を別に確認する。#5194が未統合の間はRoot GreenをPluginの適格性へ昇格しない |
+
+この6件は既存の独立Expectedを重複実装する指示ではない。WC-47/49は統合済みの実験・試験に対応づけ、WC-48/50はWA-1/3の未接続区間、WC-51/52は既存PluginとRepository HealthのOwnerへ渡す。最優先の正式Provider実Call／R2-PおよびStudio非Plugin Stage1→Stage2実Windowsを止めない。目標は**「画面に正しく表示された」から「その問いを判断できる根拠が揃い、適切なConsumerへ届けた」へ進むこと**である。
