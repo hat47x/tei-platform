@@ -87,6 +87,13 @@ try {
     assert.equal(edit.operation, scenario.operation);
     assert.equal(edit.id, "chrome-1124-" + scenario.name);
     assert.match(await page.locator("#notice").innerText(), /未審査/);
+    // A generated candidate must not be mistaken for the edited form state.
+    await page.locator("#intent").fill("変更後の入力");
+    assert.equal(await page.locator("#proposal-json").inputValue(), "");
+    assert.match(await page.locator("#notice").innerText(), /再生成/);
+    await page.locator('button[type="submit"]').click();
+    const regenerated = JSON.parse(await page.locator("#proposal-json").inputValue());
+    assert.equal(regenerated.intent, "変更後の入力");
     assert.deepEqual(scriptErrors, [], "real Chrome did not reject the inline CSP-pinned script");
     assert.deepEqual(networkRequests, [], "offline form has no external HTTP requests");
 
