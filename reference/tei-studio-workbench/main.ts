@@ -267,6 +267,12 @@ function renderPin() {
   element<HTMLButtonElement>("pin-current").disabled =
     disposed || !client || !workspace.value || !eligible;
   element<HTMLButtonElement>("unpin-current").disabled = !intent;
+  // Opening a pinned Subject is an explicit foreground navigation, never
+  // a side effect of the background pinned-inspection lane.
+  element<HTMLButtonElement>("open-pinned").disabled =
+    !intent || disposed || !client || intent.workspaceId !== workspace.value ||
+    intent.workspaceEpoch !== workspaceEpoch || !pinnedEligible ||
+    pinState.observation.state !== "inspected";
   // Requalification is an explicit read, not an automatic revival of old evidence.
   // Allow it after an A→B→A workspace switch only in the original workspace.
   element<HTMLButtonElement>("inspect-pinned").disabled =
@@ -630,6 +636,16 @@ element("pin-current").addEventListener("click", () => {
   pinnedVersion = null;
   renderPin();
   void refreshPinnedSubject();
+});
+element("open-pinned").addEventListener("click", () => {
+  const intent = pinState.intent;
+  if (!intent || !client || disposed || intent.workspaceId !== workspace.value ||
+      intent.workspaceEpoch !== workspaceEpoch || !pinnedCatalogMatches() ||
+      pinState.observation.state !== "inspected" ||
+      !inspectEligibility(catalogSnapshot, intent.subject).ok) return;
+  // Only this user action changes Focus; it still goes through the existing
+  // eligibility check and Host-owned foreground Inspector.
+  void inspect(intent.subject).catch(showFailure);
 });
 element("unpin-current").addEventListener("click", () => {
   responses.invalidate("pinned-inspection");
