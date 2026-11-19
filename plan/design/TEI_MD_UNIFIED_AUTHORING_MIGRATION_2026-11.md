@@ -448,6 +448,6 @@ KaTeXは表示Adapterの候補とし、**式の出現ID、元byte span、Documen
 
 **受入IDの二重管理を避ける。** 数理Toolkit計画§25の`KTX-01〜12`は領域横断の受入条件、#5683の`KTEI-01〜12`はSource/Renderer/Studio側の具体的な反例である。対応する試験は既存#1180／#2514の同じ独立Expected・同じ実Attemptに結び、名前だけ異なる二つのOracleやRunnerを作らない。SHO #5のA1〜A5は文書Targetの追加Consumer条件であり、TEIのMeaning受理条件を代行しない。
 
-KaTeXの依存を製品に入れる際は、固定版と配布資産（CSS・fontを含む）のハッシュ／ライセンス／CSPと実オフライン読込みを確認する。設定候補は`trust:false`、有限`maxExpand`・`maxSize`、明示`strict`、失敗を捕捉する`throwOnError:true`、`output:htmlAndMathml`であり、制限値は負荷・互換性試験の結果に基づき確定する。共有Macroオブジェクトは`\\gdef`等による状態変更を含むため、文書・表示Attempt間で使い回さない。安全な版の採用と安全な描画結果の実証は別々に判定する。
+KaTeXの依存を製品に入れる際は、固定版と配布資産（CSS・fontを含む）のハッシュ／ライセンス／CSPと実オフライン読込みを確認する。設定候補は`trust:false`、有限`maxExpand`・`maxSize`、明示`strict`、失敗を捕捉する`throwOnError:true`、`output:htmlAndMathml`であり、制限値は負荷・互換性試験の結果に基づき確定する。共有Macroオブジェクトは`\gdef`等による状態変更を含むため、文書・表示Attempt間で使い回さない。安全な版の採用と安全な描画結果の実証は別々に判定する。
 
 **現況（2026-11-19）**：設計の引渡しと試験計画まで。KaTeXの新規製品導入・実Wails表示・数理的Claim検証・PDF/DOCX生成・Owner受理はNOT RUN。
