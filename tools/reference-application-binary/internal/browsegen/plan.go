@@ -20,6 +20,7 @@ import (
 	"tei/internal/core"
 	"tei/internal/database/providers/postgres"
 	"tei/internal/driver"
+	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
 
@@ -187,14 +188,11 @@ func NewPlan(workspaceRoot, applicationID, patternID, target string) (*Plan, err
 		return nil, fmt.Errorf("source index (fail closed): %w", err)
 	}
 	prints := map[string]string{}
-	var all []string
 	for _, a := range idx.Artifacts {
 		prints[a.Path] = a.Fingerprint
-		all = append(all, a.Path+"\x00"+a.Fingerprint)
 	}
-	sort.Strings(all)
 	// The SQL file is not a Source Index artifact, so its bytes are bound here.
-	p.SourceRevision = "sha256:" + sha([]byte(strings.Join(all, "\n")+"\nsql:"+p.SourceSQLSHA256))
+	p.SourceRevision = indexRevision(idx, "\nsql:"+p.SourceSQLSHA256)
 	seen := map[string]bool{}
 	for _, r := range idx.References {
 		if r.Subject.ID != string(q.ID) && r.Subject.ID != patternID {
@@ -213,6 +211,17 @@ func NewPlan(workspaceRoot, applicationID, patternID, target string) (*Plan, err
 	}{p.FunctionID, p.QueryID, p.Dialect, p.SourceSQL, p.Params, p.ParamKinds, p.DeclaredInputs, p.Columns})
 	p.ModelDigest = "sha256:" + sha(b)
 	return p, nil
+}
+
+// indexRevision binds every Source Index artifact (path and fingerprint, sorted)
+// plus any extra bytes that are not Source Index artifacts.
+func indexRevision(idx sourceindex.Index, extra string) string {
+	all := make([]string, 0, len(idx.Artifacts))
+	for _, a := range idx.Artifacts {
+		all = append(all, a.Path+"\x00"+a.Fingerprint)
+	}
+	sort.Strings(all)
+	return "sha256:" + sha([]byte(strings.Join(all, "\n")+extra))
 }
 
 // ErrInputTypeUnsupported is returned before anything is written when a Query

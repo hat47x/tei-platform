@@ -15,7 +15,7 @@ import (
 	"tei/tools/reference-application-binary/internal/appgen"
 )
 
-//go:embed templates/main.go.tmpl
+//go:embed templates/main.go.tmpl templates/validate.go.tmpl
 var templates embed.FS
 
 type lit struct{ Literal string }
@@ -32,7 +32,8 @@ type Manifest struct {
 	Schema         string            `json:"schema"`
 	Generator      string            `json:"generator"`
 	TemplateSHA256 string            `json:"templateSha256"`
-	Plan           *Plan             `json:"plan"`
+	Plan           *Plan             `json:"plan,omitempty"`
+	Validation     *ValidationPlan   `json:"validation,omitempty"`
 	GeneratedFiles map[string]string `json:"generatedFiles"`
 }
 
@@ -108,7 +109,7 @@ func Build(outDir, binaryPath string) (*Receipt, error) {
 		return nil, err
 	}
 	tc, _ := exec.Command("go", "env", "GOVERSION").Output()
-	return &Receipt{Schema: "tei.browse-binary.receipt/v0", FunctionID: m.Plan.FunctionID, ManifestSHA256: sha(mj),
+	return &Receipt{Schema: "tei.browse-binary.receipt/v0", FunctionID: m.subject(), ManifestSHA256: sha(mj),
 		BinarySHA256: strings.TrimPrefix(res.Digest, "sha256:"), BinarySize: res.BinarySize,
 		Toolchain: fmt.Sprintf("%s", strings.TrimSpace(string(tc)))}, nil
 }
@@ -140,4 +141,64 @@ func Verify(outDir, binaryPath string, rc *Receipt) error {
 		return fmt.Errorf("PROVENANCE_MISMATCH: binary embeds manifest %s, receipt expects %s", got, rc.ManifestSHA256)
 	}
 	return nil
+}
+
+// subject names what the manifest describes: a browse Function or the rule gate
+// of an Application.
+func (m *Manifest) subject() string {
+	if m.Plan != nil {
+		return m.Plan.FunctionID
+	}
+	if m.Validation != nil {
+		return "validate:" + m.Validation.ApplicationID
+	}
+	return ""
+}
+
+type ruleLit struct{ IDLiteral, KindLiteral, AttributeLiteral, RelationLiteral string }
+
+type validateData struct {
+	GeneratorID, ApplicationID, SourceRevision, ModelDigest string
+	ApplicationIDLiteral                                    string
+	Rules                                                   []ruleLit
+}
+
+// GenerateValidation writes the rule gate of one Application: a `validate`
+// binary that evaluates the declared Validations in the declared order. It has
+// no effect, no authorization and no database access.
+func GenerateValidation(p *ValidationPlan, outDir string) (*Manifest, error) {
+	raw, err := templates.ReadFile("templates/validate.go.tmpl")
+	if err != nil {
+		return nil, err
+	}
+	tpl, err := template.New("validate").Parse(string(raw))
+	if err != nil {
+		return nil, err
+	}
+	d := validateData{GeneratorID: GeneratorID, ApplicationID: p.ApplicationID, SourceRevision: p.SourceRevision,
+		ModelDigest: p.ModelDigest, ApplicationIDLiteral: strconv.Quote(p.ApplicationID)}
+	for _, r := range p.Rules {
+		d.Rules = append(d.Rules, ruleLit{strconv.Quote(r.ID), strconv.Quote(r.Kind), strconv.Quote(r.Attribute), strconv.Quote(r.Relation)})
+	}
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, d); err != nil {
+		return nil, err
+	}
+	goMod := "module app/" + strings.ReplaceAll(p.ApplicationID, "_", "-") + "-validate\n\ngo 1.25.0\n"
+	m := &Manifest{Schema: "tei.validation-gate.manifest/v0", Generator: GeneratorID, TemplateSHA256: sha(raw), Validation: p,
+		GeneratedFiles: map[string]string{"main.go": sha(buf.Bytes()), "go.mod": sha([]byte(goMod))}}
+	mj, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	mj = append(mj, '\n')
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return nil, err
+	}
+	for name, b := range map[string][]byte{"main.go": buf.Bytes(), "go.mod": []byte(goMod), "manifest.json": mj} {
+		if err := os.WriteFile(filepath.Join(outDir, name), b, 0o644); err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
 }
