@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { readSourceLocations, previewRequiredEditDraft } from "./source-locations.ts";
 
 const subject = { kind: "semantic-data", id: "sales.order" };
@@ -254,4 +255,21 @@ test("required draft rejects malformed inputs and cannot use a different Source 
   assert.throws(() => requiredDraft({
     ...base, sources: { ...base.sources, subject: subject },
   }), /INVALID_SOURCE_LOCATIONS_RESPONSE/);
+});
+
+test("Workbench exposes only an explicitly requested unreviewed draft, invalidated on navigation", () => {
+  const main = readFileSync(new URL("./main.ts", import.meta.url), "utf8");
+  const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+  assert.match(html, /id="preview-required" type="button" disabled/);
+  assert.match(html, /id="required-preview-json" hidden/);
+  assert.match(main, /previewRequiredEditDraft\(/);
+  assert.match(main, /addEventListener\("click", showRequiredPreview\)/);
+  assert.match(main, /async function inspect\(subject: Subject\) \{[\s\S]*?clearRequiredPreview\(\);[\s\S]*?inspectEligibility/);
+  assert.match(main, /async function loadWorkspace\(\) \{[\s\S]*?clearRequiredPreview\(\);[\s\S]*?responses\.reset\(\)/);
+  assert.match(main, /current\.workspaceEpoch !== workspaceEpoch/);
+  assert.match(main, /current\.inspectionEpoch !== inspectionEpoch/);
+  assert.match(main, /current\.catalog !== catalogSnapshot/);
+  assert.match(main, /subjectKey\(current\.subject\) !== subjectKey\(selected\)/);
+  assert.match(main, /JSON\.stringify\(draft\.edit, null, 2\)/);
+  assert.doesNotMatch(html, /id="(accept-required|save-required)"/);
 });
