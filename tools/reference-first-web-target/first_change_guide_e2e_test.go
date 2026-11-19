@@ -390,7 +390,7 @@ func verifyDocumentedGuideGoRunWeb(t *testing.T, handbook, root, dsn, browser, f
 			}
 		})
 	}
-	t.Log("step 5 documented go run shell reached real PostgreSQL and Chrome for both orders; only listen port changed for CI; test bootstrap POST is not real Web form entry")
+	// Unlike the earlier bootstrap POST, this drives the product GET form and\n\t// its four visible input fields through an actual Chrome click.\n\tt.Run("real-product-form", func(t *testing.T) {\n\t\tverifyFirstChangeShippedForm(t, browser, address, fixtures)\n\t})\n	t.Log("step 5 documented go run shell reached real PostgreSQL and Chrome for both orders; only listen port changed for CI; test bootstrap POST is not real Web form entry")
 }
 
 // documentedGuideShellStep returns the commands from the published POSIX
