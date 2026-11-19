@@ -6,16 +6,15 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"net"
 	"encoding/json"
 	"errors"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"tei/tools/internal/postgresdb"
 )
