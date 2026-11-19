@@ -328,3 +328,42 @@ header-detail-contract-query-binding {
 - 「字句」の節の書き方は、字句解析（`internal/syntax/lexer.go`）が受け付ける字だけで書けることを確かめた。構文解析へ実装して読めることは確かめていない。
 - 単位付きの数量、値を返すOperator、導出は範囲の外である。
 - §10と§11は方針の判断で、対応する実装の現状を網羅して調べてはいない。
+
+## 13. 2026年11月19日：名前付き入力が製品で意味する範囲と、次の接続
+
+§3〜§12で決めた署名と正規形は、これから作る文法の自由度を増やすためではなく、**業務で読める一つのRuleを、どの入力で、何を確かめるものとして評価するか**を固定するために使う。
+
+現行コードを再確認した。 `internal/syntax/rule_authoring.go` は `takes amount: number` の名前と、規則に書かれた `name: value` の位置を読み取れる。しかし、`internal/semantic/model.go` の `Operator` は現時点で単一の `Input`／`InputName`／`AbsentAs` を保持し、`Validation` には複数の引数値を保持する欄がない。`internal/syntax/rule_authoring_validation.go` は、名前のない `takes number` を読取時の `value` と解釈する一方、規則が入力値を明示してもその値を捨てずに表現できるまで、製品の意味モデルへの入場を拒否する。これは設計上の失敗ではなく、**読める記法と、実際に扱える意味を区切る停止線**である。
+
+### 13.1 最初の一件：単一入力の名前を付けても、読取先を増やさない
+
+例えば次の記述では、`amount` は演算子の最初の入力の**名前**であり、規則に現れた `discount` とは別の数値を追加要求しない。
+
+```tei
+namespace sales
+
+operator sales.non_negative: takes amount: number
+
+rule sales.order_line.discount_non_negative:
+  sales.order_line.discount is sales.non_negative
+```
+
+ここでは既存の意味モデルを使い、宣言の読み取り、型検査、Ruleの参照先、選択済み実装の一回の数値読取、実際の判定までを追える。一方、後ろに `amount: 0` を付けると、規則の主語がすでに与えた入力を二度割り当てることになるため、読込時に拒否する。
+
+新しい製品回帰 `internal/workspace/tei_md_named_unary_operator_product_test.go` は、既存の別Markdown文書に置いたOperator宣言とRule、`Workspace.Load`／Source Index／`validationeval.EvaluateWithOperators` を用いてこの境界を検査する。文章だけを変更したときは意味を保ちながら古いSource Indexを失効させ、入力名自体を変更したときはOperator契約の変更を確認する。追加Go試験の実行結果は、exact HEADのCIを確認してから記録する。
+
+### 13.2 次に実装することと、その順序
+
+**第一段階：入力の意味を保持する。** `RuleInputAssignment` が保持している名前・値・原文位置を、既存`semantic.Validation`と`semantic.Operator`の意味として表せるようにする。入力の識別子、数値定数、参照するAttributeとその型、NULL／未取得、行ごとの読取範囲、評価時点を別に扱う。ここで新しいValidationKindや汎用式ASTを作らない。保存形を決めるときは、既存の `Function`／`Parameter` 等との再利用可能性も比較するが、モデル全体へ未確定の型を先に増やさない。
+
+**第二段階：入力を必要とする実際の判定へ接続する。** 規則の主語と追加の入力を、宣言した署名の順序・役割で一回ずつ読取り、既存`validationeval.Decide`の結果と判定不能の理由へ接続する。宣言された入力以外を読まないこと、部分取得でも不成立が確定する場合を失わないこと、数値の精度や時点を暗黙に変更しないことを試験する。未対応のOperator実装は自動的に別方式へ置換しない。
+
+**第三段階：独立した例で一つの実装を受理する。** 最初の題材は§12で固定した範囲判定（`value`、`low`、`high`）を維持する。入力のうち一つだけを変えた正例と負例、未取得、型不適合、重複束縛を同じ期待表で確認する。既存Operatorの契約例を通ることと、実Providerを呼んだこと、Ownerが業務意味を認めたことは分ける。
+
+**第四段階：生成・製品利用へ接続する。** 成熟した一つのRuleに限り、解釈方式P／生成方式G／外部委譲Dの対応状況を説明し、実装の選択、実Call、実Builder入力、Artifact、通常CLIの独立Consumerを既存Ownerの受入へ渡す。StudioのStage1→Stage2セルフビルドの代用にはしない。
+
+### 13.3 完了にしてはならないもの
+
+次の五つは現段階で未達である。複数の名前付き入力を持つ正規形の製品受理、複数値を保持するMeaning、複数値での実評価、複数入力の実Provider読取、Ruleを再実装したGoの正式Builder・Consumer同一Attemptである。既存テストの一入力PASSや、宣言からの候補抽出だけでこれらを完了扱いにしない。
+
+実装着手は§12のOwner（#4362、#1129と各Caller）へ戻し、原文→意味→実Read→判断の一辺ずつを確かめる。署名と評価を結ぶ差分が成立するまでは、Node View、組織モデル、Batch、BRMSのために別々のRule文法を増やさない。
