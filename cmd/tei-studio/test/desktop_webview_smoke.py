@@ -1758,6 +1758,26 @@ return selected.value;
                 ).get("value")
                 if select_result != workspace_id:
                     raise RuntimeError(f"Workbench did not select {workspace_id}")
+
+                # Workspace changes invalidate the previous candidate
+                # synchronously, even when the next Host request is pending.
+                # Before is the initial switch; after must discard its draft.
+                if label == "after":
+                    stale_preview = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync",
+                        {"script": """
+const output = document.getElementById('required-preview-json');
+return {
+  hidden: output?.hidden,
+  content: output?.textContent ?? '',
+  buttonDisabled: document.getElementById('preview-required')?.disabled
+};
+""", "args": []},
+                    ).get("value", {})
+                    if (stale_preview.get("hidden") is not True
+                            or stale_preview.get("content")
+                            or stale_preview.get("buttonDisabled") is not True):
+                        raise RuntimeError("Workspace switch retained an obsolete unreviewed draft")
                 visible_deadline = time.monotonic() + 25
                 while time.monotonic() < visible_deadline:
                     # The product's list consists of real selectable Catalog
@@ -1826,6 +1846,136 @@ return true;
                 record("visible-authoring-inspect-verified", source=label,
                        workspace_id=workspace_id, required=expected_required,
                        reader_calls=reader_calls)
+
+                # Product Wails candidate qualification: use the actual Host
+                # Catalog/Inspect and the existing Workbench click handler.
+                # This is NOT the Reference offline form, Review, or Writer.
+                authored_root = visible_before if label == "before" else visible_after
+                source_bytes_before = workspace_snapshot(authored_root)
+                attribute_id = "studio.inspection_response.snapshot_fingerprint"
+                select_attribute = """
+const subject = 'semantic-attribute · studio.inspection_response.snapshot_fingerprint';
+const match = Array.from(document.querySelectorAll('#subjects button.subject'))
+  .find(b => b.querySelector('small')?.textContent?.startsWith(subject));
+if (!match) throw Error('NATIVE_REQUIRED_ATTRIBUTE_NOT_LISTED');
+match.click();
+return true;
+"""
+                if webdriver_request(
+                    base_url, "POST", f"/session/{driver_session}/execute/sync",
+                    {"script": select_attribute, "args": []},
+                ).get("value") is not True:
+                    raise RuntimeError("Native Workbench failed to select the Data attribute")
+
+                candidate_ready_script = """
+const button = document.getElementById('preview-required');
+return {
+  subject: document.getElementById('subject-title')?.textContent ?? '',
+  sourceStatus: document.getElementById('source-status')?.textContent ?? '',
+  buttonEnabled: !!button && !button.disabled,
+  candidateHidden: document.getElementById('required-preview-json')?.hidden,
+  candidateText: document.getElementById('required-preview-json')?.textContent ?? ''
+};
+"""
+                candidate_ready = {}
+                candidate_deadline = time.monotonic() + 25
+                while time.monotonic() < candidate_deadline:
+                    candidate_ready = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync",
+                        {"script": candidate_ready_script, "args": []},
+                    ).get("value", {})
+                    if (candidate_ready.get("subject") == attribute_id
+                            and candidate_ready.get("sourceStatus", "").startswith("参照情報：")
+                            and candidate_ready.get("buttonEnabled") is True):
+                        break
+                    time.sleep(0.2)
+                else:
+                    raise RuntimeError(
+                        f"Product Wails did not qualify the selected attribute for a draft: {candidate_ready}"
+                    )
+                if candidate_ready.get("candidateHidden") is not True or candidate_ready.get("candidateText"):
+                    raise RuntimeError("The unreviewed draft was exposed without the user's explicit click")
+
+                native_click_script = """
+const button = document.getElementById('preview-required');
+if (!button || button.disabled) throw Error('NATIVE_REQUIRED_BUTTON_DISABLED');
+button.click();
+const output = document.getElementById('required-preview-json');
+return {
+  hidden: output?.hidden ?? true,
+  content: output?.textContent ?? '',
+  status: document.getElementById('required-preview-status')?.textContent ?? '',
+  sourceStatus: document.getElementById('source-status')?.textContent ?? ''
+};
+"""
+                native_preview = webdriver_request(
+                    base_url, "POST", f"/session/{driver_session}/execute/sync",
+                    {"script": native_click_script, "args": []},
+                ).get("value", {})
+                if native_preview.get("hidden") is not False:
+                    raise RuntimeError(f"Product Wails click did not expose a draft: {native_preview}")
+                try:
+                    candidate = json.loads(native_preview.get("content", ""))
+                except (ValueError, TypeError) as exc:
+                    raise RuntimeError("Native Workbench did not render a typed JSON draft") from exc
+                expected_fields = {
+                    "schema": "tei.reference.studio-edit/v0",
+                    "origin": "studio",
+                    "view": "required",
+                    "subject": f"attribute:{attribute_id}",
+                    "operation": "set-attribute-required",
+                    "required": True,
+                }
+                if (not isinstance(candidate, dict)
+                        or any(candidate.get(key) != value for key, value in expected_fields.items())
+                        or not re.fullmatch(r"sha256:[0-9a-f]{64}",
+                                            candidate.get("expectedModelRevision", ""))
+                        or not isinstance(candidate.get("id"), str)
+                        or not candidate["id"].startswith("required-")
+                        or "未審査の変更候補" not in native_preview.get("status", "")
+                        or any(key in candidate for key in ("accept", "writer", "sourceWriteAuthorized"))):
+                    raise RuntimeError(f"Native Workbench showed an unqualified draft: {candidate}")
+                if workspace_snapshot(authored_root) != source_bytes_before:
+                    raise RuntimeError("A read-only draft click changed an authoring Source byte")
+                visible_observations[label]["unreviewedDraft"] = {
+                    "subject": candidate["subject"],
+                    "operation": candidate["operation"],
+                    "expectedModelRevision": candidate["expectedModelRevision"],
+                    "required": candidate["required"],
+                    "explicitClick": True,
+                    "sourceBytesUnchanged": True,
+                    "reviewed": False,
+                    "writeAuthorized": False,
+                }
+                record("native-webview2-unreviewed-required-draft-verified",
+                       source=label, workspace_id=workspace_id,
+                       subject=candidate["subject"], saved=False)
+                # The before draft must be invalidated by the next Workspace
+                # selection. After the final Workspace, verify selection
+                # invalidation without invoking any Writer or CLI.
+                if label == "after":
+                    clear_draft_script = """
+const subject = 'semantic-data · studio.inspection_response';
+const match = Array.from(document.querySelectorAll('#subjects button.subject'))
+  .find(b => b.querySelector('small')?.textContent?.startsWith(subject));
+if (!match) throw Error('NATIVE_REQUIRED_CLEAR_SUBJECT_MISSING');
+match.click();
+const output = document.getElementById('required-preview-json');
+return {
+  hidden: output?.hidden,
+  content: output?.textContent ?? '',
+  buttonDisabled: document.getElementById('preview-required')?.disabled
+};
+"""
+                    cleared = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync",
+                        {"script": clear_draft_script, "args": []},
+                    ).get("value", {})
+                    if (cleared.get("hidden") is not True or cleared.get("content")
+                            or cleared.get("buttonDisabled") is not True):
+                        raise RuntimeError("Subject navigation retained a stale unreviewed draft")
+                    record("native-webview2-required-draft-selection-invalidated",
+                           workspace_id=workspace_id)
             if visible_observations["before"]["editorText"] == visible_observations["after"]["editorText"]:
                 raise RuntimeError("Visible Inspector text did not change with its Data Source")
             if visible_observations["before"]["inspectionReader"] != visible_observations["after"]["inspectionReader"]:
