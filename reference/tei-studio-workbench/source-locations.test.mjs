@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { readSourceLocations, previewRequiredEditDraft } from "./source-locations.ts";
 
 const subject = { kind: "semantic-data", id: "sales.order" };
@@ -254,4 +255,27 @@ test("required draft rejects malformed inputs and cannot use a different Source 
   assert.throws(() => requiredDraft({
     ...base, sources: { ...base.sources, subject: subject },
   }), /INVALID_SOURCE_LOCATIONS_RESPONSE/);
+});
+
+// These are static UI-wiring guards, not real Wails or Writer acceptance.
+test("unreviewed required draft UI consumes current Host Inspect and never exposes Accept/Save", () => {
+  const main = readFileSync(new URL("./main.ts", import.meta.url), "utf8");
+  const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+  for (const id of ["required-choice", "preview-required", "required-draft-status", "required-draft-result"]) {
+    assert.equal(html.split(`id="${id}"`).length - 1, 1, `missing or duplicate preview ID: ${id}`);
+    assert.ok(main.includes(`"${id}"`), `missing UI wiring: ${id}`);
+  }
+  assert.match(main, /enableRequiredDraft\(raw, subject, id, context, request\)/);
+  assert.match(main, /previewRequiredEditDraft\(\s*observed\.raw, observed\.subject, observed\.catalog/);
+  assert.match(main, /catalogSnapshot !== observed\.catalog/);
+  assert.match(main, /observed\.workspaceEpoch !== workspaceEpoch/);
+  assert.match(main, /observed\.inspectionEpoch !== inspectionEpoch/);
+  assert.match(main, /subjectKey\(selected\) !== subjectKey\(observed\.subject\)/);
+  assert.match(main, /clearRequiredDraft\("作業領域を読み込み中です。"/);
+  assert.match(main, /clearRequiredDraft\("画面を終了しました。"/);
+  assert.match(main, /Source Index網羅性：未確認/);
+  assert.match(main, /Workspace Grant・Source Writer：未確認/);
+  assert.match(html, /Sourceの保存、Review、受理はできません/);
+  assert.doesNotMatch(html, /id="(?:save-required|accept-required|review-required)"/);
+  assert.doesNotMatch(main, /\b(?:writeFile|writeSource|saveSource|acceptEdit)\s*\(/);
 });
