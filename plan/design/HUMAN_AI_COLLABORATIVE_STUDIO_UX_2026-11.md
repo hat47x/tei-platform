@@ -1,7 +1,7 @@
 # TEI Studioの人間・生成AI協業UX：共通操作と作業引継ぎの設計
 
-- 状態：**実装前の横断設計・受入計画**。利用者の要求と既存契約から成熟した方針を統合したもので、新規製品API・正式Schema・意味受理を宣言するものではない。
-- 更新日：2026-11-14（JST）
+- 状態：**横断設計と限定的なread-only実装**。Subject Pinのローカル状態とWorkbench接続はmainに統合済み（#4597）。生成Assetの同一HEAD一致、実Windows WebView2上の非干渉、現在のGrant・外部AI連携・Owner意味受理は別途検収する。過去の節にある「未実装」は記載当時の状態。
+- 更新日：2026-11-19（JST）
 - 優先順位：**TEI Studio Desktopの実動作と、TEI自身によるStudio Desktopセルフビルドを最優先**とする。協業UXの検討はこれを妨げず、read-onlyから段階的に進める。
 - 主な既存担当：[#1824 Studio](https://github.com/hat47x/tei-platform/issues/1824)、[#1124 Modeler](https://github.com/hat47x/tei-platform/issues/1124)、[#4515 Subject Pin](https://github.com/hat47x/tei-platform/issues/4515)、[#1158 共通Operation](https://github.com/hat47x/tei-platform/issues/1158)、[#1251 Plugin実呼出し](https://github.com/hat47x/tei-platform/issues/1251)、[#2831 セルフビルド](https://github.com/hat47x/tei-platform/issues/2831)、[#4583 Desktop Build Intent](https://github.com/hat47x/tei-platform/issues/4583)。
 - 接続先：[固定対象・高度ContextのDraft #4479](https://github.com/hat47x/tei-platform/pull/4479)、[#2509 外部AI Harness](https://github.com/hat47x/tei-platform/issues/2509)、[#2516 開示](https://github.com/hat47x/tei-platform/issues/2516)、[#2497 投影・逆写像](https://github.com/hat47x/tei-platform/issues/2497)、[#1180 Scenario](https://github.com/hat47x/tei-platform/issues/1180)、[#2514 独立Expected](https://github.com/hat47x/tei-platform/issues/2514)、[#4496 Data Workbench](https://github.com/hat47x/tei-platform/issues/4496)、[#3503 Interaction Flow](https://github.com/hat47x/tei-platform/issues/3503)、[SHO Composer #19](https://github.com/hat47x/sho-composer/issues/19)。
@@ -595,3 +595,39 @@ Git作業版、DB接続先、Workspace、Principal/Grant、Plugin/Builder選択�
 **計画上の効用**：TEI Studio自身の編集支援に加え、専門Toolkit（数理・統計・WBS/PERT・科学表現等、[Draft #4663](https://github.com/hat47x/tei-platform/pull/4663)）へ同じ「読みやすい投影＋原文参照＋条件付き編集」の仕組みを再利用できるか検討する。ただし各分野の数量・精度・単位・多重度・数値正しさは専門Operator/Toolkit側の独立Expectedが必要で、共通Rendererの合格から領域内計算の適合へ昇格しない。
 
 **状態（2026-11-14）**：本節は既存Issue/PRとチャット議論に基づく設計・受入計画の追加のみ。JSON Schema実Reader/Renderer、任意文法コンパイル、IDE画面、逆編集、CLI/Studio二Consumer、Node/Go/Windows試験、独立Expected実行・Owner意味受理は**NOT RUN / NOT ACCEPTED**。non-Plugin Studio Stage1→Stage2セルフビルドのP0優先は不変。
+
+## 33. 2026-11-19 現行Workbenchへの明示的な復帰操作と協業の一巡
+
+### 33.1 11月15日の設計から実装へ進んだ部分
+
+[Pin実装 #4597](https://github.com/hat47x/tei-platform/pull/4597)、[協業UX #4721](https://github.com/hat47x/tei-platform/pull/4721)、[Desktop選択Context #4696](https://github.com/hat47x/tei-platform/pull/4696) はmainに統合済み。したがって、§16・§20・§29・§31の当時の「Draftで未接続」「現mainにPin UIがない」は履歴であり、現在の実装状況ではない。ただし、設計Markdownの統合と、実Wailsの操作・外部Harnessの完全受領・Owner意味受理は独立した資格である。
+
+現mainの `reference/tei-studio-workbench/main.ts` は、閲覧用 `inspect(subject)` と固定対象用 `refreshPinnedSubject()` を分け、後者は既存 `InspectSubject` と `readPinnedSubject` を `pinned-inspection` レーンで呼ぶ。固定時のCatalog identityと応答世代を照合し、既存の `selected`・Editor・Graph・Noticeを背景応答で直接変更しない。Node単体試験・Source配線回帰・実ブラウザーDOMの非干渉・配布Bundle/Windowsの合格はそれぞれ別の検査結果として保持する。
+
+### 33.2 利用者の意図が伝わる四つの操作
+
+固定対象を操作するUIでは、対象の表示名だけでなく、操作によって**画面が切り替わるか**を明確にする。
+
+| 操作 | 意味・画面への作用 | 停止する条件 |
+| --- | --- | --- |
+| **選択要素を固定** | 現在の一意な対象を固定意図として保持し、固定対象のread-only観測を始める | Catalog版・対象IDが不明、曖昧な対象 |
+| **再確認** | 固定したAだけを背景で再Inspectし、閲覧中のBを維持する | 異Workspace、旧Catalog、元対象の不在・曖昧性 |
+| **固定対象を開く** | 利用者の明示操作に限りAを通常のForeground Inspectで表示する。Bの表示切替はこの操作の予期された結果 | 固定対象のread-only観測未成立、Workspace/epoch/版不一致、現在Catalogで不適格 |
+| **固定を解除** | 固定意図とその観測を破棄する。閲覧中のSubjectは変更しない | 実行・保存・外部取消とは無関係 |
+
+「再確認」と「開く」を同じ操作にしない。固定対象を開く場合も、Pinの観測結果を権限と解釈せず、既存の通常Inspectorを通してHostへ**新たな読取要求**を送る。外部AIへの送信、Source変更、実Provider Effectは一切行わない。現在のWorkbenchはread-onlyであり、Dirty Buffer保持の試験は将来の編集可能Editorとの結合時に別途行う。
+
+### 33.3 独立Expectedへの追加と、次の実装境界
+
+| 既存Ownerに渡す観点 | 入力・利用者が行う操作 | 期待する結果 |
+| --- | --- | --- |
+| #4515 / #1824：明示復帰 | Aを固定→Bを閲覧→Aを背景再確認→「固定対象を開く」 | 背景再確認中はBのEditor/Graph/Focus/Noticeが不変。最後の明示操作だけがForeground Inspectへ移る |
+| #4515：旧観測拒否 | A→B→AのWorkspace往復、再Pin、Host後着、旧Catalogへの復帰 | 古い応答や同名IDで「開く」が有効にならない。現在の再確認を要する |
+| #1180 / #2514：分離した資格 | Pin観測成功、外部Disclosure不明、実Windows未検収 | GUIではread-only観測だけを説明し、送出可・書込可・製品E2E PASSと表示しない |
+| #2497 / #1124：次のReview | AI候補の基準Source R0、人間のSaved R1／未保存Bufferあり | 候補をReviewに置いたまま現在の対象と差分を再解決。Pin固定・Tool受領から自動Applyしない |
+
+最初のコード変更は既存Workbenchの `main.ts`／`index.html` と既存Pin配線試験だけで完結させる。新たな状態Store、Host Method、Resolver、外部Harness APIは不要。Source-levelの配線試験は実DOMやネイティブHostの証明にならないため、**同一HEADのNode 24標準テスト→typecheck→build→配布Asset byte一致→実Wails/Windows WebView2での操作観測**を別々に記録する。
+
+UX-PINの次は、同じ一Subjectから限定Context Preview、実Audience/Disclosureの確認、外部Harness Replyの完全受領、元Sourceへの候補帰着へ進む。ただし #3262/#2516/TAI #168の既存責務を再実装しない。Desktopセルフビルド #2831/#4583と通常実Provider Read #2586の製品P0は変更しない。
+
+**この節は設計と実装差分の定義であり、実Windows/AI/DB試験の成功を示さない。**

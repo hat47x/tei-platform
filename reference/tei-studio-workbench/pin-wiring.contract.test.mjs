@@ -54,7 +54,7 @@ test("PIN-WIRING-02: background Pin cannot directly repaint the current selected
 test("PIN-WIRING-03: explicit buttons are wired and have exactly one corresponding DOM id", () => {
   const pinUI = bodyBetween("function renderPin() {", "\nasync function refreshPinnedSubject() {");
   for (const id of [
-    "pin-current", "unpin-current", "inspect-pinned",
+    "pin-current", "unpin-current", "inspect-pinned", "open-pinned",
     "pin-subject", "pin-status", "pin-version",
   ]) {
     assert.match(main, new RegExp(`["']${id}["']`));
@@ -62,7 +62,7 @@ test("PIN-WIRING-03: explicit buttons are wired and have exactly one correspondi
   }
   assert.match(pinUI, /pinState\.observation\.state/);
   assert.match(main, /responses\.invalidate\("pinned-inspection"\)/);
-  for (const id of ["pin-current", "unpin-current", "inspect-pinned"])
+  for (const id of ["pin-current", "unpin-current", "inspect-pinned", "open-pinned"])
     assert.match(main, new RegExp(`element\\(["']${id}["']\\)\\.addEventListener\\(["']click["']`));
 });
 
@@ -130,7 +130,7 @@ test("PIN-WIRING-07: unknown Catalog identity disables Pin and never revives sta
 });
 
 test("PIN-WIRING-08: current Pin handlers are unique and the obsolete controller is absent", () => {
-  for (const id of ["pin-current", "unpin-current", "inspect-pinned"]) {
+  for (const id of ["pin-current", "unpin-current", "inspect-pinned", "open-pinned"]) {
     const handler = `element("${id}").addEventListener("click"`;
     assert.equal(main.split(handler).length - 1, 1, `duplicate or missing handler: ${id}`);
   }
@@ -138,4 +138,21 @@ test("PIN-WIRING-08: current Pin handlers are unique and the obsolete controller
   assert.doesNotMatch(main, /renderPin\(pinReader\.current\(\)\)/);
   assert.doesNotMatch(main, /element\(["']pin-(?:check|release)["']\)/);
   assert.doesNotMatch(markup, /id="pin-(?:check|release)"/);
+});
+
+test("PIN-WIRING-09: only explicit Open may navigate from Pin to foreground Inspect", () => {
+  const render = bodyBetween("function renderPin() {", "\nasync function refreshPinnedSubject() {");
+  const open = bodyBetween('element("open-pinned").addEventListener("click", () => {',
+    '\nelement("unpin-current").addEventListener("click", () => {');
+  assert.match(render, /element<.*>\("open-pinned"\)\.disabled/);
+  assert.match(render, /intent\.workspaceEpoch !== workspaceEpoch/);
+  assert.match(render, /pinState\.observation\.state !== "inspected"/);
+  assert.match(open, /intent\.workspaceId !== workspace\.value/);
+  assert.match(open, /intent\.workspaceEpoch !== workspaceEpoch/);
+  assert.match(open, /!pinnedCatalogMatches\(\)/);
+  assert.match(open, /pinState\.observation\.state !== "inspected"/);
+  assert.match(open, /!inspectEligibility\(catalogSnapshot, intent\.subject\)\.ok/);
+  assert.match(open, /void inspect\(intent\.subject\)\.catch\(showFailure\)/);
+  assert.doesNotMatch(open, /refreshPinnedSubject\(\)/);
+  assert.match(markup, /id="open-pinned"[^>]*disabled>固定対象を開く<\/button>/);
 });
