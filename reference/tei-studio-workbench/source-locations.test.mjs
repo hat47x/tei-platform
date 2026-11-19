@@ -140,7 +140,7 @@ test("S-LOC carries untrusted Source path only as text metadata, not an open URL
 
 const attributeSubject = {
   kind: "semantic-attribute",
-  id: "studio.inspection_response.snapshotFingerprint",
+  id: "studio.inspection_response.snapshot_fingerprint",
 };
 const attributeRevision = "sha256:" + "b".repeat(64);
 const attributeCatalog = {
@@ -172,7 +172,7 @@ test("required draft uses qualified attribute and model version without claiming
     origin: "studio",
     intent: "StudioのData属性を必須にする",
     view: "required",
-    subject: "attribute:studio.inspection_response.snapshotFingerprint",
+    subject: "attribute:studio.inspection_response.snapshot_fingerprint",
     operation: "set-attribute-required",
     required: true,
   });
@@ -200,6 +200,13 @@ test("required draft refuses non-attribute subjects, ambiguous Catalog and inval
     ...attributeCatalog,
     entries: [{ subject: attributeSubject, sourceStatus: "indexed", ambiguous: true }],
   }), /REQUIRED_EDIT_SUBJECT_SUBJECT_AMBIGUOUS/);
+  // The Markdown cell is named snapshotFingerprint, but the Source-backed
+  // canonical Subject ID uses snapshot_fingerprint. A display label is not an ID.
+  assert.throws(() => previewRequiredEditDraft(
+    attributeInspection(),
+    { ...attributeSubject, id: "studio.inspection_response.snapshotFingerprint" },
+    attributeCatalog, "allowed-workspace", "r", "intent", true,
+  ), /REQUIRED_EDIT_SUBJECT_SUBJECT_NOT_FOUND/);
   assert.throws(() => requiredDraft(attributeInspection(), {
     ...attributeCatalog,
     modelRevision: "old-snapshot",
