@@ -237,7 +237,7 @@ jobs:
             playwright-core@1.56.1
           test -s "$playwright_root/node_modules/playwright-core/index.mjs"
           node --check tools/reference-first-web-target/first_change_shipped_form_browser.mjs
-          printf 'TEI_FIRST_CHANGE_PLAYWRIGHT_ROOT=%s\\n' "$playwright_root" >> "$GITHUB_ENV"
+          echo "TEI_FIRST_CHANGE_PLAYWRIGHT_ROOT=$playwright_root" >> "$GITHUB_ENV"
 
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証
         shell: bash
