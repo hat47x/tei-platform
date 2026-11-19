@@ -188,13 +188,13 @@ DC-61のPerson二世界、DC-62のWhole／Field Loss、DC-63のG／P／D適合�
 
 ### P1で接続する業務判断・設計入力・数式（2026年11月15日）
 
-これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。詳細な正負例とOwner境界は[横断統合受入境界§14〜17](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)を参照。
+これらは新しい製品P0の前提ではなく、既存の標準Data/Rule/Expression・Function Data Context・表現型を実案件に近づける**受入作業**とする。一般の保証境界は[横断統合受入境界](../design/CROSS_CUTTING_ACCEPTANCE_BOUNDARIES_2026-11-12.md)、KaTeXの具体的な受入例は[数理Toolkit計画§25](../design/CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md#25-katexの表示とteiの式意味を分ける受入契約2026-11-19)を参照する。
 
 | 対象 | 次に確認する最小経路 | 失格となる短絡・Owner |
 | --- | --- | --- |
 | **BRMS相当の業務判断** | 明示RoleのMarkdown Decision Table→既存Rule/Context→生成Target結果。条件重複、未定義、partial/NULL、有効時点、Rule改訂を独立Expectedと比較 | 暗黙の行順による優先決定、Ruleの説明だけで実Commit成功を主張。#2621/#4370/#1126/#2506/#951/#2514 |
 | **多様な設計入力** | 手描き業務図の写真とCSV/Excelを出典位置付き候補として取り込み、三要素分析法のモデルへ人間がReview。会議録・帳票・既存画面は経路別の観測境界を維持 | 画像解釈・列名・画面表示を受理済み意味に昇格、同名別Entityを統合。#1124/#2621/#267/#3394/#2497 |
-| **KaTeX数式と演算** | Markdown中の式Source/Role→既存Expression/Operator/Context→表示と独立結果を比較。単位、精度、未観測、時点、マクロ依存を保持 | 数式の表示一致を実計算成功やSource一致に読み替える。#4370/#4350/#4353/#2495/#2514 |
+| **KaTeX数式と演算** | [数理Toolkit計画§25](../design/CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md#25-katexの表示とteiの式意味を分ける受入契約2026-11-19)のKTX-01〜12に従い、式Source／Occurrence／Role→KaTeX描画と既存Expression／Operator／Contextへの意味束縛を別経路で検収する。マクロ、単位、精度、定義域、NULL／欠損、時点、版と出力先を区別する | 描画一致を意味受理・Go生成・実Target計算・編集許可に昇格しない。#4370/#4350/#4353/#2495/#2621/#2514 |
 
 独立したBRMS実行Host、全資料の中央取込サービス、数式専用DBは新設しない。未取得の外部資料や未接続のReader/生成器/Consumerについて、完了を主張しない。
 
