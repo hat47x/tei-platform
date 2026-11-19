@@ -72,13 +72,29 @@ printf 'languages:\n  - tei.authoring/v1\n' >> "$TEI_FIRST_WORKSPACE/tei.workspa
 # 規則と、近くの例を置く
 cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPACE/semantic/sales/"
 
-# 受注入力のApplicationが、その規則を使うと書く
-awk '{
-  print
-  if ($0 == "    uses validation sales.order_line.quantity_positive")
-    print "    uses validation sales.order_line.unit_price_positive"
-}' "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei" > "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei.next"
-mv "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei.next" "$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei"
+# 挿入位置がちょうど一つのときだけApplicationを更新する
+(
+set -eu
+application="$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei"
+next="$application.next"
+trap 'rm -f "$next"' 0
+if ! awk '
+  {
+    print
+    if ($0 == "    uses validation sales.order_line.quantity_positive") {
+      matches++
+      print "    uses validation sales.order_line.unit_price_positive"
+    }
+  }
+  END {
+    if (matches != 1) exit 1
+  }
+' "$application" > "$next"; then
+  printf '%s\n' 'Applicationの規則挿入位置が一つに定まりません。元ファイルを確認してください。' >&2
+  exit 1
+fi
+mv "$next" "$application"
+)
 ```
 
 置いた設計文書は、規則一行と例の表でできている。
