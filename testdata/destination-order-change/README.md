@@ -15,12 +15,12 @@
 
 - **動く**：[#5300](https://github.com/hat47x/tei-platform/pull/5300)で、通常の`tei view -environment`が宣言済みのQueryを実PostgreSQLで実行し、受注1001／1002／1003の行ごとのRule結果を返す。専用CIは変更前後の6ケースをこのディレクトリの独立した期待と照合する。手順3・4の設計変更と例の診断は`cmd/tei/destination_order_change_test.go`で検証済み。実DB試験も、**同じ作業領域を`tei validate`してから明細を読み直す**。
 - **試験だけ**：[#5271](https://github.com/hat47x/tei-platform/pull/5271)の内部PostgreSQL試験は、別の3／3／1行のデータで状態付きReaderを検査している。製品CLIの6ケースと別の試験であり、実DBを使わない実行ではPostgreSQLのテストはスキップされる。
-- **動く**：参照用の作業領域の束縛は`covers sales.order.lines`を宣言している。`tei view -environment`はQueryを関係の保存と照合して`coverage: complete`を返し、`perOrder`の「成立」を含めてこのディレクトリの期待と一致する（実PostgreSQLの試験）。宣言のない束縛、宣言を残したまま行を落とすQueryでは`coverage: partial`のままである。`alternate-model/`の別モデルも同じ宣言を引き継ぎ、Queryと関係の保存を一緒に書き換えているので`complete`になる。
-- **動く（診断用の実経路）**：第一Webの実PostgreSQLからのHTTP画面と実Chrome DOMで、規則変更前後を主キーと独立Expectedで照合した（#5492）。#5510のCIは同じ実DBからCLI・規則編集・再読・実Chromeを一巡する。初回利用者による手順書の文字どおりの実行、本番のSource受理・配備は未検収。
+- **動く（実PostgreSQLで確認）**：参照WorkspaceのQuery束縛には`covers sales.order.lines`を宣言し、実行したQueryと関係の保存を照合する。それに加えて、同じ読取トランザクションで物理表の種類・継承・RLSを確認できたときだけ、CLIと第一WebはRelationの全件性を認める（[#5571](https://github.com/hat47x/tei-platform/pull/5571)）。宣言やSQLの一致だけでは`coverage: complete`にならない。行を落とすQueryや全件性を確認できない表では`partial`に留め、受注1002の一意性を安易に`satisfied`へ昇格させない。非所有者ロールが重複行を一つ見られなくなる実DB負例でも、Webの判定は`undecided`を維持する（[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。`alternate-model/`も、変更後のQuery・保存定義・実読取の資格をそれぞれ検証する。
+- **動く（診断用の実経路）**：第一WebのHTTP画面と実Chrome DOMで規則追加の前後を主キーと独立Expectedで照合した（[#5492](https://github.com/hat47x/tei-platform/pull/5492)）。さらに[#5633](https://github.com/hat47x/tei-platform/pull/5633)では公開手順5の実`go run`（待受ポートだけCI用に変更）を実DBと接続し、[#5642](https://github.com/hat47x/tei-platform/pull/5642)では出荷Webの可視フォーム4項目を実Chromeで自動入力・送信して受注1001／1002を確認した。初回利用者自身の手順0〜5の完走、正式なSource受理、本番認可・配備は未検収。
 
 ## 期待の読み方
 
-期待のファイルでは、`perLine`が行ごとに尋ねる規則の答えで、明細の`order_line_id`で行を指す。`perOrder`は受注一件の明細すべてに一度尋ねる規則の答えである。`tei view -environment`の結果では、同じものが`perRow`と`perRelation`という一般の名前で返り、行は`rows[].key`（永続化の定義が宣言する主キー）で指す。明細のない受注1003では、行ごとの答えは0個になる。明細番号の一意は、束縛が「受注一件の明細をすべて返す」と宣言し、実行したQueryがその宣言どおりだと照合できたときに成立とする。照合できなければ、答えを出さず判定保留にする。
+期待のファイルでは、`perLine`が行ごとに尋ねる規則の答えで、明細の`order_line_id`で行を指す。`perOrder`は受注一件の明細すべてに一度尋ねる規則の答えである。`tei view -environment`の結果では、同じものが`perRow`と`perRelation`という一般の名前で返り、行は`rows[].key`（永続化の定義が宣言する主キー）で指す。明細のない受注1003では、行ごとの答えは0個になる。明細番号の一意を「成立」と判断できるのは、宣言とQueryの対応に加え、**その読取で**必要な行を取得できたと確認できる場合だけである。物理表のRLSなどで見えない行の可能性が残れば`undecided`と理由を返す。一方、実際に読めた行同士に重複があれば、部分取得であっても`not-satisfied`と判断できる。
 
 ## 初回利用者へ引き渡す条件
 
@@ -30,6 +30,6 @@
 
 受注1001・1002・1003の明細件数は、この`seed.sql`でそれぞれ**3・2・0行**である。受注1001の明細ID 2と3は、同じ`line_number=2`を持つ異なる実体なので、`perLine`のキーには明細の`order_line_id`を使う。行番号や表示順で二つを合併してはならない。PR #5271の内部PostgreSQL試験が使った3・3・1行の別データを、この到達点の期待へ流用しない。
 
-Relation全体の一意性は、Queryが必要な行をすべて取得した根拠があるときだけ「成立」としてよい。現行の`CoverageComplete`は呼出し側からReaderへ渡す申告であり、返却行数から自動的に証明されない。必要な取得範囲やページ終端を確認できなければ、判断できない理由を保持する。ただし、取得済みの2行に明細番号の重複があれば、部分取得でも不成立は確定する。
+Relation全体の一意性には、実行したQueryと同じ読取トランザクションで確認した取得範囲の根拠が要る。`CoverageComplete`という入力や`covers`の宣言、返却行数だけを全件性の証拠にしない。RLS等で確認できない範囲があれば`undecided`と理由を保持する。同じ親受注・Query・件数でも、CLIとWebの別々の読取が同一Snapshotだったとは言えない。Receiptや業務上の意味受理も別である。
 
 DB接続の秘密は環境変数から読み、Workspace・JSON結果・試験記録へ書かない。手順3・4で`unit_price_positive`を追加した後も、**同じ`seed.sql`の行**を読み直し、`expected-after.json`で差を確かめる。実Query、Rule判断、CLI受領、生成Webの表示を、それぞれ完了した範囲だけ「動く」と記録する。
