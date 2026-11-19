@@ -24,6 +24,7 @@ import {
 } from "./presentation.ts";
 // The production Inspector is the contract-generated Reader, never a local copy.
 import { readInspection } from "./inspection-reader.generated.ts";
+import { previewRequiredEditDraft } from "./source-locations.ts";
 import type { Entry, Subject, Finding, Catalog } from "./presentation.ts";
 
 type Reply =
@@ -58,6 +59,77 @@ let pinnedCatalogIdentity: string | null = null;
 const pinnedCatalogMatches = () => pinnedCatalogIdentity !== null &&
   pinnedCatalogIdentity === catalogIdentity(catalogSnapshot);
 let commandContext = 0;
+// A selected Host Inspect observation is not a Source byte check or a Writer grant.
+type RequiredDraftObservation = {
+  workspaceId: string;
+  workspaceEpoch: number;
+  inspectionEpoch: number;
+  subject: Subject;
+  catalog: Catalog;
+  raw: unknown;
+};
+let requiredDraftObservation: RequiredDraftObservation | null = null;
+function clearRequiredDraft(message = "対象の再確認が必要です。") {
+  requiredDraftObservation = null;
+  const choice = element<HTMLSelectElement>("required-choice");
+  choice.value = "true";
+  choice.disabled = true;
+  element<HTMLButtonElement>("preview-required").disabled = true;
+  element<HTMLPreElement>("required-draft-result").textContent = "";
+  element("required-draft-status").textContent = message;
+}
+function enableRequiredDraft(raw: unknown, subject: Subject, id: string, context: number, request: number) {
+  if (subject.kind !== "semantic-attribute" || catalogSnapshot === null) {
+    clearRequiredDraft("Data属性を選ぶと、未審査候補を確認できます。");
+    return;
+  }
+  requiredDraftObservation = {
+    workspaceId: id, workspaceEpoch: context, inspectionEpoch: request,
+    subject, catalog: catalogSnapshot, raw,
+  };
+  element<HTMLSelectElement>("required-choice").disabled = false;
+  element<HTMLButtonElement>("preview-required").disabled = false;
+  element("required-draft-status").textContent =
+    "候補の表示のみ可能です。Sourceの保存・受理は未対応です。";
+}
+function previewSelectedRequiredDraft() {
+  const observed = requiredDraftObservation;
+  const result = element<HTMLPreElement>("required-draft-result");
+  result.textContent = "";
+  if (!observed || !selected || catalogSnapshot !== observed.catalog ||
+      observed.workspaceId !== workspace.value ||
+      observed.workspaceEpoch !== workspaceEpoch ||
+      observed.inspectionEpoch !== inspectionEpoch ||
+      subjectKey(selected) !== subjectKey(observed.subject)) {
+    clearRequiredDraft("対象または版が変わりました。再度Inspectしてください。");
+    return;
+  }
+  try {
+    const required = element<HTMLSelectElement>("required-choice").value === "true";
+    const draft = previewRequiredEditDraft(
+      observed.raw, observed.subject, observed.catalog, observed.workspaceId,
+      `workbench-preview-${observed.workspaceEpoch}-${observed.inspectionEpoch}-${required}`,
+      "Data属性の必須指定を確認する", required,
+    );
+    result.textContent = [
+      "未審査候補（保存不可）",
+      `意味ID：${draft.edit.subject}`,
+      `変更内容：required = ${draft.edit.required ? "yes" : "no"}`,
+      `観測したモデル版：${draft.edit.expectedModelRevision}`,
+      `Source参照：${draft.sourceObservation.workspaceRelativePath}:${draft.sourceObservation.start.line}`,
+      "Source Index網羅性：未確認",
+      "Source原文のbyte一致：未確認",
+      "Workspace Grant・Source Writer：未確認",
+      "Preview/Review/Accept/保存：未接続",
+    ].join("\n");
+    element("required-draft-status").textContent =
+      "未審査候補を表示しました。元のSourceは変更していません。";
+  } catch (error) {
+    // Even a one-occurrence Source Index observation is not proof of completeness.
+    element("required-draft-status").textContent =
+      `候補を作れません：${error instanceof Error ? error.message : "INVALID_REQUIRED_DRAFT"}`;
+  }
+}
 const editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
   version: "0",
@@ -328,6 +400,7 @@ function renderList() {
 }
 async function inspect(subject: Subject) {
   if (!client || !workspace.value || disposed) return;
+  clearRequiredDraft();
   const eligibility = inspectEligibility(catalogSnapshot, subject);
   if (!eligibility.ok) {
     // All existing selection routes meet here. Never issue an unqualified
@@ -370,7 +443,8 @@ async function inspect(subject: Subject) {
     ? `親子関係のうち8件を表示（ほか${related.hidden}件）`
     : "選択要素と、一覧に含まれる直接の親子関係";
   return responses.run("inspection", () => client!.inspectSubject(id, subject.kind, subject.id), (reply) => {
-    const view = readInspection(unwrap(reply), subject, catalogSnapshot!);
+    const raw = unwrap(reply);
+    const view = readInspection(raw, subject, catalogSnapshot!);
     editor.setDocument({
       id: `${id}/${subjectKey(subject)}`,
       version: view.version,
@@ -378,6 +452,7 @@ async function inspect(subject: Subject) {
     });
     element("source-status").textContent = `参照情報：${view.sourceStatus}`;
     showInspectionLimits(view.authorityLimits);
+    enableRequiredDraft(raw, subject, id, context, request);
     notice.textContent = "選択したモデルの投影を表示しています。";
     notice.dataset.state = "ready";
   }, (error) => {
@@ -425,6 +500,7 @@ async function loadWorkspace() {
   const context = ++workspaceEpoch,
     id = workspace.value;
   responses.reset();
+  clearRequiredDraft("作業領域を読み込み中です。");
   pinState = invalidatePin(pinState);
   pinnedVersion = null;
   element("xead-result").replaceChildren();
@@ -543,6 +619,12 @@ element("xead-path").addEventListener("input", () => {
   element("xead-status").textContent = "パスが変更されました。未取得";
 });
 element("observe-xead").addEventListener("click", () => void observeXead());
+element("required-choice").addEventListener("change", () => {
+  element<HTMLPreElement>("required-draft-result").textContent = "";
+  element("required-draft-status").textContent =
+    "指定が変わりました。候補を改めて確認してください。";
+});
+element("preview-required").addEventListener("click", previewSelectedRequiredDraft);
 element("xead-path").addEventListener("keydown", (event) => {
   handleXeadPathKeydown(event, () => void observeXead());
 });
@@ -589,6 +671,7 @@ window.addEventListener(
   "pagehide",
   () => {
     disposed = true;
+    clearRequiredDraft("画面を終了しました。");
     responses.dispose();
     ++workspaceEpoch;
     ++inspectionEpoch;
