@@ -139,6 +139,9 @@ if (playwrightRoot) {
       page.on("request", request => {
         if (/^https?:/i.test(request.url())) browserNetworkRequests.push(request.url());
       });
+      // No network request may leave the offline editing form. Keep the
+      // attempted URL in the receipt diagnosis, but abort before transmission.
+      await page.route(/^https?:/i, route => route.abort("blockedbyclient"));
       // This is a disposable form, not a saved Workspace source.
       const formFile = join(dirname(receiptPath), "tei-studio-stage-required-form.html");
       writeFileSync(formFile, formHTML, { flag: "wx", mode: 0o600 });
