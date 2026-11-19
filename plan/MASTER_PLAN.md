@@ -314,6 +314,11 @@ Gate C — PAS-04 Evidence — Ready
 
 ### Studio Desktopセルフビルドを最優先にする現行の実証順（2026-11-14更新）
 
+**2026-11-19 協業UXの実装順と現行停止線**：[人間・生成AI協業UX §33〜34](design/HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md)を現行の作業画面・AI引継ぎ・Reviewの設計基準とする。既存Workbenchは閲覧中のFocusと固定中のPinを分離済み（main統合 #4597）。次の最小UIは、①Aを固定してBを閲覧中の背景「再確認」でBのEditor/Graph/Focus/Noticeを変えない、②明示した「固定対象を開く」で初めてAへ新しいHost Inspectを発行する、③Node／正規Bundle／Wails埋込Asset／静的Composition／実Windows DOMを**同一Source・HEAD・Attempt**で別々に検収する、という順に進める。実装Draft #5618はNodeのPin／非同期検査が通る一方、HTML埋込byte差とComposition revision mismatchで配布検査に失敗しており、**現在の製品受理済み機能として数えない**。Ownerは #4515／#1824／#1180／#2514 のままで、別Controllerや独自Hostは作らない。
+
+その後の協業UXは、AIなしのSource-backed検索・再読取を基線とし、**限定Context Preview（対象／実読取Source／未取得／Audience・Disclosure／帰着先）→実Tool完全受領→候補の元SourceへのReview→既存条件付きWriter・独立再検証**の順に拡張する。複数AIの旧Revision候補、Dirty Buffer、人間の変更を無音合成せず、SHO/SUI/TEI/DBそれぞれのWriterと受理責務を保持する。C-UX0〜2は既存UX-PIN／UX-DIAG／UX-READに属する受入観点であり、正式Workflow/AI Runner/Task正本・P0の追加Hard Gateではない。外部Handoff #3262/#2516/TAI #168、Source Writer #1124/#1529/#2497、Effect #1174へ既存Ownerのまま渡す。新しい実Windows／Provider／AI／Writer検収はこのdocs変更では**NOT RUN**。製品P0の非Plugin Stage1→Stage2 Windows（#2831/#4583）と通常CLI実Provider Read（#2586/#4495）を優先する。
+
+
 
 **Desktop Workbench・実行経路の横断統合（2026-11-16、設計・受入引渡し）**：[Desktop Web標準UI実装指針 §§14〜17](design/TEI_DESKTOP_WEB_STANDARD_UI_IMPLEMENTATION_2026-11.md)で、一つのSource-backed対象をEditor／表／Graph／Node／Process／Inspectorから参照する画面構成、Focus／Pinの非干渉、Buffer／実Source／Meaning／Build入力／実Consumerの版分離、保存時の実byte照合と復旧、CLIとWails Bridgeに共通なApplication Operation、標準型を使うPlugin接続を一本化する。第二Parser、意味正本、Plugin Loader、Flow Runtime、Desktop独自Host／Policy Engineは増やさない。
 
