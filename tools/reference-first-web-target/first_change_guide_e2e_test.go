@@ -780,3 +780,80 @@ func TestFirstChangeGuideExecutesLiteralRuleEdit(t *testing.T) {
 			validated.code, validated.stdout, validated.stderr)
 	}
 }
+
+// TestFirstChangeGuideRejectsAmbiguousApplicationInsertion executes the
+// published step 3, not a replacement awk program. A changed/duplicated
+// insertion anchor must never overwrite the original Application or leave an
+// intermediate .next file behind. No database or test-only Writer is involved.
+func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the published guide uses a POSIX shell and awk")
+	}
+	guide, err := os.ReadFile(filepath.Join(repoRootForGuide(t), "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	editScript := documentedGuideShellStep(t, string(guide),
+		"## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	const anchor = "    uses validation sales.order_line.quantity_positive\n"
+	original, err := os.ReadFile(filepath.Join(repoRootForGuide(t),
+		"reference", "workspace", "applications", "order-entry", "application.tei"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(original), anchor) != 1 {
+		t.Fatal("reference Workspace must have exactly one published insertion anchor")
+	}
+	for _, tc := range []struct {
+		name   string
+		change string
+		count  string
+	}{
+		{name: "missing-anchor", change: strings.Replace(string(original), anchor, "", 1), count: "0"},
+		{name: "duplicated-anchor", change: strings.Replace(string(original), anchor, anchor+anchor, 1), count: "2"},
+		{name: "already-registered", change: strings.Replace(string(original), anchor,
+			anchor+"    uses validation sales.order_line.unit_price_positive\n", 1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			workspace := t.TempDir()
+			appDir := filepath.Join(workspace, "applications", "order-entry")
+			ruleDir := filepath.Join(workspace, "semantic", "sales")
+			for _, dir := range []string{appDir, ruleDir} {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			application := filepath.Join(appDir, "application.tei")
+			if err := os.WriteFile(application, []byte(tc.change), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("sh", "-eu", "-c", editScript)
+			cmd.Dir = repoRootForGuide(t)
+			cmd.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+workspace)
+			output, err := cmd.CombinedOutput()
+			if err == nil {
+				t.Fatal("published shell silently accepted an ambiguous Application anchor")
+			}
+			want := "規則の登録先が" + tc.count + "件です（1件必要）"
+			if tc.name == "already-registered" {
+				want = "追加する規則は既に1件登録されています"
+			}
+			if !strings.Contains(string(output), want) {
+				t.Fatalf("published shell failed without its expected refusal: %s", output)
+			}
+			got, err := os.ReadFile(application)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, []byte(tc.change)) {
+				t.Fatal("failed registration changed the original Application")
+			}
+			if _, err := os.Stat(application + ".next"); !os.IsNotExist(err) {
+				t.Fatalf("failed registration left a staged Application: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(ruleDir, "unit-price.tei.md")); err != nil {
+				t.Fatal("negative case stopped before reaching the published Application edit")
+			}
+		})
+	}
+}
