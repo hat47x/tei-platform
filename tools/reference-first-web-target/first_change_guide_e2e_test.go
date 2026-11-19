@@ -274,7 +274,7 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	// The published step 5 chooses row 0 (order 1001), then row 1
 	// (order 1002). Both selections must reach the SAME shipped Web process,
 	// edited Source and PostgreSQL database. This still automates POST using
-	// the existing test bootstrap; actual shipped-form field entry remains open.
+	// the shipped form's four actual fields and Submit button in real Chrome.
 	for _, choice := range []struct {
 		row            int
 		orderID        string
@@ -284,7 +284,7 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		{row: 1, orderID: "1002", relationAnswer: "satisfied"},
 	} {
 		t.Run("selected-order-"+choice.orderID, func(t *testing.T) {
-			dom := chromeDOMOfSelectedOrder(t, browser, address, choice.row)
+			dom := chromeDOMFromShippedForm(t, browser, address, choice.row)
 			if strings.Contains(dom, dsn) {
 				t.Fatal("step 5: the Chrome page carried the database connection string")
 			}
@@ -302,6 +302,7 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 				t.Fatalf("step 5: order %s does not show the independently expected Relation answer %s",
 					choice.orderID, choice.relationAnswer)
 			}
+			t.Log("actual shipped form Chrome submission verified for order " + choice.orderID)
 		})
 	}
 	t.Run("documented-step-5-go-run", func(t *testing.T) {
@@ -309,7 +310,54 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	})
 	// Keep the established CI receipt prefix while distinguishing the actual
 	// documented go run (isolated listen address) from real Web form entry.
-	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; step 5 documented go run and shipped Web binary (both selected orders via automated bootstrap POST, not real form entry)")
+	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; step 5 documented go run and shipped Web binary (both selected orders through the shipped form's visible inputs and Submit button)")
+}
+
+// chromeDOMFromShippedForm opens the real Web form in Chrome, fills the four
+// user-visible fields and clicks Submit. The separate Node process uses only
+// playwright-core pinned in runner scratch, not a new business test Host.
+// Unknown or unavailable browser tooling must fail rather than silently
+// falling back to a hidden-form bootstrap.
+func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) string {
+	t.Helper()
+	if row != 0 && row != 1 {
+		t.Fatalf("the published first-change guide selects only rows 0 and 1, got %d", row)
+	}
+	playwrightRoot := os.Getenv("TEI_GUIDE_PLAYWRIGHT_ROOT")
+	if playwrightRoot == "" {
+		t.Fatal("TEI_GUIDE_PLAYWRIGHT_ROOT is required for real shipped-form verification")
+	}
+	chrome, err := exec.LookPath(browser)
+	if err != nil {
+		t.Fatalf("the selected Chrome executable is unavailable: %v", err)
+	}
+	if !filepath.IsAbs(chrome) {
+		chrome, err = filepath.Abs(chrome)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "node",
+		filepath.Join(repoRootForGuide(t), "tools", "reference-first-web-target", "guide_shipped_form_chrome.mjs"),
+		address, strconv.Itoa(row), chrome, playwrightRoot)
+	cmd.Dir = repoRootForGuide(t)
+	// No database connection string or browser login token is needed by the
+	// adapter. The server keeps its own PostgreSQL connection separately.
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + t.TempDir(), "NODE_NO_WARNINGS=1"}
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Chrome did not complete the shipped form's visible field entry and submit: %v (diagnostics withheld)", err)
+	}
+	dom := string(output)
+	if strings.Contains(dom, "editor-secret") {
+		t.Fatal("the shipped form reflected its synthetic credential into the returned DOM")
+	}
+	if !strings.Contains(dom, `id="read-result"`) {
+		t.Fatal("real shipped-form Chrome did not render the target's read result")
+	}
+	return dom
 }
 
 // verifyDocumentedGuideGoRunWeb exercises the published step-5 shell, not
@@ -375,7 +423,7 @@ func verifyDocumentedGuideGoRunWeb(t *testing.T, handbook, root, dsn, browser, f
 		{row: 1, orderID: "1002", relationAnswer: "satisfied"},
 	} {
 		t.Run("published-go-run-order-"+choice.orderID, func(t *testing.T) {
-			dom := chromeDOMOfSelectedOrder(t, browser, address, choice.row)
+			dom := chromeDOMFromShippedForm(t, browser, address, choice.row)
 			if strings.Contains(dom, dsn) {
 				t.Fatal("step 5's actual go run page exposed the PostgreSQL DSN")
 			}
@@ -388,9 +436,10 @@ func verifyDocumentedGuideGoRunWeb(t *testing.T, handbook, root, dsn, browser, f
 			if !strings.Contains(dom, "sales.order.lines.line_number_unique "+choice.relationAnswer) {
 				t.Fatalf("step 5's documented go run gave the wrong Relation answer for order %s", choice.orderID)
 			}
+			t.Log("actual shipped form Chrome submission verified for order " + choice.orderID)
 		})
 	}
-	t.Log("step 5 documented go run shell reached real PostgreSQL and Chrome for both orders; only listen port changed for CI; test bootstrap POST is not real Web form entry")
+	t.Log("step 5 documented go run shell reached real PostgreSQL and Chrome for both orders through the shipped form; only listen port changed for CI")
 }
 
 // documentedGuideShellStep returns the commands from the published POSIX
