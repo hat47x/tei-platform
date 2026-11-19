@@ -48,12 +48,12 @@ func verifyFirstChangeShippedForm(t *testing.T, browser, address, fixtures strin
 	}
 	var receipt struct {
 		Transport string `json:"transport"`
-		Cases []struct {
-			Row int `json:"row"`
-			GetStatus int `json:"getStatus"`
-			PostStatus int `json:"postStatus"`
-			Posts int `json:"posts"`
-			HTML string `json:"html"`
+		Cases     []struct {
+			Row        int    `json:"row"`
+			GetStatus  int    `json:"getStatus"`
+			PostStatus int    `json:"postStatus"`
+			Posts      int    `json:"posts"`
+			HTML       string `json:"html"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &receipt); err != nil {
