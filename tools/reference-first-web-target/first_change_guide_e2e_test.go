@@ -275,9 +275,9 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	// edited Source and PostgreSQL database. This still automates POST using
 	// the existing test bootstrap; actual shipped-form field entry remains open.
 	for _, choice := range []struct {
-		row             int
-		orderID         string
-		relationAnswer  string
+		row            int
+		orderID        string
+		relationAnswer string
 	}{
 		{row: 0, orderID: "1001", relationAnswer: "not-satisfied"},
 		{row: 1, orderID: "1002", relationAnswer: "satisfied"},
