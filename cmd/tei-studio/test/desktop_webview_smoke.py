@@ -1758,6 +1758,24 @@ return selected.value;
                 ).get("value")
                 if select_result != workspace_id:
                     raise RuntimeError(f"Workbench did not select {workspace_id}")
+                if label == "after":
+                    # A new Workspace epoch must discard the previous
+                    # unreviewed candidate before another Inspect can finish.
+                    discarded = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync",
+                        {"script": """
+return {
+  disabled: document.getElementById('preview-required')?.disabled ?? null,
+  hidden: document.getElementById('required-preview-json')?.hidden ?? null,
+  text: document.getElementById('required-preview-json')?.textContent ?? null
+};
+""", "args": []},
+                    ).get("value", {})
+                    if discarded != {"disabled": True, "hidden": True, "text": ""}:
+                        raise RuntimeError("Workspace switch retained an unreviewed edit candidate")
+                    facts["native_required_candidate_discarded_on_workspace_switch"] = True
+                    record("native-required-candidate-workspace-switch-discarded",
+                           from_workspace="workspace-2", to_workspace="workspace-3")
                 visible_deadline = time.monotonic() + 25
                 while time.monotonic() < visible_deadline:
                     # The product's list consists of real selectable Catalog
@@ -1826,6 +1844,91 @@ return true;
                 record("visible-authoring-inspect-verified", source=label,
                        workspace_id=workspace_id, required=expected_required,
                        reader_calls=reader_calls)
+                if label == "before":
+                    # This is the actual product Workbench in the generated
+                    # Windows Wails WebView2, not the offline reference form.
+                    source_digest_before = workspace_snapshot(visible_before)
+                    attribute_id = "studio.inspection_response.snapshot_fingerprint"
+                    clicked = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync",
+                        {"script": """
+const buttons = Array.from(document.querySelectorAll('#subjects button.subject'));
+const detail = 'semantic-attribute · studio.inspection_response.snapshot_fingerprint';
+const matches = buttons.filter(button => button.querySelector('small')?.textContent === detail);
+if (matches.length !== 1) return { selected: false, count: matches.length };
+matches[0].click();
+return { selected: true, count: matches.length };
+""", "args": []},
+                    ).get("value", {})
+                    if clicked != {"selected": True, "count": 1}:
+                        raise RuntimeError("Real Catalog did not uniquely identify the Data attribute")
+                    attribute_deadline = time.monotonic() + 25
+                    while time.monotonic() < attribute_deadline:
+                        ready = webdriver_request(
+                            base_url, "POST", f"/session/{driver_session}/execute/sync",
+                            {"script": """
+return {
+  title: document.getElementById('subject-title')?.textContent ?? '',
+  disabled: document.getElementById('preview-required')?.disabled ?? null,
+  hidden: document.getElementById('required-preview-json')?.hidden ?? null
+};
+""", "args": []},
+                        ).get("value", {})
+                        if ready == {"title": attribute_id, "disabled": False, "hidden": True}:
+                            break
+                        time.sleep(0.2)
+                    else:
+                        raise RuntimeError("Real Host Inspect did not enable the Data attribute preview")
+                    candidate_display = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync",
+                        {"script": """
+const button = document.getElementById('preview-required');
+if (!button || button.disabled) throw Error('REQUIRED_PREVIEW_NOT_AVAILABLE');
+button.click();
+return {
+  hidden: document.getElementById('required-preview-json')?.hidden ?? null,
+  text: document.getElementById('required-preview-json')?.textContent ?? '',
+  status: document.getElementById('required-preview-status')?.textContent ?? ''
+};
+""", "args": []},
+                    ).get("value", {})
+                    if candidate_display.get("hidden") is not False or "未審査" not in candidate_display.get("status", ""):
+                        raise RuntimeError("Native click did not render an unreviewed Data edit candidate")
+                    try:
+                        edit = json.loads(candidate_display.get("text", ""))
+                    except (TypeError, ValueError) as exc:
+                        raise RuntimeError("Native candidate was not typed JSON") from exc
+                    expected_keys = {
+                        "schema", "expectedModelRevision", "id", "origin",
+                        "intent", "view", "subject", "operation", "required",
+                    }
+                    if (
+                        not isinstance(edit, dict)
+                        or set(edit) != expected_keys
+                        or edit.get("schema") != "tei.reference.studio-edit/v0"
+                        or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(edit.get("expectedModelRevision", "")))
+                        or not re.fullmatch(r"required-[0-9]+-[0-9]+", str(edit.get("id", "")))
+                        or edit.get("origin") != "studio"
+                        or edit.get("view") != "required"
+                        or edit.get("subject") != "attribute:" + attribute_id
+                        or edit.get("operation") != "set-attribute-required"
+                        or edit.get("required") is not True
+                    ):
+                        raise RuntimeError("Real Workbench candidate differs from the typed expected edit")
+                    if workspace_snapshot(visible_before) != source_digest_before:
+                        raise RuntimeError("An unreviewed Workbench candidate changed Source bytes")
+                    facts["native_required_candidate"] = {
+                        "workspace_id": workspace_id,
+                        "subject": edit["subject"],
+                        "operation": edit["operation"],
+                        "status": "unreviewed-draft",
+                        "source_unchanged": True,
+                        "review_or_write_authority": "not-established",
+                        "expected_model_revision": edit["expectedModelRevision"],
+                    }
+                    record("native-wails-required-candidate-click-verified",
+                           workspace_id=workspace_id, subject=edit["subject"],
+                           source_unchanged=True, authoring_authority=False)
             if visible_observations["before"]["editorText"] == visible_observations["after"]["editorText"]:
                 raise RuntimeError("Visible Inspector text did not change with its Data Source")
             if visible_observations["before"]["inspectionReader"] != visible_observations["after"]["inspectionReader"]:
