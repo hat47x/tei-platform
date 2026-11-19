@@ -1319,3 +1319,21 @@ Python標準ライブラリのDecimalを使い、R1の二つのChunk p1=(2,200),
 **受入順**：P0の受注一変更（plan/NOW.md）とStudioセルフビルドを継続。その後#4410の純粋TSVを完成。BO-01/04のSource/結果とBO-02/03/05/06のEffectを**別の既存Scenario**として#1180/#2514に引き渡し、対応する実Provider能力がある段階だけ#4411へ進める。新Batch Runner／Scheduler／Job状態表／Provider保証の共通化／分散Transactionをこの節から導入しない。
 
 **資格**：本節は公開・非公開調査の一般化と、独立したSQLite局所算術の整理であり、今回の新TEI Go／CLI／PostgreSQL／他DBMS／Driver・二Process・実Consumer・Owner受理・exact-head CIは **NOT RUN / NOT ACCEPTED**。
+
+### 34.5 同じRuleを複数の入口で使うときの意味保存（2026-11-19、後続の受入候補）
+
+他レーンの名前付き複数入力Operatorの設計（[#4359](https://github.com/hat47x/tei-platform/issues/4359)）を、#4410のバッチ計画と将来接続する。**Ruleの名前が同じだけでは、画面・CLI・Batch・DB委譲の判定が同じとは言えない**。対象行、各入力の参照先、取得時点、実際の値の有無、評価する局面、Operatorの版が一致することを確認して初めて、計算結果を比較できる。
+
+現在の[優先順位](../NOW.md)では、まず受注一変更の実利用を閉じ、その後に名前付き複数入力の意味・評価を進める。最初の候補 `within(value, low, high)` についても、#4410の初回固定TSV・単一Resultに新しい必須機能を追加せず、**Operator側の限定受入を通過してから**バッチへの接続を検証する。
+
+| 後続の対照 | 固定する意味・入力 | 拒否する取り違え |
+| --- | --- | --- |
+| RB-01：同じ入力の二経路 | 同一Data／Attributeの意味ID、Rule／Operator版、対象Key、Snapshot／Scope、名前付き入力の対応 | 同名の引数を別Attributeへ束縛し、値の偶然一致で同値とする |
+| RB-02：二入力の交換 | 同型の `low`／`high` を誤って逆対応にした候補 | 型検査を通ったことだけで正しい入力束縛と認定する |
+| RB-03：NULLと未取得 | 値がNULLの行、参照列自体を取得できない行、入力名が不足する宣言を分ける | 欠落を0や既定値に補う。正常なNULLと未読・未宣言を同じ成功にする |
+| RB-04：実現方式の差 | 直接評価／生成Go／DBへの演算委譲ごとに、三値論理、精度、診断、実Readerの対象集合を照合 | SQL pushdownでNULL・順序・未取得の意味や診断が変わっても、出力行数だけで同値とする |
+| RB-05：同じRuleの利用場面 | 編集時の候補値、保存時の実適用値、表示時の導出値、Batchが固定した入力Cutを区別する | 表示用RuleのPASSから保存済みデータ・DB反映・Batch全件性まで推論する |
+
+RB-01〜05は**独立Expectedに追加する候補**であり、この文書内でテスト正本を増やさない。#4359の名前付き入力が意味モデルと評価器に届くこと、#2586の実ReaderのScopeと完全性、#988／#1121のOperator・生成経路の版、#1180／#2514の独立Expectedを順に照合する。バッチではさらに、§18のInput Closureと§34.1のRead／Eligible／Attempt／Provider outcomeを別々に確認する。型付きPortやNode図が一致しても、実ProviderでそのRuleが呼び出されたとは扱わない。
+
+**実装・検収の順序**：現行P0の受注一変更とStudioセルフビルド → #4359の名前付き複数入力Operatorの局所評価・負例 → #4410の副作用のないBatch二入口 → 同一固定入力におけるRB-01〜03の比較 → 必要な実Targetが存在する場合に限りRB-04／05。新しいBatch Rule Engine、評価器、DSL、実行Host、独立Expected Storeを作らない。今回の追補は設計照合のみで、RBの新Go／CLI／実DB／Studio試験、Ownerの意味受理は **NOT RUN / NOT ACCEPTED**。
