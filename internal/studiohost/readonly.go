@@ -92,19 +92,31 @@ var studioFailureCodes = map[string]studioFailureClassification{
 	"XEAD_PROJECTION_FAILED":        {"technical_failure", "lookup_first", true},
 }
 
-// classify fills the three axes from the table when the producer left them
-// empty. It returns the receiver so it reads as one step at the call site.
+// classify fills missing failure axes without replacing an explicit contract.
+// A known kind with a missing retry policy must not silently lose that policy.
+// If an explicit kind disagrees with the code table, fail closed: the table's
+// retry policy does not describe the producer's contract.
 func (f *Failure) classify() *Failure {
-	if f == nil || f.Kind != "" {
+	if f == nil {
 		return f
 	}
 	c, ok := studioFailureCodes[f.Code]
 	if !ok {
 		c = studioFailureClassification{"technical_failure", "lookup_first", true}
 	}
-	f.Kind = c.kind
-	f.Retryable = c.retryable
-	f.EffectUnknown = c.effect
+	if f.Kind == "" {
+		f.Kind = c.kind
+		f.EffectUnknown = f.EffectUnknown || c.effect
+	}
+	if f.Retryable == "" {
+		if f.Kind != c.kind {
+			f.Retryable = string(failure.LookupFirst)
+			f.EffectUnknown = true
+		} else {
+			f.Retryable = c.retryable
+			f.EffectUnknown = f.EffectUnknown || c.effect
+		}
+	}
 	return f
 }
 
