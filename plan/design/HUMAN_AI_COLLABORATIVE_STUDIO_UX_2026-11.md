@@ -683,3 +683,42 @@ C-UX0〜2は**既存UX-PIN／UX-DIAG／UX-READと#1180/#2514の引渡し上の�
 [実装Draft #5618](https://github.com/hat47x/tei-platform/pull/5618)は「固定対象を開く」の画面配線を追加し、同HEADのPin契約・async responseのCIはPASS。一方、正規WorkbenchのHTMLとWails埋込HTMLのbyte差、および静的CompositionのWorkbench revision不一致が同HEADのCIで失敗している。**新操作を製品へ受領済みとは扱わず、#5618を未マージのまま切り分ける。** 正規Source→生成HTML/JS/CSS/通知→Embed→同一Composition pin→実Wails/WebView2で検収する。固定成功とCurrent Disclosure／書込許可／外部AI受領はさらに別の資格である。
 
 本節と主計画への追補は文書のみ。新しいNode/Go/Windows、実DB、Harness、Writer、Ownerの受入試験は行っていない。製品P0は #2831/#4583 の非Plugin Stage1→Stage2 Desktopと #2586/#4495 の通常CLI実Provider Readを維持し、C-UX1/2やUI Framework選定を新Hard Gateにしない。
+
+
+## 35. C-UX0の操作単位とフォーカス基準（2026-11-19）
+
+§33・§34のC-UX0を、実Workbenchでそのまま確認できる操作と観測に落とす。対象は**現行のread-only Subject Pin**であり、編集可能StudioのUndo・Dirty Buffer・IME入力、外部AI送信、Current Disclosureの受入を含めない。新しいTask Store、Host、Scenario正本や状態Schemaは追加せず、#4515／#1824の既存テストと#1180／#2514の独立Expectedへ渡す。
+
+### 35.1 「画面が動かない」を何で判定するか
+
+操作前に A を固定し、B を通常Inspectしていることを確認する。次に利用者が「再確認」を押すと、**クリック自体によってキーボードフォーカスがボタンへ移ることは許容する**。非干渉の比較基準は「クリック前のactiveElement」ではなく、**クリックイベント直後・非同期Reply適用前**の状態とする。背景応答の成功・拒否・後着は、その時点のフォーカスを奪ってはならない。
+
+| 観測点 | 背景「再確認」で変化を許すもの | 変えてはいけないもの |
+| --- | --- | --- |
+| 固定対象欄 | Aの確認状態、参照版、再確認可能性、「固定対象を開く」の有効／無効 | AのQualified SubjectをBや同名別対象へ付け替えること |
+| 中央の閲覧面 | なし | Bの選択・Inspector本文・Source Status・Graphの選択／表示／スクロール位置 |
+| 操作と通知 | 固定対象欄の短い状態通知（許可された情報だけ） | 画面全体のNoticeの書換え、応答による強制フォーカス移動、無関係な読上げ |
+| 外部作用 | なし | Source Save、AI送出、Provider呼出し・Effectの新規発火 |
+
+aria-live の通知は利用者が操作した固定対象欄に局所化する。失効や拒否の詳細が現在の開示範囲にないときは、非公開対象の存在・件数・原因を補って読ませない。role=status の付与だけでアクセシビリティ合格とはせず、実キーボード操作と読上げ順を別に観測する。
+
+### 35.2 利用者の目で追える最小一巡
+
+| 操作 | 表示の原則 | 独立して記録する負例 |
+| --- | --- | --- |
+| Aを選択して「選択要素を固定」 | 「固定した設計要素」にAの識別可能な名前と確認状態を示す。閲覧対象とは別であると分かる | 同名別ID、Catalog曖昧、Workspace版未取得では固定を成立させない |
+| Bを開いてから「再確認」 | Bを表示したままAの欄だけ更新する。応答待ち・失敗を「現在も権限あり」と表現しない | Aの旧Reply、Unpin→再Pin、Workspace A→B→Aで旧資格を再利用しない |
+| 「固定対象を開く」 | 利用者の明示的な移動としてAを新たにForeground Inspectする。成功前に「開けた」と示さない | Catalog改訂・Reader拒否・旧観測時にOpen不可。背景Replyはこの操作を発火させない |
+| 「固定を解除」 | 固定欄を消すが、現在表示中のSubjectはそのまま残す | Unpin後の後着Replyで固定欄を復活させない |
+
+画面の短い文言は「確認中」「参照結果を取得」「再確認が必要」「参照できません」を基本とし、取得した時点の限定事実として説明する。「許可済み」「共有可能」「保存済み」はPinの観測結果からは表示しない。Source版・Workspace・現在のGrantは一つの「最新」表示へまとめない。
+
+### 35.3 C-UX1／C-UX2へ進める境界
+
+C-UX0で一件のPinが使えても、外部AIの入力欄を自動表示・自動送信しない。次段のContext Previewは、**対象／依頼目的／実際に取得した資料／必要だが未取得の資料／送信先と公開範囲／候補の戻り先**を、現在のHostとDisclosureが確認した範囲で構成する。未取得と空集合を混ぜず、承認ボタンを新たな権限正本にしない（#3262／#2516／TAI #168）。
+
+候補が戻ったら、まず「対象」「基準Source」「提案差分」「未検証の点」を示し、保存中の版・未保存Buffer・別Agentの候補と突き合わせる。異なる版、対象、開示資格をまたいだ無音Applyはしない。逆編集・Source保存は既存#1124／#2497／#1529のWriter/Acceptance、実Effectは#1174へ引き渡す。
+
+**次の実装レビュー対象は[#5618](https://github.com/hat47x/tei-platform/pull/5618)。** 同PRではNode Pin/非同期lane試験の合格と、配布HTMLのbyte差・静的Composition版不一致の失敗が併存する。実装側ではまず正規Source→生成HTML/JS→埋込AssetとComposition pinを同一HEADで一致させ、そのうえで実ブラウザー／Windows WebView2で「再確認クリック直後」の状態とReply後の状態を比較する。Source配線テストだけでDOM非干渉や配布済みを宣言しない。製品P0（#2831／#4583と#2586／#4495）の優先度は変更しない。
+
+**この節は受入の具体化のみ**であり、追加のNode／実Browser／Windows／Harness／Source Writer試験は未実施。
