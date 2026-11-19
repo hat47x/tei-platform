@@ -1833,6 +1833,171 @@ return true;
             facts["visible_authoring"] = visible_observations
             write_json(evidence_dir / "visible-authoring-inspector.json", visible_observations)
 
+            # Qualified preview is an actual WebView2 user operation, not a
+            # synthetic Reader call or a Reference offline HTML form. The two
+            # supplied authoring Workspaces differ in the required cell.
+            preview_source_before = {
+                "workspace-2": workspace_snapshot(visible_before),
+                "workspace-3": workspace_snapshot(visible_after),
+            }
+            preview_observations: dict[str, Any] = {}
+            preview_subject = "studio.inspection_response.snapshot_fingerprint"
+            webdriver_element_key = "element-6066-11e4-a52e-4f735466cecf"
+
+            def preview_ui() -> dict[str, Any]:
+                return webdriver_request(
+                    base_url, "POST", f"/session/{driver_session}/execute/sync", {
+                        "script": """
+const preview = document.querySelector('#required-preview-json');
+const button = document.querySelector('#preview-required');
+const editor = document.querySelector('#editor .cm-content');
+return {
+  workspace: document.querySelector('#workspace')?.value ?? '',
+  title: document.querySelector('#subject-title')?.textContent ?? '',
+  revision: document.querySelector('#revision')?.textContent ?? '',
+  previewDisabled: button?.disabled ?? true,
+  previewHidden: preview?.hidden ?? true,
+  previewText: preview?.textContent ?? '',
+  previewStatus: document.querySelector('#required-preview-status')?.textContent ?? '',
+  editorText: editor?.textContent ?? '',
+  editorEditable: editor?.getAttribute('contenteditable') ?? '',
+  acceptButtonPresent: Boolean(document.querySelector('#accept-required, #save-required'))
+};
+""",
+                        "args": [],
+                    },
+                ).get("value", {})
+
+            def select_preview_workspace(workspace_id: str) -> None:
+                selected = webdriver_request(
+                    base_url, "POST", f"/session/{driver_session}/execute/sync", {
+                        "script": """
+const picker = document.querySelector('#workspace');
+if (!picker || !Array.from(picker.options).some(x => x.value === arguments[0]))
+  throw Error('REQUIRED_PREVIEW_WORKSPACE_NOT_ALLOWED');
+picker.value = arguments[0];
+picker.dispatchEvent(new Event('change', {bubbles:true}));
+return picker.value;
+""",
+                        "args": [workspace_id],
+                    },
+                ).get("value")
+                if selected != workspace_id:
+                    raise RuntimeError("Native Workbench could not change preview Workspace")
+
+            def select_preview_attribute() -> dict[str, Any]:
+                deadline = time.monotonic() + 25
+                while time.monotonic() < deadline:
+                    result = webdriver_request(
+                        base_url, "POST", f"/session/{driver_session}/execute/sync", {
+                            "script": """
+return Array.from(document.querySelectorAll('#subjects button.subject'))
+  .find(b => b.querySelector('small')?.textContent?.trim() ===
+    'semantic-attribute · studio.inspection_response.snapshot_fingerprint') ?? null;
+""",
+                            "args": [],
+                        },
+                    ).get("value")
+                    if isinstance(result, dict) and result.get(webdriver_element_key):
+                        webdriver_request(
+                            base_url, "POST",
+                            f"/session/{driver_session}/element/{result[webdriver_element_key]}/click", {},
+                        )
+                        break
+                    time.sleep(0.2)
+                else:
+                    raise RuntimeError("Canonical Data attribute is absent from real Host Catalog")
+                deadline = time.monotonic() + 25
+                while time.monotonic() < deadline:
+                    state = preview_ui()
+                    if (state.get("title") == preview_subject
+                            and state.get("previewDisabled") is False
+                            and state.get("previewHidden") is True
+                            and state.get("editorEditable") == "false"):
+                        return state
+                    time.sleep(0.2)
+                raise RuntimeError("Native Host Inspect did not qualify the Data attribute preview")
+
+            for target in ("workspace-2", "workspace-3"):
+                select_preview_workspace(target)
+                # Changing a Workspace immediately destroys the previous
+                # unreviewed candidate, even when another Workspace has the
+                # same semantic ID. An old candidate must never be accepted.
+                cleared = preview_ui()
+                if (cleared.get("workspace") != target
+                        or cleared.get("previewHidden") is not True
+                        or cleared.get("previewText") != ""
+                        or cleared.get("previewDisabled") is not True):
+                    raise RuntimeError("Workspace navigation retained an unreviewed Source draft")
+                before_click = select_preview_attribute()
+                preview_element = webdriver_request(
+                    base_url, "POST", f"/session/{driver_session}/element",
+                    {"using": "css selector", "value": "#preview-required"},
+                ).get("value", {})
+                preview_element_id = preview_element.get(webdriver_element_key)
+                if not preview_element_id:
+                    raise RuntimeError("Native WebView2 preview button is missing")
+                webdriver_request(
+                    base_url, "POST",
+                    f"/session/{driver_session}/element/{preview_element_id}/click", {},
+                )
+                shown = preview_ui()
+                if (shown.get("previewHidden") is not False
+                        or "未審査の変更候補" not in shown.get("previewStatus", "")
+                        or shown.get("editorText") != before_click.get("editorText")
+                        or shown.get("editorEditable") != "false"
+                        or shown.get("acceptButtonPresent") is not False):
+                    raise RuntimeError("Native preview changed read-only Source or claimed Accept")
+                try:
+                    candidate = json.loads(shown["previewText"])
+                except (KeyError, ValueError, TypeError) as error:
+                    raise RuntimeError("Native preview is not typed JSON") from error
+                expected_revision = shown.get("revision")
+                expected = {
+                    "schema": "tei.reference.studio-edit/v0",
+                    "origin": "studio",
+                    "intent": "選択したData属性を必須にする候補",
+                    "view": "required",
+                    "subject": "attribute:" + preview_subject,
+                    "operation": "set-attribute-required",
+                    "required": True,
+                    "expectedModelRevision": expected_revision,
+                }
+                if (not isinstance(expected_revision, str)
+                        or not re.fullmatch(r"sha256:[0-9a-f]{64}", expected_revision)
+                        or not isinstance(candidate, dict)
+                        or any(candidate.get(key) != value for key, value in expected.items())
+                        or not isinstance(candidate.get("id"), str)
+                        or not candidate["id"].startswith("required-")
+                        or set(candidate) != set(expected) | {"id"}):
+                    raise RuntimeError("Native candidate does not match qualified Host revision and Subject")
+                preview_observations[target] = {
+                    "candidate": candidate,
+                    "workspaceId": target,
+                    "sourceUnchanged": True,
+                    "nativeWebView2ButtonClicked": True,
+                }
+                if workspace_snapshot(visible_before) != preview_source_before["workspace-2"] or (
+                    workspace_snapshot(visible_after) != preview_source_before["workspace-3"]
+                ):
+                    raise RuntimeError("Read-only candidate preview changed Source Workspace bytes")
+                record("native-webview2-required-draft-preview-verified",
+                       workspace=target, subject=preview_subject, revision=expected_revision)
+            if (preview_observations["workspace-2"]["candidate"]["expectedModelRevision"] ==
+                    preview_observations["workspace-3"]["candidate"]["expectedModelRevision"]):
+                raise RuntimeError("Two independently edited Workspaces have the same Model Revision")
+            if (preview_observations["workspace-2"]["candidate"]["id"] ==
+                    preview_observations["workspace-3"]["candidate"]["id"]):
+                raise RuntimeError("Workspace navigation reused a stale draft identity")
+            facts["native_required_draft"] = preview_observations
+            write_json(evidence_dir / "native-required-draft.json", preview_observations)
+            screenshot = webdriver_request(
+                base_url, "GET", f"/session/{driver_session}/screenshot",
+            ).get("value")
+            if not screenshot:
+                raise RuntimeError("Native required draft screenshot is missing")
+            (evidence_dir / "native-required-draft.png").write_bytes(base64.b64decode(screenshot))
+
         page_state.update({"graphSelection": graph_state, "validationDisplay": validate_state, "bridgeEnvelopes": bridge_response, "graphInspectResponse": graph_response, "observeXeadUi": xead_state, "observeXeadBridge": observe_envelope, "observeXeadEmptyUi": empty_state, "observeXeadEmptyBridge": empty_envelope, "observeXeadMissingUi": missing_state, "observeXeadMissingBridge": missing_envelope})
         write_json(evidence_dir / "page-state.json", page_state)
         record("workbench-catalog-inspect-validate-verified", pathname=page_state["pathname"], catalog_entries=len(entries), initial_subject="sales.order", inspected_subject=child.get("id"), validation_summary=expected_summary, displayed_findings=len(validation_findings))
