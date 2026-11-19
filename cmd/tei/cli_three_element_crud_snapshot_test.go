@@ -21,24 +21,32 @@ func TestThreeElementCRUDSnapshotCLIIsBoundAndReadOnly(t *testing.T) {
 		},
 	}}
 	raw, err := json.Marshal(model)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(t.TempDir(), "model.json")
-	if err := os.WriteFile(path, raw, 0600); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
 	var out strings.Builder
 	exit, err := runThreeElementCommand([]string{"crud-snapshot", "-model", path}, &out)
-	if err != nil || exit != 0 { t.Fatalf("exit=%d err=%v body=%s", exit, err, out.String()) }
+	if err != nil || exit != 0 {
+		t.Fatalf("exit=%d err=%v body=%s", exit, err, out.String())
+	}
 	var got struct {
 		SchemaVersion string `json:"schemaVersion"`
-		OK bool `json:"ok"`
-		OKScope string `json:"okScope"`
-		Result struct {
-			SchemaVersion string `json:"schemaVersion"`
-			ModelFingerprint string `json:"modelFingerprint"`
-			Rows []threeelement.CRUDTable `json:"rows"`
-			Origins []threeelement.CRUDCellOrigin `json:"origins"`
+		OK            bool   `json:"ok"`
+		OKScope       string `json:"okScope"`
+		Result        struct {
+			SchemaVersion    string                        `json:"schemaVersion"`
+			ModelFingerprint string                        `json:"modelFingerprint"`
+			Rows             []threeelement.CRUDTable      `json:"rows"`
+			Origins          []threeelement.CRUDCellOrigin `json:"origins"`
 		} `json:"result"`
 	}
-	if err := json.Unmarshal([]byte(out.String()), &got); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal([]byte(out.String()), &got); err != nil {
+		t.Fatal(err)
+	}
 	if got.SchemaVersion != "tei.cli.three-element.crud-snapshot/v0" ||
 		got.Result.SchemaVersion != "tei.three-element.crud-snapshot/v0" ||
 		!got.OK || got.OKScope != "projection-produced-only" {
@@ -51,12 +59,18 @@ func TestThreeElementCRUDSnapshotCLIIsBoundAndReadOnly(t *testing.T) {
 		t.Fatalf("lost CRUD cell or original declarations: %+v", got.Result)
 	}
 	after, err := os.ReadFile(path)
-	if err != nil || string(after) != string(raw) { t.Fatal("read-only command changed its model file") }
+	if err != nil || string(after) != string(raw) {
+		t.Fatal("read-only command changed its model file")
+	}
 }
 
 func TestThreeElementCRUDSnapshotCLIRejectsMissingModel(t *testing.T) {
 	var out strings.Builder
 	exit, err := runThreeElementCommand([]string{"crud-snapshot"}, &out)
-	if err != nil || exit != 2 { t.Fatalf("exit=%d err=%v", exit, err) }
-	if !strings.Contains(out.String(), "INVALID_ARGUMENT") { t.Fatal(out.String()) }
+	if err != nil || exit != 2 {
+		t.Fatalf("exit=%d err=%v", exit, err)
+	}
+	if !strings.Contains(out.String(), "INVALID_ARGUMENT") {
+		t.Fatal(out.String())
+	}
 }
