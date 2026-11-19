@@ -91,8 +91,8 @@ jobs:
     # In one scratch-only attempt the existing Studio form emits a typed
     # candidate. Shared Acceptance reviews and saves the exact Data cell;
     # both TEI invokers then rebuild the Reader/Bundle, and an isolated Wails
-    # Desktop shows the saved Source. Form interaction is VM-backed here,
-    # not proof of a human acceptance or a Wails UI editing session.
+    # Desktop shows accepted Source after a real Edge form submission.
+    # This does not establish human acceptance or in-Wails editing.
     runs-on: windows-2022
     timeout-minutes: 65
     env:
@@ -134,6 +134,13 @@ jobs:
             npm ci --no-audit --no-fund
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally { Pop-Location }
+          # A pinned real browser harness, outside all Source Workspaces.
+          $playwrightRoot = Join-Path $env:RUNNER_TEMP 'tei-studio-playwright'
+          npm install --prefix $playwrightRoot --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.56.1
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $playwrightRoot 'node_modules/playwright-core/index.mjs'))) {
+            throw 'Pinned Playwright installation failed'
+          }
+          $env:TEI_STAGE_PLAYWRIGHT_ROOT = $playwrightRoot
           # Only the old Data is authored directly by this test. The changed
           # Source MUST come from the existing offline Editor → typed candidate
           # → Shared Acceptance Review/Accept; never write required: yes here.
@@ -168,6 +175,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Studio form → Shared Acceptance failed' }
           $accepted = Get-Content -LiteralPath $acceptReceipt -Raw | ConvertFrom-Json
           if ($accepted.schema -ne 'tei.reference.studio-stage-source-accept/v0' -or
+              $accepted.editorTransport -ne 'real-edge-offline-form-playwright' -or
+              $accepted.realBrowserEditing -ne 'observed-in-this-attempt' -or
+              $accepted.browserScreenshotDigest -notmatch '^sha256:[0-9a-f]{64}$' -or
+              @($accepted.browserPageErrors).Count -ne 0 -or
+              @($accepted.browserNetworkRequests).Count -ne 0 -or
               $accepted.sourceChangedOneCell -ne $true -or
               $accepted.previewAndReviewDidNotWriteSource -ne $true -or
               $accepted.unreviewedAcceptRefused -ne $true -or
@@ -203,7 +215,7 @@ jobs:
           }
           if ($accepted.expectedModelRevision -eq $accepted.savedModelRevision -or
               $accepted.beforeSourceDigest -eq $accepted.afterSourceDigest -or
-              $accepted.editorTransport -ne 'exact-offline-form-script-vm') {
+              $accepted.editorTransport -ne 'real-edge-offline-form-playwright') {
             throw 'Source revision or Studio form provenance was not established'
           }
           foreach ($name in @(
@@ -242,6 +254,7 @@ jobs:
           path: |
             ${{ runner.temp }}/tei-studio-staged-desktop-evidence.json
             ${{ runner.temp }}/tei-studio-source-accept-receipt.json
+            ${{ runner.temp }}/tei-studio-stage-required-form.png
             ${{ runner.temp }}/tei-studio-stage-required-edit.json
             ${{ runner.temp }}/tei-studio-stage-required-candidate.json
             ${{ runner.temp }}/tei-studio-generated-desktop-stage/stage2-desktop-smoke/**
