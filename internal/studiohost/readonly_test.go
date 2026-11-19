@@ -226,33 +226,33 @@ func TestFailureClassifyCompletesMissingRetryWithoutDiscardingExplicitContract(t
 		wantUnknown bool
 	}{
 		{
-			name: "code only technical",
-			input: Failure{Code: "COMMAND_FAILED", Message: "failed"},
+			name:     "code only technical",
+			input:    Failure{Code: "COMMAND_FAILED", Message: "failed"},
 			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
 		},
 		{
-			name: "explicit technical kind with missing retry",
-			input: Failure{Code: "COMMAND_FAILED", Message: "failed", Kind: "technical_failure"},
+			name:     "explicit technical kind with missing retry",
+			input:    Failure{Code: "COMMAND_FAILED", Message: "failed", Kind: "technical_failure"},
 			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
 		},
 		{
-			name: "explicit retry policy with missing kind",
-			input: Failure{Code: "COMMAND_FAILED", Message: "failed", Retryable: "lookup_first"},
+			name:     "explicit retry policy with missing kind",
+			input:    Failure{Code: "COMMAND_FAILED", Message: "failed", Retryable: "lookup_first"},
 			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
 		},
 		{
-			name: "explicit business kind with missing retry",
-			input: Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "denied", Kind: "business_rejection"},
+			name:     "explicit business kind with missing retry",
+			input:    Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "denied", Kind: "business_rejection"},
 			wantKind: "business_rejection", wantRetry: "not_retryable", wantUnknown: false,
 		},
 		{
-			name: "disagreeing explicit kind fails closed",
-			input: Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "failed", Kind: "technical_failure"},
+			name:     "disagreeing explicit kind fails closed",
+			input:    Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "failed", Kind: "technical_failure"},
 			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
 		},
 		{
-			name: "unknown code and explicit business kind fail closed",
-			input: Failure{Code: "FUTURE_CODE", Message: "failed", Kind: "business_rejection"},
+			name:     "unknown code and explicit business kind fail closed",
+			input:    Failure{Code: "FUTURE_CODE", Message: "failed", Kind: "business_rejection"},
 			wantKind: "business_rejection", wantRetry: "lookup_first", wantUnknown: true,
 		},
 		{
@@ -262,8 +262,8 @@ func TestFailureClassifyCompletesMissingRetryWithoutDiscardingExplicitContract(t
 			wantKind: "business_rejection", wantRetry: "not_retryable", wantUnknown: false,
 		},
 		{
-			name: "explicit effect uncertainty is never cleared",
-			input: Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "unknown", EffectUnknown: true},
+			name:     "explicit effect uncertainty is never cleared",
+			input:    Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "unknown", EffectUnknown: true},
 			wantKind: "business_rejection", wantRetry: "not_retryable", wantUnknown: true,
 		},
 	}
