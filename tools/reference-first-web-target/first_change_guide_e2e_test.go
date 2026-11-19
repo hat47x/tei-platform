@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"net"
 	"encoding/json"
 	"errors"
 	"os"
@@ -219,57 +220,33 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		t.Fatal("step 2: the pre-edit read answered no quantity rule for the same line")
 	}
 
-	// Step 5: the same Workspace in the first Web Target, in a real browser.
+	// Step 5: execute the handbook's literal go-run shell block, against
+	// the same isolated PostgreSQL database and edited Workspace as steps 0-4.
+	// Do not mistake a separately built binary for the published entry point.
 	browser := os.Getenv("TEI_VIEW_BROWSER_BINARY")
 	if browser == "" {
 		t.Skip("TEI_VIEW_BROWSER_BINARY is unset; step 5's browser receipt not run")
 	}
-	// Build the actual first Web Target entry point instead of invoking its
-	// in-process test Host. This exercises the zero-injected-Reader CLI,
-	// its default authentication fixtures and the explicit PostgreSQL flag.
-	// The guide uses "go run"; building then starting the same package avoids
-	// leaving a go-run child process alive when the test stops the server.
-	webBinary := filepath.Join(t.TempDir(), "first-web-target")
-	buildWeb := exec.Command("go", "build", "-o", webBinary, "./tools/reference-first-web-target")
-	buildWeb.Dir = repoRootForGuide(t)
-	if _, err := buildWeb.CombinedOutput(); err != nil {
-		t.Fatalf("cannot build the shipped first Web Target: %v (output withheld)", err)
-	}
-	revision := exec.Command("git", "rev-parse", "HEAD")
-	revision.Dir = repoRootForGuide(t)
-	headBytes, err := revision.Output()
+	const address = "127.0.0.1:8080"
+	available, err := net.Listen("tcp", address)
 	if err != nil {
-		t.Fatalf("cannot resolve the guide's actual checkout revision: %v", err)
+		t.Fatalf("step 5: the published Web port is occupied: %v", err)
 	}
-	head := strings.TrimSpace(string(headBytes))
-	address := freeLoopbackAddress(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	web := exec.CommandContext(ctx, webBinary,
-		"-serve-read-from-db",
-		"-diagnostic-unaccepted-source",
-		"-workspace", root, "-application", "order_entry",
-		"-baseline-id", "B", "-baseline-revision", head,
-		"-target-revision", head, "-listen", address,
-	)
-	web.Dir = repoRootForGuide(t)
-	// Only the child process receives the DSN. It is never an argument,
-	// part of the edited Workspace or part of a test failure message.
-	web.Env = append(os.Environ(), readDSNEnv+"="+dsn)
-	if err := web.Start(); err != nil {
-		cancel()
-		t.Fatalf("cannot start the shipped first Web Target: %v", err)
+	if err := available.Close(); err != nil {
+		t.Fatal("step 5: cannot release the published Web port")
 	}
-	done := make(chan error, 1)
-	go func() { done <- web.Wait() }()
-	t.Cleanup(func() {
-		cancel()
-		select {
-		case <-done:
-		case <-time.After(10 * time.Second):
-			t.Error("the shipped first Web Target did not stop")
-		}
-	})
-	waitForHealth(t, address, done)
+	webScript := documentedGuideShellStep(t, handbook,
+		"## 5. Webの画面で同じ答えを見る", "## まだできないこと")
+	if !strings.Contains(webScript, "export TEI_WEB_READ_PG_DSN=\"$TEI_VIEW_PG_DSN\"") ||
+		!strings.Contains(webScript, "go run ./tools/reference-first-web-target") {
+		t.Fatal("step 5 must contain the published DSN export and go-run entry")
+	}
+	// The POSIX subprocess helper kills the whole process group, including the
+	// compiled child of go run, so the server cannot survive the test.
+	webDone := startDocumentedGuideWeb(t, webScript, repoRootForGuide(t),
+		append(os.Environ(), "TEI_VIEW_PG_DSN="+dsn, "TEI_FIRST_WORKSPACE="+root))
+	waitForHealth(t, address, webDone)
+
 	// The published step 5 chooses row 0 (order 1001), then row 1
 	// (order 1002). Both selections must reach the SAME shipped Web process,
 	// edited Source and PostgreSQL database. This still automates POST using
@@ -303,9 +280,9 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 			}
 		})
 	}
-	// Keep the established CI receipt prefix, but do not imply that step 5's
-	// published go-run command or real form entry was executed verbatim.
-	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; shipped Web with automated bootstrap POST for orders 1001 and 1002 (not human form input)")
+	// Keep the established CI receipt prefix. Step 5 runs the published go-run
+	// command; Chrome still uses test bootstrap POST, not shipped-form entry.
+	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-5 published shell including actual go run; bootstrap POST for orders 1001 and 1002 (not shipped-form input or human completion)")
 }
 
 // documentedGuideShellStep returns the commands from the published POSIX
