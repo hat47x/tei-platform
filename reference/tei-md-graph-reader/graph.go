@@ -317,7 +317,29 @@ func (c Candidate) Outgoing() map[string][]string {
 // deliberately tiny Mermaid subset and does not interpret Mermaid as meaning.
 var tinyArrow = regexp.MustCompile(`^\s*([A-Za-z][A-Za-z0-9]*)(?:\[[^\]]*\])?\s+-->\|([^|]+)\|\s+([A-Za-z][A-Za-z0-9]*)(?:\[[^\]]*\])?\s*$`)
 
+// DerivedViewAudit describes only the edge coverage of the tiny Mermaid view.
+// It is not a semantic acceptance, a proof of node coverage, or a write intent.
+// An edge ID denotes one occurrence: parallel edges must not be collapsed.
+type DerivedViewAudit struct {
+	Exact             bool
+	MissingEdgeIDs    []string
+	UnexpectedEdgeIDs []string
+	EndpointChanges   []string
+}
+
+// CheckDerivedView retains the original exact-match interface for consumers.
 func CheckDerivedView(source []byte, c Candidate, aliases map[string]string) (bool, error) {
+	audit, err := AuditDerivedView(source, c, aliases)
+	if err != nil {
+		return false, err
+	}
+	return audit.Exact, nil
+}
+
+// AuditDerivedView contrasts a read-only diagram with the authored edge table.
+// Unknown display aliases and duplicate diagram edge IDs remain errors. A
+// diagram difference never changes the meaning candidate or its Source spans.
+func AuditDerivedView(source []byte, c Candidate, aliases map[string]string) (DerivedViewAudit, error) {
 	inMermaid, found := false, false
 	diagram := map[string][2]string{}
 	for _, ln := range sourceLines(source) {
@@ -338,29 +360,40 @@ func CheckDerivedView(source []byte, c Candidate, aliases map[string]string) (bo
 		}
 		m := tinyArrow.FindStringSubmatch(v)
 		if m == nil {
-			return false, &Diagnostic{Code: "UNSUPPORTED_MERMAID_VIEW", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
+			return DerivedViewAudit{}, &Diagnostic{Code: "UNSUPPORTED_MERMAID_VIEW", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
 		}
 		from, ok1 := aliases[m[1]]
 		to, ok2 := aliases[m[3]]
 		if !ok1 || !ok2 {
-			return false, &Diagnostic{Code: "UNBOUND_DISPLAY_ALIAS", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
+			return DerivedViewAudit{}, &Diagnostic{Code: "UNBOUND_DISPLAY_ALIAS", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
 		}
 		if _, ok := diagram[m[2]]; ok {
-			return false, &Diagnostic{Code: "DUPLICATE_VIEW_EDGE", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: m[2]}
+			return DerivedViewAudit{}, &Diagnostic{Code: "DUPLICATE_VIEW_EDGE", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: m[2]}
 		}
 		diagram[m[2]] = [2]string{from, to}
 	}
 	if !found || inMermaid {
-		return false, &Diagnostic{Code: "UNSUPPORTED_MERMAID_VIEW", Detail: "missing or unclosed Mermaid fence"}
+		return DerivedViewAudit{}, &Diagnostic{Code: "UNSUPPORTED_MERMAID_VIEW", Detail: "missing or unclosed Mermaid fence"}
 	}
-	if len(diagram) != len(c.Edges) {
-		return false, nil
-	}
+	var audit DerivedViewAudit
+	authored := make(map[string][2]string, len(c.Edges))
 	for _, edge := range c.Edges {
-		endpoints, ok := diagram[edge.ID]
-		if !ok || endpoints != [2]string{edge.From, edge.To} {
-			return false, nil
+		authored[edge.ID] = [2]string{edge.From, edge.To}
+		actual, present := diagram[edge.ID]
+		if !present {
+			audit.MissingEdgeIDs = append(audit.MissingEdgeIDs, edge.ID)
+		} else if actual != authored[edge.ID] {
+			audit.EndpointChanges = append(audit.EndpointChanges, edge.ID)
 		}
 	}
-	return true, nil
+	for id := range diagram {
+		if _, exists := authored[id]; !exists {
+			audit.UnexpectedEdgeIDs = append(audit.UnexpectedEdgeIDs, id)
+		}
+	}
+	sort.Strings(audit.MissingEdgeIDs)
+	sort.Strings(audit.UnexpectedEdgeIDs)
+	sort.Strings(audit.EndpointChanges)
+	audit.Exact = len(audit.MissingEdgeIDs) == 0 && len(audit.UnexpectedEdgeIDs) == 0 && len(audit.EndpointChanges) == 0
+	return audit, nil
 }
