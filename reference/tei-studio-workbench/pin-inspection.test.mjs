@@ -127,3 +127,26 @@ test("PIN-UI-08: missing Inspector authority limits cannot qualify a pin", async
   assert.equal(await pin.pin("workspace-a", 1, A), false);
   assert.equal(pin.current().observation.state, "unavailable");
 });
+
+
+test("PIN-UI-09: a delayed reply cannot qualify a changed Model Revision", async () => {
+  const pending = deferred();
+  let snapshot = catalog();
+  const { pin } = manager(() => pending.promise, () => snapshot);
+  const task = pin.pin("workspace-a", 1, A);
+  snapshot = { ...snapshot, modelRevision: "m2" };
+  pending.resolve(reply(A));
+  assert.equal(await task, false);
+  assert.equal(pin.current().observation.state, "unavailable");
+});
+
+test("PIN-UI-10: a delayed reply cannot qualify a changed Source Index", async () => {
+  const pending = deferred();
+  let snapshot = catalog();
+  const { pin } = manager(() => pending.promise, () => snapshot);
+  const task = pin.pin("workspace-a", 1, A);
+  snapshot = catalog("w1", "s2");
+  pending.resolve(reply(A));
+  assert.equal(await task, false);
+  assert.equal(pin.current().observation.state, "unavailable");
+});

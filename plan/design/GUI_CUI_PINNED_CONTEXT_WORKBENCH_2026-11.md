@@ -1022,3 +1022,15 @@ UIの認知順序は「対象を選ぶ→固定する→別の対象を調べる
 ### 30.4 マージ判定
 
 本節は既存実装と計画の齟齬を訂正する文書更新であり、コード・実Desktopの新たな受入を宣言しない。文書索引、差分、必須CIを確認したうえで単独マージできる。一方、G1〜G5は個別の実装・検収票で追跡し、文書マージを完了証拠へ転用しない。
+
+
+## 31. 2026-11-19 固定対象の遅延応答とRevision失効の回帰追加
+
+現在の`pin-inspection.ts`は、Reader応答を受け取った時点でCatalogの`modelRevision`、`worldFingerprint`、`sourceIndexFingerprint`を再比較する。既存の`PIN-UI-07`はWorld Fingerprintの変更だけを直接検査していた。実装の意図をテストで明示するため、`pin-inspection.test.mjs`に次の2件を追加した。
+
+- **PIN-UI-09**：Pin AのReader応答を保留したままModel Revisionを`m1→m2`に変更。旧応答が到着しても`inspected`にしない。
+- **PIN-UI-10**：同様にSource Index Fingerprintを`s1→s2`に変更。旧応答が到着しても`inspected`にしない。
+
+両者ともReaderの遅延とCatalogの更新を組み合わせた**負例**であり、Pinの「検査済み」を単なるSubject Kind/ID一致やWorld Fingerprint単独一致で再利用しないための契約である。既存の通常Inspect/Editorを操作するテストではなく、Source/Grantの権限検査や実WebView2の代用にもならない。
+
+**判定**：コードと計画を同一PRで変更した段階。Node24のテスト・型検査・埋込みBundle整合・Windows実機は**このHEADで未確認**。CIで負例が成功し、既存の回帰を壊していないことを確認してから受け入れる。小規模な回帰追加なので、他の機能PRへ混ぜず独立してマージ可能とする。

@@ -431,4 +431,38 @@ KaTeXは表示Adapterの候補とし、**式の出現ID、元byte span、Documen
 
 **Owner境界**：MarkdownのSourceとRole選択は#2621/#988/#4370、表現型・逆写像と束縛は#2497/#4353、MeaningとTarget実行は#2620/#4660および既存Operator/Provider、独立Expectedは#1180/#2514、著作文書と納品物はSHO #5とする。Reader/Renderer/Target/受入の第二正本を増やさない。この作業はP1であり、#2831/#4583のStudio Stage1→Stage2と#1251/#2586の通常CLI実ProviderのP0を妨げない。
 
+### 10.17.1 製品実装への最小引渡し（追加契約）
+
+**Markdown Readerが式を選び、KaTeXは選ばれたTeX断片だけを描く。** KaTeXの`renderToString`へ渡すのはDelimiterを除いた式本体であり、DOM全体へのauto-renderを正式なSource認識経路に使わない。引用中の数式は文書として表示してよいが、引用というRoleを保持し、実行定義としては受理しない。説明用式の表示、意味候補の提示、受理済み式のInspector表示は、外観を共用しても受理資格を共用しない。
+
+新しいCanonical型やRegistryを設けず、既存Source Index／Projection／Build Evidenceへ以下の観測情報を渡す。
+
+| 境界 | 必ず受け渡す情報 | 未対応時の扱い |
+| --- | --- | --- |
+| Source → 表示選択 | 選択済みの元byte列・Source Revision、UTF-8 byte span、出現ID、Authoring Role、Delimiter Profile、TeX原文 | 正式Reader未接続なら`unsupported`。Reference抽出の成功を製品成功としない |
+| 選択 → KaTeX Adapter | 上記出現の式本体、inline/display、文書単位Macroと実効版、固定したKaTeX/CSS/font版・安全設定 | Macro依存が不明なら該当文書の表示を保守的に失効。古い描画応答は現在版へ昇格しない |
+| Adapter → Studio/SHO | HTML+MathMLまたは位置付き診断、使用した資産版、Sourceに戻るread-only locator、出力先別loss | 不正TeXを空の成功表示にせず、原文を保持。画像化／MathML欠落／式参照断絶を黙認しない |
+| 表示 → 意味編集・Target | 現在のSource/Occurrence/Writer/Grant、明示ReviewとAccept、受理済みExpression／Operator参照、実Consumer別Evidence | プレビュー選択から直接書き戻さない。Meaning未受理ならBuild／実行へ進めない |
+
+**最初の固定Fixture**は、①通貨`$100`・コード・引用・式が共存するMarkdown、②同一TeXを文書A/Bの異なるMacro定義で描く二文書、③原文は同一だが単位・定義域・Roleが異なる二つの意味候補、の三組に絞る。各組についてRaw Source・選択されたMath範囲・表示結果／エラー・意味受理状態・出力先資格を別欄に記録し、期待値は製品出力から生成しない。最初はReference表示と実Wails表示の結果を明確に区別する。
+
+**受入IDの二重管理を避ける。** 数理Toolkit計画§25の`KTX-01〜12`は領域横断の受入条件、#5683の`KTEI-01〜12`はSource/Renderer/Studio側の具体的な反例である。対応する試験は既存#1180／#2514の同じ独立Expected・同じ実Attemptに結び、名前だけ異なる二つのOracleやRunnerを作らない。SHO #5のA1〜A5は文書Targetの追加Consumer条件であり、TEIのMeaning受理条件を代行しない。
+
+KaTeXの依存を製品に入れる際は、固定版と配布資産（CSS・fontを含む）のハッシュ／ライセンス／CSPと実オフライン読込みを確認する。設定候補は`trust:false`、有限`maxExpand`・`maxSize`、明示`strict`、失敗を捕捉する`throwOnError:true`、`output:htmlAndMathml`であり、制限値は負荷・互換性試験の結果に基づき確定する。共有Macroオブジェクトは`\gdef`等による状態変更を含むため、文書・表示Attempt間で使い回さない。安全な版の採用と安全な描画結果の実証は別々に判定する。
+
 **現況（2026-11-19）**：設計の引渡しと試験計画まで。KaTeXの新規製品導入・実Wails表示・数理的Claim検証・PDF/DOCX生成・Owner受理はNOT RUN。
+
+<!-- tei-md-katex-k0-product-reader-boundary-20261119 -->
+### 10.18 現行Readerで先に検証できる範囲と、KaTeX連携の未接続部分
+
+現行の製品`workspace.Load`には、Workspaceで明示選択した`tei.rule-authoring/v0`の`tei` Fenceから既存Validationを読み取る経路と、`tei.authoring/v1`の明示Data表を読む経路がある（`internal/workspace/rule_authoring_markdown_loader.go`、`tei_md_rule_authoring_test.go`、`tei_md_data_table_test.go`）。一方、すべてのMarkdown／数式を認識する汎用Frontendができたわけではない。未選択言語・未対応Sourceを正常な空Worldに変えない拒否は引き続き必要である。
+
+KaTeXの最初の製品側回帰を`internal/workspace/tei_md_katex_source_boundary_test.go`に置き、選択済みRule Sourceの前に通貨`$100`、インライン数式、`\\(...\\)`、`\\[...\\]`、Display式、`math` Fence、説明用マクロ、インラインコード、日本語を挿入する。確認対象は**(a) 既存Validation二件の意味が変わらない、(b) 定義件数が増えない、(c) RuleのSource Indexが挿入後の原UTF-8 byteを指す、(d) 説明だけを変えた旧Indexは失効する、(e) 数式のみの選択済みRule Sourceを定義として受け付けない**、の五点である。独立した既存Rule Fixtureとの比較を用い、表示結果から期待値を生成しない。
+
+これは**K0のうち「表示予定の数式が勝手にMeaningへ昇格しない」側の製品回帰**にすぎない。Math token／Delimiter Profileの正しい抽出、出現IDとbyte span、文書単位Macro依存、HTML+MathML、KaTeX/CSS/font実Bundle、WailsのWebView、SHO各Target、Owner受理は全件未接続である。既存Scannerの`tei`定義領域をKaTeXの自動Math検出器として転用しない。
+
+受入票の名前は、[数理Toolkit計画§25](CROSS_DOMAIN_MATH_STATISTICS_PLANNING_TOOLKITS_2026-11.md#25-katexの表示とteiの式意味を分ける受入契約2026-11-19)の横断契約`KTX-01〜12`、[TEI #5683](https://github.com/hat47x/tei-platform/issues/5683)の実装段階`KTEI-01〜12`を維持する。重なりは別々に合格判定せず、同じ既存#1180/#2514のExpected/Attemptへの**参照**として追跡する。最初の対応は`KTX-01/02/08/12` ↔ `KTEI-01/02/05/08/09`。K0製品テストがPASSしても、KTEI-01のMath token識別とKTEI-02のBOM/CRLFは未合格である。
+
+次の実装PRは#5683内で**Sourceの一出現をread-onlyに選択して、既存Source Indexへ正しいbyte範囲を対応付ける**ところから始める。未対応Delimiterを明示`UNSUPPORTED`とし、意味の`Accept`・実行・書戻しとは切り離す。K1のKaTeX Adapterと版固定・オフライン配布はその後に限定する。Studio Stage1→Stage2および通常CLI実ProviderのP0は変更しない。
+
+**証拠資格**：本節の追加時点ではテストコードの作成まで。CIの対象HEADでの実行確認、Math token選択、KaTeX実描画、Owner受理は別途検証する。

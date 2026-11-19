@@ -31,7 +31,7 @@ func writeThreeElementResponse(out io.Writer, response threeElementResponse, exi
 
 func runThreeElementCommand(args []string, out io.Writer) (int, error) {
 	if len(args) == 0 {
-		return failThreeElement("INVALID_ARGUMENT", "three-element requires a subcommand: validate|crud|cross-reference|diff|rea-intake|rea-candidates|rea-compare", 2, out)
+		return failThreeElement("INVALID_ARGUMENT", "three-element requires a subcommand: validate|crud|crud-snapshot|cross-reference|diff|rea-intake|rea-candidates|rea-compare", 2, out)
 	}
 	sub := args[0]
 	switch sub {
@@ -39,6 +39,8 @@ func runThreeElementCommand(args []string, out io.Writer) (int, error) {
 		return runThreeElementValidate(args[1:], out)
 	case "crud":
 		return runThreeElementCRUD(args[1:], out)
+	case "crud-snapshot":
+		return runThreeElementCRUDSnapshot(args[1:], out)
 	case "cross-reference":
 		return runThreeElementCrossReference(args[1:], out)
 	case "diff":
