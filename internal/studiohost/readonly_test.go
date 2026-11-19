@@ -264,11 +264,13 @@ func TestFailureClassifyCompletesMissingRetryWithoutDiscardingExplicitContract(t
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.input.classify()
+			inProcess := tt.input
+			got := inProcess.classify()
 			if got.Kind != tt.wantKind || got.Retryable != tt.wantRetry || got.EffectUnknown != tt.wantUnknown {
 				t.Fatalf("in-process failure: got %+v; want kind=%q retry=%q effectUnknown=%t", got, tt.wantKind, tt.wantRetry, tt.wantUnknown)
 			}
-			b, err := json.Marshal(&tt.input)
+			wireInput := tt.input
+			b, err := json.Marshal(&wireInput)
 			if err != nil {
 				t.Fatal(err)
 			}
