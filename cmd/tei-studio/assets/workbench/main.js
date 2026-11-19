@@ -18668,7 +18668,7 @@ function createReadOnlyClient(callByName) {
     catalogWorkspace: (workspaceID, namespace = "") => call("catalog", workspaceID, namespace),
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
-    observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
+    observeXead: (workspaceID, relativePath2) => call("observeXead", workspaceID, relativePath2),
     viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
     viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
     viewPackage: (workspaceID, applicationID, packageID) => call("viewPackage", workspaceID, applicationID, packageID),
@@ -19074,6 +19074,124 @@ function handleXeadPathKeydown(event, observe) {
   return true;
 }
 
+// source-locations.ts
+var MAX_VISIBLE_REFERENCES = 20;
+var SOURCE_LOCATIONS_ERROR = "INVALID_SOURCE_LOCATIONS_RESPONSE";
+function invalid() {
+  throw Error(SOURCE_LOCATIONS_ERROR);
+}
+function object(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) invalid();
+  return value;
+}
+function exactSubject(raw, expected) {
+  const subject3 = object(raw);
+  if (typeof subject3.kind !== "string" || typeof subject3.id !== "string" || subjectKey({ kind: subject3.kind, id: subject3.id }) !== subjectKey(expected))
+    invalid();
+}
+function relativePath(raw) {
+  if (typeof raw !== "string" || !raw || raw.startsWith("/") || raw.includes("\\") || raw.includes("\0") || raw.split("/").some((segment) => segment === "" || segment === "." || segment === "..") || raw.split("/")[0].includes(":"))
+    invalid();
+  return raw;
+}
+function bytePosition(raw) {
+  const value = object(raw);
+  const { offset, line, column } = value;
+  if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(line) || line < 1 || !Number.isSafeInteger(column) || column < 1)
+    invalid();
+  return { line, column, byteOffset: offset };
+}
+function byteRange(raw) {
+  const range = object(raw);
+  const start = bytePosition(range.start), end = bytePosition(range.end);
+  if (start.byteOffset > end.byteOffset) invalid();
+  return { start, end };
+}
+function readSourceLocations(raw, expected, catalog) {
+  const inspection = readInspection(raw, expected, catalog);
+  const sources = object(object(raw).sources);
+  exactSubject(sources.subject, expected);
+  const references = sources.references === null ? [] : sources.references;
+  const artifacts = sources.artifacts === null ? [] : sources.artifacts;
+  if (!Array.isArray(references) || !Array.isArray(artifacts)) invalid();
+  const fingerprints = /* @__PURE__ */ new Map();
+  for (const rawArtifact of artifacts) {
+    const artifact = object(rawArtifact);
+    const path = relativePath(artifact.path);
+    if (fingerprints.has(path) || typeof artifact.fingerprint !== "string" || !artifact.fingerprint)
+      invalid();
+    fingerprints.set(path, artifact.fingerprint);
+  }
+  const visible = [];
+  for (const [i, rawReference] of references.entries()) {
+    const reference = object(rawReference);
+    exactSubject(reference.subject, expected);
+    const path = relativePath(reference.artifactPath);
+    const fingerprint = fingerprints.get(path);
+    if (!fingerprint || typeof reference.role !== "string" || !reference.role)
+      invalid();
+    const range = byteRange(reference.range);
+    if (i < MAX_VISIBLE_REFERENCES) {
+      visible.push({
+        workspaceRelativePath: path,
+        role: reference.role,
+        start: range.start,
+        end: range.end,
+        artifactFingerprint: fingerprint
+      });
+    }
+  }
+  return {
+    sourceStatus: inspection.sourceStatus,
+    observedReferences: references.length,
+    shownReferences: visible,
+    omittedReferences: Math.max(0, references.length - visible.length),
+    completenessEstablished: false
+  };
+}
+function exactDraftText(value, label) {
+  if (typeof value !== "string" || !value || value !== value.trim())
+    throw Error("INVALID_REQUIRED_EDIT_" + label);
+  return value;
+}
+function previewRequiredEditDraft(inspection, selected2, catalog, workspaceHint, candidateID, intent, required) {
+  if (selected2.kind !== "semantic-attribute" || typeof selected2.id !== "string" || !selected2.id)
+    throw Error("REQUIRED_EDIT_NEEDS_ATTRIBUTE");
+  if (typeof required !== "boolean")
+    throw Error("INVALID_REQUIRED_EDIT_CHOICE");
+  exactDraftText(workspaceHint, "WORKSPACE");
+  exactDraftText(candidateID, "CANDIDATE_ID");
+  exactDraftText(intent, "INTENT");
+  if (!/^sha256:[0-9a-f]{64}$/.test(catalog.modelRevision))
+    throw Error("INVALID_REQUIRED_EDIT_MODEL_REVISION");
+  const eligibility = inspectEligibility(catalog, selected2);
+  if (!eligibility.ok)
+    throw Error("REQUIRED_EDIT_SUBJECT_" + eligibility.reason);
+  const locations = readSourceLocations(inspection, selected2, catalog);
+  const definitions = locations.shownReferences.filter((ref) => ref.role === "definition");
+  if (locations.sourceStatus !== "indexed" || locations.omittedReferences !== 0 || definitions.length !== 1 || !/^sha256:[0-9a-f]{64}$/.test(definitions[0].artifactFingerprint))
+    throw Error("REQUIRED_EDIT_SOURCE_OCCURRENCE_UNRESOLVED");
+  return {
+    status: "unreviewed-draft",
+    workspaceHint,
+    sourceObservation: definitions[0],
+    sourceIndexCompletenessEstablished: false,
+    sourceBytesVerified: false,
+    sourceWriteAuthorized: false,
+    edit: {
+      schema: "tei.reference.studio-edit/v0",
+      expectedModelRevision: catalog.modelRevision,
+      id: candidateID,
+      origin: "studio",
+      intent,
+      view: "required",
+      subject: "attribute:" + selected2.id,
+      operation: "set-attribute-required",
+      required
+    }
+  };
+}
+
 // main.ts
 var element = (id) => document.getElementById(id);
 var workspace = element("workspace");
@@ -19094,6 +19212,68 @@ var pinnedVersion = null;
 var pinnedCatalogIdentity = null;
 var pinnedCatalogMatches = () => pinnedCatalogIdentity !== null && pinnedCatalogIdentity === catalogIdentity(catalogSnapshot);
 var commandContext = 0;
+var requiredDraftObservation = null;
+function clearRequiredDraft(message = "\u5BFE\u8C61\u306E\u518D\u78BA\u8A8D\u304C\u5FC5\u8981\u3067\u3059\u3002") {
+  requiredDraftObservation = null;
+  const choice = element("required-choice");
+  choice.value = "true";
+  choice.disabled = true;
+  element("preview-required").disabled = true;
+  element("required-draft-result").textContent = "";
+  element("required-draft-status").textContent = message;
+}
+function enableRequiredDraft(raw, subject3, id, context, request) {
+  if (subject3.kind !== "semantic-attribute" || catalogSnapshot === null) {
+    clearRequiredDraft("Data\u5C5E\u6027\u3092\u9078\u3076\u3068\u3001\u672A\u5BE9\u67FB\u5019\u88DC\u3092\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002");
+    return;
+  }
+  requiredDraftObservation = {
+    workspaceId: id,
+    workspaceEpoch: context,
+    inspectionEpoch: request,
+    subject: subject3,
+    catalog: catalogSnapshot,
+    raw
+  };
+  element("required-choice").disabled = false;
+  element("preview-required").disabled = false;
+  element("required-draft-status").textContent = "\u5019\u88DC\u306E\u8868\u793A\u306E\u307F\u53EF\u80FD\u3067\u3059\u3002Source\u306E\u4FDD\u5B58\u30FB\u53D7\u7406\u306F\u672A\u5BFE\u5FDC\u3067\u3059\u3002";
+}
+function previewSelectedRequiredDraft() {
+  const observed = requiredDraftObservation;
+  const result = element("required-draft-result");
+  result.textContent = "";
+  if (!observed || !selected || catalogSnapshot !== observed.catalog || observed.workspaceId !== workspace.value || observed.workspaceEpoch !== workspaceEpoch || observed.inspectionEpoch !== inspectionEpoch || subjectKey(selected) !== subjectKey(observed.subject)) {
+    clearRequiredDraft("\u5BFE\u8C61\u307E\u305F\u306F\u7248\u304C\u5909\u308F\u308A\u307E\u3057\u305F\u3002\u518D\u5EA6Inspect\u3057\u3066\u304F\u3060\u3055\u3044\u3002");
+    return;
+  }
+  try {
+    const required = element("required-choice").value === "true";
+    const draft = previewRequiredEditDraft(
+      observed.raw,
+      observed.subject,
+      observed.catalog,
+      observed.workspaceId,
+      `workbench-preview-${observed.workspaceEpoch}-${observed.inspectionEpoch}-${required}`,
+      "Data\u5C5E\u6027\u306E\u5FC5\u9808\u6307\u5B9A\u3092\u78BA\u8A8D\u3059\u308B",
+      required
+    );
+    result.textContent = [
+      "\u672A\u5BE9\u67FB\u5019\u88DC\uFF08\u4FDD\u5B58\u4E0D\u53EF\uFF09",
+      `\u610F\u5473ID\uFF1A${draft.edit.subject}`,
+      `\u5909\u66F4\u5185\u5BB9\uFF1Arequired = ${draft.edit.required ? "yes" : "no"}`,
+      `\u89B3\u6E2C\u3057\u305F\u30E2\u30C7\u30EB\u7248\uFF1A${draft.edit.expectedModelRevision}`,
+      `Source\u53C2\u7167\uFF1A${draft.sourceObservation.workspaceRelativePath}:${draft.sourceObservation.start.line}`,
+      "Source Index\u7DB2\u7F85\u6027\uFF1A\u672A\u78BA\u8A8D",
+      "Source\u539F\u6587\u306Ebyte\u4E00\u81F4\uFF1A\u672A\u78BA\u8A8D",
+      "Workspace Grant\u30FBSource Writer\uFF1A\u672A\u78BA\u8A8D",
+      "Preview/Review/Accept/\u4FDD\u5B58\uFF1A\u672A\u63A5\u7D9A"
+    ].join("\n");
+    element("required-draft-status").textContent = "\u672A\u5BE9\u67FB\u5019\u88DC\u3092\u8868\u793A\u3057\u307E\u3057\u305F\u3002\u5143\u306ESource\u306F\u5909\u66F4\u3057\u3066\u3044\u307E\u305B\u3093\u3002";
+  } catch (error) {
+    element("required-draft-status").textContent = `\u5019\u88DC\u3092\u4F5C\u308C\u307E\u305B\u3093\uFF1A${error instanceof Error ? error.message : "INVALID_REQUIRED_DRAFT"}`;
+  }
+}
 var editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
   version: "0",
@@ -19359,6 +19539,7 @@ function renderList() {
 }
 async function inspect(subject3) {
   if (!client || !workspace.value || disposed) return;
+  clearRequiredDraft();
   const eligibility = inspectEligibility(catalogSnapshot, subject3);
   if (!eligibility.ok) {
     responses.invalidate("inspection");
@@ -19395,7 +19576,8 @@ async function inspect(subject3) {
   graph.setSelectedNode(subjectKey(subject3));
   element("graph-note").textContent = related.hidden ? `\u89AA\u5B50\u95A2\u4FC2\u306E\u3046\u30618\u4EF6\u3092\u8868\u793A\uFF08\u307B\u304B${related.hidden}\u4EF6\uFF09` : "\u9078\u629E\u8981\u7D20\u3068\u3001\u4E00\u89A7\u306B\u542B\u307E\u308C\u308B\u76F4\u63A5\u306E\u89AA\u5B50\u95A2\u4FC2";
   return responses.run("inspection", () => client.inspectSubject(id, subject3.kind, subject3.id), (reply) => {
-    const view = readInspection(unwrap(reply), subject3, catalogSnapshot);
+    const raw = unwrap(reply);
+    const view = readInspection(raw, subject3, catalogSnapshot);
     editor.setDocument({
       id: `${id}/${subjectKey(subject3)}`,
       version: view.version,
@@ -19403,6 +19585,7 @@ async function inspect(subject3) {
     });
     element("source-status").textContent = `\u53C2\u7167\u60C5\u5831\uFF1A${view.sourceStatus}`;
     showInspectionLimits(view.authorityLimits);
+    enableRequiredDraft(raw, subject3, id, context, request);
     notice.textContent = "\u9078\u629E\u3057\u305F\u30E2\u30C7\u30EB\u306E\u6295\u5F71\u3092\u8868\u793A\u3057\u3066\u3044\u307E\u3059\u3002";
     notice.dataset.state = "ready";
   }, (error) => {
@@ -19443,6 +19626,7 @@ async function loadWorkspace() {
   if (!client || !workspace.value || disposed) return;
   const context = ++workspaceEpoch, id = workspace.value;
   responses.reset();
+  clearRequiredDraft("\u4F5C\u696D\u9818\u57DF\u3092\u8AAD\u307F\u8FBC\u307F\u4E2D\u3067\u3059\u3002");
   pinState = invalidatePin(pinState);
   pinnedVersion = null;
   element("xead-result").replaceChildren();
@@ -19559,6 +19743,11 @@ element("xead-path").addEventListener("input", () => {
   element("xead-status").textContent = "\u30D1\u30B9\u304C\u5909\u66F4\u3055\u308C\u307E\u3057\u305F\u3002\u672A\u53D6\u5F97";
 });
 element("observe-xead").addEventListener("click", () => void observeXead());
+element("required-choice").addEventListener("change", () => {
+  element("required-draft-result").textContent = "";
+  element("required-draft-status").textContent = "\u6307\u5B9A\u304C\u5909\u308F\u308A\u307E\u3057\u305F\u3002\u5019\u88DC\u3092\u6539\u3081\u3066\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
+});
+element("preview-required").addEventListener("click", previewSelectedRequiredDraft);
 element("xead-path").addEventListener("keydown", (event) => {
   handleXeadPathKeydown(event, () => void observeXead());
 });
@@ -19599,6 +19788,7 @@ window.addEventListener(
   "pagehide",
   () => {
     disposed = true;
+    clearRequiredDraft("\u753B\u9762\u3092\u7D42\u4E86\u3057\u307E\u3057\u305F\u3002");
     responses.dispose();
     ++workspaceEpoch;
     ++inspectionEpoch;
