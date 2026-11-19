@@ -417,3 +417,18 @@ main統合済み[PR #4758](https://github.com/hat47x/tei-platform/pull/4758)で�
 **Readerの次のGo PRへの引渡し**：第一歩はS0-Aで、`workspace.Load`が明示的に選択したSourceの**同じPinned byte列**を正式Readerが消費したと証明することに限る。その結果から参照候補指紋との比較が必要であれば、あくまで診断・テストに利用し、未受理の候補をCanonical Meaningへ無条件登録しない。続くS1で受理されたMeaningから生成コードを作り、S2以降で実Artifact／Plugin／通常`tei` CLI／独立Consumerへ追跡する。これらを単一の`-candidate-shape`照会結果で代用しない。
 
 **今回の状態**：#4758はmain統合済みで、その対象HEADのRepository Health・Cache・既知脆弱性検証は成功。既存Draft [#4725](https://github.com/hat47x/tei-platform/pull/4725)のGraph/Rule Fence・裸Pipe拒否修正は、#4758で追加された`CandidateShapeFingerprint`と`-candidate-shape`を失わないよう最新mainへ載せ直した。**新HEADのGo/CI完了は別途検証**し、正式Reader／Owner／製品Generator／実Provider／Stage2達成とはしない。
+
+<!-- tei-md-katex-projection-handoff-20261119 -->
+### 10.17 KaTeX数式表示をAuthoringから独立したProjectionとして検証する
+
+`*.tei.md`の文章・表・数式・図を自然に書けることと、式をTEIの演算として受理することは別である。数式表示では、**著者が書いたTeX原文とDelimiter Profile**をそのまま保存し、既存Markdown Reader/Source Indexが明示的に選択した出現だけを表示対象とする。通貨表記・inline code・説明用Fence・引用中の数式を誤検出したり、KaTeX表示に成功したという理由でRule/Operatorへ登録したりしない。
+
+KaTeXは表示Adapterの候補とし、**式の出現ID、元byte span、Document Revision、表示用Macroの実効スコープ、Renderer/CSS/fontの版、表示結果**を個別に追跡する。原文が同じでもMacroや表示用資産の変更で表示・著者レビューが失効し得る。逆に見た目が同じでも単位、精度、定義域、NULL規則、適用時点、受理済みExpression/Operator、実Target検証結果が同じとは限らない。式番号・文書内参照は文書構造側で扱い、KaTeXの出力HTMLや表示番号を意味IDの代替にしない。
+
+初期実証は**(1) Source bytes/Math tokenの独立分類 → (2) バンドルしたKaTeXによるread-only HTML+MathML → (3) 実Wails StudioのSourceナビゲーション・オフライン表示・後着Preview対策**に絞る。PDF/DOCXは[SHOの学術文書Target検収](https://github.com/hat47x/sho-composer/issues/5)と既存MMIの責務として別に測る。HTML/MathMLが生成できてもPDF/UA適合、Word編集可能な数式、実読み上げ品質は保証しない。数式編集中のRaw Draft保存は意味解釈エラーと独立させる。
+
+具体的な正負の独立Expected、BOM/CRLFと日本語、Macro文書間漏れ、A→B→A、同名label、未対応式・巨大式・信頼しないリンク、Rendererだけの改版、Target別lossは[TEI #5683](https://github.com/hat47x/tei-platform/issues/5683)へ集約する。2026年の[KaTeXの安全性修正](https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7)を踏まえ、採用版は少なくとも0.18.2以上とし、依存の実ロック・`trust:false`・拡張/サイズ制限・文書別Macro分離を検証してから製品へ入れる。
+
+**Owner境界**：MarkdownのSourceとRole選択は#2621/#988/#4370、表現型・逆写像と束縛は#2497/#4353、MeaningとTarget実行は#2620/#4660および既存Operator/Provider、独立Expectedは#1180/#2514、著作文書と納品物はSHO #5とする。Reader/Renderer/Target/受入の第二正本を増やさない。この作業はP1であり、#2831/#4583のStudio Stage1→Stage2と#1251/#2586の通常CLI実ProviderのP0を妨げない。
+
+**現況（2026-11-19）**：設計の引渡しと試験計画まで。KaTeXの新規製品導入・実Wails表示・数理的Claim検証・PDF/DOCX生成・Owner受理はNOT RUN。
