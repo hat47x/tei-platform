@@ -205,3 +205,17 @@ PR #4539の実PostgreSQL→一時ContextはE2/E3の限定的な先行証拠だ�
 この票は既存Issue/PR本文とScenario出力で十分であり、常設Schemaを先に採用しない。正常例でE0〜E5を閉じてから、§9のG1-02〜04（空結果・partial/拒否・遅延応答）を順に加える。組織C1の人物数・二時点公開・現在Grantは別Gateのまま維持する。
 
 **状態**：診断手順の確定のみ。E0〜E5を同一製品Attemptで新たに実行したわけではない。#2831のStudioセルフビルドは独立P0。
+
+<!-- org-g1-actual-cli-discovery-20261119 -->
+## 12. 実CLI調査でE0の前提を修正する（2026-11-19）
+
+§11のE0「入口がないかもしれない」は、mainの実コードを調べて具体化できた。現行`cmd/tei/cli_commands.go`の`acceptedCommands`には`relation-query`があり、`cmd/tei/cli_relation_query.go`の`runRelationQueryCommand`は`-workspace`または`-world`、`-application`、`-query`を受け付ける。つまり**通常CLIのQuery直指定入口は実在する**。一方、これだけではFunction選択→Query解決→実Provider→Function Data Context→Consumerの同一Attemptを証明できない。
+
+### 次の小PRで実コードを追う順序
+
+1. `cmd/tei/cli_relation_query.go`の`runRelationQueryCommand`から、実行する`driver.RelationQueryExecution`とその結果JSONを追う。どのProvider/Source/Scopeが選択されたか、Contextへ渡す前のResult粒度が何かを確認する。
+2. `cmd/tei/cli_commands.go`と`cmd/tei/main.go`の実Dispatchから、既存のFunction選択経路がこのQuery実行を呼ぶか調べる。**Query直指定の成功をFunction選択の成功と呼ばない**。
+3. `cmd/tei/cli_result.go`の`cliResultEnvelope`は`schemaVersion/ok/result/error/workspace`を持つ既存のCLI応答枠。これをFunction Data Contextの受領Receiptと同一視せず、既存ConsumerがどのResultを実際に読んだかを別に観測する。
+4. Function→Queryの辺が未接続なら、既存`relation-query`の選択・実行処理と#4539の実Provider Readerを**再利用できる最小箇所**でつなぐ。新コマンド、新Provider、新Context Schemaを先に追加しない。
+
+**受入の差**：`relation-query`単独の正常応答は「Query直指定の局所PASS」。Function選択と実Provider、Context、Consumerの同一Attemptが観測できて初めてG1-01の製品縦断PASS候補。実コードの存在は静的確認であり、この追補ではGoテスト・CLI起動・PostgreSQL実行はNOT RUN。§11のE0〜E5はこの差を残して適用する。
