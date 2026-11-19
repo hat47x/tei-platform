@@ -1,5 +1,7 @@
 # TEIの開発全体計画
 
+- [Pluginと製品Consumerの資格境界（2026-11-19）](design/PLUGIN_ROLE_COMPOSITION_AND_STUDIO_REENTRY_2026-11.md)：§末尾でNode／三要素／組織／Rule／協業UIの選択・実Read・Preview/Review・明示Accept/Source保存・Build/実Consumerを分離。PCA-01〜07を既存#1180/#2514の独立Expected候補としてOwnerに配分する。最初は通常CLIの実PostgreSQL一Functionと、StudioのSource再読込→Stage1→Stage2→実Windows WebView2を別々の製品縦断として検収する。Writer／Grant／Source pinが不適格な場合は保存unsupportedとし、第二Resolver／Writer／Hostを増やさない（設計統合のみ、追加製品試験・Owner受理はNOT RUN）。
+
 ## 目的
 
 - [組織改編の整合した公開とConsumerの読取Cut](design/ORGANIZATION_STAGED_MODELING_PLAN_2026-11.md)：§10.26で、業務上のvalid/known・入力Read Snapshot・所属/集計のResult世代・公開した組・CLI/Studio/Web/SHOの実Pin・Case責任/Host Grantを分離する。r7の旧4所属/FTE 3.0と新3所属/FTE 2.4を正しい組として固定し、新所属＋旧集計の混在を拒否。Batch MG-02/04とORG-BEH-03・ORG-XDを既存#2514へ引継ぎ、Webの各要求Readが別Transactionならページ横断の同一Snapshotを証明できない問題も含める。main済み#5431の実Web Reader、Draft #5382のCoverageとは検収資格を分け、#2586の通常CLI実Readと#2831のStudio Stage1→Stage2のP0を維持（設計のみ、組の実共同公開・二Consumer Pin・Owner受理はNOT RUN）。
