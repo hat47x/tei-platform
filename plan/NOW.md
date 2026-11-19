@@ -13,15 +13,17 @@
 
 1. 参照用の作業領域で、受注一件の明細を、宣言したQueryを通して実際のDBから読む。
 2. 読んだ明細の一行ずつに、設計文書へ書いた規則の答え（成立、不成立、判定できない）が出る。
-3. 設計文書（`*.tei.md`）の規則を一つ書き換え、近くに例を一行足す。
-4. `tei validate`が通り、同じ明細を読み直すと、書き換えた規則の答えに変わる。
+3. 設計文書（`*.tei.md`）に単価を確かめる規則を一つ追加し、近くに例を添える。
+4. `tei validate`が通り、同じ明細を読み直すと、新しい規則の答えが加わる。
 5. 生成したWebの画面一つで、同じ答えが見える。
 
-入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。**1〜4は動く。** `tei view -environment`が実PostgreSQLの明細を読み、設計文書の規則を変更した前後の答えを独立した期待と照合する。5も、出荷するのと同じ起動関数に`-serve-read-from-db`を渡し、実PostgreSQLの明細と行別Ruleの判定を第一WebのHTTP画面へ返すところまで動く。規則変更の前後も、第一WebのHTTP画面で比べる試験が実PostgreSQLのCIで走る（HTTP本文は[#5482](https://github.com/hat47x/tei-platform/pull/5482)、実Chrome DOMの変更前後は[#5492](https://github.com/hat47x/tei-platform/pull/5492)で確認した）。
+入力と、手で書いた期待は[`testdata/destination-order-change/`](../testdata/destination-order-change/README.md)にある。**1〜4は動く。** `tei view -environment`が実PostgreSQLの明細を読み、設計文書の規則を変更した前後の答えを独立した期待と照合する。5も、出荷するのと同じ起動関数に`-serve-read-from-db`を渡し、実PostgreSQLの明細と行別Ruleの判定を第一WebのHTTP画面へ返すところまで動く。規則を追加する前後も、第一WebのHTTP画面で比べる試験が実PostgreSQLのCIで走る（HTTP本文は[#5482](https://github.com/hat47x/tei-platform/pull/5482)、実Chrome DOMの変更前後は[#5492](https://github.com/hat47x/tei-platform/pull/5492)で確認した）。
 
 受入れは二つである。この五つを実際のPostgreSQLで実行し、実装から独立した期待と照合する試験が、CIで毎回走ること。五つを一ページで案内する手順書があり、その手順書のとおりに打てば通ること。
 
-この五つが通ったら、同じ変更を通常の開発で行った場合と、触ったファイルの数と手数を比べる。TEIの価値はその比較で述べる。
+この五段階は、初回の**規則追加**を検収する。公開手順で触るのは、言語宣言・規則の設計文書・Applicationの利用登録の3ファイルである。既存の規則と例を書き換える二回目以降の作業は、別に検収する。
+
+初回利用者がこの五段階を完走した後、同じ規則追加を通常の開発で行う場合と、変更したファイル数や手数を比べる。初回と二回目以降の作業量を混ぜず、[#2018](https://github.com/hat47x/tei-platform/issues/2018)で結果を検証する。
 
 ## そこへの道
 
