@@ -1775,3 +1775,11 @@ mainのRule生成Go CLIビルド回帰は、選択Markdown原文のコピーをG
 [標準Flow§12.16](../design/SERVICE_FLOW_STANDARD_COMPOSITION_2026-11.md)に基づき、DF-P4aの実装PRを次の順序に限定する。第一段階は既存SQLite FixtureのD1／`members_first_page`（4行中2行）を使い、実行済みContract Queryと同一Scope／Binding／Attemptの全件保証を示せないCallerが`CoverageComplete`を渡さないことを独立Expectedで検査する。既存Readerの「誤ったcompleteを渡せばseatUniqueがsatisfiedになる」負例を残し、**Callerで防げたこと**を別試験として確認する。
 
 第二段階で、観測済み重複の不成立と未観測行が残る一意性成立の保留、別Scope・Bindingの証拠流用拒否、0行の全件性未立証を追加する。Query契約に保証根拠がない場合は未立証→Rule入力partialとし、契約追加の必要性を受入票に残す。既存`validationeval.Coverage`や汎用SQL Executorの改造、Graph／Studioの新実装をこのPRの必須条件にしない。成功の上限は限定Callerの資格判定であり、一般SQL、全Provider、実PostgreSQL／通常CLI／独立Consumer、Owner意味受理へは昇格しない。
+
+### DPC-16aの着手ゲートと停止条件（2026年11月19日）
+
+実装Ownerは[Issue #5649](https://github.com/hat47x/tei-platform/issues/5649)に従い、まず製品経路で`HeaderDetailContractQueryExecution`を組み立てて`validationread.FromHeaderDetail`を呼ぶCallerを特定する。既存の`internal/driver/validationread/sqlite_path_test.go`にある`readMembers`は試験補助関数であり、ここだけの変更を製品対応と数えない。Callerが未接続なら、存在しない接続を仮定せず、実際の呼出し境界と不足する契約をFit/Gapとして記録する。
+
+`QueryResultMany`、SQLの`LIMIT`不在、0行、SQL実行の正常終了はRelation全件性の証拠ではない。実行済みQueryと必要Relation・Scope・Binding・Attemptを照合できず全件保証が未立証なら、Ruleには既存`CoveragePartial`を渡す。受入票では「部分取得を確認」と「全件性が未立証」を区別する。限定SQLiteの4行中2行で`personUnique=not-satisfied`と`seatUnique=undecided`を同時に維持し、製品Callerを経由した独立Expectedで確認する。完全性が立証された正例は、その根拠となる契約が確定してから別に検収する。
+
+**停止条件**：実製品Callerが特定できない、または必要なScope／Binding／Attemptを既存契約から得られない場合は、テスト補助関数への便宜的な処理追加やSQL文字列の推測で代替せず、#5649に不足条件を記録する。実PostgreSQL→通常CLI→独立Consumer（#2586）、Studio実Windows、Owner意味受理は引き続き独立の合格条件とする。この追補はdocs-onlyであり、新しいGo試験のPASSを意味しない。
