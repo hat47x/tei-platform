@@ -18668,7 +18668,7 @@ function createReadOnlyClient(callByName) {
     catalogWorkspace: (workspaceID, namespace = "") => call("catalog", workspaceID, namespace),
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
-    observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
+    observeXead: (workspaceID, relativePath2) => call("observeXead", workspaceID, relativePath2),
     viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
     viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
     viewPackage: (workspaceID, applicationID, packageID) => call("viewPackage", workspaceID, applicationID, packageID),
@@ -19074,6 +19074,124 @@ function handleXeadPathKeydown(event, observe) {
   return true;
 }
 
+// source-locations.ts
+var MAX_VISIBLE_REFERENCES = 20;
+var SOURCE_LOCATIONS_ERROR = "INVALID_SOURCE_LOCATIONS_RESPONSE";
+function invalid() {
+  throw Error(SOURCE_LOCATIONS_ERROR);
+}
+function object(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) invalid();
+  return value;
+}
+function exactSubject(raw, expected) {
+  const subject3 = object(raw);
+  if (typeof subject3.kind !== "string" || typeof subject3.id !== "string" || subjectKey({ kind: subject3.kind, id: subject3.id }) !== subjectKey(expected))
+    invalid();
+}
+function relativePath(raw) {
+  if (typeof raw !== "string" || !raw || raw.startsWith("/") || raw.includes("\\") || raw.includes("\0") || raw.split("/").some((segment) => segment === "" || segment === "." || segment === "..") || raw.split("/")[0].includes(":"))
+    invalid();
+  return raw;
+}
+function bytePosition(raw) {
+  const value = object(raw);
+  const { offset, line, column } = value;
+  if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(line) || line < 1 || !Number.isSafeInteger(column) || column < 1)
+    invalid();
+  return { line, column, byteOffset: offset };
+}
+function byteRange(raw) {
+  const range = object(raw);
+  const start = bytePosition(range.start), end = bytePosition(range.end);
+  if (start.byteOffset > end.byteOffset) invalid();
+  return { start, end };
+}
+function readSourceLocations(raw, expected, catalog) {
+  const inspection = readInspection(raw, expected, catalog);
+  const sources = object(object(raw).sources);
+  exactSubject(sources.subject, expected);
+  const references = sources.references === null ? [] : sources.references;
+  const artifacts = sources.artifacts === null ? [] : sources.artifacts;
+  if (!Array.isArray(references) || !Array.isArray(artifacts)) invalid();
+  const fingerprints = /* @__PURE__ */ new Map();
+  for (const rawArtifact of artifacts) {
+    const artifact = object(rawArtifact);
+    const path = relativePath(artifact.path);
+    if (fingerprints.has(path) || typeof artifact.fingerprint !== "string" || !artifact.fingerprint)
+      invalid();
+    fingerprints.set(path, artifact.fingerprint);
+  }
+  const visible = [];
+  for (const [i, rawReference] of references.entries()) {
+    const reference = object(rawReference);
+    exactSubject(reference.subject, expected);
+    const path = relativePath(reference.artifactPath);
+    const fingerprint = fingerprints.get(path);
+    if (!fingerprint || typeof reference.role !== "string" || !reference.role)
+      invalid();
+    const range = byteRange(reference.range);
+    if (i < MAX_VISIBLE_REFERENCES) {
+      visible.push({
+        workspaceRelativePath: path,
+        role: reference.role,
+        start: range.start,
+        end: range.end,
+        artifactFingerprint: fingerprint
+      });
+    }
+  }
+  return {
+    sourceStatus: inspection.sourceStatus,
+    observedReferences: references.length,
+    shownReferences: visible,
+    omittedReferences: Math.max(0, references.length - visible.length),
+    completenessEstablished: false
+  };
+}
+function exactDraftText(value, label) {
+  if (typeof value !== "string" || !value || value !== value.trim())
+    throw Error("INVALID_REQUIRED_EDIT_" + label);
+  return value;
+}
+function previewRequiredEditDraft(inspection, selected2, catalog, workspaceHint, candidateID, intent, required) {
+  if (selected2.kind !== "semantic-attribute" || typeof selected2.id !== "string" || !selected2.id)
+    throw Error("REQUIRED_EDIT_NEEDS_ATTRIBUTE");
+  if (typeof required !== "boolean")
+    throw Error("INVALID_REQUIRED_EDIT_CHOICE");
+  exactDraftText(workspaceHint, "WORKSPACE");
+  exactDraftText(candidateID, "CANDIDATE_ID");
+  exactDraftText(intent, "INTENT");
+  if (!/^sha256:[0-9a-f]{64}$/.test(catalog.modelRevision))
+    throw Error("INVALID_REQUIRED_EDIT_MODEL_REVISION");
+  const eligibility = inspectEligibility(catalog, selected2);
+  if (!eligibility.ok)
+    throw Error("REQUIRED_EDIT_SUBJECT_" + eligibility.reason);
+  const locations = readSourceLocations(inspection, selected2, catalog);
+  const definitions = locations.shownReferences.filter((ref) => ref.role === "definition");
+  if (locations.sourceStatus !== "indexed" || locations.omittedReferences !== 0 || definitions.length !== 1 || !/^sha256:[0-9a-f]{64}$/.test(definitions[0].artifactFingerprint))
+    throw Error("REQUIRED_EDIT_SOURCE_OCCURRENCE_UNRESOLVED");
+  return {
+    status: "unreviewed-draft",
+    workspaceHint,
+    sourceObservation: definitions[0],
+    sourceIndexCompletenessEstablished: false,
+    sourceBytesVerified: false,
+    sourceWriteAuthorized: false,
+    edit: {
+      schema: "tei.reference.studio-edit/v0",
+      expectedModelRevision: catalog.modelRevision,
+      id: candidateID,
+      origin: "studio",
+      intent,
+      view: "required",
+      subject: "attribute:" + selected2.id,
+      operation: "set-attribute-required",
+      required
+    }
+  };
+}
+
 // main.ts
 var element = (id) => document.getElementById(id);
 var workspace = element("workspace");
@@ -19094,6 +19212,42 @@ var pinnedVersion = null;
 var pinnedCatalogIdentity = null;
 var pinnedCatalogMatches = () => pinnedCatalogIdentity !== null && pinnedCatalogIdentity === catalogIdentity(catalogSnapshot);
 var commandContext = 0;
+var requiredPreviewContext = null;
+function clearRequiredPreview() {
+  requiredPreviewContext = null;
+  element("preview-required").disabled = true;
+  element("required-preview-status").textContent = "Data\u5C5E\u6027\u3092Inspect\u3057\u3066\u304B\u3089\u3001\u5019\u88DC\u3092\u4F5C\u6210\u3067\u304D\u307E\u3059\u3002";
+  const output = element("required-preview-json");
+  output.hidden = true;
+  output.textContent = "";
+}
+function showRequiredPreview() {
+  const current = requiredPreviewContext;
+  const output = element("required-preview-json");
+  if (!current || disposed || current.workspaceID !== workspace.value || current.workspaceEpoch !== workspaceEpoch || current.inspectionEpoch !== inspectionEpoch || current.catalog !== catalogSnapshot || !selected || subjectKey(current.subject) !== subjectKey(selected)) {
+    clearRequiredPreview();
+    return;
+  }
+  try {
+    const draft = previewRequiredEditDraft(
+      current.inspection,
+      current.subject,
+      current.catalog,
+      current.workspaceID,
+      `required-${current.workspaceEpoch}-${current.inspectionEpoch}`,
+      "\u9078\u629E\u3057\u305FData\u5C5E\u6027\u3092\u5FC5\u9808\u306B\u3059\u308B\u5019\u88DC",
+      true
+    );
+    output.textContent = JSON.stringify(draft.edit, null, 2);
+    output.hidden = false;
+    element("required-preview-status").textContent = "\u672A\u5BE9\u67FB\u306E\u5909\u66F4\u5019\u88DC\u3067\u3059\u3002Source\u306E\u78BA\u8A8D\u30FBReview\u30FB\u4FDD\u5B58\u306F\u884C\u3063\u3066\u3044\u307E\u305B\u3093\u3002";
+  } catch (error) {
+    output.textContent = "";
+    output.hidden = true;
+    element("preview-required").disabled = true;
+    element("required-preview-status").textContent = "\u5019\u88DC\u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\uFF1A" + (error instanceof Error ? error.message : "INVALID_REQUIRED_EDIT");
+  }
+}
 var editor = createReadOnlyTextEditor(element("editor"), codeMirrorRenderer, {
   id: "empty",
   version: "0",
@@ -19359,6 +19513,7 @@ function renderList() {
 }
 async function inspect(subject3) {
   if (!client || !workspace.value || disposed) return;
+  clearRequiredPreview();
   const eligibility = inspectEligibility(catalogSnapshot, subject3);
   if (!eligibility.ok) {
     responses.invalidate("inspection");
@@ -19379,7 +19534,7 @@ async function inspect(subject3) {
     notice.dataset.state = "error";
     return false;
   }
-  const context = workspaceEpoch, request = ++inspectionEpoch, id = workspace.value;
+  const context = workspaceEpoch, request = ++inspectionEpoch, id = workspace.value, catalog = catalogSnapshot;
   selected = subject3;
   title.textContent = subject3.id;
   renderList();
@@ -19395,7 +19550,21 @@ async function inspect(subject3) {
   graph.setSelectedNode(subjectKey(subject3));
   element("graph-note").textContent = related.hidden ? `\u89AA\u5B50\u95A2\u4FC2\u306E\u3046\u30618\u4EF6\u3092\u8868\u793A\uFF08\u307B\u304B${related.hidden}\u4EF6\uFF09` : "\u9078\u629E\u8981\u7D20\u3068\u3001\u4E00\u89A7\u306B\u542B\u307E\u308C\u308B\u76F4\u63A5\u306E\u89AA\u5B50\u95A2\u4FC2";
   return responses.run("inspection", () => client.inspectSubject(id, subject3.kind, subject3.id), (reply) => {
-    const view = readInspection(unwrap(reply), subject3, catalogSnapshot);
+    if (context !== workspaceEpoch || request !== inspectionEpoch || catalog !== catalogSnapshot || !selected || subjectKey(subject3) !== subjectKey(selected)) return;
+    const raw = unwrap(reply);
+    const view = readInspection(raw, subject3, catalog);
+    if (subject3.kind === "semantic-attribute") {
+      requiredPreviewContext = {
+        workspaceID: id,
+        workspaceEpoch: context,
+        inspectionEpoch: request,
+        subject: subject3,
+        catalog,
+        inspection: raw
+      };
+      element("preview-required").disabled = false;
+      element("required-preview-status").textContent = "\u73FE\u5728\u306EInspect\u7D50\u679C\u304B\u3089\u3001\u672A\u5BE9\u67FB\u306E\u5019\u88DC\u3092\u4F5C\u6210\u3067\u304D\u307E\u3059\u3002";
+    }
     editor.setDocument({
       id: `${id}/${subjectKey(subject3)}`,
       version: view.version,
@@ -19442,6 +19611,7 @@ async function validate(signal) {
 async function loadWorkspace() {
   if (!client || !workspace.value || disposed) return;
   const context = ++workspaceEpoch, id = workspace.value;
+  clearRequiredPreview();
   responses.reset();
   pinState = invalidatePin(pinState);
   pinnedVersion = null;
@@ -19591,6 +19761,7 @@ element("inspect-pinned").addEventListener("click", () => {
 });
 renderPin();
 search.addEventListener("input", renderList);
+element("preview-required").addEventListener("click", showRequiredPreview);
 element("validate").addEventListener(
   "click",
   () => void panel.execute("validate")
@@ -19599,6 +19770,7 @@ window.addEventListener(
   "pagehide",
   () => {
     disposed = true;
+    clearRequiredPreview();
     responses.dispose();
     ++workspaceEpoch;
     ++inspectionEpoch;
