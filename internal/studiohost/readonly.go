@@ -106,6 +106,7 @@ func (f *Failure) classify() *Failure {
 	}
 	if f.Kind == "" {
 		f.Kind = c.kind
+		f.EffectUnknown = f.EffectUnknown || c.effect
 	}
 	if f.Retryable == "" {
 		if f.Kind != c.kind {
