@@ -127,7 +127,6 @@ jobs:
       TEI_TEST_POSTGRES_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_fixture?sslmode=disable
       TEI_VIEW_PG_CONFIRM_ISOLATED: tei_destination_order_e2e
       TEI_VIEW_BROWSER_BINARY: google-chrome
-      TEI_GUIDE_PLAYWRIGHT_ROOT: ${{ runner.temp }}/tei-guide-playwright
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: 検証対象を取得
@@ -235,10 +234,12 @@ jobs:
         run: |
           set -euo pipefail
           node --check tools/reference-first-web-target/guide_shipped_form_chrome.mjs
-          npm install --prefix "$TEI_GUIDE_PLAYWRIGHT_ROOT" \
+          playwright_root="$RUNNER_TEMP/tei-guide-playwright"
+          npm install --prefix "$playwright_root" \
             --no-audit --no-fund --ignore-scripts --no-save --no-package-lock \
             playwright-core@1.56.1
-          test -s "$TEI_GUIDE_PLAYWRIGHT_ROOT/node_modules/playwright-core/index.mjs"
+          test -s "$playwright_root/node_modules/playwright-core/index.mjs"
+          echo "TEI_GUIDE_PLAYWRIGHT_ROOT=$playwright_root" >> "$GITHUB_ENV"
 
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証
         shell: bash
