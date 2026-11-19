@@ -142,3 +142,38 @@ G1とG2のOwner作業は並行可能。G3は必要な正式Linkが整ってか�
 実装担当は#2586/#2506でG1-01を最小PRとし、G1-02〜04を負例として拡張する。#2514がG3の独立Expected、#2386/#1126が正式Person意味受理、#2516/#1124がG4、#1174/#2499/#1125/#1444がG5を引き受ける。#2831のStudioセルフビルドは引き続き独立P0。**組織モデルの追加要件を通常CLI・Studioの起動条件へ昇格しない**。
 
 **本節の状態**：受入票と判別ケースの計画。G1-01〜04、ORG-XD-06〜09の新しい製品縦断試験は未実施。既存の隔離PostgreSQL局所PASSやWeb Readerの限定実証を、ここで定めたConsumer・Host受入の合格に読み替えない。
+
+<!-- org-g1-implementation-cut-20261119 -->
+## 10. G1-01の実装着手を、既存#2586の合成受注に限定する（2026-11-19）
+
+前節のG1-01〜04を同時実装せず、まず**G1-01の一往復が本当に製品経路を通ったか**だけを確かめる。#2586の既存合成受注（親H、明細D1のL1/L2各100、独立配送D2の3行）を使い、既存のReference CLIと通常の製品`tei` CLIの差を解消する。組織C1固有のPerson Link・時間履歴・Ruleをこの最初のPRへ持ち込まない。
+
+### 実装前に確認する接続点
+
+| 確認順 | 既存実装で調べること | 採用／不採用の基準 |
+| --- | --- | --- |
+| 1. Entry | 現行`tei` CLIでFunctionを選択する実経路、入力の解決、既存の実Provider起動点 | 新しい`org`コマンドやReference専用実行経路を本番入口として増設しない |
+| 2. Read | #4539で限定実証したEnvironment→PostgreSQL→Rowsetのどの部分を通常CLIから再利用できるか | SQL/params、接続先、Query選択理由、取得行のIdentityを実行時に追える |
+| 3. Context | #2506のFunction Data Contextへ、実際のRowsetとScope/Completeness/unknownをどう受け渡すか | 空集合と未取得、部分取得と完全取得、SQL NULLと結論unknownを混同しない |
+| 4. Consumer | 既存のCLI JSON等で実際にContextのResultを読んで出力する最小Consumerはどれか | 単なるログ、Provider直後のprint、別Attemptの再読込を受領と呼ばない |
+| 5. Oracle | #2586の合成受注の独立Expectedをどこから読み、JOIN増幅と業務Entityの違いを照合するか | 実装の返値からExpectedを自動生成しない |
+
+### 一PRの最小受入と意図的な誤実装
+
+初回PRは**一Function、一Query、一Provider、一Consumer、固定Fixture**に限定し、以下の独立した失敗を識別する。
+
+1. **正しい経路**：実DBからD1の異なるL1/L2を取得し、Contextへ格納して一Consumerが受領する。業務Entityは2件、D1単独の金額合計は200。実SQL・引数・結果粒度・Scope・受領を同じAttemptに結ぶ。
+2. **JOIN増幅の誤り**：D1×D2のJOIN結果6行を6業務Entity、単純SUM 600をD1単独合計200と扱う実装を独立Expectedで落とす。SQL行数とEntity数は別のClaim。
+3. **受領のすり替え**：Providerが成功してもConsumerを未接続にした負例、別AttemptのContextを読ませた負例を落とす。実ProviderのPASSと一ConsumerのPASSを合算しない。
+4. **不足の消去**：D2が1/3しか取得できないとき、D2全件やJOIN全件をcompleteとする誤実装を落とす。D1だけに依存するClaimは必要集合が閉じる場合に限って別に評価する。
+5. **版の取り違え**：Query/Source/Selection epochを変更して旧応答を遅延させる。旧Attemptの結果が履歴として残ることと、新Attemptの確定結果に採用できることを分ける。
+
+最初のマージ条件は**1と3の実経路検証、および2の独立Expected**。4と5は同じ受渡しの負例として追補してよいが、未実装ならNOT RUNと明記する。G1-01が成立していない状態で、組織のORG-XD-06〜09やG2〜G5を理由に初回PRを肥大化させない。
+
+### 実装・レビューの分担
+
+#2586は接続と一往復の受入だけを所有し、Query/SQLの意味は#2387、ContextとCoverageは#2506、独立Expectedと判別力は#2514、再取得・旧応答の失効は#2582へ戻す。通常CLIの実入口が未接続なら、まず既存の選択・Provider・Context・Consumerの**最初に切れている辺**を一つだけ修復する。製品APIの名称やJSON Schemaを設計文書から先に固定しない。
+
+**レビューで要求する事実**：固定HEAD、実際に呼んだ製品コマンド、実Providerと実SQL、同一AttemptのContext/Consumer観測、独立Expectedの出典、非SKIP試験、負例のFAIL→修正後PASS、未実施範囲。Go単体テストや隔離ReferenceのPASSだけなら「局所PASS」と記載する。
+
+**現時点の状態**：実装の着手順とマージ条件を確定した計画。通常CLIのG1-01製品縦断・上記負例は本追補では実行していない。#2831のStudioセルフビルドは独立P0のままとする。
