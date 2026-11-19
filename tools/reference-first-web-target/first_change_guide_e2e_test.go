@@ -344,7 +344,7 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationAnchor(t *testing.T) {
 		{"missing-anchor", strings.Replace(string(original), anchor,
 			"    uses validation sales.order_line.quantity_positive_other", 1)},
 		{"duplicate-anchor", strings.Replace(string(original), anchor,
-			anchor+"\\n"+anchor, 1)},
+			anchor+"\n"+anchor, 1)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workspace := t.TempDir()
@@ -357,7 +357,7 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationAnchor(t *testing.T) {
 				}
 			}
 			if err := os.WriteFile(filepath.Join(workspace, "tei.workspace.yaml"),
-				[]byte("# scratch Workspace\\n"), 0o644); err != nil {
+				[]byte("# scratch Workspace\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			app := filepath.Join(workspace, "applications", "order-entry", "application.tei")
