@@ -1,0 +1,35 @@
+name: Temporary PR5651 generated Workbench asset synchronization
+on:
+  push:
+    branches:
+      - feat/studio-required-draft-workbench-preview-20261119
+    paths:
+      - .github/workflows/temporary-pr5651-sync-workbench.yml
+permissions:
+  contents: write
+jobs:
+  build-generated-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build with the existing Workbench generator
+        working-directory: reference/tei-studio-workbench
+        run: |
+          npm ci
+          npm run build
+      - name: Commit only generated embedded assets
+        run: |
+          set -euo pipefail
+          for file in index.html main.js style.css THIRD_PARTY_NOTICES.txt; do
+            cp "reference/tei-studio-workbench/dist/$file" "cmd/tei-studio/assets/workbench/$file"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cmd/tei-studio/assets/workbench/index.html cmd/tei-studio/assets/workbench/main.js cmd/tei-studio/assets/workbench/style.css cmd/tei-studio/assets/workbench/THIRD_PARTY_NOTICES.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "build(studio): synchronize derived embedded Workbench assets"
+            git push origin HEAD:feat/studio-required-draft-workbench-preview-20261119
+          fi
