@@ -25,10 +25,12 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage();
   const crossOrigin = new Set();
-  let submitted = 0;
+  const postRequests = [];
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("request", (request) => {
     if (new URL(request.url()).origin !== base) crossOrigin.add(new URL(request.url()).origin);
-    if (request.url() === `${base}/custom-submit` && request.method() === "POST") submitted++;
+    if (request.method() === "POST") postRequests.push(request);
   });
 
   const response = await page.goto(`${base}/custom-submit`, { waitUntil: "domcontentloaded" });
@@ -38,6 +40,16 @@ try {
 
   // The test must exercise the actual user-visible fields, not a helper page
   // containing hidden inputs or a JavaScript-generated POST.
+  for (const name of ["loginId", "credential", "from", "row"]) {
+    const field = form.locator(`input[name="${name}"]`);
+    if (await field.count() !== 1 || await field.getAttribute("required") === null) {
+      throw new Error("the shipped visible input is missing, repeated or not required");
+    }
+  }
+  if (await form.locator('input[name="credential"]').getAttribute("type") !== "password" ||
+      await page.locator("#read-result").count() !== 0) {
+    throw new Error("the unsubmitted GET form already has a result or lacks a password field");
+  }
   await form.locator('input[name="loginId"]').fill("legacy-order-editor");
   await form.locator('input[name="credential"]').fill("editor-secret");
   await form.locator('input[name="from"]').fill("2026-09-01T00:00:00Z");
@@ -50,8 +62,18 @@ try {
   ]);
   if (!posted || posted.status() !== 200) throw new Error("the submitted shipped form was rejected");
   await page.locator("#read-result").waitFor({ state: "attached" });
-  if (submitted !== 1 || crossOrigin.size !== 0) {
-    throw new Error("the shipped form made an unexpected request");
+  if (postRequests.length !== 1 || postRequests[0].url() !== `${base}/custom-submit` ||
+      crossOrigin.size !== 0 || pageErrors.length !== 0) {
+    throw new Error("the shipped form made an unexpected request or failed in the browser");
+  }
+  const fields = new URLSearchParams(postRequests[0].postData() ?? "");
+  const names = [...fields.keys()].sort();
+  if (JSON.stringify(names) !== JSON.stringify(["credential", "from", "loginId", "row"]) ||
+      fields.get("loginId") !== "legacy-order-editor" ||
+      fields.get("credential") !== "editor-secret" ||
+      fields.get("from") !== "2026-09-01T00:00:00Z" ||
+      fields.get("row") !== row) {
+    throw new Error("the shipped form did not POST the four selected visible fields");
   }
   const dom = await page.content();
   if (!dom.includes('id="order-lines"') || !dom.includes('id="read-identity"')) {
