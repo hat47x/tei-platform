@@ -310,14 +310,16 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	})
 	// Real read answers and a successful synthetic Command must not be
 	// represented as a PostgreSQL submit. The published CLI injects no store.
-	var changedOrders int
+	// Count the seeded orders as well as changed statuses: a deleted row
+	// cannot pass an unchanged-status check merely by disappearing.
+	var persistedOrders, changedOrders int
 	if err := db.QueryRowContext(t.Context(),
-		"SELECT count(*) FROM public.orders WHERE order_id IN (1001, 1002, 1003) AND status IS DISTINCT FROM 'draft'",
-	).Scan(&changedOrders); err != nil {
-		t.Fatal("step 5: cannot independently inspect the order status after the Web form")
+		"SELECT count(*), count(*) FILTER (WHERE status IS DISTINCT FROM 'draft') FROM public.orders WHERE order_id IN (1001, 1002, 1003)",
+	).Scan(&persistedOrders, &changedOrders); err != nil {
+		t.Fatal("step 5: cannot independently inspect the seeded orders after the Web form")
 	}
-	if changedOrders != 0 {
-		t.Fatalf("step 5: the diagnostic Web form unexpectedly changed %d real order statuses", changedOrders)
+	if persistedOrders != 3 || changedOrders != 0 {
+		t.Fatalf("step 5: expected 3 unchanged draft orders after the diagnostic Web form; found %d orders, %d changed statuses", persistedOrders, changedOrders)
 	}
 	// Keep the established CI receipt prefix while distinguishing the actual
 	// documented go run (isolated listen address) from real Web form entry.
