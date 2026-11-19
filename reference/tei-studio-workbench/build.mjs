@@ -72,3 +72,12 @@ const normalizedMainJS = mainJS.replace(/\/\*\*[\s\S]*?\*\//g, (comment) =>
 if (normalizedMainJS !== mainJS) await writeFile(mainPath, normalizedMainJS);
 await copyFile(resolve(here, "index.html"), resolve(here, "dist/index.html"));
 await copyFile(resolve(here, "style.css"), resolve(here, "dist/style.css"));
+
+/* TEMPORARY build artifact capture for the GitHub CI attempt. Remove before merge. */
+const emitted = await readFile(resolve(here, "dist/main.js"), "utf8");
+const chunkSize = 12000;
+for (let offset = 0; offset < emitted.length; offset += chunkSize) {
+  process.stdout.write("TEI_EMBED_SYNC_PART " + Math.floor(offset / chunkSize) +
+    " " + JSON.stringify(emitted.slice(offset, offset + chunkSize)) + "\n");
+}
+process.stdout.write("TEI_EMBED_SYNC_END " + emitted.length + "\n");
