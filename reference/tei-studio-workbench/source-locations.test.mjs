@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readSourceLocations } from "./source-locations.ts";
+import { readSourceLocations, previewRequiredEditDraft } from "./source-locations.ts";
 
 const subject = { kind: "semantic-data", id: "sales.order" };
 const catalog = {
@@ -136,4 +136,115 @@ test("S-LOC carries untrusted Source path only as text metadata, not an open URL
   assert.equal(view.shownReferences[0].workspaceRelativePath, malicious);
   assert.equal("url" in view.shownReferences[0], false);
   assert.equal("canOpen" in view.shownReferences[0], false);
+});
+
+const attributeSubject = {
+  kind: "semantic-attribute",
+  id: "studio.inspection_response.snapshotFingerprint",
+};
+const attributeRevision = "sha256:" + "b".repeat(64);
+const attributeCatalog = {
+  ...catalog,
+  entries: [{ subject: attributeSubject, sourceStatus: "indexed", ambiguous: false }],
+  modelRevision: attributeRevision,
+};
+function attributeInspection(refs = [location(0)]) {
+  const references = refs.map(ref => ({ ...ref, subject: attributeSubject }));
+  const base = inspection(references);
+  return {
+    ...base, subject: attributeSubject, canonical: { id: attributeSubject.id },
+    sources: { ...base.sources, subject: attributeSubject, references },
+  };
+}
+function requiredDraft(raw = attributeInspection(), cat = attributeCatalog) {
+  return previewRequiredEditDraft(
+    raw, attributeSubject, cat, "allowed-workspace", "required-1",
+    "StudioのData属性を必須にする", true,
+  );
+}
+
+test("required draft uses qualified attribute and model version without claiming Source write", () => {
+  const candidate = requiredDraft();
+  assert.deepEqual(candidate.edit, {
+    schema: "tei.reference.studio-edit/v0",
+    expectedModelRevision: attributeRevision,
+    id: "required-1",
+    origin: "studio",
+    intent: "StudioのData属性を必須にする",
+    view: "required",
+    subject: "attribute:studio.inspection_response.snapshotFingerprint",
+    operation: "set-attribute-required",
+    required: true,
+  });
+  assert.equal(candidate.workspaceHint, "allowed-workspace");
+  assert.equal(candidate.sourceObservation.workspaceRelativePath, artifact.path);
+  assert.equal(candidate.sourceObservation.artifactFingerprint, fingerprint);
+  assert.equal(candidate.status, "unreviewed-draft");
+  assert.equal(candidate.sourceIndexCompletenessEstablished, false);
+  assert.equal(candidate.sourceBytesVerified, false);
+  assert.equal(candidate.sourceWriteAuthorized, false);
+  assert.equal("accept" in candidate, false);
+  assert.equal("writer" in candidate, false);
+  const no = previewRequiredEditDraft(
+    attributeInspection(), attributeSubject, attributeCatalog,
+    "allowed-workspace", "required-2", "任意に戻す", false,
+  );
+  assert.equal(no.edit.required, false);
+});
+
+test("required draft refuses non-attribute subjects, ambiguous Catalog and invalid revisions", () => {
+  assert.throws(() => previewRequiredEditDraft(
+    inspection(), subject, catalog, "allowed-workspace", "r", "intent", true,
+  ), /REQUIRED_EDIT_NEEDS_ATTRIBUTE/);
+  assert.throws(() => requiredDraft(attributeInspection(), {
+    ...attributeCatalog,
+    entries: [{ subject: attributeSubject, sourceStatus: "indexed", ambiguous: true }],
+  }), /REQUIRED_EDIT_SUBJECT_SUBJECT_AMBIGUOUS/);
+  assert.throws(() => requiredDraft(attributeInspection(), {
+    ...attributeCatalog,
+    modelRevision: "old-snapshot",
+  }), /INVALID_REQUIRED_EDIT_MODEL_REVISION/);
+  assert.throws(() => requiredDraft(attributeInspection(), {
+    ...attributeCatalog,
+    sourceIndexFingerprint: "source-B",
+  }), /STALE_MODEL_PROJECTION/);
+});
+
+test("required draft refuses incomplete, missing or duplicate Source occurrences", () => {
+  for (const refs of [
+    [],
+    [location(0, "implementation")],
+    [location(0), location(1)],
+    Array.from({ length: 23 }, (_, i) => location(i)),
+  ]) {
+    assert.throws(() => requiredDraft(attributeInspection(refs)),
+      /REQUIRED_EDIT_SOURCE_OCCURRENCE_UNRESOLVED/);
+  }
+  assert.throws(() => requiredDraft({
+    ...attributeInspection(),
+    sourceStatus: "not-indexed",
+  }), /REQUIRED_EDIT_SOURCE_OCCURRENCE_UNRESOLVED/);
+  const tampered = attributeInspection();
+  tampered.sources.artifacts[0] = { ...artifact, fingerprint: "unverified" };
+  assert.throws(() => requiredDraft(tampered),
+    /REQUIRED_EDIT_SOURCE_OCCURRENCE_UNRESOLVED/);
+});
+
+test("required draft rejects malformed inputs and cannot use a different Source subject", () => {
+  const base = attributeInspection();
+  assert.throws(() => previewRequiredEditDraft(
+    base, attributeSubject, attributeCatalog, "", "r", "intent", true,
+  ), /INVALID_REQUIRED_EDIT_WORKSPACE/);
+  assert.throws(() => previewRequiredEditDraft(
+    base, attributeSubject, attributeCatalog, "allowed-workspace", " r ", "intent", true,
+  ), /INVALID_REQUIRED_EDIT_CANDIDATE_ID/);
+  assert.throws(() => previewRequiredEditDraft(
+    base, attributeSubject, attributeCatalog, "allowed-workspace", "r", "", true,
+  ), /INVALID_REQUIRED_EDIT_INTENT/);
+  assert.throws(() => previewRequiredEditDraft(
+    base, attributeSubject, attributeCatalog, "allowed-workspace", "r", "intent", "yes",
+  ), /INVALID_REQUIRED_EDIT_CHOICE/);
+  assert.throws(() => requiredDraft({
+    ...base, sources: { ...base.sources, subject: subject },
+  }), /INVALID_SOURCE_LOCATIONS_RESPONSE/);
 });
