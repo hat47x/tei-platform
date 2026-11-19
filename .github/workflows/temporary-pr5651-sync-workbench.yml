@@ -1,5 +1,8 @@
 name: Temporary PR5651 generated Workbench asset synchronization
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feat/studio-required-draft-workbench-preview-20261119
