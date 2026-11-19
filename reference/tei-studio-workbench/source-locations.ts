@@ -1,4 +1,4 @@
-import { readInspection, subjectKey } from "./presentation.ts";
+import { inspectEligibility, readInspection, subjectKey } from "./presentation.ts";
 import type { Catalog, Subject } from "./presentation.ts";
 
 /**
@@ -118,5 +118,96 @@ export function readSourceLocations(
     shownReferences: visible,
     omittedReferences: Math.max(0, references.length - visible.length),
     completenessEstablished: false,
+  };
+}
+
+/**
+ * A product-Workbench draft may reuse the Reference editor's typed envelope,
+ * but Source Index locations are only observations. This function neither
+ * verifies raw Source bytes nor grants a Writer, Review, or Accept capability.
+ * It must never be used as an authorization decision.
+ */
+export type RequiredEditDraftPreview = {
+  status: "unreviewed-draft";
+  workspaceHint: string;
+  sourceObservation: SourceLocation;
+  sourceIndexCompletenessEstablished: false;
+  sourceBytesVerified: false;
+  sourceWriteAuthorized: false;
+  edit: {
+    schema: "tei.reference.studio-edit/v0";
+    expectedModelRevision: string;
+    id: string;
+    origin: "studio";
+    intent: string;
+    view: "required";
+    subject: string;
+    operation: "set-attribute-required";
+    required: boolean;
+  };
+};
+
+function exactDraftText(value: unknown, label: string): string {
+  if (typeof value !== "string" || !value || value !== value.trim())
+    throw Error("INVALID_REQUIRED_EDIT_" + label);
+  return value;
+}
+
+/**
+ * Prepare ONE unreviewed Data-attribute candidate from a current, qualified
+ * read-only inspection. A unique observed anchor is not evidence that the
+ * Index is complete or that this Workspace is writable.
+ */
+export function previewRequiredEditDraft(
+  inspection: unknown,
+  selected: Subject,
+  catalog: Catalog,
+  workspaceHint: string,
+  candidateID: string,
+  intent: string,
+  required: boolean,
+): RequiredEditDraftPreview {
+  if (selected.kind !== "semantic-attribute" ||
+      typeof selected.id !== "string" || !selected.id)
+    throw Error("REQUIRED_EDIT_NEEDS_ATTRIBUTE");
+  if (typeof required !== "boolean")
+    throw Error("INVALID_REQUIRED_EDIT_CHOICE");
+  exactDraftText(workspaceHint, "WORKSPACE");
+  exactDraftText(candidateID, "CANDIDATE_ID");
+  exactDraftText(intent, "INTENT");
+  if (!/^sha256:[0-9a-f]{64}$/.test(catalog.modelRevision))
+    throw Error("INVALID_REQUIRED_EDIT_MODEL_REVISION");
+
+  // The same Catalog must qualify the Subject before inspecting. A Graph glyph,
+  // a table row number and a Pin observation are not authoring identities.
+  const eligibility = inspectEligibility(catalog, selected);
+  if (!eligibility.ok)
+    throw Error("REQUIRED_EDIT_SUBJECT_" + eligibility.reason);
+  const locations = readSourceLocations(inspection, selected, catalog);
+  const definitions = locations.shownReferences.filter(ref => ref.role === "definition");
+  if (locations.sourceStatus !== "indexed" ||
+      locations.omittedReferences !== 0 ||
+      definitions.length !== 1 ||
+      !/^sha256:[0-9a-f]{64}$/.test(definitions[0].artifactFingerprint))
+    throw Error("REQUIRED_EDIT_SOURCE_OCCURRENCE_UNRESOLVED");
+
+  return {
+    status: "unreviewed-draft",
+    workspaceHint,
+    sourceObservation: definitions[0],
+    sourceIndexCompletenessEstablished: false,
+    sourceBytesVerified: false,
+    sourceWriteAuthorized: false,
+    edit: {
+      schema: "tei.reference.studio-edit/v0",
+      expectedModelRevision: catalog.modelRevision,
+      id: candidateID,
+      origin: "studio",
+      intent,
+      view: "required",
+      subject: "attribute:" + selected.id,
+      operation: "set-attribute-required",
+      required,
+    },
   };
 }
