@@ -157,7 +157,9 @@ func (s *LeaseStore) SweepExpired(ctx context.Context) ([]Claim, error) {
 	// already moved on: zero rows, although the work succeeded. RETURNING makes the
 	// answer the set this statement expired instead of a second query that can
 	// miss it (a repeat run reproduced it 1 time in 40).
-	rows, err := s.db.QueryContext(ctx, `UPDATE claims SET state='expired', updated_at=datetime('now') WHERE state IN ('working','review','blocked') AND lease_expires < ? RETURNING issue_number, role, model_id, harness, session_id, lease_expires, heartbeat_at, state, base_sha, head_sha, pr_number`, now)
+	// Compare instants, not RFC3339 text: leases written in different UTC
+	// offsets can otherwise expire early or remain active after their deadline.
+	rows, err := s.db.QueryContext(ctx, `UPDATE claims SET state='expired', updated_at=datetime('now') WHERE state IN ('working','review','blocked') AND julianday(lease_expires) < julianday(?) RETURNING issue_number, role, model_id, harness, session_id, lease_expires, heartbeat_at, state, base_sha, head_sha, pr_number`, now)
 	if err != nil {
 		return nil, fmt.Errorf("sweep expired: %w", err)
 	}

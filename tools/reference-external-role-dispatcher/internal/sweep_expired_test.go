@@ -65,3 +65,33 @@ func TestSweepExpiredLeavesActiveClaimsAlone(t *testing.T) {
 		t.Fatalf("GetClaim = %+v, %v; want the claim still working", got, err)
 	}
 }
+
+func TestSweepExpiredComparesInstantsAcrossOffsets(t *testing.T) {
+	store, _, cleanup := setupLeaseStore(t)
+	defer cleanup()
+	ctx := context.Background()
+	now := time.Now()
+	for i, offset := range []int{-12 * 60 * 60, 14 * 60 * 60} {
+		for j, delta := range []time.Duration{-time.Minute, time.Minute} {
+			issue := int64(100 + 2*i + j)
+			if _, err := store.ClaimIssue(ctx, issue, "reviewer", "m1", "codex", "s1", time.Minute); err != nil {
+				t.Fatal(err)
+			}
+			expires := now.Add(delta).In(time.FixedZone("test", offset)).Format(time.RFC3339)
+			if _, err := store.db.ExecContext(ctx, `UPDATE claims SET lease_expires=? WHERE issue_number=?`, expires, issue); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	expired, err := store.SweepExpired(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[int64]bool{}
+	for _, c := range expired {
+		got[c.IssueNumber] = true
+	}
+	if len(expired) != 2 || !got[100] || !got[102] {
+		t.Fatalf("expired=%+v; want expired instants 100 and 102 only", expired)
+	}
+}
