@@ -3003,3 +3003,10 @@ Pluginのport連結は基本型だけでなく複合Data・Relationの型も照�
 **実装順は既存P0を維持する**：#4410/#1130の固定TSV／直接Go＋CLI二入口と不変出力 → #1180/#2514の既存独立ExpectedへのMG-01〜08（混在・部分公開・別時点読取・分類変更・Scope・ACK喪失）引渡し → #2482/#2622の既存Manifest／Stage／Publish／実Reader能力確認 → #1174/#1129のEffect/Receipt検証 → #1124/#2831/#4583のread-only Studio投影。実Targetが原子的な組の公開・Pinを提供しない場合に、万能なクロスDB原子性を仮定しない。新Scheduler、Batch Engine、Result Store、Cross-Target Transaction Manager、第二DSL・試験正本は導入しない。
 
 **資格**：設計文書の追補のみで、実Go/DB/CLI/Consumer/Studio試験、公開の原子性、Owner意味受理は **NOT RUN / NOT ACCEPTED**。通常CLI実Provider #2586とDesktopセルフビルド #2831を最優先のままにする。
+
+<!-- batch-outcome-observation-20261119 -->
+### 2026-11-19 バッチの「処理件数」をSource・送信・実反映の別資格として検収する
+
+[ETL/Batch設計§34](design/ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md)に、Source読取・Filter採用／除外・DB送信Attempt・Provider応答・実Receipt／独立Read・Consumer適用を別の観測列として加えた。合成5行のうち採用4行（同一Keyの重複を含む）でも、重複後の処理政策とTransaction境界によって3行／2行／0行が実反映となり得る。件数一致やJob完了から実更新を推測しない。応答不明、Source部分取得、RLSで不可視の対象、別Operationの再送はBO-01〜06の別々の拒否条件とした。
+
+**実装優先順位は変更しない。** [NOW](NOW.md)の受注一変更とStudioセルフビルドを最優先。#4410の副作用なしTSV縦断の後、#1180/#2514へInputとEffectを別の独立Expectedとして渡し、実DB/DriverのEffectは#4411/#1174/#2564・物理Read Scopeは#2586でのみ検収する。新バッチEngine、Transaction Coordinator、第二のExpected、専用状態Storeは作らない。本追補の検証は合成SQLiteの局所条件付き確認のみ。TEI Go／CLI／実PostgreSQL／Driver差異・実Effect・Owner採用は NOT RUN。

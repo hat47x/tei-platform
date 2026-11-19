@@ -1265,3 +1265,57 @@ Python標準ライブラリのDecimalを使い、R1の二つのChunk p1=(2,200),
 5. **P2 / #2600/#1124/#4510/#4522/#2831**：Studio/TEAは問い相対のSafety/進行/未証明・非公開境界を投影。Self-buildのStage1/Stage2成功から実業務解消を推論しない。
 
 **停止線**：#3250が要件の選択と失敗許容の判断資料、#267が正式意味受理、#1174が実Effect、#1130がBatch実証を所有。本節の資格は**既存Issue/PR静的照合と有限Backlog算術だけ**。新TEI Go/CLI/実PG/Runtime/Recipient/運用能力・障害回復の実測、業務Ownerの期限/予算受理、Current Grant、exact-head CIは **NOT RUN / NOT ACCEPTED**。新Core時刻型/Temporal DSL/Recovery/SLO Engine、第二Oracle/Receipt Store、必須Hostなし。
+
+## 34. 処理件数と実反映を、対象集合・試行・効果の別々の証拠として扱う（2026-11-19、設計候補）
+
+### 34.1 件数には母集団と観測地点がある
+
+§11の件数と§9・§27・§29の再開／適用規則をつなぐ際に、**読んだ行数、選ばれた行数、書込みを試みた回数、実DBで反映を確認した行数を同じ「処理件数」にしない**。SQL/Driverの返却値、ログの集計、当該処理が実際に変更した行と、Consumerが必要とする業務上の効果は別のClaimである。
+
+| 観測するもの | 最低限固定する境界 | 同一視しないもの |
+| --- | --- | --- |
+| Input read | Source identity／Revision・Snapshot／必要なPopulation・Scope・実Readerと取得完全性 | 業務上の全件、RLSで見えない行、不在の証明 |
+| Eligible / excluded | 評価したFilter・検査・Ruleの版、行Identityと除外理由、NULL／不明 | 元集合全体の未処理なし、実DB反映 |
+| Write attempted | Operation/Attempt・対象Key・送信した内容・対象Provider/Batch設定と順序 | Providerが受理した回数、確定した行数 |
+| Provider outcome | 応答・更新件数が何を意味するか、実Transaction境界、制約違反後の継続とRollback、現在版 | Consumer採用、外部Effect、全体原子性 |
+| Independent effect read | 実Targetの同一業務Scope・Operation/Version・対象集合、照会時点と現在の可視性 | 不在行の全域証明、他Providerの確定 |
+| Downstream use | 不変Result Generation・Publication／Reader Pin・現在Grant／業務受理 | Job exit=0、Manifest Complete、送出ACK |
+
+この六行は新しいRun State Enumや必須Core型ではなく、既存Source/Result/Runlog/Provider/Receipt/Consumerの**受入票に必要な観測列**である。重複送信・再試行・多重所属・部分Readerが混じる場合、単純な「入力=除外+反映+エラー」は成立しない。等式を使えるのは、同一固定Snapshotの全件、互いに排他的で漏れのない分類、実再試行の重複排除、必要なEffect検証が確認できた範囲だけである。値や失敗行の個人情報をログに流さない（#2516）。
+
+### 34.2 同じ入力と操作順から、実反映が変わる有限反例
+
+合成入力は順に K1=100（採用）、K2=999（除外）、K3=300（採用）、K3=400（採用・同じKey）、K4=200（採用）の**5行**。固定Snapshotに対してRead=5、Filter採用候補=4、除外=1が独立Expectedとなる。TargetにはKeyの一意制約があるものとする。
+
+| 合成Provider／Transaction方針 | 反映したKey・金額の期待 | 安全に言えること |
+| --- | --- | --- |
+| 重複行だけ拒否し続行 | K1=100、K3=300、K4=200（3行） | 候補4行と反映3行の違い。K3=400は反映しない |
+| 重複時点で打切り、そこまでをCommit | K1=100、K3=300（2行） | K4は候補でも未試行・未反映。単なる「スキップ1」では説明できない |
+| 重複によるエラーでTransaction全体をRollback | 空集合（0行） | 同じ採用候補4行でも反映0行 |
+| Commit応答喪失 | 実Targetの状態が何であっても、Receipt／照会がない間はunknown | Attemptedや成功候補数をCommittedへ昇格させない |
+
+上の三つは特定DBの実際の既定設定を表したものではなく、**あり得る実行政策を分離した合成例**である。Python標準SQLiteの一時DBで同順のInsertを試し、「重複時に続行」「打切り」「Rollback」を明示して、それぞれ3／2／0行となることを局所検算した。DBMS固有のBatch API、実TEI Provider、ACK-lossや別Processの実障害を再現したものではない。
+
+さらに同じ3行がDB内に存在していても、現在のReaderにK4がRLS等で見えなければ、「実反映3行」をそのReaderだけで認定できない。Source側も部分取得4/5行であれば、全件を処理したというClaimを立てない。これは現在の通常CLI／第一Webで実ReadのScopeとCoverageを同一Transaction内で確認する受入（#2586）と同じ原則である。
+
+### 34.3 再実行・出力の安全判断へどうつなぐか
+
+1. **純粋な初回TSV（#4410）**では、行の読取・選別・型不正・未取得・結果生成の件数を同一Snapshotに紐付ける。DB反映を初回Gateに入れず、決定的なファイルと個別Resultのdigest、途中失敗で未公開を先に検証する。
+2. **副作用を伴う実行（#4411／#1174／#2564）**では、対象集合・送信Attempt・Provider応答・Commit Receipt・独立Readbackを別欄で記録する。制約違反・Batch APIの曖昧な戻り値・ACK喪失時は、再送可能性を受理済みOperation同一性とProvider実挙動に照らして判定する。キーが存在するだけで「今回のOperationが成功した」と推測しない。
+3. **再集計と多成果物（成果物中心設計§13〜15）**では、Resultに含まれなかった行のCondition依存と、生成世代の組の整合を維持する。行数や個別出力の検算が一致しても、対象母集団と二Resultの共通Cutが揃わなければ最終的なマート利用資格はない。
+4. **Studio／運用表示（#1124／#2516）**は、必要な開示Scopeに絞り、選別数・送信数・Effect確認数・unknownとその根拠を別表示する。値の見えない行の存在や件数を表示から漏らさない。
+
+### 34.4 既存独立Expectedへの追加候補と検収順
+
+| ID | 一因子 | Expected（新しい試験正本は作らない） |
+| --- | --- | --- |
+| BO-01 | 固定5行の選別 | Read5、候補4、除外1。Source完全性がある範囲だけで成立 |
+| BO-02 | 同じ候補の三つのDB適用政策 | Confirmed Key集合が3／2／0と異なり、候補件数から反映数を推論しない |
+| BO-03 | 最後のCommit ACKだけ欠落 | unknown。独立Receipt／Operation-aware Readが成立するまで重複再送を拒否 |
+| BO-04 | 5行中1行のSource欠落 | 完全な入力としてのBO-01を拒否。正しい0件と未取得を区別 |
+| BO-05 | 実Targetに存在するK4がReaderのScope外 | Readerの2行観測からTarget全域の確定3行を推定しない。秘匿情報も漏らさない |
+| BO-06 | 同じKey・値を別Operationで再送 | Keyの存在だけで冪等再送成功とは認定しない。Operation/Expected Version・Receiptで照合 |
+
+**受入順**：P0の受注一変更（plan/NOW.md）とStudioセルフビルドを継続。その後#4410の純粋TSVを完成。BO-01/04のSource/結果とBO-02/03/05/06のEffectを**別の既存Scenario**として#1180/#2514に引き渡し、対応する実Provider能力がある段階だけ#4411へ進める。新Batch Runner／Scheduler／Job状態表／Provider保証の共通化／分散Transactionをこの節から導入しない。
+
+**資格**：本節は公開・非公開調査の一般化と、独立したSQLite局所算術の整理であり、今回の新TEI Go／CLI／PostgreSQL／他DBMS／Driver・二Process・実Consumer・Owner受理・exact-head CIは **NOT RUN / NOT ACCEPTED**。
