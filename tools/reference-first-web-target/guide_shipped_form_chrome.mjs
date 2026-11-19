@@ -32,6 +32,16 @@ try {
     if (new URL(request.url()).origin !== base) crossOrigin.add(new URL(request.url()).origin);
     if (request.method() === "POST") postRequests.push(request);
   });
+  // Record any unexpected origin, but also block it before sending. This
+  // page carries a credential fixture; detection after the request is too late.
+  await page.route("**/*", (route) => {
+    const origin = new URL(route.request().url()).origin;
+    if (origin !== base) {
+      crossOrigin.add(origin);
+      return route.abort("blockedbyclient");
+    }
+    return route.continue();
+  });
 
   const response = await page.goto(`${base}/custom-submit`, { waitUntil: "domcontentloaded" });
   if (!response || response.status() !== 200) throw new Error("the shipped GET form was not served");
