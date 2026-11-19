@@ -1504,3 +1504,41 @@ CPW-01〜10は**複数Ownerの証拠の接合に特有な反例**として、既
 
 この段階の成果は接続条件と実装・検収手順の確定であり、W0〜W3の新Go／Windows／実DB試験やOwnerの意味受理は行っていない。**CLI先行の意味あるCodegen／Plugin自己構築とStudio Stage1→Stage2の既存最優先は維持**する。
 
+
+
+## 製品Consumerへ渡す資格の境界（2026-11-19 横断統合）
+
+### 一つのモデルを表示・編集・実行へ渡す際の停止線
+
+TEIのNode View、三要素分析法のモデル、組織モデル、Rule／BRMS、協業UIは、個別の正本や実行Hostを新設する理由にはしない。既存のData／Relation／Function／Process、Source Index、Contract／Provider、Shared Acceptance、Build Execution／ArtifactSetを共通の足場とする。画面に現れるNode出現ID・Edge ID・表示位置は、意味定義のIDやSourceの書込先と同一視しない。
+
+| 段階 | 実際に必要な根拠 | それだけでは許されないこと |
+| --- | --- | --- |
+| 1. 要求・選択 | Workspace／Subject／契約版／要求Roleと、既存Compositionによる明示選択 | 選択したというだけで実Providerを呼んだと主張すること |
+| 2. 実読取・投影 | 実Provider Call、Source Revision、出現位置、Coverage、Resultの同一Attempt記録 | read-onlyの表示を、業務意味の受理や編集権限とみなすこと |
+| 3. 編集候補・Review | 元のSource位置、対象の一意性、差分、影響するRelation／Consumer、現在のWorkspaceを再確認 | 同名Nodeや表示位置から書込先を推測すること |
+| 4. 明示Accept・保存 | 既存Shared AcceptanceのOwner判断、現在のGrant、Writer適格性、Source版の再照合、実Writeと再読込 | Candidateを自動的にAccepted Meaningへ昇格すること |
+| 5. 生成・実Consumer | 実Buildの入力閉包／Builder／Artifact member、製品CLIまたはWindows Stage2の実受領 | 生成ファイルの存在やTest Bridgeの成功を製品受領とみなすこと |
+
+**保存可能なUIを先に一般化しない。** StudioBridgeのread-only操作はそのまま使い、編集候補のPreview／Reviewを先に製品画面へ接続する。WriterがSource pin、対象の一意性、Grant、失効、再読込を保証できない間は保存を `unsupported` とする。協業中の別Consumerによる読取世代と現在の書込資格も別票にする。
+
+### 最初に製品で通す二本の縦断
+
+- **通常CLIの一Function**：実PostgreSQL Reader→Rowset／Coverage→Data Context→RuleまたはFunction→通常CLIの実Consumer。存在・不存在・一意性などの判断には、取得範囲がそのClaimに十分であることを別途検証する。Node／三要素表示はこの経路のSource・Result投影として接続し、実DB読取の代用品にしない。
+- **Studioの一変更**：同じSource上の対象をread-onlyで選択→Preview／Review→既存Shared Acceptance（資格を満たす場合のみ）→Source再読込→Stage1 TEIによるStage2生成→当該Stage2の実Windows WebView2 Consumer。Stage1／Stage2の実行主体・生成物・選択Provider・Source Revisionを同一の因果鎖に残し、別HEAD／別Attemptの成功を合算しない。
+
+### 独立Expectedへ渡す最小反例
+
+| ID | 反例 | 期待する停止 |
+| --- | --- | --- |
+| PCA-01 | 選択Provider Bに対し実CallがA | 実呼出し資格を拒否。表示JSONの一致で救済しない |
+| PCA-02 | 同名二Node／平行Edgeの表示からSource書込先を一意と誤認 | 編集候補の対象未解決。Sourceを変更しない |
+| PCA-03 | Preview後にSource A→B→A、またはWorkspace／Grantが変化 | 古いReview／Accept資格を再利用しない |
+| PCA-04 | 部分取得なのに「該当なし」「唯一」を断定 | Claimの十分性を保留し、単なるRowset取得成功と分離 |
+| PCA-05 | Stage1とは別の旧Stage2 exeを起動して検収 | Build／Consumerの因果鎖不一致として拒否 |
+| PCA-06 | 二Consumerの結果世代を混ぜて一つの組織状態として公開 | 公開した組の読取Cut不一致として拒否 |
+| PCA-07 | Previewは通るがWriter不在、Source pin失効、またはGrant不足 | Reviewまでに止め、保存をunsupported／拒否として扱う |
+
+PCA-01は#951／#1251、PCA-02は#2497／#1124、PCA-03／07は既存Shared Acceptanceと#2600、PCA-04は#2586／#2506、PCA-05は#2831／#4583、PCA-06は組織モデルのOwnerへ渡す。独立Expectedの管理は#1180／#2514に集約する。**新しいResolver、意味正本、Node Runtime、専用Writer、Build Runnerは追加しない。**
+
+これは横断設計の受入候補であり、PCA-01〜07の製品試験、Windows Stage2再入、Ownerの意味受理を実施したことを意味しない。既存の通常CLI実ProviderとStudioセルフビルドのP0を遅らせる追加Hard Gateにはしない。
