@@ -2,7 +2,7 @@
 
 受注明細を実際のPostgreSQLから読み、設計文書に新しい規則を追加して、CLIとWebで答えが変わることを確かめる手順である。[いま進めること](../plan/NOW.md)の五段階を試す最初の例であり、既存規則の書換えはまだ扱わない。
 
-2026年11月17日に手順0〜4をPostgreSQL 16で確認した。その後、[#5588](https://github.com/hat47x/tei-platform/pull/5588)で、手順0・1・3のシェルコマンドをこのページから読み取り、同じ実DB・作業領域で実行した。手順2・4のCLIと手順5の実Chromeも一つの試行で検査した。[#5602](https://github.com/hat47x/tei-platform/pull/5602)では第一Webを実行ファイルとしてビルドし、別プロセスから実DBの答えを画面へ返した。さらに[#5633](https://github.com/hat47x/tei-platform/pull/5633)では、手順5の`go run`も同じ実PostgreSQL・編集済み作業領域・実Chromeの試行で検査した。待受ポートだけは他の試験と衝突しない値に変えている。画面の入力欄を使った操作と、初めて使う人自身による完走はまだ確認していない。
+2026年11月17日に手順0〜4をPostgreSQL 16で確認した。その後、[#5588](https://github.com/hat47x/tei-platform/pull/5588)で、手順0・1・3のシェルコマンドをこのページから読み取り、同じ実DB・作業領域で実行した。手順2・4のCLIと手順5の実Chromeも一つの試行で検査した。[#5602](https://github.com/hat47x/tei-platform/pull/5602)では第一Webを実行ファイルとしてビルドし、別プロセスから実DBの答えを画面へ返した。さらに[#5633](https://github.com/hat47x/tei-platform/pull/5633)では、手順5の`go run`も同じ実PostgreSQL・編集済み作業領域・実Chromeの試行で検査した。待受ポートだけは他の試験と衝突しない値に変えている。その後、[#5642](https://github.com/hat47x/tei-platform/pull/5642)で出荷Webの実際の入力欄をChromeから自動操作し、送信まで確認した。初めて使う人自身が手順を見て独力で完走できるかは、まだ確認していない。
 
 ## 用意するもの
 
