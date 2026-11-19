@@ -781,7 +781,6 @@ func TestFirstChangeGuideExecutesLiteralRuleEdit(t *testing.T) {
 	}
 }
 
-
 // TestFirstChangeGuideRejectsAmbiguousApplicationInsertion executes the
 // published step 3, not a replacement awk program. A changed/duplicated
 // insertion anchor must never overwrite the original Application or leave an
@@ -812,6 +811,8 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 	}{
 		{name: "missing-anchor", change: strings.Replace(string(original), anchor, "", 1), count: "0"},
 		{name: "duplicated-anchor", change: strings.Replace(string(original), anchor, anchor+anchor, 1), count: "2"},
+		{name: "already-registered", change: strings.Replace(string(original), anchor,
+			anchor+"    uses validation sales.order_line.unit_price_positive\n", 1)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workspace := t.TempDir()
@@ -833,8 +834,12 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 			if err == nil {
 				t.Fatal("published shell silently accepted an ambiguous Application anchor")
 			}
-			if !strings.Contains(string(output), "規則の登録先が"+tc.count+"件です（1件必要）") {
-				t.Fatalf("published shell failed without the specific anchor count: %s", output)
+			want := "規則の登録先が"+tc.count+"件です（1件必要）"
+			if tc.name == "already-registered" {
+				want = "追加する規則は既に1件登録されています"
+			}
+			if !strings.Contains(string(output), want) {
+				t.Fatalf("published shell failed without its expected refusal: %s", output)
 			}
 			got, err := os.ReadFile(application)
 			if err != nil {
