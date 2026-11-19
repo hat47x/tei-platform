@@ -174,3 +174,79 @@ func TestNamedUnaryOperatorRefusesCrossDocumentValueAtProductLoad(t *testing.T) 
 		t.Fatalf("a cross-document input value escaped product fail-closed diagnostics: %v", err)
 	}
 }
+
+// Moving a selected Operator document without changing its bytes must retain
+// the typed Rule and Operator meaning, but cannot retain the old physical
+// Source locator or ModelRevision. In particular, the byte fingerprint alone
+// is not a sufficient identity for a selected Source.
+func TestNamedUnaryOperatorMoveRetainsMeaningButChangesSourceRevision(t *testing.T) {
+	const oldPath = "semantic/sales/zz-operators.tei.md"
+	const newPath = "semantic/sales/zy-operators.tei.md"
+	const operatorID = "sales.non_negative"
+
+	root := teiMDOperatorWorkspace(t)
+	rewriteTEIMDTestFile(t, root, oldPath,
+		"operator sales.non_negative: takes number",
+		"operator sales.non_negative: takes amount: number")
+
+	load := func() (Result, sourceindex.Index) {
+		t.Helper()
+		loaded, err := Load(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if codes := diagnosticCodes(loaded); len(codes) != 0 {
+			t.Fatalf("selected Operator/Rule is invalid: %v", codes)
+		}
+		index, err := BuildSourceIndexFromLoad(root, loaded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return loaded, index
+	}
+	readCurrent := func(rel string) ([]byte, error) {
+		return os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+	}
+	before, oldIndex := load()
+	raw := readTEIMDTestFile(t, root, oldPath)
+	if err := oldIndex.Validate(readCurrent); err != nil {
+		t.Fatalf("original Source Index: %v", err)
+	}
+	subject := sourceindex.Subject{Kind: "semantic-operator", ID: operatorID}
+	oldRefs := oldIndex.ReferencesFor(subject)
+	if len(oldRefs) != 1 || oldRefs[0].ArtifactPath != oldPath ||
+		oldRefs[0].Range.Start.Offset != bytes.Index(raw, []byte(operatorID)) {
+		t.Fatalf("original Operator source is not independently located: %+v", oldRefs)
+	}
+
+	if err := os.Rename(filepath.Join(root, filepath.FromSlash(oldPath)),
+		filepath.Join(root, filepath.FromSlash(newPath))); err != nil {
+		t.Fatal(err)
+	}
+	after, newIndex := load()
+	if !reflect.DeepEqual(before.World.Semantics, after.World.Semantics) {
+		t.Fatal("a Source-only move changed the typed Rule or Operator meaning")
+	}
+	moved := readTEIMDTestFile(t, root, newPath)
+	if !bytes.Equal(raw, moved) {
+		t.Fatal("moving the document changed its authored bytes")
+	}
+	newRefs := newIndex.ReferencesFor(subject)
+	if len(newRefs) != 1 || newRefs[0].ArtifactPath != newPath ||
+		newRefs[0].Range != oldRefs[0].Range ||
+		newRefs[0].Role != sourceindex.RoleDefinition {
+		t.Fatalf("Operator Source range was not retained at the new location: old=%+v new=%+v", oldRefs, newRefs)
+	}
+	if err := newRefs[0].Range.Validate(moved); err != nil {
+		t.Fatalf("relocated range is not valid: %v", err)
+	}
+	if sourceindex.ModelRevision(oldIndex) == sourceindex.ModelRevision(newIndex) {
+		t.Fatal("the selected Source path changed but ModelRevision did not")
+	}
+	if err := oldIndex.Validate(readCurrent); err == nil {
+		t.Fatal("a stale Source Index was accepted after its selected document moved")
+	}
+	if err := newIndex.Validate(readCurrent); err != nil {
+		t.Fatalf("the freshly loaded Source Index is invalid: %v", err)
+	}
+}
