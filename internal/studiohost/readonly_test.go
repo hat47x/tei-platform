@@ -236,6 +236,11 @@ func TestFailureClassifyCompletesMissingRetryWithoutDiscardingExplicitContract(t
 			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
 		},
 		{
+			name: "explicit retry policy with missing kind",
+			input: Failure{Code: "COMMAND_FAILED", Message: "failed", Retryable: "lookup_first"},
+			wantKind: "technical_failure", wantRetry: "lookup_first", wantUnknown: true,
+		},
+		{
 			name: "explicit business kind with missing retry",
 			input: Failure{Code: "WORKSPACE_NOT_ALLOWED", Message: "denied", Kind: "business_rejection"},
 			wantKind: "business_rejection", wantRetry: "not_retryable", wantUnknown: false,
