@@ -631,3 +631,55 @@ Git作業版、DB接続先、Workspace、Principal/Grant、Plugin/Builder選択�
 UX-PINの次は、同じ一Subjectから限定Context Preview、実Audience/Disclosureの確認、外部Harness Replyの完全受領、元Sourceへの候補帰着へ進む。ただし #3262/#2516/TAI #168の既存責務を再実装しない。Desktopセルフビルド #2831/#4583と通常実Provider Read #2586の製品P0は変更しない。
 
 **この節は設計と実装差分の定義であり、実Windows/AI/DB試験の成功を示さない。**
+
+## 34. 協業を通常の作業に溶け込ませる：画面、引継ぎ、レビューの実装基準（2026-11-19）
+
+本節は§1〜33の設計を画面上の行動に落とすための補足である。「人間用のStudio」と「AI用の別Studio」を設けず、一つのSource・意味・Operationから、必要な情報だけを異なる操作面へ投影する。AIを使わない日常操作を先に成立させ、AIの説明や提案はその作業へ割り込むのではなく、明示した対象に紐付けて戻す。
+
+### 34.1 画面の主役は対象と作業、AI会話は補助
+
+一つの作業について、利用者が常に判別できる情報を「今見ている対象」「固定している対象」「変更候補」「実際の結果」に分ける。これらは状態の正式Schemaや新しいTask正本を意味せず、既存Operation/Reader/Pin/Writerの表示上の役割である。
+
+| 領域・操作面 | 最初に見せる内容 | 必要なときだけ展開する内容 |
+| --- | --- | --- |
+| Workspaceの見出し | 現在のWorkspace／接続対象・読取状態、表示対象の種別と名前 | Source・Git版、DB Binding、Actor/Grant、実Consumer版をそれぞれ別軸で確認する入口 |
+| 探索（Tree・Graph・表・検索） | 意味上の対象、参照元／先、診断からの移動 | Source occurrence、Relation identity、粒度・取得範囲、Graphの描画情報との違い |
+| 中央の作業面（Editor・Inspector等） | **閲覧中の対象**とその原文／診断、操作の有無 | Source版、未保存Buffer、検査範囲、Readerの部分取得・失効理由 |
+| 固定対象／Review | **固定対象**と再確認結果、変更候補の有無、取れる次の操作 | 基準Source、候補差分、必要Evidence、競合・未確認・却下の理由 |
+| Activity／実行結果 | 誰がどの対象へ何を要求し、何が観測されたか | Attempt・Provider・Receipt・独立Readと、未受領／結果不明の境界 |
+
+これは**情報の優先順位**であって、画面を五つの常設ペインに固定する指定ではない。小さな画面では必要な面を切り替える。現在対象の確認・元Sourceへの往復・レビューをAIパネルが塞がない構成とする。Focusの移動は視線・閲覧の操作、Pinは継続した対象の意図、Reviewは変更候補、Activityは実観測であり、互いの代用品にしない。
+
+### 34.2 操作名と副作用を一致させる
+
+利用者へは「再確認」「固定対象を開く」「候補を比較」「変更を適用」「実行結果を確かめる」を異なる操作として示す。§33で定義したように、**再確認は現在の閲覧面を変更せず、開く操作だけが明示的に閲覧面を移す**。提案の比較は保存ではなく、保存は意味受理でもBuild/Provider Effectでもない。途中で資格が失われた場合、画面を勝手に元の対象へ戻さず、候補やPinの意図を保持したまま、再読取・再選択の必要を知らせる。
+
+自動化のための状態遷移を新設しない。既存のLocate→Inspect→Pin→Preview→Review→Apply→Observeを、利用者が選べる**操作順序**として説明する。キーボード操作、読み上げ、Focus順、IME入力、Undoをこの操作順に沿って検査する。ただし現在のread-only Workbenchでは未保存編集の保存・Undo・IME保持の製品受入を主張せず、編集可能Consumerの後続試験へ分ける。
+
+### 34.3 AI引継ぎは「何を送るか」を先に確認する
+
+外部AIへ渡す直前に、既存#3262 Required Context／#2516 Disclosure／Hostの実能力に基づくPreviewを示す。最低限、**(1)対象と目的、(2)実際に読んだSource・Revision・範囲、(3)必要だが未取得の情報、(4)送信先Audienceと送信するSlice、(5)戻る場所と現在の未保存差分**を確認できるようにする。未取得と空集合、0件と全件性、Sourceの構造一致とCurrent Grantを同一表示にしない。
+
+許可範囲が確定しない情報は送出しない。ここでのPreview操作は送信実行でも承認Tokenでもない。外部Toolの途中受信／欠落／旧Replyがあれば、完了と表示せず、既存Harnessの実受領結果をそのままReviewへ結び付ける。AIを使わない場合は同じ対象をCLI/Studioだけで辿れることを対照とする。
+
+### 34.4 戻ってきた候補の最小レビューと、二人以上の作業
+
+候補を表示するときは、まず **「どの対象を」「何から何へ」「何を検証したか」「次に何ができるか」** の四点を示す。根拠Source／出典、基準Revision、変更箇所、現在のSaved SourceとDirty Buffer、検査済み・未実施の区別は詳細で確認できるようにする。差分が意味に与える影響を確かめられない場合はSource候補にとどめ、採用済みMeaningや適用済みEffectを表示しない。
+
+人間がR1を編集中にAIがR0から返した候補、別のAIがR0から返した候補、同名SubjectでWorkspaceやDBの異なる候補は、いずれも無音で上書き・合成しない。「古い基準での候補」と表示し、現在のSource・対象・Disclosureを再取得してから、既存のWriter/Review/Acceptanceへ渡す。SUIのCard、SHOの文書、TEIのSource、DBの実RowはそれぞれWriterと受理責務を保ち、画面間の参照・引用は自動保存権限を生まない。
+
+### 34.5 最小検収を三段に限定する
+
+| 段階 | 受入で観測する利用行為 | 既存Owner／停止条件 |
+| --- | --- | --- |
+| **C-UX0 人間単独** | CLIとWorkbenchで同一Qualified Subjectを見つけ、Aを固定→Bを閲覧→背景再確認→明示してAを開く。Bの表示・Focus・Noticeは背景処理で不変 | #4515／#1824／#1180／#2514。NodeとSource配線の合格から、配布Asset・実Windows DOMを合格扱いしない |
+| **C-UX1 明示AI引継ぎ** | C-UX0の対象からContext Preview→Audience/Disclosure確認→許可Sliceのみ実Harnessで受領→元Subjectに候補を戻す | #3262／#2516／TAI #168。Source/Grant不明、部分Reply、旧Attempt、既存Disclosure撤回では送信・自動適用を停止 |
+| **C-UX2 変更レビュー** | R0候補と人間のR1／未保存編集、並列AI候補、SHO/SUIからの引用を比較して、既存条件付きSource変更→再Inspectへ戻す | #1124／#2497／#1529／#1174。未実装の編集可能Consumer・Meaning Acceptance・実DB Effectをread-only検査から導出しない |
+
+C-UX0〜2は**既存UX-PIN／UX-DIAG／UX-READと#1180/#2514の引渡し上の整理名**であり、新Scenario正本や新たな実行エンジンではない。いずれも独立Expected、版・Source/Subject同一性、実Consumer受領で評価する。操作の所要時間、画面移動回数、誤対象操作、見落とした未取得情報は、実測の初期値を得てから比較し、根拠のない性能目標を採用しない。
+
+### 34.6 今回の実装と製品配布の差
+
+[実装Draft #5618](https://github.com/hat47x/tei-platform/pull/5618)は「固定対象を開く」の画面配線を追加し、同HEADのPin契約・async responseのCIはPASS。一方、正規WorkbenchのHTMLとWails埋込HTMLのbyte差、および静的CompositionのWorkbench revision不一致が同HEADのCIで失敗している。**新操作を製品へ受領済みとは扱わず、#5618を未マージのまま切り分ける。** 正規Source→生成HTML/JS/CSS/通知→Embed→同一Composition pin→実Wails/WebView2で検収する。固定成功とCurrent Disclosure／書込許可／外部AI受領はさらに別の資格である。
+
+本節と主計画への追補は文書のみ。新しいNode/Go/Windows、実DB、Harness、Writer、Ownerの受入試験は行っていない。製品P0は #2831/#4583 の非Plugin Stage1→Stage2 Desktopと #2586/#4495 の通常CLI実Provider Readを維持し、C-UX1/2やUI Framework選定を新Hard Gateにしない。
