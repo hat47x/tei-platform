@@ -490,3 +490,11 @@ footer p {
 }
 #required-draft-result:empty { display: none; }
 #required-choice { margin: 7px 0 10px; }
+
+.draft-panel {
+  margin-top: 22px;
+  padding: 14px 0 16px;
+  border-top: 1px solid #dce4e5;
+  border-bottom: 1px solid #dce4e5;
+}
+.draft-panel h3 { margin: 0 0 6px; font-size: 14px; }
