@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -303,9 +304,93 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 			}
 		})
 	}
-	// Keep the established CI receipt prefix, but do not imply that step 5's
-	// published go-run command or real form entry was executed verbatim.
-	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; shipped Web with automated bootstrap POST for orders 1001 and 1002 (not human form input)")
+	t.Run("documented-step-5-go-run", func(t *testing.T) {
+		verifyDocumentedGuideGoRunWeb(t, handbook, root, dsn, browser, fixtures)
+	})
+	// Keep the established CI receipt prefix while distinguishing the actual
+	// documented go run (isolated listen address) from real Web form entry.
+	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; step 5 documented go run and shipped Web binary (both selected orders via automated bootstrap POST, not real form entry)")
+}
+
+// verifyDocumentedGuideGoRunWeb exercises the published step-5 shell, not
+// merely a prebuilt binary of the same Web package. Only the fixed listen
+// address is replaced by an isolated port so parallel CI cannot collide.
+// Linux setsid keeps the go-run wrapper and its compiled child in one process
+// group; stopping only the wrapper would leave a Web server behind.
+func verifyDocumentedGuideGoRunWeb(t *testing.T, handbook, root, dsn, browser, fixtures string) {
+	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("the documented go run process tree is verified in Linux PostgreSQL CI")
+	}
+	for _, name := range []string{"setsid", "kill"} {
+		if _, err := exec.LookPath(name); err != nil {
+			t.Fatalf("cannot safely manage the documented go run process tree: missing %s", name)
+		}
+	}
+	script := documentedGuideShellStep(t, handbook,
+		"## 5. Webの画面で同じ答えを見る", "## まだできないこと")
+	const publishedListen = "-listen 127.0.0.1:8080"
+	if strings.Count(script, "go run ./tools/reference-first-web-target") != 1 ||
+		strings.Count(script, publishedListen) != 1 ||
+		!strings.Contains(script, `export TEI_WEB_READ_PG_DSN="$TEI_VIEW_PG_DSN"`) ||
+		!strings.Contains(script, "-diagnostic-unaccepted-source") {
+		t.Fatal("step 5 no longer contains the documented go run, DSN export and diagnostic source flag")
+	}
+	address := freeLoopbackAddress(t)
+	script = strings.Replace(script, publishedListen, "-listen "+address, 1)
+	web := exec.Command("setsid", "sh", "-eu", "-c", script)
+	web.Dir = repoRootForGuide(t)
+	// The handbook exports the Web DSN from this already-proven CLI DSN.
+	// Do not put either credential into arguments, Workspace or test logs.
+	web.Env = append(os.Environ(), "TEI_VIEW_PG_DSN="+dsn, "TEI_FIRST_WORKSPACE="+root)
+	if err := web.Start(); err != nil {
+		t.Fatalf("cannot start step 5's documented go run shell: %v (output withheld)", err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- web.Wait() }()
+	t.Cleanup(func() {
+		// The Linux setsid command establishes a fresh process group. Sending
+		// a signal to its negative ID also stops the go-run compiled child.
+		// Ignore ESRCH when the command has already finished.
+		group := "-" + strconv.Itoa(web.Process.Pid)
+		_ = exec.Command("kill", "-TERM", "--", group).Run()
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			_ = exec.Command("kill", "-KILL", "--", group).Run()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Error("step 5's documented go run process group did not stop")
+			}
+		}
+	})
+	waitForHealth(t, address, done)
+	for _, choice := range []struct {
+		row            int
+		orderID        string
+		relationAnswer string
+	}{
+		{row: 0, orderID: "1001", relationAnswer: "not-satisfied"},
+		{row: 1, orderID: "1002", relationAnswer: "satisfied"},
+	} {
+		t.Run("published-go-run-order-"+choice.orderID, func(t *testing.T) {
+			dom := chromeDOMOfSelectedOrder(t, browser, address, choice.row)
+			if strings.Contains(dom, dsn) {
+				t.Fatal("step 5's actual go run page exposed the PostgreSQL DSN")
+			}
+			rows := sectionBetween(dom, `id="order-lines"`, `id="read-identity"`)
+			if rows == "" {
+				t.Fatal("step 5's documented go run produced no order-line read")
+			}
+			requirePageAnswersMatchExpectation(t, rows,
+				expectedAnswersForOrder(t, filepath.Join(fixtures, "expected-after.json"), choice.orderID))
+			if !strings.Contains(dom, "sales.order.lines.line_number_unique "+choice.relationAnswer) {
+				t.Fatalf("step 5's documented go run gave the wrong Relation answer for order %s", choice.orderID)
+			}
+		})
+	}
+	t.Log("step 5 documented go run shell reached real PostgreSQL and Chrome for both orders; only listen port changed for CI; test bootstrap POST is not real Web form entry")
 }
 
 // documentedGuideShellStep returns the commands from the published POSIX
