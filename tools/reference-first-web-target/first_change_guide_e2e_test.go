@@ -313,6 +313,81 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; step 5 documented go run and shipped Web binary (both selected orders through the shipped form's visible inputs and Submit button)")
 }
 
+// TestFirstChangeGuideRejectsAmbiguousApplicationAnchor executes the actual
+// published step 3. A missing or duplicated Application anchor must not be
+// reported as a successful edit or overwrite the original Application file.
+// This regression runs without a database or browser.
+func TestFirstChangeGuideRejectsAmbiguousApplicationAnchor(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the published POSIX shell is tested on Unix runners")
+	}
+	root := repoRootForGuide(t)
+	guide, err := os.ReadFile(filepath.Join(root, "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := documentedGuideShellStep(t, string(guide),
+		"## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	original, err := os.ReadFile(filepath.Join(root,
+		"reference", "workspace", "applications", "order-entry", "application.tei"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const anchor = "    uses validation sales.order_line.quantity_positive"
+	if strings.Count(string(original), anchor) != 1 {
+		t.Fatal("the reference Application no longer has exactly one expected anchor")
+	}
+	for _, tc := range []struct {
+		name    string
+		content string
+	}{
+		{"missing-anchor", strings.Replace(string(original), anchor,
+			"    uses validation sales.order_line.quantity_positive_other", 1)},
+		{"duplicate-anchor", strings.Replace(string(original), anchor,
+			anchor+"\\n"+anchor, 1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			workspace := t.TempDir()
+			for _, dir := range []string{
+				filepath.Join("semantic", "sales"),
+				filepath.Join("applications", "order-entry"),
+			} {
+				if err := os.MkdirAll(filepath.Join(workspace, dir), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(workspace, "tei.workspace.yaml"),
+				[]byte("# scratch Workspace\\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			app := filepath.Join(workspace, "applications", "order-entry", "application.tei")
+			if err := os.WriteFile(app, []byte(tc.content), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("sh", "-eu", "-c", script)
+			cmd.Dir = root
+			cmd.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+workspace)
+			output, err := cmd.CombinedOutput()
+			if err == nil {
+				t.Fatal("the published step 3 silently accepted an ambiguous Application anchor")
+			}
+			if !strings.Contains(string(output), "Applicationの規則挿入位置が一つに定まりません") {
+				t.Fatalf("the published step 3 gave no explanation for refusing its Application edit: %v", err)
+			}
+			after, err := os.ReadFile(app)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(after) != tc.content {
+				t.Fatal("the failed published step 3 changed the original Application")
+			}
+			if _, err := os.Stat(app + ".next"); !os.IsNotExist(err) {
+				t.Fatalf("the failed published step 3 retained a temporary Application: %v", err)
+			}
+		})
+	}
+}
+
 // chromeDOMFromShippedForm opens the real Web form in Chrome, fills the four
 // user-visible fields and clicks Submit. The separate Node process uses only
 // playwright-core pinned in runner scratch, not a new business test Host.
