@@ -348,7 +348,7 @@ rule sales.order_line.discount_non_negative:
   sales.order_line.discount is sales.non_negative
 ```
 
-ここでは既存の意味モデルを使い、宣言の読み取り、型検査、Ruleの参照先、選択済み実装の一回の数値読取、実際の判定までを追える。一方、後ろに `amount: 0` を付けると、規則の主語がすでに与えた入力を二度割り当てることになるため、読込時に拒否する。
+ここでは既存の意味モデルを使い、宣言の読み取り、型検査、Ruleの参照先、選択済み実装の一回の数値読取、実際の判定までを追える。一方、後ろに `amount: 0` を付けると、規則の主語がすでに与えた入力を二度割り当てることになるため、読込時に拒否する。**ただし、Operator宣言がRuleと別文書にある場合**、現行Readerはその場所で相手文書の名前付き入力一覧を参照せず、まず「入力値をMeaningへ保持できない」として拒否する。同一文書内の専用診断と文言が異なることを、受理漏れと取り違えない。
 
 新しい製品回帰 `internal/workspace/tei_md_named_unary_operator_product_test.go` は、既存の別Markdown文書に置いたOperator宣言とRule、`Workspace.Load`／Source Index／`validationeval.EvaluateWithOperators` を用いてこの境界を検査する。文章だけを変更したときは意味を保ちながら古いSource Indexを失効させ、入力名自体を変更したときはOperator契約の変更を確認する。追加Go試験の実行結果は、exact HEADのCIを確認してから記録する。
 
