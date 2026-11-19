@@ -179,6 +179,8 @@ if (playwrightRoot) {
   let submit;
   elements.set("studio-edit", {
     addEventListener(event, callback) {
+      // The form also clears a stale candidate when its input changes.
+      if (event === "input") return;
       assert.equal(event, "submit");
       submit = callback;
     }
