@@ -347,6 +347,17 @@ func destinationFixtureRoot(t *testing.T) string {
 // opening a static file would not exercise this HTTP boundary.
 func chromeDOMOfSubmittedOrder(t *testing.T, browser, address string) string {
 	t.Helper()
+	return chromeDOMOfSelectedOrder(t, browser, address, 0)
+}
+
+// chromeDOMOfSelectedOrder submits the same reference authentication and
+// explicitly selected browse row. This still uses a test-only bootstrap form,
+// not the shipped form's individual DOM controls.
+func chromeDOMOfSelectedOrder(t *testing.T, browser, address string, row int) string {
+	t.Helper()
+	if row != 0 && row != 1 {
+		t.Fatalf("the published first-change guide selects only rows 0 and 1, got %d", row)
+	}
 	bootstrap := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = io.WriteString(w, fmt.Sprintf(`<!doctype html><html><body>
@@ -354,8 +365,8 @@ func chromeDOMOfSubmittedOrder(t *testing.T, browser, address string) string {
 <input type="hidden" name="loginId" value="legacy-order-editor">
 <input type="hidden" name="credential" value="editor-secret">
 <input type="hidden" name="from" value="2026-09-01T00:00:00Z">
-<input type="hidden" name="row" value="0">
-</form><script>document.getElementById("bootstrap-post").submit()</script></body></html>`, address))
+<input type="hidden" name="row" value="%d">
+</form><script>document.getElementById("bootstrap-post").submit()</script></body></html>`, address, row))
 	}))
 	defer bootstrap.Close()
 
