@@ -77,6 +77,20 @@
         <p class="eyebrow">操作と診断</p>
         <h2>作業領域の状態</h2>
         <p id="diagnostic-summary" class="summary">未検証</p>
+        <section class="pin-panel" aria-labelledby="required-draft-heading">
+          <h3 id="required-draft-heading">Data属性の必須指定（候補のみ）</h3>
+          <p class="hint">現在のInspect結果から未審査候補を表示します。Sourceの保存、Review、受理はできません。図形や選択位置を書込み権限に使いません。</p>
+          <label for="required-choice">変更後の指定</label>
+          <select id="required-choice" disabled>
+            <option value="true">必須にする</option>
+            <option value="false">任意にする</option>
+          </select>
+          <div class="pin-actions">
+            <button id="preview-required" type="button" aria-controls="required-draft-result" disabled>未審査候補を確認</button>
+          </div>
+          <p id="required-draft-status" class="hint" role="status" aria-live="polite">Data属性を選択してください。</p>
+          <pre id="required-draft-result" class="xead-table" aria-label="未審査候補の読取り専用プレビュー"></pre>
+        </section>
         <section class="pin-panel" aria-labelledby="pin-heading">
           <h3 id="pin-heading">固定した設計要素</h3>
           <p class="hint">閲覧中の要素とは独立して保持します。現在の権限やAIへの送信許可は示しません。</p>
