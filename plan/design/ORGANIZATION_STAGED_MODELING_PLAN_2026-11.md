@@ -1276,3 +1276,42 @@ main統合済み[PR #5431](https://github.com/hat47x/tei-platform/pull/5431)はW
 **引継ぎと優先順位**：先行P0の#2586（通常CLI実Provider→一Consumer）と#2831（Desktop Stage1→Stage2セルフビルド）を維持。最初は既存r7／MG-02/04を一枚のread-only比較票でつなぎ、#4490/#2514の独立Expectedへ渡す。実Targetの世代切替・Pinは#2482/#2622/#1130、Context/Consumerは#2506/#2516/#1124、Case/ACKは#1125/#1444、現在Grant/Effectは#1174/#2499が担当。通常組織Dataへの一律ACL、新Org Runtime、固定公開Schema、第二Expected正本、全Provider原子性の仮定は追加しない。
 
 **今回の資格**：設計・反例の接合のみ。Org新世代の実共同公開、複数HTTP要求の固定Snapshot、二Consumer実受領、Case実Handoff、Owner意味受理は **NOT RUN／NOT ACCEPTED**。
+
+<!-- org-claim-reuse-invalidation-20261119 -->
+### 10.27 組織変更時のClaim再利用を、依存・世代・用途ごとに判定する（2026-11-19）
+
+§10.25のClaim別必要Readと§10.26の公開・読取Cutをつなぐ。**結果が再利用可能か**と**その結果を今回のConsumerへ開示できるか**、**その判断で現在の業務操作を実行できるか**は異なる問いである。World Fingerprint、Model Revision、Artifact Revisionの一致・不一致も、それぞれSource/意味/成果物の再利用資格を示すだけであり、Ownerの意味受理、Consumer Disclosure、現在Host Grantを代行しない。
+
+#### 変更の影響をClaimの必要集合で評価する
+
+| 変更・観測 | 再検証するもの | 変更だけでは無効にしないもの／停止線 |
+| --- | --- | --- |
+| Membership occurrenceの追加・削除・訂正、valid/known境界の変更 | 当該Scope/時点に交差する所属数、FTE、組織図、人物数の入力、Read Cohort、公開組 | 無関係Scope/時点のClaimは必要依存の非交差が証明できる場合だけ再利用候補。単なる表示行数一致は不可 |
+| Membership→Person Link・Identity規則の変更 | distinct Person、人物別FTE、重複排除、人物に依存するRule | Membership件数だけのClaimを人物数へ昇格しない。旧Linkの同名Personを自動束縛しない |
+| Case Responsibility・Role/Delegation・Ruleの変更 | 承認候補、担当者、必要な否定条件、Caseの判断・引継ぎ | 所属一覧が同じでも承認候補を再利用しない。Rule候補から現在Grantを導かない |
+| Source/Query/Provider/Plugin版、SQL Predicate・Adapterの変更 | 実Readの条件・Scope・型/意味Law・Row Identity・Coverage・Consumer受領 | byte/Shape一致やPlugin選択だけで意味の同一性を認定しない |
+| Read Scope/Principal/Purpose/Audience/Policy epochの変更 | 利用可能なSource集合、公開Slice、Count/Edge/Diagnostics、Consumerへの送達資格 | 計算済みの内部結果が同じでも新用途への開示を自動許可しない |
+| 公開Manifest/Reader Snapshot/ページCursorの変更 | 一覧・集計・Graph・SHOが共有する公開Cutと複数ページの完全性 | 異世代の結果を現行組として合成しない。旧新比較として明示する用途は別途検査 |
+| 現在Grant、Effect Fence、ACK/Receiptの変更 | Host実行可否、重複副作用、引継ぎ完了の証拠 | 旧判断結果や旧ACKを現在の実行資格に転用しない |
+
+ここでいう「依存の非交差」は、単に変更行が結果に表示されなかったという意味ではない。**否定条件、JOIN相手、集計母集団、非出力Predicate、Tenant境界、二時点の履歴**を含めて影響がないことを、既存Source/Relation/Queryの依存情報と実ProviderのCoverageから説明できる場合に限る。依存がunknownなら再利用資格もunknownとし、全体再計算の成功を意味受理の代用にはしない。
+
+#### 合成C1の最小反例（ORG-XD-06〜09、既存Scenario/Expectedへ追加）
+
+| ID | 同じC1で変える条件 | 独立Expectedで拒否する結果 |
+| --- | --- | --- |
+| ORG-XD-06 世代混在 | r7のvalidAt=2027-06-15、knownAt=2027-07-01の4所属/FTE 3.0と、knownAt=2027-07-03の3所属/FTE 2.4を交互に公開・取得 | 新所属3件＋旧FTE 3.0を一つの「現行組」と表示。異世代比較と明示した場合は別Claim |
+| ORG-XD-07 非出力依存 | 同じ表示Rowを保ちながらPerson Linkまたは承認Ruleの否定条件だけを改訂 | Rowsetが同じことを理由に人物数・唯一承認者・Rule結果を再利用 |
+| ORG-XD-08 開示の再資格化 | 同じ内部Resultを別Tenant/Principal/Purpose/Audienceへ渡し、Policy epochまたは非開示Relationを変更 | 旧Consumerの許可でCount、隠れたEdge、診断、Sourceを送出 |
+| ORG-XD-09 ABA/遅延受領 | Source/Selection/公開版がA→B→A、旧Consumer応答が後着、CaseのGrant/ACKも変更 | 表示値の復帰を旧Read Cohort・旧受信・旧Grant/Effect Receiptの復活と扱う |
+
+#### 実装と検収の接続順
+
+1. **先行P0を維持**：#2586の通常CLI Function→実Provider→一Consumer同一Attempt受領を先に成立させる。#2831のStudioセルフビルドは独立して進める。ORG-XD-06〜09を両P0の新Hard Gateにはしない。
+2. **Read-onlyの再利用判定**：既存r7の二時点ExpectedとORG-XD-06を、Query入力・Source/World版・Snapshot/Read Cohort・Scope・Consumerが固定した公開Cutとともに比較する。単一HTTP要求の成功を複数要求のSnapshot Pinにしない。
+3. **Claim相対の差分**：#2514/#2506でORG-XD-07を試し、同じ表示Rowでも必要Relation/Ruleが変われば該当Claimだけ再検証する。正式Person LinkのOwner受理は#2386/#1126の別Gate。
+4. **Consumerと実行の再資格化**：#2516/#1124でORG-XD-08の開示と受領、#1125/#1444/#1174/#2499でORG-XD-09のACK/Effectを段階的に検査する。Host実実行が未接続ならNOT RUNと記録する。
+
+既存Scenario/Expected、Dependency/Revision、Read Cohort、Function Context、Stage/PublishとConsumer Receiptを再利用する。**新Org Cache、Proof Store、世代DB、中央ACL、分散Transaction Managerは導入しない**。再利用候補・意味受理・公開可能性・現在Grant・実Effectをそれぞれ独立に検収する。
+
+**今回の資格**：変更影響と再利用条件の設計追補。ORG-XD-06〜09の実行、跨ページ固定Snapshot、実Consumer再送達、Host Effect、Ownerの新規意味受理は **NOT RUN／NOT ACCEPTED**。
