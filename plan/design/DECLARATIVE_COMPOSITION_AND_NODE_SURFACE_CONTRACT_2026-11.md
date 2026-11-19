@@ -866,3 +866,44 @@ MarkdownのData表、Rule、Query、Plugin Port、Node Viewを同じ型付きMea
 | **DC-66** | ResultとRead先だけが一致すれば、Source改版後の旧Artifactを使う | Builder／Artifact・#4544・#2514 |
 
 上のIDは**設計上の反証索引**であり、実装済みテストや新しいExpected正本ではない。主担当のFixture／既存Expected／CIで合格し、実行したHEADと失効条件を確定して初めて状態を更新する。第一優先はDC-59／60の製品Caller経路であり、他のDCは既存のOwnerに分配する。正式R2-P／通常CLI実Provider→独立Consumer／Studio Stage1→Stage2実WindowsのP0を増やしたり、置き換えたりしない。
+
+## 34. 名前付きRuleと実Readの境界を、現在の製品実装に合わせて整える（2026-11-19）
+
+### 34.1 汎化の対象は文法の数ではなく、意味と入力の再利用である
+
+11月19日のmainでは、Sourceから既存の標準Data／Ruleへ入場させる経路、Node Viewの表示検証、Studioの未審査編集候補、実利用者のWeb操作、独立Consumerによる検収がそれぞれ進んだ。ただし、別々の経路で得た成功を一つの製品実行とみなさない。現在の共通課題は**同じ意味を異なる表示や実現方法へ渡すとき、入力と版・取得範囲を落とさないこと**にある。
+
+特にRuleの正規形について、[署名と正規形の設計§13](RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)へ現行実装の停止線を明記した。名前付き入力の記法とSpanは製品のSourceとして扱えるが、実際のCanonical Operatorは単一入力のみを表し、`semantic.Validation`は複数の割当て値をまだ保持しない。これを二つ目の値に対応した完成したOperator契約と呼ばない。
+
+`takes amount: number` と、入力名を書かない `takes number` は、現時点では一つの対象Attributeを数値として読む。前者は宣言した名前が意味モデルに残り、後者は必要な読取りの際に `value` と解釈される。表記上の同等な働きだけを見て、両方の原Sourceや全Canonical byteが同じだと扱わない。
+
+### 34.2 今回加える実装確認
+
+`internal/workspace/tei_md_named_unary_operator_product_test.go` に、既存の製品Fixtureを用いる一件の回帰を追加する。テストは次を同じReaderとEvaluatorで確かめる。
+
+- 宣言のSource位置と`Operator.InputName`を保持しながら、Ruleの業務対象は元の `sales.order_line.discount` だけに固定する。
+- 評価時の数値Readは一回で、実装を選ばない限り代替の評価経路を作らない。
+- 説明文だけを改版しても型付きMeaningは変わらず、原文Fingerprintと古いSource Indexの現行性は変わる。
+- `amount` を別の名前にした場合はOperator契約の差として残し、Ruleの参照属性を勝手に変更しない。
+- `amount: 0` を追記する別文書間の入力値割当ては、製品Loadで原文位置付きの「意味モデルに値を保持できない」診断として拒否する。同一文書のときだけ可能な「主語との重複」という説明へ無理に統一しない。
+
+この試験は、単一入力を名前付きで書けることの**限定した製品回帰**である。複数入力の読取、実DB、実Plugin、生成Go、Source Writer、Owner受理の実証ではない。
+
+### 34.3 既存のG／P／DとNode Viewにどう接続するか
+
+複数入力の意味が受理されるまで、Node ViewのPortや配線の表示から入力数・取得範囲を補わない。標準データ型、時点、単位、粒度、NULL／未取得、Relationの行集合のCoverageが要求に足りているかを、一Ruleの判断要求と実観測で照合する。部分取得でも違反が確定する場合と、追加取得によって答えが変わる場合は、§33のDC-59／60に従って分ける。
+
+実現方式の表示は、現在のRuleがPで実行可能か、Gで生成可能か、Dへ正式に結び付くかを**方式ごと**に示す。正値Ruleが生成できても、三入力Operatorまで実装したとは主張しない。式が一段で済まない場合は、先に値を返す導出と既存Operatorを検討し、任意の式ASTやGo関数の露出を標準DSLへ持ち込まない。
+
+Studioでは、宣言・例・図・配線・保存されたSource・Inspectorを、同じSubject／Source occurrence／Revisionの異なるProjectionとする。Candidateの表示・失効、Pin、編集対象の確定、書込み、再読込、実Consumerの受領を分ける。read-only投影をWriterとして扱ったり、失敗したProvider Readを空集合へ変換したりしない。
+
+### 34.4 実装の優先順位を増やさない
+
+| 既存の作業 | 今回明確にする引渡し | 終了条件 |
+| --- | --- | --- |
+| **Rule署名・正規形**（#4362／#1129） | 単一入力の製品回帰を基線とし、名前付き複数入力を既存Meaningへ損失なく保持する次段へ進む | 受理・型・Read要求・判定不能理由・Source位置が、一つの固定Fixtureで一致 |
+| **Queryと全件性**（#2506／#2586） | Ruleに必要な行・項目と、実際のSQL／Providerが取得した範囲を別票で結ぶ | 不確かなcompleteの申告では成立を確定しない。違反確定は保持する |
+| **生成・Plugin**（#4544／#951／#4495） | P／G／Dの適合・実装選択・実Call・実Builder入力を独立に検収 | Source→Generator→Artifact→Consumerの実使用が同一Attemptで追える |
+| **Studio自己構築**（#2831／#4583） | Node／Inspectorの共通Projectionを実Stage2の受入へ渡す | Stage1がStage2を再構築し、実Windows上の受領まで確認できる |
+
+構文の試作を増やすことや新たな横断Runtime／Registry／Writerを設けることは、今回の成果としない。専門家が読みやすいMarkdownと、受理後に意味を保てる標準データ構造を優先する。
