@@ -270,18 +270,40 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 		}
 	})
 	waitForHealth(t, address, done)
-	dom := chromeDOMOfSubmittedOrder(t, browser, address)
-	if strings.Contains(dom, dsn) {
-		t.Fatal("step 5: the page carried the database connection string")
+	// The published step 5 chooses row 0 (order 1001), then row 1
+	// (order 1002). Both selections must reach the SAME shipped Web process,
+	// edited Source and PostgreSQL database. This still automates POST using
+	// the existing test bootstrap; actual shipped-form field entry remains open.
+	for _, choice := range []struct {
+		row             int
+		orderID         string
+		relationAnswer  string
+	}{
+		{row: 0, orderID: "1001", relationAnswer: "not-satisfied"},
+		{row: 1, orderID: "1002", relationAnswer: "satisfied"},
+	} {
+		t.Run("selected-order-"+choice.orderID, func(t *testing.T) {
+			dom := chromeDOMOfSelectedOrder(t, browser, address, choice.row)
+			if strings.Contains(dom, dsn) {
+				t.Fatal("step 5: the Chrome page carried the database connection string")
+			}
+			pageLines := sectionBetween(dom, `id="order-lines"`, `id="read-identity"`)
+			if pageLines == "" {
+				t.Fatal("step 5: the page did not render the order-line read")
+			}
+			// The independently authored expected-after.json has disjoint row
+			// keys for orders 1001 and 1002. Comparing by primary key rejects
+			// a wrong browse selection even if both pages have similar answers.
+			requirePageAnswersMatchExpectation(t, pageLines,
+				expectedAnswersForOrder(t, filepath.Join(fixtures, "expected-after.json"), choice.orderID))
+			relation := "sales.order.lines.line_number_unique " + choice.relationAnswer
+			if !strings.Contains(dom, relation) {
+				t.Fatalf("step 5: order %s does not show the independently expected Relation answer %s",
+					choice.orderID, choice.relationAnswer)
+			}
+		})
 	}
-	pageLines := sectionBetween(dom, `id="order-lines"`, `id="read-identity"`)
-	if pageLines == "" {
-		t.Fatal("step 5: the page did not render the order-line read")
-	}
-	// The page must carry the after answers, because the guide passes the edited
-	// Workspace. Handing it the original Workspace would show the pre-edit rules.
-	requirePageAnswersMatchExpectation(t, pageLines, expectedAnswersForOrder(t, filepath.Join(fixtures, "expected-after.json"), "1001"))
-	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome")
+	t.Log("first-change steps 0-4 ran as published; shipped Web and Chrome verified both documented order selections with automated POST")
 }
 
 // documentedGuideShellStep returns the commands from the published POSIX
