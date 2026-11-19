@@ -2589,7 +2589,7 @@ TEIを静的サイト生成やブラウザ利用へ拡張する際に、**「TEI
 
 ### 2026-11-19 名前付きRuleの実受理境界と次の実装
 
-[Rule署名の設計§13](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)と[宣言的構文合成§34](design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)で、並行して進んだ標準Data・Rule・Query・Node View・Studioの成果を現在の製品境界へ接続した。名前付き単一入力の宣言は製品Readerから既存`semantic.Operator`へ入場し、同じRuleの数値Readと評価を保持する。新回帰 `TestNamedUnaryOperatorPreservesSubjectMeaningAndSourceRevision`／`TestNamedUnaryOperatorRejectsSecondSubjectBindingAtProductLoad` は、名前付き単一入力、原文の説明だけの改版、入力名の変更、重複割当ての拒否を一つの既存Fixtureで照合する。
+[Rule署名の設計§13](design/RULE_NORMAL_FORM_AND_OPERATOR_SIGNATURE_DECISION_2026-11.md)と[宣言的構文合成§34](design/DECLARATIVE_COMPOSITION_AND_NODE_SURFACE_CONTRACT_2026-11.md)で、並行して進んだ標準Data・Rule・Query・Node View・Studioの成果を現在の製品境界へ接続した。名前付き単一入力の宣言は製品Readerから既存`semantic.Operator`へ入場し、同じRuleの数値Readと評価を保持する。新回帰 `TestNamedUnaryOperatorPreservesSubjectMeaningAndSourceRevision`／`TestNamedUnaryOperatorRefusesCrossDocumentValueAtProductLoad` は、名前付き単一入力、原文の説明だけの改版、入力名の変更、重複割当ての拒否を一つの既存Fixtureで照合する。
 
 **現在の停止線**は、構文解析で複数の `name: value` を読めても、`semantic.Validation` と実Evaluatorが複数の入力値をまだ持たないこと。次のP1は既存#4362／#1129で、署名にある入力と明示束縛を既存Meaningへ落とさず保持し、`value`／`low`／`high` を持つ範囲判定の一Ruleで、型・必要Read・判定不能理由・独立Expectedを確認する。**未対応の値を捨てて「受理済み」にしない**。新DSL文法、ValidationKind、第二Evaluator、Node Runtime、Writerを先に増やさない。
 
