@@ -701,13 +701,11 @@ NM-01は既存のREA候補取込にあるEdge identityの実例を参照でき�
 
 **マージの条件**：設計文書は出典・Owner・停止線と既存P0への接続を静的レビューすればdocs-onlyとしてマージ可能。Go変更は正負の独立Expected、同一HEADのテスト／CI、実Consumerの必要な観測がそろって初めて実装済みとする。docs-onlyマージをNM-01〜04や正式Owner AcceptanceのPASSと記録しない。
 
----
-
-## 13. Node Viewの差分説明を実際のGraph Referenceへ接続する（2026-11-19）
+### 13.8 Node Viewの差分説明をGraph Referenceへ接続する（2026-11-19）
 
 ノードモデルの採用判断を先に広げず、まず既存のMarkdown Graph Referenceに、**定義した関係と導出した図の差を、辺の出現IDで説明する**小さな読取り専用の検査を加える。既存の `reference/tei-md-graph-reader` は正式なWorkspace Language Readerではなく、固定されたMarkdown表とMermaid部分集合を読む検証用Referenceである。この境界を変えない。
 
-`AuditDerivedView` は、元のMarkdown表のEdge occurrenceを基準に、図から欠けた辺、図にだけ現れた辺、同じIDで端点が変わった辺を別々に返す。従来の `CheckDerivedView` の一致判定は互換性を保つ。同名の二ノード、同一端点の並列二辺を別IDとして扱うこと、原byteとSource spanを変えないこと、曖昧な表示Aliasと図上の重複Edge IDを拒否することを回帰試験で確認する。**一致はEdgeに限る**ため、孤立したNodeが図に現れることまでは保証しない。
+`AuditDerivedView` は、元のMarkdown表のEdge occurrenceを基準に、図から欠けた辺、図にだけ現れた辺、同じIDで端点が変わった辺を別々に返す。さらに、明示的な表示Aliasを用い、図にない孤立Nodeと図にだけあるNodeを `MissingNodeIDs`／`UnexpectedNodeIDs` として報告する。辺の `Exact` とノード表示の `NodesExact` は**別の判定**とし、従来の `CheckDerivedView` は辺一致の意味を保つ。孤立ノードは固定Mermaid部分集合の単独Node行で表示できるが、Node／Edgeの一致はSource Indexの全件性、意味受理、編集・実行資格を証明しない。
 
 | 反証 | Referenceで確かめること | Studio・意味モデルへ引き渡す条件 |
 | --- | --- | --- |
@@ -715,9 +713,9 @@ NM-01は既存のREA候補取込にあるEdge identityの実例を参照でき�
 | ND-V02：定義は同じで図の向きが古い | `EndpointChanges`に`e-2`を返す | 図から定義を書き換えず、Source差分を説明する |
 | ND-V03：並列Edgeの一方を図から除外 | `MissingEdgeIDs`に`e-2`を返す | Graph→Tree／折畳みの情報損失を隠さない |
 | ND-V04：図だけにEdgeを追加 | `UnexpectedEdgeIDs`に`e-3`を返す | 未受理の線を新たなRelationとしない |
-| ND-V05：孤立Nodeを定義に追加 | Edge一致でもNode表示の完全性は未確認 | `Exact`をモデル全体の同値・編集資格に転用しない |
-| ND-V06：Alias欠落・図内のEdge ID重複 | 診断で拒否 | 表示上の対象を推測してSource Patchしない |
+| ND-V05：孤立Nodeを定義／表示に追加 | 辺一致でも `MissingNodeIDs` を報告し、単独Node行による表示を別途検査 | `Exact`をNode完全性や編集資格へ昇格しない |
+| ND-V06：Alias欠落・Edge ID重複・図だけのNode | 未解決Aliasと重複Edgeは拒否し、明示Aliasが指す未知Nodeは `UnexpectedNodeIDs` で報告 | 表示ラベルから元のSubjectを捏造しない |
 
-これは**局所Go Referenceの実装と回帰**であり、正式なPort Schema、Node View製品画面、Generator入力、業務Relation、Owner意味受理、Windows WebView2での検収を追加したものではない。次の製品側作業は、#1124／#1824が既存のInspectSubject・Source位置・Workspace／epochを使って差分をread-only表示する際、#2497のLoss分類と本検査のEdge単位の理由を参考にすること。編集は#2500の業務Actionと混同せず、既存のPreview／Review／明示Accept／再読込の資格が揃うまで候補に留める。独立Expectedの正式採否は#1180／#2514のOwnerが判断する。
+これは**局所Go Referenceの実装と回帰**であり、正式なPort Schema、Node View製品画面、Generator入力、業務Relation、Owner意味受理、Windows WebView2での検収を追加したものではない。製品Workbenchでは、現在のCatalog／InspectからData属性の**未審査候補を画面に表示する経路**が既にある。次段はその選択・モデル版・Source出現の確認を維持したまま、既存Shared Acceptanceとの接続可否をFit/Gapで確定すること。Node／Edgeの表示Lossを編集可能性や対象の一意性へ読み替えない。既存のPreview／Review／明示Accept／再読込が製品Hostの資格を満たすまで、保存はunsupportedとする。独立Expectedの正式採否は#1180／#2514のOwnerが判断する。
 
 `plan/NOW.md`の最優先は引き続き「受注の一変更」と製品WailsのStudio Stage1→Stage2であり、Node View専用Engineや新たな並行P0は設けない。

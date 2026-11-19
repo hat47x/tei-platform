@@ -316,15 +316,20 @@ func (c Candidate) Outgoing() map[string][]string {
 // they must never be inferred from duplicate display labels. This compares a
 // deliberately tiny Mermaid subset and does not interpret Mermaid as meaning.
 var tinyArrow = regexp.MustCompile(`^\s*([A-Za-z][A-Za-z0-9]*)(?:\[[^\]]*\])?\s+-->\|([^|]+)\|\s+([A-Za-z][A-Za-z0-9]*)(?:\[[^\]]*\])?\s*$`)
+var tinyStandaloneNode = regexp.MustCompile(`^\s*([A-Za-z][A-Za-z0-9]*)\[[^\]]*\]\s*$`)
 
-// DerivedViewAudit describes only the edge coverage of the tiny Mermaid view.
-// It is not a semantic acceptance, a proof of node coverage, or a write intent.
-// An edge ID denotes one occurrence: parallel edges must not be collapsed.
+// DerivedViewAudit contrasts a tiny Mermaid view with authored node and edge
+// occurrences. Exact remains EDGE-ONLY for existing CheckDerivedView consumers;
+// NodesExact is a separate visibility claim within this supported subset.
+// Neither result admits meaning, proves a complete Source Index, or permits edits.
 type DerivedViewAudit struct {
 	Exact             bool
+	NodesExact        bool
 	MissingEdgeIDs    []string
 	UnexpectedEdgeIDs []string
 	EndpointChanges   []string
+	MissingNodeIDs    []string
+	UnexpectedNodeIDs []string
 }
 
 // CheckDerivedView retains the original exact-match interface for consumers.
@@ -342,6 +347,7 @@ func CheckDerivedView(source []byte, c Candidate, aliases map[string]string) (bo
 func AuditDerivedView(source []byte, c Candidate, aliases map[string]string) (DerivedViewAudit, error) {
 	inMermaid, found := false, false
 	diagram := map[string][2]string{}
+	shownNodes := map[string]struct{}{}
 	for _, ln := range sourceLines(source) {
 		v := strings.TrimSpace(ln.text)
 		if !inMermaid {
@@ -360,13 +366,26 @@ func AuditDerivedView(source []byte, c Candidate, aliases map[string]string) (De
 		}
 		m := tinyArrow.FindStringSubmatch(v)
 		if m == nil {
-			return DerivedViewAudit{}, &Diagnostic{Code: "UNSUPPORTED_MERMAID_VIEW", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
+			// Explicitly declared isolated nodes are visible even without edges.
+			// Any other Mermaid construct remains unsupported in this probe.
+			n := tinyStandaloneNode.FindStringSubmatch(v)
+			if n == nil {
+				return DerivedViewAudit{}, &Diagnostic{Code: "UNSUPPORTED_MERMAID_VIEW", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
+			}
+			id, ok := aliases[n[1]]
+			if !ok || id == "" {
+				return DerivedViewAudit{}, &Diagnostic{Code: "UNBOUND_DISPLAY_ALIAS", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
+			}
+			shownNodes[id] = struct{}{}
+			continue
 		}
 		from, ok1 := aliases[m[1]]
 		to, ok2 := aliases[m[3]]
-		if !ok1 || !ok2 {
+		if !ok1 || !ok2 || from == "" || to == "" {
 			return DerivedViewAudit{}, &Diagnostic{Code: "UNBOUND_DISPLAY_ALIAS", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: v}
 		}
+		shownNodes[from] = struct{}{}
+		shownNodes[to] = struct{}{}
 		if _, ok := diagram[m[2]]; ok {
 			return DerivedViewAudit{}, &Diagnostic{Code: "DUPLICATE_VIEW_EDGE", At: Span{Start: ln.start, End: ln.start + len(ln.text), Line: ln.number}, Detail: m[2]}
 		}
@@ -391,9 +410,26 @@ func AuditDerivedView(source []byte, c Candidate, aliases map[string]string) (De
 			audit.UnexpectedEdgeIDs = append(audit.UnexpectedEdgeIDs, id)
 		}
 	}
+	// The alias mapping is consumer supplied. Report unexpected semantic node
+	// IDs; never infer an identity from the displayed label or position.
+	authoredNodes := make(map[string]struct{}, len(c.Nodes))
+	for _, node := range c.Nodes {
+		authoredNodes[node.ID] = struct{}{}
+		if _, visible := shownNodes[node.ID]; !visible {
+			audit.MissingNodeIDs = append(audit.MissingNodeIDs, node.ID)
+		}
+	}
+	for id := range shownNodes {
+		if _, exists := authoredNodes[id]; !exists {
+			audit.UnexpectedNodeIDs = append(audit.UnexpectedNodeIDs, id)
+		}
+	}
 	sort.Strings(audit.MissingEdgeIDs)
 	sort.Strings(audit.UnexpectedEdgeIDs)
 	sort.Strings(audit.EndpointChanges)
+	sort.Strings(audit.MissingNodeIDs)
+	sort.Strings(audit.UnexpectedNodeIDs)
 	audit.Exact = len(audit.MissingEdgeIDs) == 0 && len(audit.UnexpectedEdgeIDs) == 0 && len(audit.EndpointChanges) == 0
+	audit.NodesExact = len(audit.MissingNodeIDs) == 0 && len(audit.UnexpectedNodeIDs) == 0
 	return audit, nil
 }
