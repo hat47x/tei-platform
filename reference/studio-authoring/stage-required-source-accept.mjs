@@ -96,9 +96,9 @@ cpSync(before, after, { recursive: true, force: false, errorOnExist: true });
 const revisionBefore = revision();
 assert.equal(requiredOf(world()), false);
 
-// Consume the SCRIPT actually emitted by edit-form, not a hand-authored
-// candidate or a second interpretation of the form's controls. This is a VM
-// DOM-event test, NOT a production Wails or real-browser editing session.
+// The Stage2 Windows job uses the exact existing offline Studio form in
+// real Edge. The VM remains an explicit non-browser mode for Node-only tests.
+// Neither path grants Source write permission or Owner meaning acceptance.
 const cli = join(repo, "reference/studio-authoring/cli.mjs");
 const formHTML = command(process.execPath, [
   cli, "edit-form", "-workspace", after, "-focus", "attribute:" + attributeID,
@@ -118,25 +118,77 @@ const values = {
   "intent": "Studioで既存Dataの必須指定を変更する",
   "required-choice": "yes",
 };
-const elements = new Map(Object.entries(values).map(([k, value]) => [k, { value }]));
-const output = { value: "", focus() {}, select() {} };
-const notice = { textContent: "" };
-elements.set("proposal-json", output);
-elements.set("notice", notice);
-let submit;
-elements.set("studio-edit", {
-  addEventListener(event, callback) {
-    assert.equal(event, "submit");
-    submit = callback;
+let editJSON;
+let editorTransport = "exact-offline-form-script-vm";
+let realBrowserEditing = "not-observed-in-this-attempt";
+let browserScreenshot = null;
+const browserPageErrors = [];
+const browserNetworkRequests = [];
+const playwrightRoot = process.env.TEI_STAGE_PLAYWRIGHT_ROOT?.trim();
+if (playwrightRoot) {
+  const { pathToFileURL } = await import("node:url");
+  const modulePath = join(resolve(playwrightRoot), "node_modules/playwright-core/index.mjs");
+  assert.ok(existsSync(modulePath), "PLAYWRIGHT_CORE_NOT_INSTALLED");
+  const { chromium } = await import(pathToFileURL(modulePath).href);
+  const browser = await chromium.launch({ channel: "msedge", headless: true });
+  try {
+    const context = await browser.newContext({ viewport: { width: 1240, height: 900 } });
+    try {
+      const page = await context.newPage();
+      page.on("pageerror", error => browserPageErrors.push(error.message));
+      page.on("request", request => {
+        if (/^https?:/i.test(request.url())) browserNetworkRequests.push(request.url());
+      });
+      // This is a disposable form, not a saved Workspace source.
+      const formFile = join(dirname(receiptPath), "tei-studio-stage-required-form.html");
+      writeFileSync(formFile, formHTML, { flag: "wx", mode: 0o600 });
+      await page.goto(pathToFileURL(formFile).href, { waitUntil: "load" });
+      assert.equal(await page.title(), "TEI Studio 編集候補の作成");
+      assert.equal(await page.locator("#model-revision").inputValue(), revisionBefore);
+      assert.equal(await page.locator("#subject").inputValue(), "attribute:" + attributeID);
+      assert.equal(await page.locator("#model-revision").getAttribute("readonly"), "");
+      assert.equal(await page.locator("#subject").getAttribute("readonly"), "");
+      await page.locator("#candidate-id").fill(values["candidate-id"]);
+      await page.locator("#intent").fill(values.intent);
+      await page.locator("#required-choice").selectOption("yes");
+      await page.locator('button[type="submit"]').click();
+      editJSON = await page.locator("#proposal-json").inputValue();
+      assert.match(await page.locator("#notice").textContent(), /未審査/);
+      assert.deepEqual(browserPageErrors, [], "broken offline Editor script");
+      assert.deepEqual(browserNetworkRequests, [], "offline form attempted network access");
+      browserScreenshot = join(dirname(receiptPath), "tei-studio-stage-required-form.png");
+      await page.screenshot({ path: browserScreenshot, fullPage: true });
+      editorTransport = "real-edge-offline-form-playwright";
+      realBrowserEditing = "observed-in-this-attempt";
+    } finally {
+      await context.close();
+    }
+  } finally {
+    await browser.close();
   }
-});
-runInNewContext(script, { document: { getElementById: id => elements.get(id) || null }, JSON });
-assert.equal(typeof submit, "function");
-let prevented = false;
-submit({ preventDefault() { prevented = true; } });
-assert.equal(prevented, true);
-assert.match(notice.textContent, /未審査/);
-const edit = JSON.parse(output.value);
+} else {
+  // Non-browser smoke explicitly does not establish UI interaction.
+  const elements = new Map(Object.entries(values).map(([k, value]) => [k, { value }]));
+  const output = { value: "", focus() {}, select() {} };
+  const notice = { textContent: "" };
+  elements.set("proposal-json", output);
+  elements.set("notice", notice);
+  let submit;
+  elements.set("studio-edit", {
+    addEventListener(event, callback) {
+      assert.equal(event, "submit");
+      submit = callback;
+    }
+  });
+  runInNewContext(script, { document: { getElementById: id => elements.get(id) || null }, JSON });
+  assert.equal(typeof submit, "function");
+  let prevented = false;
+  submit({ preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.match(notice.textContent, /未審査/);
+  editJSON = output.value;
+}
+const edit = JSON.parse(editJSON);
 assert.equal(edit.schema, "tei.reference.studio-edit/v0");
 assert.equal(edit.expectedModelRevision, revisionBefore);
 assert.equal(edit.subject, "attribute:" + attributeID);
@@ -147,7 +199,7 @@ assert.equal(edit.required, true);
 mkdirSync(dirname(receiptPath), { recursive: true });
 const editFile = join(dirname(receiptPath), "tei-studio-stage-required-edit.json");
 const candidateFile = join(dirname(receiptPath), "tei-studio-stage-required-candidate.json");
-writeFileSync(editFile, output.value, { flag: "wx", mode: 0o600 });
+writeFileSync(editFile, editJSON, { flag: "wx", mode: 0o600 });
 const candidateText = command(process.execPath, [
   cli, "propose", "-workspace", after, "-edit-file", editFile
 ]);
@@ -190,11 +242,13 @@ assert.equal(workspaceDigest(before), baselineDigest, "the reference before Work
 const receipt = {
   schema: "tei.reference.studio-stage-source-accept/v0",
   source: sourceRel, data: dataID, attribute: attributeID,
-  editorTransport: "exact-offline-form-script-vm",
-  realBrowserEditing: "not-observed-in-this-attempt",
+  editorTransport,
+  realBrowserEditing,
+  browserScreenshotDigest: browserScreenshot ? sha(readFileSync(browserScreenshot)) : null,
+  browserPageErrors, browserNetworkRequests,
   expectedModelRevision: revisionBefore, savedModelRevision: revisionAfter,
   formScriptDigest: "sha256:" + createHash("sha256").update(script).digest("hex"),
-  editDigest: sha(Buffer.from(output.value)),
+  editDigest: sha(Buffer.from(editJSON)),
   candidateDigest: sha(Buffer.from(candidateText)),
   candidateFingerprint: preview.candidateFingerprint,
   reviewFingerprint: review.reviewFingerprint,
