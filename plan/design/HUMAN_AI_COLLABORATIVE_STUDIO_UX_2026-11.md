@@ -722,3 +722,27 @@ C-UX0で一件のPinが使えても、外部AIの入力欄を自動表示・自�
 **次の実装レビュー対象は[#5618](https://github.com/hat47x/tei-platform/pull/5618)。** 同PRではNode Pin/非同期lane試験の合格と、配布HTMLのbyte差・静的Composition版不一致の失敗が併存する。実装側ではまず正規Source→生成HTML/JS→埋込AssetとComposition pinを同一HEADで一致させ、そのうえで実ブラウザー／Windows WebView2で「再確認クリック直後」の状態とReply後の状態を比較する。Source配線テストだけでDOM非干渉や配布済みを宣言しない。製品P0（#2831／#4583と#2586／#4495）の優先度は変更しない。
 
 **この節は受入の具体化のみ**であり、追加のNode／実Browser／Windows／Harness／Source Writer試験は未実施。
+
+### 35.4 実ブラウザーと実Wailsの到達点を、一つの操作と誤認しない
+
+実装側の検収は2026年11月19日に前進した。main統合済みの[PR #5630](https://github.com/hat47x/tei-platform/pull/5630)では、実Microsoft EdgeでオフラインReference編集フォームを操作し、そこで生まれた候補を既存Shared AcceptanceのReview・明示Accept・Source保存に渡し、同じWindows試行のStage1→Stage2後に実WebView2の可視Inspectorで変更を確かめる経路を検証した。**編集した画面は製品Studioの内蔵Editorではない**。
+
+一方、main統合済みの[PR #5669](https://github.com/hat47x/tei-platform/pull/5669)では、**生成Windows Wails製品の実WebView2**から「必須にする」の候補操作をクリックし、対象・属性・Host Catalog版が一致する型付き候補と、Workspace切替で旧候補が失効することを検査する試験を追加した。ただし、その画面でのReview・Accept・Source保存や、編集後の次世代Studio構築は受入範囲外である。
+
+この二つを合算して「製品Studio内で編集・保存・再生成まで完走」と表示しない。未接続なのは、製品内で生じた候補を**同じQualified Subjectと現在Source版に束縛したReviewへ渡し、既存Shared Acceptance／Writerによって条件付き保存し、再読取後に次の実Windows成果物を確認する一巡**である。新しい承認EngineやWriterを作るのではなく、[Studio製品Owner #4583](https://github.com/hat47x/tei-platform/issues/4583)と[Modeler／正本反映 #1124](https://github.com/hat47x/tei-platform/issues/1124)の既存経路を接続する。
+
+### 35.5 次の製品検収を、利用者の操作順に固定する
+
+| 利用者が行うこと | 画面で区別するもの | 検収時に拒否するもの |
+| --- | --- | --- |
+| Workspaceを選び、対象をInspectする | 現在閲覧中のSubject・Source版・一時選択 | 表示名・描画IDだけによる意味対象の確定 |
+| 「必須にする」などの候補を作る | 保存前の候補と現行値。どのSource項目へ作用するか | 候補生成だけで保存済み／意味受理済みと表示 |
+| 変更内容を比較する | 基準版、現在版、変更箇所、検査済みと未検査 | Workspace変更・ABA・同名別ID・旧Reader結果による無音再束縛 |
+| 明示して受理・保存する | ReviewとAcceptの結果、Source Writerの保存結果を別々に表示 | Dirty Buffer・別Agentの候補・別版Sourceの無断上書き |
+| 再Inspectし、次のStudioを起動する | 保存したSourceと生成物、実Windows表示を版・試行ごとに照合 | 保存成功だけをStage2構築や実Consumer成功とみなす |
+
+最初の製品内一巡は、既存の公開合成Workspaceにある**一つの必須指定変更**に絞る。Read-only Editorを無理に編集可能にせず、現行の候補操作とShared Acceptanceの既存境界を使う。Reviewを開く前にSource/Subject/Workspaceの現在性が失われたら、候補の内容は履歴として扱えても適用可能とは表示しない。現在のGrantやDisclosureが確認できない場合は外部AIへの送出を開始しない。
+
+実装の検収は、まず#5669の実WebView2候補・失効試験を基線に、製品画面からReviewへの引渡し、明示Accept、条件付きSource保存、再Inspectを**同一Windows試行・同一Source lineage**で追加する。その後に#5630と同等のStage1→Stage2および実Windows表示の検証へつなぐ。既存[#5618](https://github.com/hat47x/tei-platform/pull/5618)の固定対象を開く操作は、HTMLの配布byte差・Composition revision不一致を解消し、実DOMでフォーカス非干渉を確認するまでは別の未受入作業とする。外部AIのC-UX1、複数Actorの競合、SHO/SUI逆編集、実DB Effectはこの最初の製品内一巡の合格要件へ混ぜない。
+
+本追記は**既存mainの到達点を用いた設計・実装順の更新**であり、新しい製品内Review／Save／Stage2統合試験を実行したものではない。実証のOwnerと製品P0の優先順位は変えない。
