@@ -256,6 +256,21 @@ test("invalid references, ambiguities and unsupported edits do not become meanin
   assert.throws(() => indexWorld(ambiguous), /AMBIGUOUS_ID/);
 });
 
+test("Data-only Go World accepts empty nil slices, but not malformed collections", () => {
+  const authored = fixture();
+  // Actual Go ir.World JSON uses null, not [], for a nil Applications slice.
+  authored.applications = null;
+  const index = indexWorld(authored);
+  assert.ok(index.attributes.has("sales.order_line.price"));
+  assert.equal(index.applications.size, 0);
+  const absentSemantics = indexWorld({applications: null, databases: null});
+  assert.equal(absentSemantics.namespaces.size, 0);
+  assert.equal(absentSemantics.applications.size, 0);
+  assert.throws(() => indexWorld({semantics: [], applications: {}}), /INVALID_WORLD/);
+  assert.throws(() => indexWorld({semantics: "not a list", applications: null}), /INVALID_WORLD/);
+  assert.throws(() => indexWorld({semantics: []}), /INVALID_WORLD/);
+});
+
 test("broken Relation target is unresolved, never silently materialized as Data", () => {
   const world = fixture();
   world.semantics[0].data[0].relations[0].target = "missing.order_line";
