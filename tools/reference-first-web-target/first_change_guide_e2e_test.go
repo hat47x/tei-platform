@@ -308,6 +308,17 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	t.Run("documented-step-5-go-run", func(t *testing.T) {
 		verifyDocumentedGuideGoRunWeb(t, handbook, root, dsn, browser, fixtures)
 	})
+	// Real read answers and a successful synthetic Command must not be
+	// represented as a PostgreSQL submit. The published CLI injects no store.
+	var changedOrders int
+	if err := db.QueryRowContext(t.Context(),
+		"SELECT count(*) FROM public.orders WHERE order_id IN (1001, 1002, 1003) AND status IS DISTINCT FROM 'draft'",
+	).Scan(&changedOrders); err != nil {
+		t.Fatal("step 5: cannot independently inspect the order status after the Web form")
+	}
+	if changedOrders != 0 {
+		t.Fatalf("step 5: the diagnostic Web form unexpectedly changed %d real order statuses", changedOrders)
+	}
 	// Keep the established CI receipt prefix while distinguishing the actual
 	// documented go run (isolated listen address) from real Web form entry.
 	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; step 5 documented go run and shipped Web binary (both selected orders through the shipped form's visible inputs and Submit button)")
@@ -356,6 +367,12 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 	}
 	if !strings.Contains(dom, `id="read-result"`) {
 		t.Fatal("real shipped-form Chrome did not render the target's read result")
+	}
+	// The shipped form exercises a Command as well as a real PostgreSQL Read.
+	// With no Host-supplied submitStore its Command/Observation are synthetic.
+	if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
+		!strings.Contains(dom, `<span class="pill">synthetic</span>`) {
+		t.Fatal("step 5: the shipped form misrepresented its synthetic Command observation")
 	}
 	return dom
 }
