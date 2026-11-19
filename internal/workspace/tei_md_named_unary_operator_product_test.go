@@ -85,7 +85,7 @@ func TestNamedUnaryOperatorPreservesSubjectMeaningAndSourceRevision(t *testing.T
 	}
 	for _, tc := range []struct {
 		value int64
-		want validationeval.Result
+		want  validationeval.Result
 	}{
 		{value: 3, want: validationeval.ResultSatisfied},
 		{value: 0, want: validationeval.ResultSatisfied},
