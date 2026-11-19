@@ -23,6 +23,7 @@ on:
       - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
       - 'tools/reference-first-web-target/first_change_walkthrough_test.go'
       - 'tools/reference-first-web-target/first_change_guide_e2e_test.go'
+      - 'tools/reference-first-web-target/guide_shipped_form_chrome.mjs'
       - 'tools/reference-first-web-target/first_change_sql_setup_test.go'
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
@@ -56,6 +57,7 @@ on:
       - 'tools/reference-first-web-target/read_scenario_page_postgres_test.go'
       - 'tools/reference-first-web-target/first_change_walkthrough_test.go'
       - 'tools/reference-first-web-target/first_change_guide_e2e_test.go'
+      - 'tools/reference-first-web-target/guide_shipped_form_chrome.mjs'
       - 'tools/reference-first-web-target/first_change_sql_setup_test.go'
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
@@ -125,6 +127,7 @@ jobs:
       TEI_TEST_POSTGRES_DSN: postgres://tei:tei_integration_only@localhost:5432/tei_fixture?sslmode=disable
       TEI_VIEW_PG_CONFIRM_ISOLATED: tei_destination_order_e2e
       TEI_VIEW_BROWSER_BINARY: google-chrome
+      TEI_GUIDE_PLAYWRIGHT_ROOT: ${{ runner.temp }}/tei-guide-playwright
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: 検証対象を取得
@@ -226,6 +229,16 @@ jobs:
           set -euo pipefail
           command -v "$TEI_VIEW_BROWSER_BINARY"
           "$TEI_VIEW_BROWSER_BINARY" --version
+
+      - name: 公開手順の実フォームを操作するChrome Adapterを準備
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/reference-first-web-target/guide_shipped_form_chrome.mjs
+          npm install --prefix "$TEI_GUIDE_PLAYWRIGHT_ROOT" \
+            --no-audit --no-fund --ignore-scripts --no-save --no-package-lock \
+            playwright-core@1.56.1
+          test -s "$TEI_GUIDE_PLAYWRIGHT_ROOT/node_modules/playwright-core/index.mjs"
 
       - name: 到達点「受注の一変更」の実PostgreSQLから製品CLIまでを検証
         shell: bash
@@ -333,6 +346,13 @@ jobs:
           guide_count="$(grep -Fc 'first-change guide steps 0-5 verified end to end' "$log" || true)"
           test "$guide_count" -eq 1 || {
             echo "first-change guide end-to-end receipt: $guide_count; expected one" >&2
+            exit 1
+          }
+          # Two orders from the shipped binary and two from the documented
+          # go run: all four must originate at the *real* visible Web form.
+          shipped_form_count="$(grep -Fc 'actual shipped form Chrome submission verified for order' "$log" || true)"
+          test "$shipped_form_count" -eq 4 || {
+            echo "shipped form Chrome receipts: $shipped_form_count; expected four" >&2
             exit 1
           }
           rule_change_chrome_count="$(grep -Fc 'actual rule-change Chrome DOM verified for order 1001' "$log" || true)"
