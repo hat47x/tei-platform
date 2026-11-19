@@ -308,6 +308,19 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	t.Run("documented-step-5-go-run", func(t *testing.T) {
 		verifyDocumentedGuideGoRunWeb(t, handbook, root, dsn, browser, fixtures)
 	})
+	// Real read answers and a successful synthetic Command must not be
+	// represented as a PostgreSQL submit. The published CLI injects no store.
+	// Count the seeded orders as well as changed statuses: a deleted row
+	// cannot pass an unchanged-status check merely by disappearing.
+	var persistedOrders, changedOrders int
+	if err := db.QueryRowContext(t.Context(),
+		"SELECT count(*), count(*) FILTER (WHERE status IS DISTINCT FROM 'draft') FROM public.orders WHERE order_id IN (1001, 1002, 1003)",
+	).Scan(&persistedOrders, &changedOrders); err != nil {
+		t.Fatal("step 5: cannot independently inspect the seeded orders after the Web form")
+	}
+	if persistedOrders != 3 || changedOrders != 0 {
+		t.Fatalf("step 5: expected 3 unchanged draft orders after the diagnostic Web form; found %d orders, %d changed statuses", persistedOrders, changedOrders)
+	}
 	// Keep the established CI receipt prefix while distinguishing the actual
 	// documented go run (isolated listen address) from real Web form entry.
 	t.Log("first-change guide steps 0-5 verified end to end against real PostgreSQL and Chrome: steps 0-4 literal shell; step 5 documented go run and shipped Web binary (both selected orders through the shipped form's visible inputs and Submit button)")
@@ -356,6 +369,19 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 	}
 	if !strings.Contains(dom, `id="read-result"`) {
 		t.Fatal("real shipped-form Chrome did not render the target's read result")
+	}
+	// The real Read is shared by both selections, but they take different
+	// business paths: order 1001 stops on Validation; order 1002 reaches the
+	// synthetic Command/Observation because the shipped CLI injects no store.
+	if row == 0 {
+		if !strings.Contains(dom, "validation-not-satisfied") ||
+			strings.Contains(dom, `id="command-result"`) ||
+			strings.Contains(dom, `id="observation-result"`) {
+			t.Fatal("step 5: a Validation denial was reported as Command/Observation execution")
+		}
+	} else if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
+		!strings.Contains(dom, `<span class="pill">synthetic</span>`) {
+		t.Fatal("step 5: the successful reference Command was not identified as synthetic")
 	}
 	return dom
 }
