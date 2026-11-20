@@ -212,6 +212,15 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 <span>Command</span><span>→</span>
 <span>Observation</span>
 </div>
+{{if .Result.Observation}}
+{{if eq .Result.Observation.Nature "synthetic"}}
+<p id="operation-evidence-note" role="note">このObservationは合成状態を読んだ結果です。画面の「completed」やCommandの結果だけでは、PostgreSQLの受注更新・Commit・Receiptが成立したとはいえません。</p>
+{{else}}
+<p id="operation-evidence-note" role="note">ObservationはCommandとは別の証拠です。実際の更新を判断する際は、保存先の状態とCommit・Receiptも確認してください。</p>
+{{end}}
+{{else}}
+<p id="operation-evidence-note" role="note">この応答に実行後のObservationはありません。表示された段階だけで更新の成否を判断しないでください。</p>
+{{end}}
 </section>
 
 <section class="result-grid">
