@@ -310,11 +310,16 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	})
 	// The published CLI injects no submit store. Assert the final database
 	// state independently, including both parent and detail tables: checking
-	// only order status would miss an inserted order or changed detail.
+	// only order status would miss a changed customer, time or amount.
 	var persistedOrders, unchangedOrders int
-	if err := db.QueryRowContext(t.Context(),
-		"SELECT count(*), count(*) FILTER (WHERE order_id IN (1001, 1002, 1003) AND status = 'draft') FROM public.orders",
-	).Scan(&persistedOrders, &unchangedOrders); err != nil {
+	if err := db.QueryRowContext(t.Context(), `
+SELECT count(*), count(*) FILTER (WHERE
+  (order_id, customer_id, ordered_at, status, total_amount) IN (
+    (1001, 11, '2026-09-18T09:30:00Z', 'draft', 12500.00),
+    (1002, 12, '2026-09-18T08:15:00Z', 'draft', 8300.00),
+    (1003, 13, '2026-09-18T07:30:00Z', 'draft', 6200.00)
+  ))
+FROM public.orders`).Scan(&persistedOrders, &unchangedOrders); err != nil {
 		t.Fatal("step 5: cannot independently inspect the seeded orders after the Web form")
 	}
 	if persistedOrders != 3 || unchangedOrders != 3 {
