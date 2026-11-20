@@ -370,20 +370,24 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 	if !strings.Contains(dom, `id="read-result"`) {
 		t.Fatal("real shipped-form Chrome did not render the target's read result")
 	}
-	// The real Read is shared by both selections, but they take different
-	// business paths: order 1001 stops on Validation; order 1002 reaches the
-	// synthetic Command/Observation because the shipped CLI injects no store.
+	// Both selections read real PostgreSQL through separate attempts.
+	// Order 1001 stops at Validation, before even initial Authorization or
+	// Command. Order 1002 reaches Authorization and synthetic Command/Observation.
 	if row == 0 {
 		if !strings.Contains(dom, "validation-not-satisfied") ||
+			strings.Contains(dom, `id="authorization-result"`) ||
 			strings.Contains(dom, `id="command-result"`) ||
 			strings.Contains(dom, `id="observation-result"`) {
-			t.Fatal("step 5: a Validation denial was reported as Command/Observation execution")
+			t.Fatal("step 5: rejected Validation was reported as downstream Authorization/Command/Observation")
 		}
-	} else if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
+	} else if !strings.Contains(dom, `id="authorization-result"`) ||
+		!strings.Contains(dom, `id="command-result"`) ||
+		!strings.Contains(dom, `id="observation-result"`) ||
+		!strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
 		!strings.Contains(dom, `<span class="pill">synthetic</span>`) ||
 		!strings.Contains(dom, `id="operation-evidence-note"`) ||
 		!strings.Contains(dom, "これは参照用の合成状態を読み取った結果です。") {
-		t.Fatal("step 5: the shipped UI did not explain the synthetic Command/Observation boundary")
+		t.Fatal("step 5: approved path lacked Authorization or labelled synthetic Command/Observation")
 	}
 	return dom
 }
@@ -811,8 +815,9 @@ func TestFirstChangeGuideExecutesLiteralRuleEdit(t *testing.T) {
 
 // TestFirstChangeGuideRejectsAmbiguousApplicationInsertion executes the
 // published step 3, not a replacement awk program. A changed/duplicated
-// insertion anchor must never overwrite the original Application or leave an
-// intermediate .next file behind. No database or test-only Writer is involved.
+// insertion anchor must never change any of the three documented Source
+// files or leave an intermediate .next file behind. No database or test-only
+// Writer is involved.
 func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the published guide uses a POSIX shell and awk")
@@ -879,8 +884,11 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 			if _, err := os.Stat(application + ".next"); !os.IsNotExist(err) {
 				t.Fatalf("failed registration left a staged Application: %v", err)
 			}
-			if _, err := os.Stat(filepath.Join(ruleDir, "unit-price.tei.md")); err != nil {
-				t.Fatal("negative case stopped before reaching the published Application edit")
+			if _, err := os.Stat(filepath.Join(ruleDir, "unit-price.tei.md")); !os.IsNotExist(err) {
+				t.Fatalf("failed registration left a rule Source behind: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(workspace, "tei.workspace.yaml")); !os.IsNotExist(err) {
+				t.Fatalf("failed registration left a language declaration behind: %v", err)
 			}
 		})
 	}
