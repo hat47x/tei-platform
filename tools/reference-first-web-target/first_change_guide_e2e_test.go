@@ -380,8 +380,10 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 			t.Fatal("step 5: a Validation denial was reported as Command/Observation execution")
 		}
 	} else if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
-		!strings.Contains(dom, `<span class="pill">synthetic</span>`) {
-		t.Fatal("step 5: the successful reference Command was not identified as synthetic")
+		!strings.Contains(dom, `<span class="pill">synthetic</span>`) ||
+		!strings.Contains(dom, `id="operation-evidence-note"`) ||
+		!strings.Contains(dom, "このObservationは合成状態を読んだ結果です。") {
+		t.Fatal("step 5: the shipped UI did not explain the synthetic Command/Observation boundary")
 	}
 	return dom
 }
