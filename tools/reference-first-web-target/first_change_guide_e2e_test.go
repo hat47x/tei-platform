@@ -308,18 +308,35 @@ func TestFirstChangeGuideRunsEndToEnd(t *testing.T) {
 	t.Run("documented-step-5-go-run", func(t *testing.T) {
 		verifyDocumentedGuideGoRunWeb(t, handbook, root, dsn, browser, fixtures)
 	})
-	// Real read answers and a successful synthetic Command must not be
-	// represented as a PostgreSQL submit. The published CLI injects no store.
-	// Count the seeded orders as well as changed statuses: a deleted row
-	// cannot pass an unchanged-status check merely by disappearing.
-	var persistedOrders, changedOrders int
+	// The published CLI injects no submit store. Assert the final database
+	// state independently, including both parent and detail tables: checking
+	// only order status would miss an inserted order or changed detail.
+	var persistedOrders, unchangedOrders int
 	if err := db.QueryRowContext(t.Context(),
-		"SELECT count(*), count(*) FILTER (WHERE status IS DISTINCT FROM 'draft') FROM public.orders WHERE order_id IN (1001, 1002, 1003)",
-	).Scan(&persistedOrders, &changedOrders); err != nil {
+		"SELECT count(*), count(*) FILTER (WHERE order_id IN (1001, 1002, 1003) AND status = 'draft') FROM public.orders",
+	).Scan(&persistedOrders, &unchangedOrders); err != nil {
 		t.Fatal("step 5: cannot independently inspect the seeded orders after the Web form")
 	}
-	if persistedOrders != 3 || changedOrders != 0 {
-		t.Fatalf("step 5: expected 3 unchanged draft orders after the diagnostic Web form; found %d orders, %d changed statuses", persistedOrders, changedOrders)
+	if persistedOrders != 3 || unchangedOrders != 3 {
+		t.Fatalf("step 5: diagnostic Web form changed seeded orders: count=%d unchanged=%d; want 3 and 3", persistedOrders, unchangedOrders)
+	}
+	// These five row values are the hand-authored seed fixture, not a value
+	// returned by the Web page or the synthetic Command/Observation.
+	var persistedLines, unchangedLines int
+	if err := db.QueryRowContext(t.Context(), `
+SELECT count(*), count(*) FILTER (WHERE
+  (order_line_id, order_id, line_number, item_code, quantity, unit_price) IN (
+    (1, 1001, 1, 'A-100', 2, 100),
+    (2, 1001, 2, 'B-200', 0, 250),
+    (3, 1001, 2, 'C-300', 5, 0),
+    (4, 1002, 1, 'A-100', 3, 100),
+    (5, 1002, 2, 'B-200', 12, 250)
+  ))
+FROM public.order_lines`).Scan(&persistedLines, &unchangedLines); err != nil {
+		t.Fatal("step 5: cannot independently inspect the seeded details after the Web form")
+	}
+	if persistedLines != 5 || unchangedLines != 5 {
+		t.Fatalf("step 5: diagnostic Web form changed seeded detail rows: count=%d unchanged=%d; want 5 and 5", persistedLines, unchangedLines)
 	}
 	// Keep the established CI receipt prefix while distinguishing the actual
 	// documented go run (isolated listen address) from real Web form entry.
