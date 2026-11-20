@@ -1315,3 +1315,23 @@ main統合済み[PR #5431](https://github.com/hat47x/tei-platform/pull/5431)はW
 既存Scenario/Expected、Dependency/Revision、Read Cohort、Function Context、Stage/PublishとConsumer Receiptを再利用する。**新Org Cache、Proof Store、世代DB、中央ACL、分散Transaction Managerは導入しない**。再利用候補・意味受理・公開可能性・現在Grant・実Effectをそれぞれ独立に検収する。
 
 **今回の資格**：変更影響と再利用条件の設計追補。ORG-XD-06〜09の実行、跨ページ固定Snapshot、実Consumer再送達、Host Effect、Ownerの新規意味受理は **NOT RUN／NOT ACCEPTED**。
+
+
+<!-- org-decision-cutover-synthetic-20261121 -->
+### 10.28 公開世代から案件の承認までを、同一合成Caseの反例で検証する（2026-11-21）
+
+§10.25〜10.27の問い別Coverage、公開Cut、再利用資格を、既存r7を使う**副作用のないNode回帰**へ接続する。対象は[組織Referenceのverify-decision-cutover.mjs](../../reference/org-semantic-views/verify-decision-cutover.mjs)。既存のsource-fixture.json、membershipVersionsAt、配賦のfte-hundredthsを読み、Sourceの第二正本や専用Org Runtimeは追加しない。CIは既存tei-org-semantic-reference-node.ymlの固定HEAD検査に組み込む。
+
+| 判別ケース | 固定する反例・限定的な合格条件 | 製品検収へ引き渡す境界 |
+| --- | --- | --- |
+| ORG-XD-06 公開世代 | 同じvalidAtの旧認識4所属/300単位と新認識3所属/240単位を別Cutとして計算。新所属と旧FTE、異Attempt、partialを一つの現行組へ合成しない | #2482/#2506の実Publishと実Reader Snapshot Pin。合成metadataの一致は実Snapshotの証明ではない |
+| ORG-XD-07 非出力依存 | 表示Membershipが不変でもPerson Link改訂は人物数、Rule否定条件改訂は承認Claimを再検証。依存が不明ならunknown | #2514/#2386の独立Expectedと受理済みRelation、実Providerでの必要集合・Coverage |
+| ORG-XD-08 開示 | 内部値が同じでもTenant・Recipient・Purpose・Audience・Policy epoch・Projectionが異なると旧開示判定を転用しない | #2516/#1124の実Consumerへの配信前再資格化 |
+| ORG-XD-09 ABA | A→B→Aで表示された所属IDが戻っても旧公開世代/Attempt/Snapshotを再利用しない | #2582/#2506の遅延応答、実選択epochとRead Cohort |
+| ORG-XD-10 責任移管 | 所属異動だけでは案件の担当変更や受領ACKにならない。Case revision、移管先、ACKとhandlingUnitの一致を別々に要求 | #1125/#1444の実Case更新と受領の独立確認 |
+| ORG-XD-11 実行直前の再検証 | 事前に候補であっても現在のPrincipal/Policy epoch/Grantがずれれば副作用境界で保留。候補成立をEffect成功と呼ばない | #1174/#2499のHost Grant、Effect Fence、ReceiptとCommit uncertain |
+| ORG-XD-12 兼務と二人承認 | P2のA2/A3は異なるMembershipだが同一Person。二人承認の仮定では同一人物を二人と数えない。Person Link未受理ならunknown | #2386/#4490の業務RuleとPerson同一性、実Principalへの束縛 |
+
+上表の「二人承認」、Case移管順序、合成Grantは**反証のための試験仮定**であり、TEI共通Ruleとして採用しない。検査関数が返すcandidateは、必要な識別子・証拠欄の一致を合成データで確認しただけで、認可・公開・移管・Effectの実行を意味しない。特に同じ文字列のreadSnapshotや「ACKあり」というfixture値だけでは実Provider/Hostの資格は成立しない。
+
+**次の実装順**：先行する[現在のP0](../NOW.md)の受注一変更とStudioセルフビルドを妨げない。組織への最初の製品適用では、#2586/#2506の実ReaderをC1へ通し、ORG-XD-06/07の比較を**実際のRead Cohortと一Consumer受領**に置き換える。次に#2516の開示、#1125/#1444の責任移管、#1174のHost副作用をそれぞれ別Gateで検収する。Nodeの合格と正式Owner受理、実DB/実Host/実Consumer受領は混同しない。
