@@ -119,6 +119,14 @@ func TestExplicitMathPreviewUsesSelectedLoadBytesAndNeverDefinesRule(t *testing.
 	}); err == nil || !strings.Contains(err.Error(), "fingerprint") {
 		t.Fatalf("old request fingerprint qualified a new source revision: %v", err)
 	}
+	revised, err := SelectExplicitMathPreview(root, updated, ExplicitMathPreviewRequest{
+		Path: teiMDRuleDocument, SourceFingerprint: sourceindex.Fingerprint(
+			append(bytes.Clone(authored), []byte("\r\n更新された説明。\r\n")...)),
+		StartOffset: first, EndOffset: first + len(inline),
+	})
+	if err != nil || revised.Occurrence == one.Occurrence || revised.TeX != one.TeX {
+		t.Fatalf("different revisions shared a preview occurrence identity: %+v / %v", revised, err)
+	}
 	if got := validationsOf(updated, "sales"); !reflect.DeepEqual(got, wantRules) {
 		t.Fatalf("display edit changed accepted Rules: %+v", got)
 	}
