@@ -76,7 +76,7 @@ cp -R reference/workspace/. "$TEI_FIRST_WORKSPACE/"
   # Sourceの親ディレクトリがリンクの場合も、作業領域外へ書き込まない
   for source_path in "$TEI_FIRST_WORKSPACE" "$TEI_FIRST_WORKSPACE/semantic" "$TEI_FIRST_WORKSPACE/semantic/sales" "$TEI_FIRST_WORKSPACE/applications" "$TEI_FIRST_WORKSPACE/applications/order-entry" "$application"; do
     if [ -L "$source_path" ]; then
-      printf '作業領域のSource経路にシンボリックリンクがあります。変更しません。\\n' >&2
+      printf '作業領域のSource経路にシンボリックリンクがあります。変更しません。\n' >&2
       exit 1
     fi
   done
