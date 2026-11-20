@@ -190,6 +190,12 @@ func TestReferenceCommandScenarioStopsOnCanonicalValidationNotSatisfied(t *testi
 		t.Fatal("test setup: quantity attribute not found")
 	}
 	runner.read = staticReadScenarioRunner{result: readResult}
+	// A rejected Validation must not even enter the effect Adapter.
+	effectCalls := 0
+	runner.hostEffect = func(context.Context, string, string) error {
+		effectCalls++
+		return nil
+	}
 
 	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
 		LoginID:    "legacy-order-editor",
@@ -210,6 +216,9 @@ func TestReferenceCommandScenarioStopsOnCanonicalValidationNotSatisfied(t *testi
 	}
 	if result.Authorization != nil || result.Command != nil || result.Observation != nil {
 		t.Fatalf("Validation failure continued downstream: %+v", result)
+	}
+	if effectCalls != 0 {
+		t.Fatalf("Validation failure invoked the effect Adapter %d times", effectCalls)
 	}
 }
 
