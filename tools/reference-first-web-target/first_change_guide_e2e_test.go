@@ -1038,3 +1038,135 @@ func TestFirstChangeGuideRejectsPreexistingSources(t *testing.T) {
 		})
 	}
 }
+
+
+// TestFirstChangeGuideRejectsSymlinkedSourcePaths runs the published edit
+// rather than a test-only copy. A fresh Workspace may contain a path alias,
+// but step 3 must not write outside its physical Source tree or replace the
+// aliased Application. This checks pre-existing aliases, not concurrent edits.
+func TestFirstChangeGuideRejectsSymlinkedSourcePaths(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the published guide uses a POSIX shell and symlinks")
+	}
+	repo := repoRootForGuide(t)
+	guide, err := os.ReadFile(filepath.Join(repo, "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	editScript := documentedGuideShellStep(t, string(guide),
+		"## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	originalApp, err := os.ReadFile(filepath.Join(repo, "reference", "workspace",
+		"applications", "order-entry", "application.tei"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalSettings, err := os.ReadFile(filepath.Join(repo, "reference", "workspace",
+		"tei.workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		want string
+	}{
+		{name: "workspace-root", want: "作業領域の入口がシンボリックリンクです"},
+		{name: "application-file", want: "Applicationの元ファイルを確認できません"},
+		{name: "application-directory", want: "Sourceの配置先を確認できません"},
+		{name: "semantic-directory", want: "Sourceの配置先を確認できません"},
+		{name: "rule-directory", want: "Sourceの配置先を確認できません"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			outside := t.TempDir()
+			appDir := filepath.Join(root, "applications", "order-entry")
+			ruleDir := filepath.Join(root, "semantic", "sales")
+			for _, dir := range []string{appDir, ruleDir} {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			application := filepath.Join(appDir, "application.tei")
+			settings := filepath.Join(root, "tei.workspace.yaml")
+			rule := filepath.Join(ruleDir, "unit-price.tei.md")
+			if err := os.WriteFile(application, originalApp, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(settings, originalSettings, 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			workspaceArg := root
+			var link string
+			switch tc.name {
+			case "workspace-root":
+				link = filepath.Join(outside, "workspace")
+				if err := os.Symlink(root, link); err != nil {
+					t.Fatal(err)
+				}
+				workspaceArg = link
+			case "application-file":
+				link = application
+				target := filepath.Join(outside, "application.tei")
+				if err := os.Rename(application, target); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, link); err != nil {
+					t.Fatal(err)
+				}
+			case "application-directory":
+				link = appDir
+				target := filepath.Join(outside, "order-entry")
+				if err := os.Rename(appDir, target); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, link); err != nil {
+					t.Fatal(err)
+				}
+			case "semantic-directory":
+				link = filepath.Join(root, "semantic")
+				target := filepath.Join(outside, "semantic")
+				if err := os.Rename(link, target); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, link); err != nil {
+					t.Fatal(err)
+				}
+			case "rule-directory":
+				link = ruleDir
+				target := filepath.Join(outside, "sales")
+				if err := os.Rename(ruleDir, target); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, link); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			cmd := exec.Command("sh", "-eu", "-c", editScript)
+			cmd.Dir = repo
+			cmd.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+workspaceArg)
+			output, err := cmd.CombinedOutput()
+			if err == nil || !strings.Contains(string(output), tc.want) {
+				t.Fatalf("published step 3 did not reject %s: %v; %s",
+					tc.name, err, output)
+			}
+			if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
+				t.Fatalf("the original alias was removed or replaced: %v", err)
+			}
+			gotApp, err := os.ReadFile(application)
+			if err != nil || !bytes.Equal(gotApp, originalApp) {
+				t.Fatal("rejected path alias changed the Application")
+			}
+			gotSettings, err := os.ReadFile(settings)
+			if err != nil || !bytes.Equal(gotSettings, originalSettings) {
+				t.Fatal("rejected path alias changed the language settings")
+			}
+			if _, err := os.Lstat(application + ".next"); !os.IsNotExist(err) {
+				t.Fatalf("rejected alias left a staged Application: %v", err)
+			}
+			if _, err := os.Lstat(rule); !os.IsNotExist(err) {
+				t.Fatalf("rejected alias left a Rule Source, possibly outside the Workspace: %v", err)
+			}
+		})
+	}
+}
