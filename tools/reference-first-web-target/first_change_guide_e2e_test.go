@@ -382,7 +382,7 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 	} else if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
 		!strings.Contains(dom, `<span class="pill">synthetic</span>`) ||
 		!strings.Contains(dom, `id="operation-evidence-note"`) ||
-		!strings.Contains(dom, "このObservationは合成状態を読んだ結果です。") {
+		!strings.Contains(dom, "これは参照用の合成状態を読み取った結果です。") {
 		t.Fatal("step 5: the shipped UI did not explain the synthetic Command/Observation boundary")
 	}
 	return dom
