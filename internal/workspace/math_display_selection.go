@@ -1,11 +1,16 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"tei/internal/sourceindex"
 )
+
+// ErrMathPreviewUnsupported reports an explicitly selected math delimiter
+// that the current read-only preview profile does not support.
+var ErrMathPreviewUnsupported = errors.New("math preview delimiter unsupported")
 
 // ExplicitMathPreviewRequest names one range chosen by the caller in a
 // product-selected *.tei.md Source. It is NOT automatic Markdown recognition.
@@ -102,7 +107,7 @@ func SelectExplicitMathPreview(root string, loaded Result, request ExplicitMathP
 	case strings.HasPrefix(selection, "$$") && strings.HasSuffix(selection, "$$"):
 		delimiter, display, opening, closing = "tex-display-dollars", true, "$$", "$$"
 	default:
-		return empty, fmt.Errorf("math preview delimiter is unsupported; select one complete supported TeX expression")
+		return empty, fmt.Errorf("%w: select one complete supported TeX expression", ErrMathPreviewUnsupported)
 	}
 	if len(selection) < len(opening)+len(closing) {
 		return empty, fmt.Errorf("math preview has no expression body")
