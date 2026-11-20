@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -180,6 +181,13 @@ func TestExplicitMathPreviewFailClosedWithoutSelectionAuthority(t *testing.T) {
 				t.Fatalf("unqualified selection succeeded: %+v", result)
 			}
 		})
+	}
+	_, unsupported := SelectExplicitMathPreview(root, loaded, ExplicitMathPreviewRequest{
+		Path: teiMDRuleDocument, SourceFingerprint: digest,
+		StartOffset: dollars, EndOffset: dollars + len("$100"),
+	})
+	if !errors.Is(unsupported, ErrMathPreviewUnsupported) {
+		t.Fatalf("single-dollar currency must have a typed unsupported outcome: %v", unsupported)
 	}
 	// Dollars enclosing an explicitly selected display expression are valid
 	// only as a whole selection, not as automatic currency detection.
