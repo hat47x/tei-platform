@@ -275,6 +275,9 @@ func TestCustomSubmitUIStructuresSuccessfulScenarioForVisualReview(t *testing.T)
 	for _, want := range []string{
 		"Scenario state",
 		"completed",
+		`id="operation-evidence-note"`,
+		"このObservationは合成状態を読んだ結果です。",
+		"PostgreSQLの受注更新・Commit・Receipt",
 		"Authentication",
 		"Selected order and relations",
 		"Customer reference",
@@ -350,6 +353,9 @@ func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t
 			t.Fatalf("Validation state does not contain %q", want)
 		}
 	}
+	if !strings.Contains(validationBody, "この応答に実行後のObservationはありません") {
+		t.Fatal("Validation-only response lost its observation boundary")
+	}
 	for _, forbidden := range []string{"Command Business Result", "Separate Observation", "Execution error"} {
 		if strings.Contains(validationBody, forbidden) {
 			t.Fatalf("Validation state incorrectly contains %q", forbidden)
@@ -377,6 +383,9 @@ func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t
 			t.Fatalf("Authorization state does not contain %q", want)
 		}
 	}
+	if !strings.Contains(authorizationBody, "この応答に実行後のObservationはありません") {
+		t.Fatal("Authorization-only response lost its observation boundary")
+	}
 	if strings.Contains(authorizationBody, "Execution error") {
 		t.Fatal("Authorization denial was rendered as Execution Error")
 	}
@@ -402,6 +411,9 @@ func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t
 		if !strings.Contains(executionBody, want) {
 			t.Fatalf("Execution Error state does not contain %q", want)
 		}
+	}
+	if !strings.Contains(executionBody, "この応答に実行後のObservationはありません") {
+		t.Fatal("Execution-error response must not imply an observed commit")
 	}
 	for _, forbidden := range []string{"Command Business Result", "Separate Observation", "editor-secret"} {
 		if strings.Contains(executionBody, forbidden) {
