@@ -813,8 +813,9 @@ func TestFirstChangeGuideExecutesLiteralRuleEdit(t *testing.T) {
 
 // TestFirstChangeGuideRejectsAmbiguousApplicationInsertion executes the
 // published step 3, not a replacement awk program. A changed/duplicated
-// insertion anchor must never overwrite the original Application or leave an
-// intermediate .next file behind. No database or test-only Writer is involved.
+// insertion anchor must never change any of the three documented Source
+// files or leave an intermediate .next file behind. No database or test-only
+// Writer is involved.
 func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the published guide uses a POSIX shell and awk")
@@ -881,8 +882,11 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 			if _, err := os.Stat(application + ".next"); !os.IsNotExist(err) {
 				t.Fatalf("failed registration left a staged Application: %v", err)
 			}
-			if _, err := os.Stat(filepath.Join(ruleDir, "unit-price.tei.md")); err != nil {
-				t.Fatal("negative case stopped before reaching the published Application edit")
+			if _, err := os.Stat(filepath.Join(ruleDir, "unit-price.tei.md")); !os.IsNotExist(err) {
+				t.Fatalf("failed registration left a rule Source behind: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(workspace, "tei.workspace.yaml")); !os.IsNotExist(err) {
+				t.Fatalf("failed registration left a language declaration behind: %v", err)
 			}
 		})
 	}
