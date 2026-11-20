@@ -66,14 +66,7 @@ cp -R reference/workspace/. "$TEI_FIRST_WORKSPACE/"
 単価が正の数であること、という規則を足す。触るファイルは三つである。
 
 ```bash
-# 設計文書の言語を選ぶ
-printf 'languages:\n  - tei.authoring/v1\n' >> "$TEI_FIRST_WORKSPACE/tei.workspace.yaml"
-
-# 規則と、近くの例を置く
-cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPACE/semantic/sales/"
-
-# 受注入力のApplicationが、その規則を使うと書く
-# 挿入位置がちょうど1件でなければ、元のApplicationを変更せずに止める
+# 登録先を先に検査し、問題がなければ三つの変更を行う
 (
   set -eu
   application="$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei"
@@ -97,6 +90,9 @@ cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPAC
       exit 1
     }
   }' "$application" > "$next"
+  # 登録先が一意と分かってから、言語・規則・Applicationを変更する
+  printf 'languages:\\n  - tei.authoring/v1\\n' >> "$TEI_FIRST_WORKSPACE/tei.workspace.yaml"
+  cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPACE/semantic/sales/"
   mv "$next" "$application"
 )
 ```
@@ -118,7 +114,7 @@ rule sales.order_line.unit_price_positive:
 | 0 | not-satisfied |
 ````
 
-Applicationへの登録先が見つからない、複数ある、または追加する規則が既に登録されている場合は、元の`application.tei`を上書きせずにエラーで止まる。規則文書や言語宣言は先に配置されるため、エラーが出たら後続の検証へ進まず、作業領域の版を確認する。挿入途中の`.next`は削除する。
+Applicationへの登録先が見つからない、複数ある、または追加する規則が既に登録されている場合は、元の`application.tei`を上書きせずにエラーで止まる。登録先の検査に失敗した場合は、言語宣言・規則文書・Applicationのいずれも変更しない。作成途中の`.next`も削除する。書込み中に別のエラーが起きた場合は、作業領域の写しを作り直して最初から試す。
 
 この手順で行うのは、既存規則の書換えではなく**新しい規則の追加**である。変更するのは、言語の指定、規則を記した設計文書、Applicationの利用登録の3ファイル。通常開発との作業量の比較でも、この3ファイルをすべて数える。既存規則と例だけを書き換える二回目以降の変更は、別の受入として評価する。
 
