@@ -122,7 +122,7 @@ func SelectExplicitMathPreview(root string, loaded Result, request ExplicitMathP
 	return ExplicitMathPreview{
 		Path:              path,
 		SourceFingerprint: identity,
-		Occurrence:        fmt.Sprintf("%s@%d:%d", path, request.StartOffset, request.EndOffset),
+		Occurrence:        fmt.Sprintf("%s@%s:%d-%d", path, identity, request.StartOffset, request.EndOffset),
 		SourceRange:       whole,
 		TeXRange:          tex,
 		Delimiter:         delimiter,
