@@ -2,7 +2,7 @@
 
 - **文書の性格**：実装前設計・技術比較と受入の引継ぎ。個別技術の製品採用、Ownerの業務意味受理、実OS試験合格を主張しない。
 - **対象**：TEI StudioのWails v3 Workbench、Web/Desktop共通UI構成キット、TEIから生成するUI、生成AIによる開発と検証。
-- **正本と担当**：全体の順序は `plan/MASTER_PLAN.md`、UI構成キットは #997/#1000、Studio実Windowは #1824、Stage1→Stage2は #2831/#4583、操作とHostの契約は #1158/#951、独立Expectedと変異試験は #1180/#2514。ここでは新たなHost、Parser、Registry、業務Meaningの正本、独立Gateを設けない。
+- **正本と担当**：現在の優先順位は `plan/NOW.md`、UI構成キットは #997/#1000、Studio実Windowは #1824、Stage1→Stage2は #2831/#4583、操作とHostの契約は #1158/#951、独立Expectedと変異試験は #1180/#2514。ここでは新たなHost、Parser、Registry、業務Meaningの正本、独立Gateを設けない。
 - **最終照合**：2026-11-15。現行WorkbenchはNode >=24、TypeScript、esbuild、CodeMirrorを利用。Wails v3 beta.29から安定版への移行は #1824 S0-Uの別実証。テーマ試作PR #4628はclosed/unmergedであり、main採用済みとは扱わない。
 
 ## 1. 今回の判断
@@ -333,6 +333,25 @@ Clientは入力中の値、Caret、Focus、Pin、編集中のBufferを局所的�
 [B2C対応方針 #3509](https://github.com/hat47x/tei-platform/issues/3509)の公開Headや多言語URLは、公開可能なFacetをRoute／Slotへ結び付けるProjectionとして扱う。静的SEOの説明情報と、価格・在庫・申込等の時点依存のCommerce情報は同じ静的更新周期に固定しない。既存TargetにHead Slotがなければ「未接続」と報告し、専用SEO Generatorを追加したことにしない。
 
 Node View／Flowは標準Data型・Direction・Multiplicity・Presence・Coverage・Disclosureを保った接続の表示とし、Canvas上の配線がHTTP公開・実行可能性・副作用許可を成立させたことにはしない。SUIの高密度Canvas、StudioのCodeMirror、React Starter、Web Components、Litの使い分けは、**共通するOperationと公開Component Contractを維持できるか**で判断する。Native Canvasの描画性能を理由に、意味モデルや実行器までNative専用化しない。
+
+### 16.4 既存Webへの部分導入と、TEIを外した後の保守（2026-11-21、受入条件の整理）
+
+**基本判断**：TEI単独ではGoアプリケーションを作れるようにし、既存のGo／Java／.NET等の案件では現行IDE・Host・認証・配備方法を尊重して、必要なFunction・API契約・画面だけを生成・組み込めるようにする。共通にするのは業務Meaningと型付きApplication Operationであり、HTTP、Wails、特定のWeb Frameworkを実行必須条件にしない（ADR-0043／0048、#951／#997／#1127）。Web Componentsは標準表示の選択肢で、既存UIの再構築を強制しない。
+
+**三つの配布形態は別々に検収する**。①Go実行ファイルへWeb資産を同梱する単独配布、②Browser資産とAPI実行物を分ける配布（#1182）、③既存Web/Hostへ一つの機能を追加する部分導入。①の論理的なBrowser／Server分離と、②の物理的な二成果物生成は同じ資格ではない。③では既存Hostが認可・副作用・Secretを所有し、TEIが暗黙に専用Hostへ置換したり、UI側でRuleを複製したりしない。
+
+**離脱可能性は生成ソースから確かめる**。同じ受理済みSource版に由来する、必要なGo／TypeScript／HTML／CSS、公開契約、Markdown設計書・例、独立Expected、通常のビルド依存を取り出し、TEI CLI・Generator・専用Hostを使えない別プロジェクトで、次を順に検査する。
+
+| 受入対象 | 反証可能な確認 | 不合格・未成立として残す条件 |
+| --- | --- | --- |
+| **E0：再構築** | 対象環境の通常のGo／Node等ツールチェーンだけでソースから成果物を再ビルド | 生成コードが`tei/internal/...`等のTEI製品内部実装を必須importする、TEI CLIを呼び出す、生成済みバイナリの起動しか試していない |
+| **E1：意味の保守** | 生成後の通常のコードを使い一つのRuleを変更し、Markdownの対象・規則・例と独立Expectedを追跡して再テスト | コードの手修正ができない、規則の正本がUI／APIへ複製され不一致、Sourceとの対応が失われる |
+| **E2：実Consumer** | 再構築したWebを実Browserで操作し、実Provider Read、業務キー別Rule回答、失敗・未確定表示を独立期待値と照合 | HTTP成功や合成CommandをDB Commit／Receiptと誤認、部分取得・RLSを全件とみなす |
+| **E3：既存Hostへの部分導入** | 選択したFunctionだけを既存Hostへ接続し、Hostの権限と対象指定、現在のGrant、Target依存を実Requestで確認 | Host/Providerの暗黙代替、権限の弱いWeb経路、SecretのBrowser同梱、既存Hostを廃止しないと動かない |
+
+これは**TEIなしで設計を再生成できること**を要求する試験ではない。生成済み成果物を通常のプロジェクトとして保守し続けられることを要求する。通常のTarget用ライブラリは許容するが、依存一覧と利用ライセンスを明示する。既存Web側のカスタマイズは案件資産として維持し、再生成時に黙って上書きしない。どの表現からどの生成コード・テストへ到達できるかは、#2621／#2514のSource・独立Expectedを再利用し、別の受理機構を作らない。
+
+**着手順と現状**：まず`plan/NOW.md`の第一Web・初回利用者による公開手順0〜5の独力完走を受け入れる。現行`tools/reference-first-web-target/custom_ui.go`は手書きReference UIであり、実PostgreSQL／実Chromeの成功をTEI生成画面の合格とはしない。その後、同じSource→実Generator→Artifact一式→Browserが実際に受け取ったbytes→独立Expectedを照合し、上記E0〜E3を配布形態ごとに検証する。StudioのWails実行はGenerated Web Targetや第二Application Targetの成功ではない。本節は**受入案であり、E0〜E3の実験はNOT RUN**。実装担当は#1119（第一Web）、#1182（Browser/API）、#1127／#997（標準UI・既存Host）、#943／#259（BuildとTarget境界）。新しいP0や独立Gateを設けない。
 
 ## 17. Web方式の次の一巡を小さく検証する（2026-11-16、P1）
 
