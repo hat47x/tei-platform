@@ -466,3 +466,21 @@ KaTeXの最初の製品側回帰を`internal/workspace/tei_md_katex_source_bound
 次の実装PRは#5683内で**Sourceの一出現をread-onlyに選択して、既存Source Indexへ正しいbyte範囲を対応付ける**ところから始める。未対応Delimiterを明示`UNSUPPORTED`とし、意味の`Accept`・実行・書戻しとは切り離す。K1のKaTeX Adapterと版固定・オフライン配布はその後に限定する。Studio Stage1→Stage2および通常CLI実ProviderのP0は変更しない。
 
 **証拠資格**：本節の追加時点ではテストコードの作成まで。CIの対象HEADでの実行確認、Math token選択、KaTeX実描画、Owner受理は別途検証する。
+
+
+<!-- tei-md-katex-explicit-source-selection-20261120 -->
+### 10.19 明示選択から始める数式プレビュー：K0-E
+
+KaTeXの自動認識を先行させず、現在の製品Readerが実際に読み込んだMarkdown Sourceに対して、**利用者が明示した一範囲を、原文のまま表示用に取り出す**最小経路を設ける。新しい意味文法や数式Parserを作らず、既存の`workspace.Load`、`AuthoringSources`、Load-time snapshot、`BuildSourceIndexFromLoad`の資格を利用する。
+
+- 入力はWorkspace相対の正規化Path、対象Sourceのbyte fingerprint、選択区間のUTF-8 byte offset（半開区間）。Loadが選んだAuthoring Languageで実読込された`*.tei.md`のみ受け付け、未選択・別Root・不一致Revision・範囲外を拒否する。
+- K0-Eの対応Delimiterは、**明示選択した**`\(...\)`、`\[...\]`、`$$...$$`に限定し、`$...$`は通貨との曖昧性から対象外とする。数式の自動発見・引用やコードFenceとの区別・文書全体のMath token化は**未実装**。コード内を利用者が明示選択した場合も、得られるのはread-onlyプレビューだけであり、意味Roleは受理しない。
+- 出力は元Source fingerprint、文書版内の出現位置（意味IDではない）、Delimiter種類・inline/display、元選択とTeX本文それぞれのSource Range、TeX原文。元byteの改行やマルチバイト文字を正規化せず、Rendererの成功・失敗、Writer資格やOwner受理は出力に含めない。
+- 読取対象はLoad時のsnapshotであり、ファイルシステムの再読込や別のSource Indexを作らない。同一snapshotの古い表示を再現できても「現在の編集対象」「現在の受理資格」にはしない。A→B→Aでも同じbyte hashだけでGrantやReviewを復活させない。
+- 最小の製品回帰は、**BOM・CRLF・日本語、同じTeXの二出現、通貨の拒否、範囲途中の拒否、別Rootの拒否、説明文変更後の古いfingerprint拒否**を既存Rule Sourceと組み合わせ、Rule意味の不変性・Source Index失効を別に観測する。これらは表示の独立Expectedではなく、K0-EのSource選択資格の確認である。
+
+実装入口は`internal/workspace/math_display_selection.go`、検証は`math_display_selection_test.go`。KTEI-01の「元byteに束縛された明示選択」は部分的に満たせても、「正式Markdown ReaderによるMath token自動分類」は未合格のままである。KTEI-02のRaw Draft無変更保存、KTEI-03のMacro/Renderer失効、KTEI-10のTarget別品質も本実装の対象外。
+
+次の順序は、(1) 明示範囲を実Studioへ読み取り専用で渡す、(2) Macros・Renderer版・CSP・CSS/fontsと固定KaTeXでHTML+MathMLを生成する、(3) 明示的に選択されたMath occurrenceの自動分類が必要かをMarkdown Reader Ownerと判断する、(4) SHO/MMIの各Targetを別検収する、という順とする。**Studio Stage1→Stage2および通常CLI実ProviderのP0は維持**し、数式機能をHard Dependencyにしない。
+
+**検収の範囲**：本節はコード差分と同時に計画へ加える。対象HEADのGo/CI成功は実行ログで別途確認する。KaTeX実描画・Wailsの数式表示・Writer/Grant・数学的Claim・PDF/DOCXは未実施。
