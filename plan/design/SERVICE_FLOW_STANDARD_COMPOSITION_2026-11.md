@@ -719,3 +719,24 @@ NM-01は既存のREA候補取込にあるEdge identityの実例を参照でき�
 これは**局所Go Referenceの実装と回帰**であり、正式なPort Schema、Node View製品画面、Generator入力、業務Relation、Owner意味受理、Windows WebView2での検収を追加したものではない。製品Workbenchでは、現在のCatalog／InspectからData属性の**未審査候補を画面に表示する経路**が既にある。次段はその選択・モデル版・Source出現の確認を維持したまま、既存Shared Acceptanceとの接続可否をFit/Gapで確定すること。Node／Edgeの表示Lossを編集可能性や対象の一意性へ読み替えない。既存のPreview／Review／明示Accept／再読込が製品Hostの資格を満たすまで、保存はunsupportedとする。独立Expectedの正式採否は#1180／#2514のOwnerが判断する。
 
 `plan/NOW.md`の最優先は引き続き「受注の一変更」と製品WailsのStudio Stage1→Stage2であり、Node View専用Engineや新たな並行P0は設けない。
+
+### 13.9 正式Sourceからの投影へ進む際の判別条件（2026-11-21）
+
+§13.8のAuditDerivedViewは、**与えられた候補と、同じ呼出しに渡された図の差**を調べるReferenceである。Node／EdgeのIDが一致しても、候補を作ったSource byteと図のSource byteが同一だったこと、選択済みLanguage Readerが全対象を読んだこと、現在のConsumerが表示を受領したことは立証しない。次は検査機能を横へ増やすのではなく、**この三つの境界を実製品の一つの読取りで結ぶ**。
+
+共通の「Node ID」を新設して以下を上書きしない。意味定義は既存の種類付きSubject参照、構成上の出現は所属GraphとOccurrence ID、関係は独立したEdge occurrence ID、図形はView内の表示ID、実行はAttempt／Receiptで識別する。定義を二箇所で使っても定義は増やさず、二箇所のBindingは混ぜない。業務上のRelationと図面上の線、Processの順序とData依存、同じ見かけのNodeと同じSource occurrenceも別に扱う。
+
+| 段階 | 既存経路で実際に確かめること | 不足するときの停止先 |
+| --- | --- | --- |
+| **N0-R 読込** | 選択済みWorkspace／Language Readerが消費したSource byte、位置、Revision、SubjectとGraphのScopeを記録。Source Indexはその実読込に属するものを使う | 未選択・未読込・部分読込ならGraph全件や不在を宣言しない。Referenceを正式Readerへ昇格しない |
+| **N0-I 同一性** | 同名二Node、同一両端の二Edge、孤立Nodeを、Definition／Occurrence／Edge／表示Alias別に照合。図で省かれた関係をLossとして報告する | 表示位置・ラベル・同じ端点からIDを復元しない。Tree／折畳み表示への逆書戻しを許さない |
+| **N0-C 実Consumer** | 既存CLIまたはStudioの実Inspectが、同じSelection世代とSource版の公開可能な項目を受け取ったか確認。表示の差とSourceの差を別に観測する | Readerの結果が作れただけで、画面表示・開示許可・編集可能性まで成立としない |
+| **N0-E 編集候補** | 一意のSource occurrenceと編集Slot、現行Writer Grant、Review指紋、明示Accept、独立再Readを既存Shared Acceptance／正規Host Operationで接続できるか判定 | 一つでも欠ければunsupported。Pin・Node選択・図上の線・Reference CLIによる代行保存は認めない |
+
+この表は新しい公開JSON SchemaやGateではなく、§13.3の読取り項目を実装責務へ引き渡す順序である。特に**Graphの部分表示**と**業務Relationの部分取得**は別の不完全性であり、前者のNodesExact=trueを後者のcompleteに使わない。逆に、実DBのReadが成立しても図のNode／Edgeが全部表示されたとは限らない。必要なScope、時点、多重度、NULL／未取得、開示方針を、個々のConsumerが実際に要求した範囲で照合する。
+
+**次に増やす判別は三組で足りる。** (1) 同じラベル・同じEdge図でSourceを別位置へ移した旧Indexを拒否する、(2) 同じDefinitionを参照する二出現のうち一方だけBindingを変更し、他方の影響を捏造しない、(3) GraphからTree／Markdownへ投影すると見えなくなる第二親・並列辺をLossとして残し、編集をread-onlyへ退避する。既存NM-01〜04とND-V01〜06のFixture／独立Expectedへ追加し、別のCorpus・Node Runtime・受理台帳を作らない。原byteがA→B→Aと戻っても、途中の変更履歴や現在Grantが復活したとは扱わない。
+
+**実装順は変更しない。** 先に[#1119](https://github.com/hat47x/tei-platform/issues/1119)の初回利用者による受注一変更の完走と、並行して[#4583](https://github.com/hat47x/tei-platform/issues/4583)の製品Studio正式保存の不成立箇所を解消する。Node Viewの正式Reader接続は[#1124](https://github.com/hat47x/tei-platform/issues/1124)・[#2497](https://github.com/hat47x/tei-platform/issues/2497)・[#2621](https://github.com/hat47x/tei-platform/issues/2621)の既存責務内で、その読取り境界を再利用できる段階に進める。Node画面のために新DSL、第二Host／Writer、独自Graph Compilerを導入しない。
+
+**退出可能性も受入条件に含める。** ノード画面やTEI専用Runtimeを使わなくなっても、受理済みの業務定義から生成した通常のGoソースとMarkdown設計書が、標準ツールで読めて保守できるかを[#4191](https://github.com/hat47x/tei-platform/issues/4191)のEX-01〜04で別に検収する。図面の編集体験と、生成後のアプリケーションの独立性は両立させる。ここまでの追補は**設計上の判別条件**であり、正式Reader接続、製品Wails保存、既存Hostでの実Effect、Owner意味受理を新たに実証したものではない。
