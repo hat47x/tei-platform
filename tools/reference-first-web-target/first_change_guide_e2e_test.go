@@ -370,18 +370,22 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 	if !strings.Contains(dom, `id="read-result"`) {
 		t.Fatal("real shipped-form Chrome did not render the target's read result")
 	}
-	// The real Read is shared by both selections, but they take different
-	// business paths: order 1001 stops on Validation; order 1002 reaches the
-	// synthetic Command/Observation because the shipped CLI injects no store.
+	// Both selections read real PostgreSQL through separate attempts.
+	// Order 1001 stops at Validation, before even initial Authorization or
+	// Command. Order 1002 reaches Authorization and synthetic Command/Observation.
 	if row == 0 {
 		if !strings.Contains(dom, "validation-not-satisfied") ||
+			strings.Contains(dom, `id="authorization-result"`) ||
 			strings.Contains(dom, `id="command-result"`) ||
 			strings.Contains(dom, `id="observation-result"`) {
-			t.Fatal("step 5: a Validation denial was reported as Command/Observation execution")
+			t.Fatal("step 5: rejected Validation was reported as downstream Authorization/Command/Observation")
 		}
-	} else if !strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
+	} else if !strings.Contains(dom, `id="authorization-result"`) ||
+		!strings.Contains(dom, `id="command-result"`) ||
+		!strings.Contains(dom, `id="observation-result"`) ||
+		!strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
 		!strings.Contains(dom, `<span class="pill">synthetic</span>`) {
-		t.Fatal("step 5: the successful reference Command was not identified as synthetic")
+		t.Fatal("step 5: approved path lacked Authorization or labelled synthetic Command/Observation")
 	}
 	return dom
 }
