@@ -127,8 +127,8 @@ func TestCustomSubmitUIUsesSameCommandScenarioRunnerAsJSONEndpoint(t *testing.T)
 		t.Fatalf("externally observed Custom UI status=%d", externalRecorder.Code)
 	}
 	externalBody := externalRecorder.Body.String()
-	if !strings.Contains(externalBody, "ObservationはCommandとは別の証拠です。") ||
-		strings.Contains(externalBody, "このObservationは合成状態を読んだ結果です。") {
+	if !strings.Contains(externalBody, "処理の実行結果と、その後に読み取った状態は別の証拠です。") ||
+		strings.Contains(externalBody, "これは参照用の合成状態を読み取った結果です。") {
 		t.Fatal("external observation was confused with a synthetic observation")
 	}
 }
@@ -288,8 +288,8 @@ func TestCustomSubmitUIStructuresSuccessfulScenarioForVisualReview(t *testing.T)
 		"Scenario state",
 		"completed",
 		`id="operation-evidence-note"`,
-		"このObservationは合成状態を読んだ結果です。",
-		"PostgreSQLの受注更新・Commit・Receipt",
+		"これは参照用の合成状態を読み取った結果です。",
+		"PostgreSQLの受注更新やCommit・Receipt",
 		"Authentication",
 		"Selected order and relations",
 		"Customer reference",
@@ -365,7 +365,7 @@ func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t
 			t.Fatalf("Validation state does not contain %q", want)
 		}
 	}
-	if !strings.Contains(validationBody, "この応答に実行後のObservationはありません") {
+	if !strings.Contains(validationBody, "この応答には、処理後の状態を確認した結果がありません") {
 		t.Fatal("Validation-only response lost its observation boundary")
 	}
 	for _, forbidden := range []string{"Command Business Result", "Separate Observation", "Execution error"} {
@@ -395,7 +395,7 @@ func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t
 			t.Fatalf("Authorization state does not contain %q", want)
 		}
 	}
-	if !strings.Contains(authorizationBody, "この応答に実行後のObservationはありません") {
+	if !strings.Contains(authorizationBody, "この応答には、処理後の状態を確認した結果がありません") {
 		t.Fatal("Authorization-only response lost its observation boundary")
 	}
 	if strings.Contains(authorizationBody, "Execution error") {
@@ -424,7 +424,7 @@ func TestCustomSubmitUISeparatesValidationAuthorizationAndExecutionErrorStates(t
 			t.Fatalf("Execution Error state does not contain %q", want)
 		}
 	}
-	if !strings.Contains(executionBody, "この応答に実行後のObservationはありません") {
+	if !strings.Contains(executionBody, "この応答には、処理後の状態を確認した結果がありません") {
 		t.Fatal("Execution-error response must not imply an observed commit")
 	}
 	for _, forbidden := range []string{"Command Business Result", "Separate Observation", "editor-secret"} {
