@@ -91,7 +91,7 @@ cp -R reference/workspace/. "$TEI_FIRST_WORKSPACE/"
     }
   }' "$application" > "$next"
   # 登録先が一意と分かってから、言語・規則・Applicationを変更する
-  printf 'languages:\\n  - tei.authoring/v1\\n' >> "$TEI_FIRST_WORKSPACE/tei.workspace.yaml"
+  printf 'languages:\n  - tei.authoring/v1\n' >> "$TEI_FIRST_WORKSPACE/tei.workspace.yaml"
   cp testdata/destination-order-change/edit/unit-price.tei.md "$TEI_FIRST_WORKSPACE/semantic/sales/"
   mv "$next" "$application"
 )
