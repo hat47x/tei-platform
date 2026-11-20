@@ -2071,3 +2071,30 @@ MR-01〜06は**試験候補の識別子**であって、製品に新しく追加
 ここでの試験は**同じD1の実Readに対する表示経路の追加観測**とし、新Graph Runnerや独立データ正本を作らない。まずDF-P4aのCaller拒否を満たし、その後にProjectionで失った状態を`lossy`として示し、Qualified Subject／Occurrence／Source Revisionを再解決してから編集を許す。Ruleが`undecided`でも図やHTMLが描けることと、Ruleの成立・公開許可は区別する。
 
 [実DBの行キー・Relation判定をHTMLへ渡すPR #5346](https://github.com/hat47x/tei-platform/pull/5346)などの変更は、統合状態と実Consumerの受入を確認してから証拠へ加算する。ここでの研究計画追補は**docs-only**であり、DPC-16aの製品Caller、実PostgreSQL→通常CLI→独立Consumer、Source編集往復、R2-P、R3、Windows Stage1→Stage2、Ownerによる意味受理の新規PASSを主張しない。
+
+### 16.58 実製品の到達点で研究成果の適用先を更新する（2026-11-21）
+
+§16.54〜16.57は2026-11-17時点の判断と反例を残す。現在の受入と次の対象は、優先順位の正本 [plan/NOW.md](../NOW.md) で判断する。研究計画は第二の開発順序やGateを作らない。
+
+- **取得と判断**：mainへ統合された #5571 は第一Webの実PostgreSQL Readと同一トランザクションで対象Query・Relation・物理表／RLSの資格を判定し、可能な範囲で Relation Rule の成立を認める。#5583 は非所有者RLSで重複行を隠した負例を実DBで検査し、見かけの一意性を `satisfied` にしない。これらは「特定の実DB／Query／Roleで検査した取得資格」であって、全SQL・全Providerの完全性定理ではない。
+- **Consumerまでの受領**：#5492 の実Chrome DOM、#5633／#5642 の公開手順・出荷フォーム、#5687／#5708 のValidation早期停止は、実Readと表示・制御の限定した縦断を実証した。手書きReference Web画面をTEI Generatorが生成した証明、業務Commit／Receipt、初回利用者自身の0〜5手順完走ではない。
+- **Studio編集の境界**：#5630 は実EdgeのReference編集→Preview／Review／Accept→Source一セル保存→生成したWindows Stage2の可視差を同一試行で確認した。#5669 は製品Wails上で未審査編集候補の実クリックと失効を検証した。しかし製品Studio自身の正式Source保存入口、Review／Accept／Writer、次のStudioへの一往復は未成立（#4583、[plan/NOW.md](../NOW.md)）。
+- **Source改版**：#5691 はOperator宣言のファイル移動で意味同値でも旧Source Indexを再利用しない実Go回帰。協調しない書込みの原子的CASとA→B→Aの履歴証明は別であり、現行のbyte照合を万能な競合防止としない。
+
+研究上の『結果を評価できる』と、製品として『利用者が変更を完遂できる』は別である。以後の比較単位は単発のOperator／生成成果物数ではなく、**同じSource改版と同じ対象を束縛した、意味Read→判断→Consumer受領／編集候補→Review・Accept→保存→再読込→再生成の観測辺**とする。検査ごとに、どちらの経路を実際に通したかを明記する。
+
+### 16.59 研究を既存P0に渡す最小反例と採用条件
+
+未完の研究項目を次の既存Ownerへ渡す。新しいResearch Runner・Core Lens Engine・Expected正本・第二Hostは作らない。
+
+| 検査 | 反例と独立Expected | 受け渡し／現在の扱い |
+| --- | --- | --- |
+| RAI-01 観測十分性 | 同じ表示2行でも、実4行のうち残り2行が未取得なら一意性の肯定は保留。観測済み重複の不成立は確定。0行も全件の不存在と同一視しない | #2586／#2514。#5571／#5583の実DB試験は再利用し、別Scope・Snapshotの流用だけを未検査差分として追加 |
+| RAI-02 編集の無変更性 | 表／Graph／Studioで見た目を保存し直しても、変更していないSource・隠れた値・Relation occurrenceを更新しない。単なる表示一致では合格にしない | #4583／#2621／#2514。製品Studio保存入口が無ければ `unsupported` と判定 |
+| RAI-03 編集の一意な書戻し | 同名二Node・多重Edge・集約表示、別Source版、部分取得、複数Writer競合で編集対象が一意でなければ保存候補を正式Acceptへ進めない。成功時はSourceを別読込し、指定した一セル以外の不変を照合 | #4583／#2497／#2500。Reference成功を製品Writerの資格へ転記しない |
+| RAI-04 実行と効果の分離 | Web画面の `completed` やHTTP 200、合成Commandの到達を実DB Commit／Receiptと数えない。Validation拒否ではAuthorize／Effect呼出0を独立Spyで確認 | #1119／#1174／#2514。#5687／#5708の限定試験を再利用 |
+| RAI-05 汎用Operator拡張 | `within(value, low, high)` の入力名を別文書・異なる読込順で束縛。NULL／未取得／欠けた入力とRule正規形の誤接続を独立Expectedで拒否 | #4359。初回利用者の手順0〜5完走より先に新DSLを要求しない |
+
+**理論からの適用**：問い合わせの「certain answers」や相対的完全性の研究は、未観測行があっても確定できる主張とできない主張を分ける検査の参考になる（[Relative information completeness, PODS 2010](https://doi.org/10.1145/1862919.1862924)）。2026年の [Lenses for Partially-Specified States](https://doi.org/10.1007/978-3-032-22723-2_2) は複数Viewの部分的な更新意図を扱う。TEIでは `get/put` の数学的性質をそのまま製品保証とせず、未指定Field、隠れたデータ、同一対象束縛、無変更保存、競合拒否を **RAI-02／03 の反例**として採用する。論文がTEIの保存を実証したことにはならない。
+
+**採用の順序**：まず [plan/NOW.md](../NOW.md) の初回利用者0〜5完走、次に製品Studio自身の編集→Source正式保存→Stage2 Windows可視差を既存 #4583 で一巡する。独立Expected・権限・Source版・実Consumerを保持した上で、二領域以上で同じ意味上の不足が再現した場合のみCore拡張を審議し、それ以外は標準OperatorかPluginへ留める。研究の整理だけで到達点を変更しない。
