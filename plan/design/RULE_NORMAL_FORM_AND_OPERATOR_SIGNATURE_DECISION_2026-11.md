@@ -366,6 +366,12 @@ rule sales.order_line.discount_non_negative:
 
 ### 13.2 次に実装することと、その順序
 
+**第一段階の前提は、選択済みSource全体で署名を確定することである。** 現状の`RuleNamespace(file)`は同じ文書のOperator宣言だけから入力名を調べる。別文書の宣言を参照したRuleに入力値を明示すると、値を保持できないために拒否される。一方、`loadAuthoringMarkdown`はOperatorの例表を保留し、全Source読込後の`attachOperatorCases`で結び付けている。Ruleの入力も、この既存の読込経路に沿って後段で解決する。先に見つかった同名宣言へ暗黙に結び付ける別Registryや、値を落とした仮のValidationは作らない。
+
+**後段解決の受入条件**：Ruleの主語・名前付き入力・参照した署名ID・原文byte位置・文書パスを解決前から保持する。選択済みの文書全体でOperator宣言が一意になった後にだけ入力を束縛し、宣言文書がRule文書より先でも後でも同じ結果にする。未選択の宣言で不足を補わず、同じIDの二重宣言、未知・重複・不足した入力名、主語の再束縛、型不一致は元のSource位置へ診断を返す。解決に失敗したとき、`mergeAuthoringMarkdown`が守る文書単位の受理・拒否を崩さず、Ruleの一部やOperator例だけがWorldに残った状態をLoad成功として返さない。
+
+**回帰とSource資格は別々に照合する。** 旧`takes number`と`takes amount: number`の一入力経路、別文書の宣言・Rule・例表、宣言とRuleの文書順入替えを独立Expectedで検査する。宣言の原byteを変えずにファイルだけ移した場合は、意味が同じでもSource Index・Model Revisionを更新し、旧Indexを拒否する（[#5691](https://github.com/hat47x/tei-platform/pull/5691)）。この負例が通っても、三入力の意味保持・評価、Writer GrantやOwnerの意味受理が済んだことにはしない。
+
 **第一段階：入力の意味を保持する。** `RuleInputAssignment` が保持している名前・値・原文位置を、既存`semantic.Validation`と`semantic.Operator`の意味として表せるようにする。入力の識別子、数値定数、参照するAttributeとその型、NULL／未取得、行ごとの読取範囲、評価時点を別に扱う。ここで新しいValidationKindや汎用式ASTを作らない。保存形を決めるときは、既存の `Function`／`Parameter` 等との再利用可能性も比較するが、モデル全体へ未確定の型を先に増やさない。
 
 **第二段階：入力を必要とする実際の判定へ接続する。** 規則の主語と追加の入力を、宣言した署名の順序・役割で一回ずつ読取り、既存`validationeval.Decide`の結果と判定不能の理由へ接続する。宣言された入力以外を読まないこと、部分取得でも不成立が確定する場合を失わないこと、数値の精度や時点を暗黙に変更しないことを試験する。未対応のOperator実装は自動的に別方式へ置換しない。
