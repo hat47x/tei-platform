@@ -68,7 +68,8 @@ jobs:
             reference/org-semantic-views/verify-transitive-record-policy.mjs \
             reference/org-semantic-views/verify-transition-simulation.mjs \
             reference/org-semantic-views/verify-visibility-epoch.mjs \
-            reference/org-semantic-views/verify-capacity-scenarios.mjs; do
+            reference/org-semantic-views/verify-capacity-scenarios.mjs \
+            reference/org-semantic-views/verify-decision-cutover.mjs; do
             test -f "$file"
             printf 'blob=%s file=%s\n' "$(git hash-object "$file")" "$file"
           done
@@ -93,7 +94,8 @@ jobs:
             reference/org-semantic-views/verify-transitive-record-policy.mjs \
             reference/org-semantic-views/verify-transition-simulation.mjs \
             reference/org-semantic-views/verify-visibility-epoch.mjs \
-            reference/org-semantic-views/verify-capacity-scenarios.mjs
+            reference/org-semantic-views/verify-capacity-scenarios.mjs \
+            reference/org-semantic-views/verify-decision-cutover.mjs
 
       - name: Assert test workspace remains clean
         if: always()
