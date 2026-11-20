@@ -1038,3 +1038,124 @@ func TestFirstChangeGuideRejectsPreexistingSources(t *testing.T) {
 		})
 	}
 }
+
+// TestFirstChangeGuideRejectsSymlinkedSourcePaths executes the literal
+// published step 3. A missing Rule file is not a safe destination when its
+// parent is a symlink, and an Application symlink must not be overwritten.
+// This is a preflight safeguard, not an atomic check against outside writers.
+func TestFirstChangeGuideRejectsSymlinkedSourcePaths(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the published guide uses POSIX shell and symlinks")
+	}
+	repo := repoRootForGuide(t)
+	guide, err := os.ReadFile(filepath.Join(repo, "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	editScript := documentedGuideShellStep(t, string(guide),
+		"## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	originalApp, err := os.ReadFile(filepath.Join(repo, "reference", "workspace",
+		"applications", "order-entry", "application.tei"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalSettings, err := os.ReadFile(filepath.Join(repo, "reference", "workspace",
+		"tei.workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, scenario := range []string{
+		"rule-directory", "application-directory", "application-file", "workspace-root",
+	} {
+		t.Run(scenario, func(t *testing.T) {
+			root := t.TempDir()
+			outside := t.TempDir()
+			appDir := filepath.Join(root, "applications", "order-entry")
+			ruleDir := filepath.Join(root, "semantic", "sales")
+			for _, dir := range []string{appDir, ruleDir} {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			application := filepath.Join(appDir, "application.tei")
+			settings := filepath.Join(root, "tei.workspace.yaml")
+			if err := os.WriteFile(application, originalApp, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(settings, originalSettings, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var linked, target string
+			workspace := root
+			switch scenario {
+			case "rule-directory":
+				if err := os.Remove(ruleDir); err != nil {
+					t.Fatal(err)
+				}
+				linked, target = ruleDir, outside
+			case "application-directory":
+				if err := os.Remove(application); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Remove(appDir); err != nil {
+					t.Fatal(err)
+				}
+				targetApp := filepath.Join(outside, "application.tei")
+				if err := os.WriteFile(targetApp, originalApp, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				linked, target = appDir, outside
+			case "application-file":
+				if err := os.Remove(application); err != nil {
+					t.Fatal(err)
+				}
+				targetApp := filepath.Join(outside, "application.tei")
+				if err := os.WriteFile(targetApp, originalApp, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				linked, target = application, targetApp
+			case "workspace-root":
+				linked, target = filepath.Join(filepath.Dir(root), "workspace-link"), root
+				workspace = linked
+			}
+			if err := os.Symlink(target, linked); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("sh", "-eu", "-c", editScript)
+			cmd.Dir = repo
+			cmd.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+workspace)
+			output, err := cmd.CombinedOutput()
+			if err == nil || !strings.Contains(string(output), "Source経路にシンボリックリンクがあります") {
+				t.Fatalf("published step 3 did not reject %s: %v; %s", scenario, err, output)
+			}
+			info, err := os.Lstat(linked)
+			if err != nil || info.Mode()&os.ModeSymlink == 0 {
+				t.Fatal("preflight removed or followed the existing symlink")
+			}
+			gotSettings, err := os.ReadFile(settings)
+			if err != nil || !bytes.Equal(gotSettings, originalSettings) {
+				t.Fatal("preflight changed existing language settings")
+			}
+			gotApp, err := os.ReadFile(application)
+			if err != nil || !bytes.Equal(gotApp, originalApp) {
+				t.Fatal("preflight changed existing Application")
+			}
+			if scenario == "application-directory" || scenario == "application-file" {
+				got, err := os.ReadFile(filepath.Join(outside, "application.tei"))
+				if err != nil || !bytes.Equal(got, originalApp) {
+					t.Fatal("preflight changed Application outside the Workspace")
+				}
+			}
+			for _, path := range []string{
+				filepath.Join(root, "applications", "order-entry", "application.tei.next"),
+				filepath.Join(outside, "application.tei.next"),
+				filepath.Join(root, "semantic", "sales", "unit-price.tei.md"),
+				filepath.Join(outside, "unit-price.tei.md"),
+			} {
+				if _, err := os.Lstat(path); !os.IsNotExist(err) {
+					t.Fatalf("preflight wrote unexpected Source file %q: %v", path, err)
+				}
+			}
+		})
+	}
+}
