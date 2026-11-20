@@ -119,6 +119,18 @@ func TestCustomSubmitUIUsesSameCommandScenarioRunnerAsJSONEndpoint(t *testing.T)
 	if strings.Contains(body, "editor-secret") {
 		t.Fatal("Custom UI echoed credential")
 	}
+
+	// An externally observed result must not inherit the synthetic warning.
+	recording.result.Observation.Nature = "external-observed"
+	externalRecorder := postCustomSubmit(t, handler, form)
+	if externalRecorder.Code != http.StatusOK {
+		t.Fatalf("externally observed Custom UI status=%d", externalRecorder.Code)
+	}
+	externalBody := externalRecorder.Body.String()
+	if !strings.Contains(externalBody, "ObservationはCommandとは別の証拠です。") ||
+		strings.Contains(externalBody, "このObservationは合成状態を読んだ結果です。") {
+		t.Fatal("external observation was confused with a synthetic observation")
+	}
 }
 
 func TestCustomSubmitUIGetIsPresentationOnlyAndContainsNoPresetCredential(t *testing.T) {
