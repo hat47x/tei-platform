@@ -1039,7 +1039,6 @@ func TestFirstChangeGuideRejectsPreexistingSources(t *testing.T) {
 	}
 }
 
-
 // TestFirstChangeGuideRejectsSymlinkedSourcePaths runs the published edit
 // rather than a test-only copy. A fresh Workspace may contain a path alias,
 // but step 3 must not write outside its physical Source tree or replace the
