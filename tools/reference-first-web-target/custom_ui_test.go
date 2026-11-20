@@ -659,6 +659,14 @@ func TestCustomSubmitUIRejectsMisalignedRowAnswersBeforeRendering(t *testing.T) 
 				if !strings.Contains(body, "quantity_positive") || !strings.Contains(body, "not-satisfied") {
 					t.Fatalf("aligned row answers were not rendered: %q", body)
 				}
+				// A Read without relation-level rules must still identify its
+				// scope. Hiding the identity behind RelationAnswers loses the
+				// provenance of otherwise valid row-only rule answers.
+				if !strings.Contains(body, `id="read-identity"`) ||
+					!strings.Contains(body, "<td>1001</td>") ||
+					strings.Contains(body, `id="relation-answers"`) {
+					t.Fatalf("row-only Read did not show its identity independently: %q", body)
+				}
 			} else {
 				if !strings.Contains(body, "cannot render row answers") || strings.Contains(body, "Line 0") || strings.Contains(body, "quantity_positive") {
 					t.Fatalf("misaligned rows leaked into a page: %q", body)
