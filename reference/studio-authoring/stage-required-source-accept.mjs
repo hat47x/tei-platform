@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -23,8 +23,30 @@ function inside(root, value) {
   const rel = relative(root, value);
   return !!rel && rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel);
 }
-if (!scratchRoots.some(root => [before, after, receiptPath].every(path => inside(root, path))))
+// A lexical path under RUNNER_TEMP or tmpdir may traverse a symlink to a
+// product checkout. Reject aliases before copying, spawning a CLI or writing a
+// receipt; existsSync alone misses dangling symlinks at the output path.
+function hasSymlinkBelow(root, pathname) {
+  let current = root;
+  for (const part of relative(root, pathname).split(sep)) {
+    current = join(current, part);
+    try {
+      if (lstatSync(current).isSymbolicLink()) return true;
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+  return false;
+}
+const scratchRoot = scratchRoots.find(root =>
+  [before, after, receiptPath].every(path => inside(root, path)));
+if (!scratchRoot)
   throw new Error("STAGE_REQUIRED_ACCEPT_REQUIRES_ONE_SCRATCH_ROOT");
+const physicalRoot = realpathSync(scratchRoot);
+if (physicalRoot === repo || inside(repo, physicalRoot) ||
+    [before, after, receiptPath].some(path =>
+      inside(repo, path) || hasSymlinkBelow(scratchRoot, path)))
+  throw new Error("STAGE_REQUIRED_ACCEPT_SYMLINK_OR_PRODUCT_PATH");
 const sourceRel = "semantic/studio/inspection-response.tei.md";
 const attributeID = "studio.inspection_response.snapshot_fingerprint";
 const dataID = "studio.inspection_response";
