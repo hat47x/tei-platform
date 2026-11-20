@@ -837,6 +837,11 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 	if strings.Count(string(original), anchor) != 1 {
 		t.Fatal("reference Workspace must have exactly one published insertion anchor")
 	}
+	settingsOriginal, err := os.ReadFile(filepath.Join(repoRootForGuide(t),
+		"reference", "workspace", "tei.workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tc := range []struct {
 		name   string
 		change string
@@ -858,6 +863,9 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 			}
 			application := filepath.Join(appDir, "application.tei")
 			if err := os.WriteFile(application, []byte(tc.change), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(workspace, "tei.workspace.yaml"), settingsOriginal, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			cmd := exec.Command("sh", "-eu", "-c", editScript)
@@ -887,8 +895,128 @@ func TestFirstChangeGuideRejectsAmbiguousApplicationInsertion(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(ruleDir, "unit-price.tei.md")); !os.IsNotExist(err) {
 				t.Fatalf("failed registration left a rule Source behind: %v", err)
 			}
-			if _, err := os.Stat(filepath.Join(workspace, "tei.workspace.yaml")); !os.IsNotExist(err) {
-				t.Fatalf("failed registration left a language declaration behind: %v", err)
+			settingsAfter, err := os.ReadFile(filepath.Join(workspace, "tei.workspace.yaml"))
+			if err != nil || !bytes.Equal(settingsAfter, settingsOriginal) {
+				t.Fatal("failed registration changed the original language settings")
+			}
+		})
+	}
+}
+
+// TestFirstChangeGuideRejectsPreexistingSources executes the *published* step
+// 3 with a valid Application anchor. It must not overwrite a previous Rule,
+// YAML language block, or a staged Application left by another operation.
+// Neither a symlink nor a dangling symlink can be treated as an empty path.
+func TestFirstChangeGuideRejectsPreexistingSources(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the published guide uses a POSIX shell and awk")
+	}
+	repo := repoRootForGuide(t)
+	guide, err := os.ReadFile(filepath.Join(repo, "docs", "first-change.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	editScript := documentedGuideShellStep(t, string(guide),
+		"## 3. 規則を一つ足す", "## 4. 確かめて、読み直す")
+	originalApp, err := os.ReadFile(filepath.Join(repo, "reference", "workspace",
+		"applications", "order-entry", "application.tei"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalSettings, err := os.ReadFile(filepath.Join(repo, "reference", "workspace",
+		"tei.workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const ruleContent = "existing-rule-must-stay\n"
+	const stageContent = "existing-stage-must-stay\n"
+	for _, tc := range []struct {
+		name     string
+		want     string
+		rule     bool
+		stage    bool
+		language bool
+		dangling bool
+	}{
+		{name: "existing-rule", rule: true, want: "規則ファイルが既に存在します"},
+		{name: "existing-stage", stage: true, want: "作業途中ファイルが残っています"},
+		{name: "existing-language", language: true, want: "言語設定が既にあります"},
+		{name: "dangling-rule-symlink", dangling: true, want: "規則ファイルが既に存在します"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			appDir := filepath.Join(root, "applications", "order-entry")
+			ruleDir := filepath.Join(root, "semantic", "sales")
+			for _, dir := range []string{appDir, ruleDir} {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			application := filepath.Join(appDir, "application.tei")
+			settings := filepath.Join(root, "tei.workspace.yaml")
+			rule := filepath.Join(ruleDir, "unit-price.tei.md")
+			stage := application + ".next"
+			settingsBefore := append([]byte(nil), originalSettings...)
+			if tc.language {
+				settingsBefore = append(settingsBefore, []byte("languages:\n  - tei.authoring/v1\n")...)
+			}
+			if err := os.WriteFile(application, originalApp, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(settings, settingsBefore, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if tc.rule {
+				if err := os.WriteFile(rule, []byte(ruleContent), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.stage {
+				if err := os.WriteFile(stage, []byte(stageContent), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.dangling {
+				if err := os.Symlink(filepath.Join(root, "missing-target"), rule); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cmd := exec.Command("sh", "-eu", "-c", editScript)
+			cmd.Dir = repo
+			cmd.Env = append(os.Environ(), "TEI_FIRST_WORKSPACE="+root)
+			output, err := cmd.CombinedOutput()
+			if err == nil || !strings.Contains(string(output), tc.want) {
+				t.Fatalf("published step 3 did not refuse pre-existing Source %q: %v; %s",
+					tc.name, err, output)
+			}
+			gotApp, err := os.ReadFile(application)
+			if err != nil || !bytes.Equal(gotApp, originalApp) {
+				t.Fatal("rejected source conflict changed the Application")
+			}
+			gotSettings, err := os.ReadFile(settings)
+			if err != nil || !bytes.Equal(gotSettings, settingsBefore) {
+				t.Fatal("rejected source conflict changed the language settings")
+			}
+			if tc.rule {
+				got, err := os.ReadFile(rule)
+				if err != nil || string(got) != ruleContent {
+					t.Fatal("existing Rule Source was overwritten")
+				}
+			} else if tc.dangling {
+				info, err := os.Lstat(rule)
+				if err != nil || info.Mode()&os.ModeSymlink == 0 {
+					t.Fatal("dangling Rule symlink was followed or removed")
+				}
+			} else if _, err := os.Lstat(rule); !os.IsNotExist(err) {
+				t.Fatalf("rejected Source left an unexpected Rule file: %v", err)
+			}
+			if tc.stage {
+				got, err := os.ReadFile(stage)
+				if err != nil || string(got) != stageContent {
+					t.Fatal("existing staged Application was overwritten or removed")
+				}
+			} else if _, err := os.Lstat(stage); !os.IsNotExist(err) {
+				t.Fatalf("rejected Source left a staged Application: %v", err)
 			}
 		})
 	}

@@ -71,6 +71,25 @@ cp -R reference/workspace/. "$TEI_FIRST_WORKSPACE/"
   set -eu
   application="$TEI_FIRST_WORKSPACE/applications/order-entry/application.tei"
   next="$application.next"
+  settings="$TEI_FIRST_WORKSPACE/tei.workspace.yaml"
+  rule="$TEI_FIRST_WORKSPACE/semantic/sales/unit-price.tei.md"
+  # 一つでも既存の編集物があれば、三つのSourceに触る前に止める
+  if [ ! -f "$settings" ] || [ ! -r "$settings" ] || [ -L "$settings" ]; then
+    printf '言語設定の元ファイルを確認できません。新しい作業領域を使ってください。\n' >&2
+    exit 1
+  fi
+  if grep -Eq '^[[:space:]]*languages[[:space:]]*:' "$settings"; then
+    printf '言語設定が既にあります。新しい作業領域を使ってください。\n' >&2
+    exit 1
+  fi
+  if [ -e "$rule" ] || [ -L "$rule" ]; then
+    printf '追加する規則ファイルが既に存在します。上書きしません。\n' >&2
+    exit 1
+  fi
+  if [ -e "$next" ] || [ -L "$next" ]; then
+    printf 'Applicationの作業途中ファイルが残っています。上書き・削除しません。\n' >&2
+    exit 1
+  fi
   trap 'rm -f "$next"' 0
   awk '{
     print
@@ -114,7 +133,7 @@ rule sales.order_line.unit_price_positive:
 | 0 | not-satisfied |
 ````
 
-Applicationへの登録先が見つからない、複数ある、または追加する規則が既に登録されている場合は、元の`application.tei`を上書きせずにエラーで止まる。登録先の検査に失敗した場合は、言語宣言・規則文書・Applicationのいずれも変更しない。作成途中の`.next`も削除する。書込み中に別のエラーが起きた場合は、作業領域の写しを作り直して最初から試す。
+Applicationへの登録先が見つからない、複数ある、または追加する規則が既に登録されている場合は、元の`application.tei`を上書きせずにエラーで止まる。言語設定がすでにある、規則ファイルが存在する、前回の`.next`が残っている場合も、**どのSourceも上書き・削除せずに停止する**。登録先の検査に失敗したときは、三つのSourceを変更しない。今回作成した`.next`は失敗時に削除するが、書込み途中の別のエラーまで三ファイル一括で巻き戻すものではない。その場合は新しい作業領域を作り直して試す。
 
 この手順で行うのは、既存規則の書換えではなく**新しい規則の追加**である。変更するのは、言語の指定、規則を記した設計文書、Applicationの利用登録の3ファイル。通常開発との作業量の比較でも、この3ファイルをすべて数える。既存規則と例だけを書き換える二回目以降の変更は、別の受入として評価する。
 
