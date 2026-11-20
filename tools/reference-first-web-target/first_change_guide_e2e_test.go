@@ -384,7 +384,9 @@ func chromeDOMFromShippedForm(t *testing.T, browser, address string, row int) st
 		!strings.Contains(dom, `id="command-result"`) ||
 		!strings.Contains(dom, `id="observation-result"`) ||
 		!strings.Contains(dom, `<code>synthetic.order_state.read</code>`) ||
-		!strings.Contains(dom, `<span class="pill">synthetic</span>`) {
+		!strings.Contains(dom, `<span class="pill">synthetic</span>`) ||
+		!strings.Contains(dom, `id="operation-evidence-note"`) ||
+		!strings.Contains(dom, "これは参照用の合成状態を読み取った結果です。") {
 		t.Fatal("step 5: approved path lacked Authorization or labelled synthetic Command/Observation")
 	}
 	return dom
