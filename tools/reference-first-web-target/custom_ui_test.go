@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +16,29 @@ import (
 	"tei/internal/core"
 	"tei/internal/workspace"
 )
+
+// The consumer must not receive a partial page or an HTTP success when a
+// template writes some markup and then fails to evaluate a field.
+func TestCustomSubmitTemplateFailureDoesNotCommitPartialSuccess(t *testing.T) {
+	broken := template.Must(template.New("partial").Parse("partial-success-marker{{.UnknownField}}"))
+	server := &webTargetServer{customSubmit: broken}
+	for _, requestedStatus := range []int{http.StatusOK, http.StatusUnprocessableEntity} {
+		t.Run(http.StatusText(requestedStatus), func(t *testing.T) {
+			response := httptest.NewRecorder()
+			server.renderCustomSubmit(response, requestedStatus, customSubmitPageData{})
+			if response.Code != http.StatusInternalServerError {
+				t.Fatalf("template execution failed but HTTP status=%d, want 500", response.Code)
+			}
+			body := response.Body.String()
+			if strings.Contains(body, "partial-success-marker") {
+				t.Fatalf("partial HTML escaped into the response: %q", body)
+			}
+			if !strings.Contains(body, "render custom submit UI") {
+				t.Fatalf("the consumer did not receive a rendering failure: %q", body)
+			}
+		})
+	}
+}
 
 func TestCustomSubmitUIUsesSameCommandScenarioRunnerAsJSONEndpoint(t *testing.T) {
 	loaded, err := workspace.Load(referenceWorkspacePath(t))
