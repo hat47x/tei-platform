@@ -271,5 +271,9 @@ test("Workbench exposes only an explicitly requested unreviewed draft, invalidat
   assert.match(main, /current\.catalog !== catalogSnapshot/);
   assert.match(main, /subjectKey\(current\.subject\) !== subjectKey\(selected\)/);
   assert.match(main, /JSON\.stringify\(draft\.edit, null, 2\)/);
+  assert.match(main, /draft\\.sourceObservation/);
+  assert.match(main, /observed\\.workspaceRelativePath/);
+  assert.match(main, /observed\\.artifactFingerprint/);
+  assert.match(main, /Source Indexの網羅性・原文照合・書込権限は未確認/);
   assert.doesNotMatch(html, /id="(accept-required|save-required)"/);
 });
