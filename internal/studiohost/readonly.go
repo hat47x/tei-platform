@@ -68,7 +68,7 @@ var studioFailureCodes = map[string]studioFailureClassification{
 	// up and resending it unchanged answers the same way.
 	"WORKSPACE_NOT_ALLOWED":     {"business_rejection", "not_retryable", false},
 	"WORKSPACE_ROOT_CHANGED":    {"business_rejection", "not_retryable", false},
-	"INSPECTION_SNAPSHOT_REQUIRED": {"business_rejection", "not_retryable", false},
+	"SNAPSHOT_REQUIRED":         {"business_rejection", "not_retryable", false},
 	"STALE_SNAPSHOT":            {"business_rejection", "not_retryable", false},
 	"VIEW_UNSUPPORTED":          {"business_rejection", "not_retryable", false},
 	"INVALID_LIFECYCLE_ATTEMPT": {"business_rejection", "not_retryable", false},
@@ -373,7 +373,7 @@ func (h *ReadOnly) inspectSubject(id, kind, subjectID, expectedSnapshot string, 
 	}
 	if required && (expectedSnapshot == "" || strings.TrimSpace(expectedSnapshot) != expectedSnapshot) {
 		return InspectionResponse{Failure: businessRejection(
-			"INSPECTION_SNAPSHOT_REQUIRED", "an exact previous snapshot fingerprint is required",
+			"SNAPSHOT_REQUIRED", "an exact previous snapshot fingerprint is required",
 		)}
 	}
 	subject := sourceindex.Subject{Kind: kind, ID: subjectID}
