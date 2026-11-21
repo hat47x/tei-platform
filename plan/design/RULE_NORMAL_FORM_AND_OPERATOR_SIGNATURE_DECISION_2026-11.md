@@ -433,6 +433,6 @@ B-10〜12は、Function Data Contextの結果粒度・時点（#2506）と、Ope
 
 S式のForm、中置`expr:`、KaTeX、Markdown表、Graphvizは、ここで確定した入力束縛と意味への**入口または投影**の候補である。Clojure Runtimeや新しい式評価器を増やす理由にはしない。中置構文を将来導入する場合、演算子の優先順位・結合方向・十進精度・NULL／未取得の扱いを固定し、同じ署名と独立ExpectedへLowerできる場合だけ実行入口へ昇格させる。Go ASTはGo Targetの生成に使い、Meaningや図表の正本とはしない。原Sourceの局所編集は非対象byteを保存し、位置と版の資格を既存Acceptanceへ戻す。
 
-**着手順は変えない。** `plan/NOW.md`の受注初回利用者による五段階受入を先に検収し、Studioの一巡は既定の唯一の並行線とする。その後の道5でB-01〜09を既存`internal/syntax`・`internal/workspace`・`internal/semantic`・`internal/semantic/validationeval`の経路に接続する。新Parser・第二Resolver・第二評価器・第二Meaning正本を追加しない。
+**着手順は変えない。** `plan/NOW.md`の受注初回利用者による五段階受入を先に検収し、Studioの一巡は既定の唯一の並行線とする。その後の道5でB-01〜12を既存`internal/syntax`・`internal/workspace`・`internal/semantic`・`internal/semantic/validationeval`の経路に接続する。新Parser・第二Resolver・第二評価器・第二Meaning正本を追加しない。
 
 **既存開発環境からの離脱可能性も損なわない。** このRuleを将来Go等のTargetへ生成する場合、原Markdown設計書と生成コードには、署名・入力参照・境界条件・依存関係をTEI Studioなしで追える情報を残す。TEIのSource Indexや受理証拠をTargetの実行依存へ埋め込むこととは区別し、生成したTargetが単独でビルド・動作することは別のConsumer試験で確認する（#4191／#1121）。本節のRead資格試験をもって、その離脱可能性まで実証したことにはしない。
