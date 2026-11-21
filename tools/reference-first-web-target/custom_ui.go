@@ -196,7 +196,7 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 <input name="credential" type="password" required>
 </label>
 <label>Browse from
-<input name="from" value="2026-09-18T08:30:00Z" required>
+<input name="from" value="2026-09-01T00:00:00Z" required>
 </label>
 <label>Selected row
 <input name="row" type="number" min="0" required>
