@@ -74,7 +74,6 @@ func TestPostgresReadRunnerRequiresADeclaredExecutorBinding(t *testing.T) {
 	}
 }
 
-
 // A binding for some PostgreSQL Query cannot authorize the selected
 // order-line Query or its Database instance. The previous constructor
 // accepted any nonempty PostgreSQL binding set, postponing the mismatch
