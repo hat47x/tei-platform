@@ -524,7 +524,28 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 				t.Fatalf("invalid input invoked command runner: %d calls", len(recording.calls))
 			}
 		})
+
 	}
+	t.Run("query-cannot-supply-post-row", func(t *testing.T) {
+		// A submitted form with no row must stay invalid even if a caller
+		// appends a row to the URL. The command must not be invoked.
+		body := url.Values{
+			"loginId": {"test-user"},
+			"credential": {"test-credential"},
+			"from": {"2026-09-18T08:30:00Z"},
+		}.Encode()
+		request := httptest.NewRequest(http.MethodPost, "/custom-submit?row=0", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		response := httptest.NewRecorder()
+		server.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest ||
+			!strings.Contains(response.Body.String(), "selected row is required") {
+			t.Fatalf("URL query supplied a missing POST row: status=%d body=%q", response.Code, response.Body.String())
+		}
+		if len(recording.calls) != 0 {
+			t.Fatalf("a query-only row invoked the command: %d calls", len(recording.calls))
+		}
+	})
 }
 
 func TestCustomSubmitAndJSONSeparateCommitUncertaintyFromObservationFailure(t *testing.T) {
