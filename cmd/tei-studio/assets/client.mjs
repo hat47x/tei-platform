@@ -5,6 +5,7 @@ const names = Object.freeze({
   catalog: "main.StudioBridge.CatalogWorkspace",
   validate: "main.StudioBridge.ValidateWorkspace",
   inspect: "main.StudioBridge.InspectSubject",
+  inspectAtSnapshot: "main.StudioBridge.InspectSubjectAtSnapshot",
   observeXead: "main.StudioBridge.ObserveXead",
   viewPattern: "main.StudioBridge.ViewPattern",
   viewApplication: "main.StudioBridge.ViewApplication",
@@ -38,6 +39,8 @@ export function createReadOnlyClient(callByName) {
     catalogWorkspace: (workspaceID, namespace = "") => call("catalog", workspaceID, namespace),
     validateWorkspace: (workspaceID) => call("validate", workspaceID),
     inspectSubject: (workspaceID, kind, subjectID) => call("inspect", workspaceID, kind, subjectID),
+    inspectSubjectAtSnapshot: (workspaceID, kind, subjectID, expectedSnapshotFingerprint) =>
+      call("inspectAtSnapshot", workspaceID, kind, subjectID, expectedSnapshotFingerprint),
     observeXead: (workspaceID, relativePath) => call("observeXead", workspaceID, relativePath),
     viewPattern: (workspaceID, applicationID, patternID) => call("viewPattern", workspaceID, applicationID, patternID),
     viewApplication: (workspaceID, applicationID) => call("viewApplication", workspaceID, applicationID),
