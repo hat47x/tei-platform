@@ -56,14 +56,32 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 			})
 			return
 		}
+		// Required authentication inputs must come from the POST body. Missing
+		// fields are input errors, not attempted business authentication.
+		loginID := form.Get("loginId")
+		if loginID == "" {
+			s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
+				Projection: s.projection,
+				InputError: "login ID is required",
+			})
+			return
+		}
+		credential := form.Get("credential")
+		if credential == "" {
+			s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
+				Projection: s.projection,
+				InputError: "credential is required",
+			})
+			return
+		}
 		from := form.Get("from")
 		if from == "" {
 			from = "2026-09-01T00:00:00Z"
 		}
 
 		result, err := s.commandScenario.RunCommand(r.Context(), commandScenarioInput{
-			LoginID:    form.Get("loginId"),
-			Credential: form.Get("credential"),
+			LoginID:    loginID,
+			Credential: credential,
 			From:       from,
 			RowIndex:   rowIndex,
 		})
