@@ -1944,6 +1944,10 @@ return Array.from(document.querySelectorAll('#subjects button.subject'))
                 shown = preview_ui()
                 if (shown.get("previewHidden") is not False
                         or "未審査の変更候補" not in shown.get("previewStatus", "")
+                        or not all(token in shown.get("previewStatus", "") for token in (
+                            "作業領域:", target, "Source観測:", "sha256:",
+                            "Source Indexの網羅性", "原文照合", "書込権限",
+                            "Review・保存は行っていません。"))
                         or shown.get("editorText") != before_click.get("editorText")
                         or shown.get("editorEditable") != "false"
                         or shown.get("acceptButtonPresent") is not False):

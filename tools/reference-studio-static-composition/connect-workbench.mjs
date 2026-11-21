@@ -76,6 +76,15 @@ const WORKBENCH_REQUIRED_PREVIEW_CLOSURE = Object.freeze({
   'reference/tei-studio-workbench/index.html': 'a9baa5018f83161439c99eacf4f41e2b5004d71a',
   'reference/tei-studio-workbench/style.css': 'b990387707078f8b76e24cab0719c107c176a50d',
 });
+// Source-evidence display uses a separately pinned Workbench revision; keep
+// all earlier browser source and test closures immutable.
+export const WORKBENCH_REQUIRED_EVIDENCE_HEAD = '4714f206951c9cad06593d20b312add18fdab232';
+export const WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB = 'e62ad5ad7e68392f23024ebfdf9c99eb2b05c506';
+const WORKBENCH_REQUIRED_EVIDENCE_CLOSURE = Object.freeze({
+  ...WORKBENCH_REQUIRED_PREVIEW_CLOSURE,
+  'reference/tei-studio-workbench/source-locations.test.mjs': '031c1bad1b0f8a45eec3166541adabf5a630f836',
+});
+
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -128,6 +137,13 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_REQUIRED_PREVIEW_CLOSURE}),
+  Object.freeze({head: WORKBENCH_REQUIRED_EVIDENCE_HEAD,
+    mainBlob: WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    closureBlobs: WORKBENCH_REQUIRED_EVIDENCE_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
