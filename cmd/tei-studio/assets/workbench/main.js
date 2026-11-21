@@ -19241,7 +19241,7 @@ function showRequiredPreview() {
     output.textContent = JSON.stringify(draft.edit, null, 2);
     output.hidden = false;
     const observed = draft.sourceObservation;
-    element("required-preview-status").textContent = `\u672A\u5BE9\u67FB\u306E\u5909\u66F4\u5019\u88DC\u3067\u3059\u3002\u4F5C\u696D\u9818\u57DF: ${draft.workspaceHint}\u3002` + `Source\u89B3\u6E2C: ${observed.workspaceRelativePath}:${observed.start.line}\u884C` + `\uFF08\u6307\u7D0B ${observed.artifactFingerprint}\uFF09\u3002` + "Source Index\u306E\u7DB2\u7F85\u6027\u30FB\u539F\u6587\u7167\u5408\u30FB\u66F8\u8FBC\u6A29\u9650\u306F\u672A\u78BA\u8A8D\u3067\u3059\u3002" + "Review\u30FB\u4FDD\u5B58\u306F\u884C\u3063\u3066\u3044\u307E\u305B\u3093\u3002";
+    element("required-preview-status").textContent = `\u672A\u5BE9\u67FB\u306E\u5909\u66F4\u5019\u88DC\u3067\u3059\u3002\u4F5C\u696D\u9818\u57DF: ${draft.workspaceHint}\u3002Source\u89B3\u6E2C: ${observed.workspaceRelativePath}:${observed.start.line}\u884C\uFF08\u6307\u7D0B ${observed.artifactFingerprint}\uFF09\u3002Source Index\u306E\u7DB2\u7F85\u6027\u30FB\u539F\u6587\u7167\u5408\u30FB\u66F8\u8FBC\u6A29\u9650\u306F\u672A\u78BA\u8A8D\u3067\u3059\u3002Review\u30FB\u4FDD\u5B58\u306F\u884C\u3063\u3066\u3044\u307E\u305B\u3093\u3002`;
   } catch (error) {
     output.textContent = "";
     output.hidden = true;
