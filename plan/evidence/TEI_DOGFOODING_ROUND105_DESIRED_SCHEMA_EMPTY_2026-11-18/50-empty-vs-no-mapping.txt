@@ -1,0 +1,19 @@
+desired-schema on a database with no persistence mapping:
+
+  $ tei desired-schema -workspace W -database equip_core -provider postgres
+  {
+    "database": "equip_core"
+  }
+  exit=0
+
+`tables` is omitempty, so it does not appear.
+
+Indistinguishable from:
+  - "I have not written any persist block yet"
+  - "I wrote them and the design yields no table"
+
+With correct mappings the answer is complete:
+  {"database":"equip_core","tables":[{"schema":"public","name":"loans",...}]}
+
+validate does not warn about the missing mappings:
+  UNBOUND_DATABASE_REQUIREMENT is about environment binding, a different fact.
