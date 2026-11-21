@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -111,10 +112,15 @@ func (s *webTargetServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.index.Execute(w, s.projection); err != nil {
+	// A template may fail after producing some HTML. Do not commit a 200
+	// response or a partial page before the rendering has succeeded.
+	var page bytes.Buffer
+	if err := s.index.Execute(&page, s.projection); err != nil {
 		http.Error(w, "render target projection", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(page.Bytes())
 }
 
 func (s *webTargetServer) handleManifest(w http.ResponseWriter, _ *http.Request) {
