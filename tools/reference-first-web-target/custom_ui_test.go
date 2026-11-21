@@ -545,6 +545,65 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 			t.Fatalf("a query-only row invoked the command: %d calls", len(recording.calls))
 		}
 	})
+	t.Run("query-cannot-supply-post-credentials-or-from", func(t *testing.T) {
+		// The recording runner observes parsing only. The URL must not
+		// provide identity, credential or read time absent from the POST body.
+		recording.calls = nil
+		query := url.Values{
+			"loginId":    {"query-user"},
+			"credential": {"query-credential"},
+			"from":       {"2026-09-18T08:30:00Z"},
+			"row":        {"1"},
+		}
+		body := url.Values{"row": {"0"}}.Encode()
+		request := httptest.NewRequest(http.MethodPost,
+			"/custom-submit?"+query.Encode(), strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		response := httptest.NewRecorder()
+		server.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("POST-only parsing failed: status=%d", response.Code)
+		}
+		if len(recording.calls) != 1 {
+			t.Fatalf("POST-only parsing invoked runner %d times, want 1", len(recording.calls))
+		}
+		got := recording.calls[0]
+		if got.LoginID != "" || got.Credential != "" ||
+			got.From != "2026-09-01T00:00:00Z" || got.RowIndex != 0 {
+			t.Fatal("URL query provided identity, credential, time or row to the command")
+		}
+	})
+	t.Run("post-body-wins-over-conflicting-query", func(t *testing.T) {
+		recording.calls = nil
+		query := url.Values{
+			"loginId":    {"query-user"},
+			"credential": {"query-credential"},
+			"from":       {"2026-09-01T00:00:00Z"},
+			"row":        {"0"},
+		}
+		form := url.Values{
+			"loginId":    {"body-user"},
+			"credential": {"body-credential"},
+			"from":       {"2026-09-18T08:30:00Z"},
+			"row":        {"1"},
+		}
+		request := httptest.NewRequest(http.MethodPost,
+			"/custom-submit?"+query.Encode(), strings.NewReader(form.Encode()))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		response := httptest.NewRecorder()
+		server.Handler().ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("submitted body failed: status=%d", response.Code)
+		}
+		if len(recording.calls) != 1 {
+			t.Fatalf("submitted body invoked runner %d times, want 1", len(recording.calls))
+		}
+		got := recording.calls[0]
+		if got.LoginID != "body-user" || got.Credential != "body-credential" ||
+			got.From != "2026-09-18T08:30:00Z" || got.RowIndex != 1 {
+			t.Fatal("URL query overrode the submitted POST body")
+		}
+	})
 }
 
 func TestCustomSubmitAndJSONSeparateCommitUncertaintyFromObservationFailure(t *testing.T) {
