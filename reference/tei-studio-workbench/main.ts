@@ -95,12 +95,17 @@ function showRequiredPreview() {
       `required-${current.workspaceEpoch}-${current.inspectionEpoch}`,
       "選択したData属性を必須にする候補", true,
     );
-    // The UI shows only the typed proposal; neither a Source byte range nor
-    // read-only Inspector metadata is converted into an editing authority.
+    // Keep the typed edit payload unchanged. The observed Source is diagnostic
+    // information, never an editable address or a grant of write authority.
     output.textContent = JSON.stringify(draft.edit, null, 2);
     output.hidden = false;
+    const observed = draft.sourceObservation;
     element("required-preview-status").textContent =
-      "未審査の変更候補です。Sourceの確認・Review・保存は行っていません。";
+      `未審査の変更候補です。作業領域: ${draft.workspaceHint}。` +
+      `Source観測: ${observed.workspaceRelativePath}:${observed.start.line}行` +
+      `（指紋 ${observed.artifactFingerprint}）。` +
+      "Source Indexの網羅性・原文照合・書込権限は未確認です。" +
+      "Review・保存は行っていません。";
   } catch (error) {
     output.textContent = "";
     output.hidden = true;
