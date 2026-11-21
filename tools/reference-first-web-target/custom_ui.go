@@ -37,7 +37,10 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		rawRow := r.Form.Get("row")
+		// ParseForm also collects URL query parameters into Form. Only POST
+		// body fields may supply a submitted value to this operation.
+		form := r.PostForm
+		rawRow := form.Get("row")
 		if rawRow == "" {
 			s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
 				Projection: s.projection,
@@ -53,14 +56,14 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 			})
 			return
 		}
-		from := r.Form.Get("from")
+		from := form.Get("from")
 		if from == "" {
 			from = "2026-09-01T00:00:00Z"
 		}
 
 		result, err := s.commandScenario.RunCommand(r.Context(), commandScenarioInput{
-			LoginID:    r.Form.Get("loginId"),
-			Credential: r.Form.Get("credential"),
+			LoginID:    form.Get("loginId"),
+			Credential: form.Get("credential"),
 			From:       from,
 			RowIndex:   rowIndex,
 		})
