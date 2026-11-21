@@ -2095,6 +2095,6 @@ MR-01〜06は**試験候補の識別子**であって、製品に新しく追加
 | RAI-04 実行と効果の分離 | Web画面の `completed` やHTTP 200、合成Commandの到達を実DB Commit／Receiptと数えない。Validation拒否ではAuthorize／Effect呼出0を独立Spyで確認 | #1119／#1174／#2514。#5687／#5708の限定試験を再利用 |
 | RAI-05 汎用Operator拡張 | `within(value, low, high)` の入力名を別文書・異なる読込順で束縛。NULL／未取得／欠けた入力とRule正規形の誤接続を独立Expectedで拒否 | #4359。初回利用者の手順0〜5完走より先に新DSLを要求しない |
 
-**理論からの適用**：問い合わせの「certain answers」や相対的完全性の研究は、未観測行があっても確定できる主張とできない主張を分ける検査の参考になる（[Relative information completeness, PODS 2010](https://doi.org/10.1145/1862919.1862924)）。2026年の [Lenses for Partially-Specified States](https://doi.org/10.1007/978-3-032-22723-2_2) は複数Viewの部分的な更新意図を扱う。TEIでは `get/put` の数学的性質をそのまま製品保証とせず、未指定Field、隠れたデータ、同一対象束縛、無変更保存、競合拒否を **RAI-02／03 の反例**として採用する。論文がTEIの保存を実証したことにはならない。
+**理論からの適用**：問い合わせの「certain answers」や相対的完全性の研究は、未観測行があっても確定できる主張とできない主張を分ける検査の参考になる（[Relative information completeness, ACM TODS 35(4), 2010](https://doi.org/10.1145/1862919.1862924)）。2026年の [Lenses for Partially-Specified States](https://doi.org/10.1007/978-3-032-22723-2_2) は複数Viewの部分的な更新意図を扱う。TEIでは `get/put` の数学的性質をそのまま製品保証とせず、未指定Field、隠れたデータ、同一対象束縛、無変更保存、競合拒否を **RAI-02／03 の反例**として採用する。論文がTEIの保存を実証したことにはならない。
 
 **採用の順序**：まず [plan/NOW.md](../NOW.md) の初回利用者0〜5完走、次に製品Studio自身の編集→Source正式保存→Stage2 Windows可視差を既存 #4583 で一巡する。独立Expected・権限・Source版・実Consumerを保持した上で、二領域以上で同じ意味上の不足が再現した場合のみCore拡張を審議し、それ以外は標準OperatorかPluginへ留める。研究の整理だけで到達点を変更しない。
