@@ -284,7 +284,6 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 {{end}}
 {{else}}<p class="muted">No order-line rows.</p>{{end}}
 </article>
-{{if .Result.Read.RelationAnswers}}
 {{with .Result.Read.ReadIdentity}}
 <article class="subcard" id="read-identity">
 <h3>Which read these answers belong to</h3>
@@ -296,6 +295,7 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 </table>
 </article>
 {{end}}
+{{if .Result.Read.RelationAnswers}}
 <article class="subcard" id="relation-answers">
 <h3>Answers about the whole relation</h3>
 {{range .Result.Read.RelationAnswers}}<p class="status-line"><code>{{.}}</code></p>{{end}}
