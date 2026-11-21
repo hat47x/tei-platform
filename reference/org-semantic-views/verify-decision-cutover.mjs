@@ -38,15 +38,22 @@ function qualifiedCurrentPair(members,fte) {
   return 'fixture-consistent-candidate'; // Not a real publication or shared DB snapshot.
 }
 function reuseClaim(claim, prior, next) {
-  if (!Array.isArray(claim.dependencies) ||
-      claim.dependencies.some(key=>prior[key]===undefined || next[key]===undefined)) return 'unknown';
-  return claim.dependencies.every(key=>prior[key]===next[key])
+  // An empty dependency list is not proof that a business claim is constant.
+  const dependencies=claim?.dependencies;
+  if (!Array.isArray(dependencies) || dependencies.length===0 ||
+      dependencies.some(key=>typeof key!=='string' || !key ||
+        prior?.[key]===undefined || next?.[key]===undefined)) return 'unknown';
+  return dependencies.every(key=>prior[key]===next[key])
     ? 'candidate-internal-reuse' : 'revalidate';
 }
 function disclosureTo(context, checked) {
-  const fields=['tenant','recipient','purpose','audience','policyEpoch','projection'];
+  // This is only a fixture-side delivery candidate, not a Host grant.
+  const fields=['tenant','issuer','principal','recipient','purpose','audience',
+    'policyEpoch','projection','sourceRevision','readAttempt','readSnapshot',
+    'publicationGeneration'];
   return checked?.allowed === true &&
-    fields.every(k=>context[k]!==undefined && checked[k]===context[k])
+    fields.every(k=>context?.[k]!==undefined && context[k]!==null &&
+      context[k]!=='' && checked[k]===context[k])
     ? 'candidate-for-delivery' : 'deny-or-recheck';
 }
 function handoffDecision(input) {
@@ -90,15 +97,67 @@ test('ORG-XD-07: changing hidden Person Link invalidates person count but not a 
   assert.equal(reuseClaim({dependencies:['cohort','membership','personLink']},before,after),'revalidate');
   assert.equal(reuseClaim({dependencies:['cohort','membership','negativeRule']},before,{...before,negativeRule:'r2'}),'revalidate');
   assert.equal(reuseClaim({dependencies:['unknownRelation']},before,after),'unknown');
+  assert.equal(reuseClaim({dependencies:[]},before,after),'unknown');
+  assert.equal(reuseClaim({},before,after),'unknown');
+  assert.equal(reuseClaim({dependencies:['']},before,after),'unknown');
 });
 test('ORG-XD-08: identical internal values do not extend disclosure to a new recipient, purpose or epoch',()=>{
-  const checked={tenant:'T1',recipient:'CLI',purpose:'review',audience:'internal',policyEpoch:'pe1',projection:'member-ids',allowed:true};
+  const checked={tenant:'T1',issuer:'issuer-1',principal:'viewer-1',
+    recipient:'CLI',purpose:'review',audience:'internal',policyEpoch:'pe1',
+    projection:'member-ids',sourceRevision:'org-r7',readAttempt:'attempt-1',
+    readSnapshot:'snapshot-1',publicationGeneration:'G1',allowed:true};
   assert.equal(disclosureTo({...checked},checked),'candidate-for-delivery');
-  for (const [key,value] of [['tenant','T2'],['recipient','SHO'],['purpose','export'],
-    ['audience','public'],['policyEpoch','pe2'],['projection','person-edges']]) {
+  for (const [key,value] of [['tenant','T2'],['issuer','issuer-2'],
+    ['principal','viewer-2'],['recipient','SHO'],['purpose','export'],
+    ['audience','public'],['policyEpoch','pe2'],['projection','person-edges'],
+    ['sourceRevision','org-r8'],['readAttempt','attempt-2'],
+    ['readSnapshot','snapshot-2'],['publicationGeneration','G2']]) {
     assert.equal(disclosureTo({...checked,[key]:value},checked),'deny-or-recheck',key);
   }
   assert.equal(disclosureTo({...checked},{...checked,allowed:false}),'deny-or-recheck');
+  assert.equal(disclosureTo({...checked,principal:undefined},checked),'deny-or-recheck');
+  assert.equal(disclosureTo({...checked,readSnapshot:''},checked),'deny-or-recheck');
+});
+
+// Synthetic qualification only: unchanged Membership output does not make
+// an allocation-dependent claim reusable after the allocation revision moves.
+test('ORG-XD-13: same memberships/people, new allocation revision invalidates FTE but not occurrence count',()=>{
+  const before={cohort:'G1',members:'A1,A2,A3,A4',personLink:'person-link-r1',
+    allocationRevision:'allocation-r1',capacityRuleRevision:'capacity-r1'};
+  const after={...before,allocationRevision:'allocation-r2'};
+  assert.equal(reuseClaim({dependencies:['cohort','members']},before,after),
+    'candidate-internal-reuse');
+  assert.equal(reuseClaim({dependencies:['cohort','members','personLink']},before,after),
+    'candidate-internal-reuse');
+  assert.equal(reuseClaim({dependencies:['cohort','members','allocationRevision']},before,after),
+    'revalidate');
+  assert.equal(reuseClaim({dependencies:['cohort','members','allocationRevision',
+    'capacityRuleRevision']},before,after),'revalidate');
+  // The r7 fixture has only one fixed allocation per Membership ID: this
+  // does NOT demonstrate temporal allocation readback or real FTE evaluation.
+});
+
+// Same fields visible in the reference Web do not identify a Source revision,
+// coverage proof, Provider snapshot or disclosure principal.
+test('ORG-XD-14: identical display identity cannot qualify a changed source, read or recipient',()=>{
+  const display={selectedOrderKey:'1001',environment:'reference',
+    contractQuery:'order/contract/detail',rowCount:4};
+  const visibleAfter={...display};
+  assert.deepEqual(display,visibleAfter);
+  const changedSource={...oldCut.fte,meta:{...oldCut.fte.meta,sourceRevision:'org-synthetic-r8'}};
+  const changedScope={...oldCut.fte,meta:{...oldCut.fte.meta,scope:'fixture:page-1'}};
+  const changedSnapshot={...oldCut.fte,meta:{...oldCut.fte.meta,readSnapshot:'new-snapshot'}};
+  for (const other of [changedSource,changedScope,changedSnapshot]) {
+    assert.equal(qualifiedCurrentPair(oldCut.members,other),'hold-mixed-or-unknown-cut');
+  }
+  const disclosed={tenant:'T1',issuer:'issuer-1',principal:'viewer-1',
+    recipient:'CLI',purpose:'review',audience:'internal',policyEpoch:'pe1',
+    projection:'member-ids',sourceRevision:'org-synthetic-r7',
+    readAttempt:'read-G1',readSnapshot:'snapshot-G1',
+    publicationGeneration:'G1',allowed:true};
+  assert.equal(disclosureTo({...disclosed},disclosed),'candidate-for-delivery');
+  assert.equal(disclosureTo({...disclosed,principal:'viewer-2'},disclosed),'deny-or-recheck');
+  // Display identity is not evidence that another Consumer received the result.
 });
 test('ORG-XD-09: A-to-B-to-A displayed values do not reinstate an old response or grant',()=>{
   const aAgain={...oldCut.members,meta:{...oldCut.members.meta,
