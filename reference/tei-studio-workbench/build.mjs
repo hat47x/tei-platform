@@ -70,5 +70,11 @@ const normalizedMainJS = mainJS.replace(/\/\*\*[\s\S]*?\*\//g, (comment) =>
   comment.replace(/[ \t]+$/gm, ""),
 );
 if (normalizedMainJS !== mainJS) await writeFile(mainPath, normalizedMainJS);
+// Temporary diagnostic on this branch only; remove before integration.
+const ix = normalizedMainJS.indexOf("function showRequiredPreview()");
+const first = normalizedMainJS.indexOf("    output.textContent = JSON.stringify(draft.edit, null, 2);", ix);
+const last = normalizedMainJS.indexOf("\n  } catch (error) {", first);
+if (first < 0 || last < 0) throw Error("MISSING_PREVIEW_CODE");
+console.log("TEI_WORKBENCH_EXACT_ENTRY=" + JSON.stringify(normalizedMainJS.slice(first, last)));
 await copyFile(resolve(here, "index.html"), resolve(here, "dist/index.html"));
 await copyFile(resolve(here, "style.css"), resolve(here, "dist/style.css"));
