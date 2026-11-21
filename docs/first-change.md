@@ -199,7 +199,7 @@ go run ./tools/reference-first-web-target \
 
 CIでは、規則変更前後の行別Rule回答を実PostgreSQLとChromeで業務主キーごとの独立した期待値へ照合する（[#5492](https://github.com/hat47x/tei-platform/pull/5492)・[#5588](https://github.com/hat47x/tei-platform/pull/5588)）。第一Webも実際の読取トランザクションで全件性を確認できる場合だけ一意性を成立とし、RLSで確認できないときは保留する（[#5571](https://github.com/hat47x/tei-platform/pull/5571)・[#5583](https://github.com/hat47x/tei-platform/pull/5583)）。出荷用Web入口を実ビルド・別OSプロセスで使う検査は[#5602](https://github.com/hat47x/tei-platform/pull/5602)、手順5の`go run`で同じ実DBとChromeを使う検査は[#5633](https://github.com/hat47x/tei-platform/pull/5633)で追加した。加えて、実PostgreSQLを使う公開手順のE2Eでは、製品の`GET /custom-submit`を実Chromeで開き、四つの入力欄に値を入れ、表示されたSubmitボタンを押して受注1001／1002を照合する（[#5642](https://github.com/hat47x/tei-platform/pull/5642)）。出荷相当のWebバイナリと公開した`go run`の両方で確かめ、判定は独立した期待値に照合する。これはブラウザーの**自動操作**であり、初回利用者自身が手順0〜5を完走したことではない。試験時のSource読込は診断用であり、正式なSource受理や本番認可を保証しない。
 
-さらに[#5715](https://github.com/hat47x/tei-platform/pull/5715)では、この試行の終了時に実PostgreSQLの受注3件と明細5行を、あらかじめ定めたSeedの業務キー・品目・数量・単価などと独立SQLで照合した。**確認できたのは、検査対象の2表が終了時点で変わっていないことだけ**である。途中の変更と復元、DB全体への副作用、実際の受注確定やCommit・Receiptを確かめたものではない。
+さらに[#5715](https://github.com/hat47x/tei-platform/pull/5715)・[#5719](https://github.com/hat47x/tei-platform/pull/5719)では、この試行の終了時に実PostgreSQLの受注3件（受注ID・顧客ID・受注日時・状態・金額）と明細5行（明細ID・受注ID・明細番号・品目・数量・単価）を、あらかじめ定めたSeedの値と独立SQLで照合した。**確認できたのは、検査対象の2表が終了時点でSeedと一致することだけ**である。途中の変更と復元、DB全体への副作用、実際の受注確定やCommit・Receiptを確かめたものではない。
 
 ## 初回利用者による完走の受入
 
