@@ -74,8 +74,9 @@ func TestStudioBridgeRegistersEveryClientMethod(t *testing.T) {
 	// no Workbench entry yet, so it is named here instead of adding a dead UI
 	// binding. Adding a name to this list without saying why is not allowed.
 	goFacingOnly := map[string]string{
-		"OpenShoDocument":   "relays a draft into the real SHO document CLI; no Workbench entry yet",
-		"ResumeShoDocument": "reads a saved document back through the real SHO document CLI; no Workbench entry yet",
+		"InspectSubjectAtSnapshot": "read-only reinspection precondition; Workbench UI integration requires its own embedded bundle qualification",
+		"OpenShoDocument":          "relays a draft into the real SHO document CLI; no Workbench entry yet",
+		"ResumeShoDocument":        "reads a saved document back through the real SHO document CLI; no Workbench entry yet",
 	}
 	for name := range registered {
 		if names[name] {

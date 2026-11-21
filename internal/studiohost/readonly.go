@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"tei/internal/command"
 	"tei/internal/failure"
@@ -67,6 +68,8 @@ var studioFailureCodes = map[string]studioFailureClassification{
 	// up and resending it unchanged answers the same way.
 	"WORKSPACE_NOT_ALLOWED":     {"business_rejection", "not_retryable", false},
 	"WORKSPACE_ROOT_CHANGED":    {"business_rejection", "not_retryable", false},
+	"SNAPSHOT_REQUIRED":         {"business_rejection", "not_retryable", false},
+	"STALE_SNAPSHOT":            {"business_rejection", "not_retryable", false},
 	"VIEW_UNSUPPORTED":          {"business_rejection", "not_retryable", false},
 	"INVALID_LIFECYCLE_ATTEMPT": {"business_rejection", "not_retryable", false},
 	"INVALID_PERIOD_STATE":      {"business_rejection", "not_retryable", false},
@@ -350,10 +353,28 @@ func (h *ReadOnly) CatalogWorkspace(id, namespace string) CatalogResponse {
 	return CatalogResponse{OK: true, Value: &value}
 }
 
+// InspectSubject returns a read-only observation with no freshness precondition.
+// Existing callers keep their original behavior.
 func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse {
+	return h.inspectSubject(id, kind, subjectID, "", false)
+}
+
+// InspectSubjectAtSnapshot re-reads the exact subject only when its current
+// World + Source Index snapshot matches the caller's prior observation.
+// A matching snapshot is never a Source-byte check, Review or Writer Grant.
+func (h *ReadOnly) InspectSubjectAtSnapshot(id, kind, subjectID, expectedSnapshot string) InspectionResponse {
+	return h.inspectSubject(id, kind, subjectID, expectedSnapshot, true)
+}
+
+func (h *ReadOnly) inspectSubject(id, kind, subjectID, expectedSnapshot string, required bool) InspectionResponse {
 	root, denied := h.workspace(id)
 	if denied != nil {
 		return InspectionResponse{Failure: denied}
+	}
+	if required && (expectedSnapshot == "" || strings.TrimSpace(expectedSnapshot) != expectedSnapshot) {
+		return InspectionResponse{Failure: businessRejection(
+			"SNAPSHOT_REQUIRED", "an exact previous snapshot fingerprint is required",
+		)}
 	}
 	subject := sourceindex.Subject{Kind: kind, ID: subjectID}
 	var value operations.SubjectInspection
@@ -361,7 +382,12 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 	if h.services == nil {
 		// Preserve the existing PoC path when no Host factory is configured.
 		// This path is not evidence of a selected Plugin Provider.
-		value, err = operations.InspectSubject(root, subject)
+		if required {
+			value, err = operations.InspectSubjectWithOptions(root, subject,
+				operations.InspectOptions{ExpectedFingerprint: expectedSnapshot})
+		} else {
+			value, err = operations.InspectSubject(root, subject)
+		}
 	} else {
 		var services RootServices
 		services, err = h.services(root)
@@ -375,6 +401,10 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 		}
 		if err == nil {
 			err = operations.ValidateInspectionProjection(subject, value)
+		}
+		if err == nil && required {
+			err = operations.CheckInspectionSnapshot(
+				value.WorldFingerprint, value.SourceIndexFingerprint, expectedSnapshot)
 		}
 	}
 	if err != nil {
@@ -395,6 +425,9 @@ func (h *ReadOnly) InspectSubject(id, kind, subjectID string) InspectionResponse
 func selectedInspectionFailure(err error) *Failure {
 	var inspection *operations.InspectionError
 	if errors.As(err, &inspection) {
+		if inspection.Code == operations.InspectionStaleSnapshot {
+			return businessRejection(inspection.Code, "inspection Source/World snapshot changed")
+		}
 		switch inspection.Code {
 		case operations.InspectionInvalidSubject,
 			operations.InspectionUnsupportedKind,

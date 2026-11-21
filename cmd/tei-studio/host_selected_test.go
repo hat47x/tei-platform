@@ -27,9 +27,9 @@ func TestNormalStudioBridgeUsesHostSelectedLocalInspector(t *testing.T) {
 	//
 	// The two SHO relay methods are counted here too: they are Go-facing, so
 	// assets/client.mjs does not name them, and this count is what keeps the
-	// surface from growing without anyone saying so. 13 client-named + 2
-	// Go-facing = 15 exported methods on the bridge and nothing else.
-	if reflect.TypeOf(bridge).NumMethod() != 15 {
+	// surface from growing without anyone saying so. 13 client-named + 3
+	// Go-facing = 16 exported methods on the bridge and nothing else.
+	if reflect.TypeOf(bridge).NumMethod() != 16 {
 		t.Fatal("Studio Bridge exported surface changed")
 	}
 	got := bridge.InspectSubject("workspace-1", "semantic-data", "sales.order")
@@ -50,6 +50,12 @@ func TestNormalStudioBridgeUsesHostSelectedLocalInspector(t *testing.T) {
 		got.Value.Subject.ID != "sales.order" ||
 		!reflect.DeepEqual(*got.Value, want) {
 		t.Fatalf("Studio selected Inspector read failed: %+v", got)
+	}
+	current := bridge.InspectSubjectAtSnapshot("workspace-1", "semantic-data",
+		"sales.order", got.Value.SnapshotFingerprint)
+	if !current.OK || current.Value == nil ||
+		current.Value.SnapshotFingerprint != got.Value.SnapshotFingerprint {
+		t.Fatalf("Wails bridge rejected current Host-selected snapshot: %+v", current)
 	}
 }
 

@@ -36,6 +36,7 @@ func TestServerBridgeExportedMethodInventoryRequiresReview(t *testing.T) {
 		"CatalogWorkspace":                 "read projection",
 		"ValidateWorkspace":                "read projection",
 		"InspectSubject":                   "read projection",
+		"InspectSubjectAtSnapshot":         "read projection",
 		"ObserveXead":                      "bounded source read",
 		"ViewPattern":                      "read projection",
 		"ViewApplication":                  "read projection",
