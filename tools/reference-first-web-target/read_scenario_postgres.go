@@ -120,6 +120,18 @@ func newPostgresReadRunner(world ir.World, db *sql.DB) (*referenceReadScenarioRu
 	if err != nil {
 		return nil, fmt.Errorf("cannot resolve the declared order-line read: %w", err)
 	}
+	runner := newReferenceReadScenarioRunner(world)
+	// A PostgreSQL executor somewhere in the Workspace does not prove that
+	// the selected order-line Query is bound to it. Refuse before browsing the
+	// database, rather than accepting an unrelated binding and failing later.
+	if !hasSelectedPostgresDetailBinding(
+		world, runner.environmentID, runner.applicationID,
+		resolution.Datasource.Alias, resolution.Binding.Target,
+	) {
+		return nil, fmt.Errorf(
+			"order_entry.order_lines has no PostgreSQL executor binding for the selected Environment, Database instance and Contract Query",
+		)
+	}
 	executor := readOnlyTxExecutor{
 		db: db, realizations: world.ContractQuerySQLRealizations,
 		world: world, coverageResolution: resolution,
@@ -135,11 +147,6 @@ func newPostgresReadRunner(world ir.World, db *sql.DB) (*referenceReadScenarioRu
 			Capability:  binding.Executor,
 		}] = executor
 	}
-	if len(added) == 0 {
-		return nil, fmt.Errorf("the Workspace declares no PostgreSQL Contract Query executor binding")
-	}
-
-	runner := newReferenceReadScenarioRunner(world)
 	runner.contracts = overlayContractExecutors(added)
 	runner.browse = postgresBrowseExecutor{db: db}
 	return runner, nil
@@ -164,4 +171,35 @@ func overlayContractExecutors(
 		merged[key] = executor
 	}
 	return merged
+}
+
+// hasSelectedPostgresDetailBinding is a startup admission check, not a
+// replacement for the Driver's runtime resolution and provider checks.
+// Only a binding for this application's selected datasource, instance,
+// Environment and exact Contract Query target can qualify this read.
+func hasSelectedPostgresDetailBinding(
+	world ir.World,
+	environmentID, applicationID core.CanonicalID,
+	datasource core.LocalName,
+	target realization.ContractQueryTarget,
+) bool {
+	for _, env := range world.Environments {
+		if env.ID != environmentID {
+			continue
+		}
+		for _, databaseBinding := range env.Bindings {
+			if databaseBinding.Application != applicationID || databaseBinding.Alias != datasource {
+				continue
+			}
+			for _, executorBinding := range world.ContractQueryExecutorBindings {
+				if executorBinding.Environment == environmentID &&
+					executorBinding.Instance == databaseBinding.Instance &&
+					executorBinding.Target == target &&
+					executorBinding.Executor == core.MustCanonicalID("database.query.postgres") {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
