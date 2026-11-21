@@ -529,9 +529,9 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 		// A submitted form with no row must stay invalid even if a caller
 		// appends a row to the URL. The command must not be invoked.
 		body := url.Values{
-			"loginId": {"test-user"},
+			"loginId":    {"test-user"},
 			"credential": {"test-credential"},
-			"from": {"2026-09-18T08:30:00Z"},
+			"from":       {"2026-09-18T08:30:00Z"},
 		}.Encode()
 		request := httptest.NewRequest(http.MethodPost, "/custom-submit?row=0", strings.NewReader(body))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
