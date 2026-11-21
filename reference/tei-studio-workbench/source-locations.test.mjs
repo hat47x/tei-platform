@@ -218,6 +218,42 @@ test("required draft refuses non-attribute subjects, ambiguous Catalog and inval
   }), /STALE_MODEL_PROJECTION/);
 });
 
+test("required draft never silently reuses a Source occurrence after a same-byte relocation", () => {
+  const before = requiredDraft();
+  const movedPath = "orders/relocated/注文.tei";
+  const movedCatalog = {
+    ...attributeCatalog,
+    modelRevision: "sha256:" + "c".repeat(64),
+    sourceIndexFingerprint: "source-relocated",
+  };
+  const oldInspect = attributeInspection();
+  const relocatedInspect = {
+    ...oldInspect,
+    sourceIndexFingerprint: "source-relocated",
+    sources: {
+      ...oldInspect.sources,
+      artifacts: [{ ...artifact, path: movedPath }],
+      references: oldInspect.sources.references.map(ref => ({
+        ...ref, artifactPath: movedPath,
+      })),
+    },
+  };
+  // Identical Artifact bytes do not make the old Source location current.
+  assert.throws(() => requiredDraft(oldInspect, movedCatalog), /STALE_MODEL_PROJECTION/);
+  assert.throws(() => requiredDraft(relocatedInspect, attributeCatalog), /STALE_MODEL_PROJECTION/);
+  const after = requiredDraft(relocatedInspect, movedCatalog);
+  assert.equal(before.sourceObservation.artifactFingerprint,
+    after.sourceObservation.artifactFingerprint);
+  assert.notEqual(before.sourceObservation.workspaceRelativePath,
+    after.sourceObservation.workspaceRelativePath);
+  assert.notEqual(before.edit.expectedModelRevision, after.edit.expectedModelRevision);
+  assert.equal(before.status, "unreviewed-draft");
+  assert.equal(after.status, "unreviewed-draft");
+  assert.equal(after.sourceIndexCompletenessEstablished, false);
+  assert.equal(after.sourceBytesVerified, false);
+  assert.equal(after.sourceWriteAuthorized, false);
+});
+
 test("required draft refuses incomplete, missing or duplicate Source occurrences", () => {
   for (const refs of [
     [],
