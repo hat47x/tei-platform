@@ -85,13 +85,6 @@ const WORKBENCH_REQUIRED_EVIDENCE_CLOSURE = Object.freeze({
   'reference/tei-studio-workbench/source-locations.test.mjs': '031c1bad1b0f8a45eec3166541adabf5a630f836',
 });
 
-// Same production Workbench as the evidence display; the relocation regression
-// changes only test Source. Pin its exact bytes without modifying older closures.
-export const WORKBENCH_REQUIRED_EVIDENCE_RELOCATION_HEAD = 'd412046e562f267083a1b375a4df1eceb610fe5a';
-const WORKBENCH_REQUIRED_EVIDENCE_RELOCATION_CLOSURE = Object.freeze({
-  ...WORKBENCH_REQUIRED_EVIDENCE_CLOSURE,
-  'reference/tei-studio-workbench/source-locations.test.mjs': '116de8ea7a02f80d2ba9fa6733ecaf98723d4be3',
-});
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -151,13 +144,6 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_REQUIRED_EVIDENCE_CLOSURE}),
-  Object.freeze({head: WORKBENCH_REQUIRED_EVIDENCE_RELOCATION_HEAD,
-    mainBlob: WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB,
-    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
-    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
-    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
-    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
-    closureBlobs: WORKBENCH_REQUIRED_EVIDENCE_RELOCATION_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
