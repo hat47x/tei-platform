@@ -170,7 +170,7 @@ func TestInspectSubjectAtSnapshotRejectsMissingAndStaleEvidence(t *testing.T) {
 	}
 	missing := h.InspectSubjectAtSnapshot("workspace-1", subject.Kind, subject.ID, "")
 	if missing.OK || missing.Failure == nil ||
-		missing.Failure.Code != "INSPECTION_SNAPSHOT_REQUIRED" ||
+		missing.Failure.Code != "SNAPSHOT_REQUIRED" ||
 		missing.Failure.EffectUnknown {
 		t.Fatalf("freshness precondition silently optional: %+v", missing)
 	}
