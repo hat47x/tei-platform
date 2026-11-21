@@ -524,7 +524,6 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 				t.Fatalf("invalid input invoked command runner: %d calls", len(recording.calls))
 			}
 		})
-
 	}
 	t.Run("query-cannot-supply-post-row", func(t *testing.T) {
 		// A submitted form with no row must stay invalid even if a caller
