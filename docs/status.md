@@ -1,6 +1,6 @@
 # TEIの実装状況
 
-- 整理日: 2026-11-11（更新のたびに更新する。過去の内容はgit履歴を正本とする）
+- 整理日: 2026-11-21（実装・検収の現在地。過去の記録はGit履歴と各検証記録を参照）
 - 開発段階: **参照実装を使った実験と検証**
 - 品質に関する注意: **生成AIを用いて開発中であり、コード・設計・安全性の体系的な人的確認は未実施**です。本番利用を想定していません。
 
@@ -10,6 +10,8 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 
 | 領域 | 状況 | 確認先 |
 | --- | --- | --- |
+| 受注の一変更（現在の製品検収） | 通常`tei view -environment`が実PostgreSQLの明細を読み、`*.tei.md`へのRule追加・`tei validate`・再読込で行別の判定が変わることを確認済み。第一Webでも実Chromeから出荷相当フォームを操作し、同じ対象の回答を独立Expectedと照合している。ただし画面は手書きReference UIであり、TEIがWeb画面を生成した証拠ではない。Command／Observationは合成状態で、実DBの受注確定・Commit／Receiptとは異なる。**初回利用者自身の手順0〜5の無補助完走は未検収** | [公開手順](first-change.md)、[優先順位](../plan/NOW.md)、[#1119](https://github.com/hat47x/tei-platform/issues/1119) |
+| Studioでの変更候補とSource保存 | 製品Wails／実Windows WebView2でHost Inspectからの未審査候補の表示・クリック・旧候補失効を検証済み。別のReference経路では実Edge操作からReview／明示Accept→一セルSource保存→Stage1／Stage2→Windowsの画面差まで観測済み。ただし**製品Studio自身の正式Source Writer・現在Grant・結果照会は未接続で、保存は`unsupported`**。両経路の成功を足してセルフビルド完了とは扱わない | [現在の優先順位](../plan/NOW.md)、[#4583](https://github.com/hat47x/tei-platform/issues/4583)、[#5630](https://github.com/hat47x/tei-platform/pull/5630)、[#5669](https://github.com/hat47x/tei-platform/pull/5669) |
 | 初回の業務モデル変更 | 独立した小さな作業領域で定義・入力元索引・検証・修復を扱う参照事例と回帰試験を用意。**画面生成・保存・外部連携の実証ではありません** | [初回モデル変更の手順](../examples/first-workspace/README.md)、[課題 #1161](https://github.com/hat47x/tei-platform/issues/1161) |
 | 外部逆解析Evidenceの受領 | `internal/externalanalysis`が外部ツール（現行切片ではREA）の逆解析結果を外部Evidenceとして受領・検査する。受領したbytesは復号前にdigestを測り、CLI応答包装（`{ok,data,meta}`）とEvidence本体を分離し、道具へ渡す派生入力を元Evidenceと別digestで記録する。投影配送は記録された道具版のJSONL framing（6.7.0は終端recordなしの単一document、6.8.0はrows＋`$rea=jsonl/v1`終端metadata）と照合し、完全・部分・不一致・欠損・失敗・工具不在に分類する。`ReadCandidates`はEvidence本体のsemantic graphからObservations・Relations・Unknowns・Coverage（family別）・Limitationsを読み出す（外部候補の保持であって意味の確定ではない）。`operations.ExternalCandidates`が1 Observation＋1 Relationを共通read-only操作として投影し、`tei rea-evidence -observation-id … -relation-id …`（`mode=candidate`）がそのCLI Adapter。投影は`authorityLimits`で「受理済み意味ではない・外部IDはTEI subjectではない・実DB観測ではない・部分選択はgraph全体ではない」を表明する。**受領はTEIの受理済み意味・Canonical World・実DB観測への自動昇格ではない（`promotion`は常にfalse）。`*.tei.md`正式Reader（T1-B）、SHO Writer・旧新比較（T2）は未実施** | [受領の設計](../plan/design/REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md)、[T1-A作業票](../plan/design/REA_T1A_EXTERNAL_OBSERVATION_ADMISSION_2026-11.md)、[実検証記録](../plan/evidence/REA_EXTERNAL_EVIDENCE_INTAKE_2026-11-11/README.md)、[CLI JSON契約](../plan/design/CLI_JSON_OUTPUT_CONTRACT_2026-10.md)、[#3394](https://github.com/hat47x/tei-platform/issues/3394) |
 | GitHub Actionsによるコード検証 | `main`へのpushごとに、ワークフロー「TEI PR・main 健全性確認」が`tools/repository-health-check.sh`を実行する。結果は各コミットのActions実行で確認する（例：2026年10月28日の`6b144da54499e62ba40feeb77d89c352075c2c01`でRepository Healthが成功、[実行 #40739571851](https://github.com/hat47x/tei-platform/actions/runs/40739571851)）。この成功は、そのコミットで上記スクリプトが通ったことだけを示す。`main`には2026年10月31日からGitHub Rulesetsによる保護（PR経由のみ・強制更新と削除の拒否・迂回なし、Ruleset ID 26270836）を適用済みで、必須ステータスチェックは開発規則どおり一律には設定しない。製品としての受入や意味の受理は示さない。2026年10月18日のPR #2012統合コミット`0cc76fd992b0d25960ad0a6b27b96c569a9472b4`の実行は、次の行のStudio PoC Aの記録として残す | [ワークフロー定義](../.github/workflows/tei-repository-health-ci.yml)、[Repository Health #39112031894](https://github.com/hat47x/tei-platform/actions/runs/39112031894)、[CI整備の課題 #1189](https://github.com/hat47x/tei-platform/issues/1189) |
