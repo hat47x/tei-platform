@@ -3,8 +3,8 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -113,11 +113,16 @@ func (s *webTargetServer) renderCustomSubmit(
 			return
 		}
 	}
+	// Complete template rendering before committing the HTTP status or body.
+	// A failed template must not leave a partial page carrying a success status.
+	var page bytes.Buffer
+	if err := s.customSubmit.Execute(&page, data); err != nil {
+		http.Error(w, "render custom submit UI", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	if err := s.customSubmit.Execute(w, data); err != nil {
-		http.Error(w, fmt.Sprintf("render custom submit UI: %v", err), http.StatusInternalServerError)
-	}
+	_, _ = w.Write(page.Bytes())
 }
 
 const customSubmitHTML = `<!doctype html>
