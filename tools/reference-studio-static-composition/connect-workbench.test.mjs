@@ -14,6 +14,7 @@ import {
   WORKBENCH_GENERATED_READER_HEAD, WORKBENCH_GENERATED_READER_MAIN_BLOB,
   WORKBENCH_REQUIRED_FIELDS_READER_HEAD, WORKBENCH_PIN_INSPECTION_TESTS_HEAD,
   WORKBENCH_REQUIRED_PREVIEW_HEAD, WORKBENCH_REQUIRED_PREVIEW_MAIN_BLOB,
+  WORKBENCH_REQUIRED_EVIDENCE_HEAD, WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB,
 } from './connect-workbench.mjs';
 
 const graph = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
@@ -37,6 +38,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_REQUIRED_FIELDS_READER_HEAD,
     WORKBENCH_PIN_INSPECTION_TESTS_HEAD,
     WORKBENCH_REQUIRED_PREVIEW_HEAD,
+    WORKBENCH_REQUIRED_EVIDENCE_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.mainBlob), [
     '2a65a9f70245068bf2455248d98d280b382b01e4',
@@ -48,6 +50,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_GENERATED_READER_MAIN_BLOB,
     WORKBENCH_GENERATED_READER_MAIN_BLOB,
     WORKBENCH_REQUIRED_PREVIEW_MAIN_BLOB,
+    WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandHead), [
     '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -59,10 +62,12 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
     '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
     '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
@@ -96,11 +101,11 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
 test('new generated Inspector closure is qualified separately from historical native closure', async () => {
   const historical = WORKBENCH_PINS.find(value => value.head === WORKBENCH_NATIVE_HEAD);
   // The current source closure is qualified by the newest pin for this main.ts.
-  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_REQUIRED_PREVIEW_HEAD);
+  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_REQUIRED_EVIDENCE_HEAD);
   assert.ok(historical);
   assert.ok(pin);
   assert.equal(historical.mainBlob, WORKBENCH_NATIVE_MAIN_BLOB);
-  assert.equal(pin.mainBlob, WORKBENCH_REQUIRED_PREVIEW_MAIN_BLOB);
+  assert.equal(pin.mainBlob, WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB);
   assert.notEqual(pin.mainBlob, WORKBENCH_GENERATED_READER_MAIN_BLOB);
   assert.notEqual(pin.mainBlob, WORKBENCH_PR1_BLOB);
   const root = new URL('../../', import.meta.url);
