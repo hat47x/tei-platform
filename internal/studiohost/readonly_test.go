@@ -242,6 +242,52 @@ func TestSelectedInspectorAlsoEnforcesExpectedSnapshot(t *testing.T) {
 	}
 }
 
+// Moving a Source without changing its bytes must invalidate a prior
+// inspection snapshot; the World may remain semantically identical.
+func TestInspectSubjectAtSnapshotRejectsSameByteSourceMove(t *testing.T) {
+	root := t.TempDir()
+	sourceDir := filepath.Join(root, "semantic")
+	if err := os.Mkdir(sourceDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"),
+		[]byte("workspace: source_move_snapshot\nformatVersion: 1\nsources:\n  - semantic\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	original := filepath.Join(sourceDir, "marker.tei")
+	moved := filepath.Join(sourceDir, "relocated.tei")
+	if err := os.WriteFile(original, []byte("namespace alpha\n\ntype Marker from std.text\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h, err := NewReadOnly([]string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := h.InspectSubject("workspace-1", "semantic", "alpha")
+	if !before.OK || before.Value == nil || before.Value.SnapshotFingerprint == "" {
+		t.Fatalf("failed to observe original Source: %+v", before)
+	}
+	if err := os.Rename(original, moved); err != nil {
+		t.Fatal(err)
+	}
+	stale := h.InspectSubjectAtSnapshot("workspace-1", "semantic",
+		"alpha", before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Failure == nil || stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.EffectUnknown {
+		t.Fatalf("Source relocation reused a stale snapshot: %+v", stale)
+	}
+	current := h.InspectSubject("workspace-1", "semantic", "alpha")
+	if !current.OK || current.Value == nil ||
+		current.Value.SourceIndexFingerprint == before.Value.SourceIndexFingerprint {
+		t.Fatalf("Source relocation was not reflected in the Index: %+v", current)
+	}
+	matched := h.InspectSubjectAtSnapshot("workspace-1", "semantic",
+		"alpha", current.Value.SnapshotFingerprint)
+	if !matched.OK || matched.Value == nil || matched.Value.Effect != "read-only" {
+		t.Fatalf("current relocated Source was not inspectable: %+v", matched)
+	}
+}
+
 func TestRootConfigurationRefusesDuplicatesAndMissing(t *testing.T) {
 	path := filepath.Join("..", "..", "reference", "workspace")
 	if _, err := NewReadOnly(nil); err == nil {
