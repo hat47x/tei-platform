@@ -15,6 +15,7 @@ import {
   WORKBENCH_REQUIRED_FIELDS_READER_HEAD, WORKBENCH_PIN_INSPECTION_TESTS_HEAD,
   WORKBENCH_REQUIRED_PREVIEW_HEAD, WORKBENCH_REQUIRED_PREVIEW_MAIN_BLOB,
   WORKBENCH_REQUIRED_EVIDENCE_HEAD, WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB,
+  WORKBENCH_REQUIRED_EVIDENCE_RELOCATION_HEAD,
 } from './connect-workbench.mjs';
 
 const graph = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
@@ -39,6 +40,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_PIN_INSPECTION_TESTS_HEAD,
     WORKBENCH_REQUIRED_PREVIEW_HEAD,
     WORKBENCH_REQUIRED_EVIDENCE_HEAD,
+    WORKBENCH_REQUIRED_EVIDENCE_RELOCATION_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.mainBlob), [
     '2a65a9f70245068bf2455248d98d280b382b01e4',
@@ -50,6 +52,7 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_GENERATED_READER_MAIN_BLOB,
     WORKBENCH_GENERATED_READER_MAIN_BLOB,
     WORKBENCH_REQUIRED_PREVIEW_MAIN_BLOB,
+    WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB,
     WORKBENCH_REQUIRED_EVIDENCE_MAIN_BLOB,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandHead), [
@@ -63,10 +66,12 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
     WORKBENCH_MAIN_CONSUMER_HEAD,
+    WORKBENCH_MAIN_CONSUMER_HEAD,
   ]);
   assert.deepEqual(WORKBENCH_PINS.map(pin => pin.commandBlob), [
     '4e0d5484f82944d5b7d3b0b8431f3a9a1eaa7081',
     '6c6ee81288c9857ca2f1c282639ba49f059f5535',
+    'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
     'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
@@ -101,7 +106,8 @@ test('historical Workbench pins and exact PR1 candidate reject unknown revisions
 test('new generated Inspector closure is qualified separately from historical native closure', async () => {
   const historical = WORKBENCH_PINS.find(value => value.head === WORKBENCH_NATIVE_HEAD);
   // The current source closure is qualified by the newest pin for this main.ts.
-  const pin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_REQUIRED_EVIDENCE_HEAD);
+  const pin = WORKBENCH_PINS.find(value =>
+    value.head === WORKBENCH_REQUIRED_EVIDENCE_RELOCATION_HEAD);
   assert.ok(historical);
   assert.ok(pin);
   assert.equal(historical.mainBlob, WORKBENCH_NATIVE_MAIN_BLOB);
@@ -138,6 +144,16 @@ test('new generated Inspector closure is qualified separately from historical na
   assert.throws(() => inspectPinnedDependencies(
     requiredFieldsPin, commandSource, responsesSource, graphSource, requiredFieldsClosure),
     /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/package.json/);
+  // Evidence display was qualified before this extra regression. Keep its
+  // historical pin immutable: it must reject the new test Source.
+  const previous = WORKBENCH_PINS.find(value =>
+    value.head === WORKBENCH_REQUIRED_EVIDENCE_HEAD);
+  assert.ok(previous);
+  const oldSources = Object.fromEntries(
+    Object.keys(previous.closureBlobs).map(path => [path, closureSources[path]]));
+  assert.throws(() => inspectPinnedDependencies(
+    previous, commandSource, responsesSource, graphSource, oldSources),
+    /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/source-locations\.test\.mjs/);
   assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources), true);
   // The prior qualified closure cannot silently accept the new editable-draft surface.
   const prior = WORKBENCH_PINS.find(value => value.head === WORKBENCH_PIN_INSPECTION_TESTS_HEAD);
