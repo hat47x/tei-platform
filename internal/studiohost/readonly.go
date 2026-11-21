@@ -425,12 +425,14 @@ func (h *ReadOnly) inspectSubject(id, kind, subjectID, expectedSnapshot string, 
 func selectedInspectionFailure(err error) *Failure {
 	var inspection *operations.InspectionError
 	if errors.As(err, &inspection) {
+		if inspection.Code == operations.InspectionStaleSnapshot {
+			return businessRejection(inspection.Code, "inspection Source/World snapshot changed")
+		}
 		switch inspection.Code {
 		case operations.InspectionInvalidSubject,
 			operations.InspectionUnsupportedKind,
 			operations.InspectionNotFound,
-			operations.InspectionAmbiguous,
-			operations.InspectionStaleSnapshot:
+			operations.InspectionAmbiguous:
 			return businessRejection(inspection.Code, "inspector could not resolve the requested subject")
 		default:
 			return technicalFailure("OPERATION_FAILED", "inspection service failed")
