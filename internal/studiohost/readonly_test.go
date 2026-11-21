@@ -141,6 +141,93 @@ func TestRealOperationReadOnlyReference(t *testing.T) {
 	}
 }
 
+// TestHostReinspectAfterSameByteSourceMove checks the real Studio read-only
+// Host path, not an invented Catalog/Inspect pair. A stable Canonical subject
+// and identical Source bytes do not make an older Source location current.
+func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
+	root := t.TempDir()
+	semanticDir := filepath.Join(root, "semantic")
+	if err := os.Mkdir(semanticDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	manifest := "workspace: source_move_fixture\nformatVersion: 1\nsources:\n  - semantic\n"
+	if err := os.WriteFile(filepath.Join(root, "tei.workspace.yaml"), []byte(manifest), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sourceBytes := []byte("namespace studio\n\ntype Marker from std.text\n")
+	oldPath := filepath.Join(semanticDir, "marker.tei")
+	newPath := filepath.Join(semanticDir, "marker-relocated.tei")
+	if err := os.WriteFile(oldPath, sourceBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	host, err := NewReadOnly([]string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeCatalog := host.CatalogWorkspace("workspace-1", "")
+	if !beforeCatalog.OK || beforeCatalog.Value == nil {
+		t.Fatalf("first Catalog: %+v", beforeCatalog)
+	}
+	var subjectKind, subjectID string
+	for _, entry := range beforeCatalog.Value.Entries {
+		if entry.Subject.Kind == "semantic-type" && !entry.Prelude {
+			if subjectID != "" {
+				t.Fatal("fixture declared more than one non-prelude semantic type")
+			}
+			subjectKind, subjectID = entry.Subject.Kind, entry.Subject.ID
+		}
+	}
+	if subjectID == "" {
+		t.Fatal("fixture semantic type was not found in the real Catalog")
+	}
+	before := host.InspectSubject("workspace-1", subjectKind, subjectID)
+	if !before.OK || before.Value == nil || before.Value.Effect != "read-only" ||
+		before.Value.SourceStatus != "indexed" ||
+		len(before.Value.Sources.References) != 1 || len(before.Value.Sources.Artifacts) != 1 {
+		t.Fatalf("first Host Inspect: %+v", before)
+	}
+	if err := os.Rename(oldPath, newPath); err != nil {
+		t.Fatal(err)
+	}
+	reloadedBytes, err := os.ReadFile(newPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(reloadedBytes) != string(sourceBytes) {
+		t.Fatal("fixture Source contents changed instead of only its location")
+	}
+	afterCatalog := host.CatalogWorkspace("workspace-1", "")
+	after := host.InspectSubject("workspace-1", subjectKind, subjectID)
+	if !afterCatalog.OK || afterCatalog.Value == nil || !after.OK || after.Value == nil ||
+		after.Value.Effect != "read-only" || after.Value.SourceStatus != "indexed" ||
+		len(after.Value.Sources.References) != 1 || len(after.Value.Sources.Artifacts) != 1 {
+		t.Fatalf("Host did not re-read the moved Source: catalog=%+v inspect=%+v", afterCatalog, after)
+	}
+	if string(before.Value.Canonical) != string(after.Value.Canonical) ||
+		before.Value.WorldFingerprint != after.Value.WorldFingerprint {
+		t.Fatal("a physical Source move changed the semantic value of the fixture")
+	}
+	if before.Value.SourceIndexFingerprint == after.Value.SourceIndexFingerprint ||
+		before.Value.SnapshotFingerprint == after.Value.SnapshotFingerprint ||
+		beforeCatalog.Value.ModelRevision == afterCatalog.Value.ModelRevision {
+		t.Fatal("old Host Source revision or snapshot remained valid after relocation")
+	}
+	if before.Value.Sources.References[0].ArtifactPath ==
+		after.Value.Sources.References[0].ArtifactPath {
+		t.Fatal("Host reused the original Source occurrence location")
+	}
+	if before.Value.Sources.Artifacts[0].Fingerprint !=
+		after.Value.Sources.Artifacts[0].Fingerprint {
+		t.Fatal("moving a file without changing bytes changed its Artifact fingerprint")
+	}
+	// Neither response claims that a readable Source is writable or approved.
+	for _, observed := range []string{before.Value.Effect, after.Value.Effect} {
+		if observed != "read-only" {
+			t.Fatalf("read-only Host returned effect %q", observed)
+		}
+	}
+}
+
 func TestRootConfigurationRefusesDuplicatesAndMissing(t *testing.T) {
 	path := filepath.Join("..", "..", "reference", "workspace")
 	if _, err := NewReadOnly(nil); err == nil {
