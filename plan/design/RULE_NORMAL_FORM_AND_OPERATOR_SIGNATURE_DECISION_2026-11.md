@@ -404,7 +404,7 @@ rule sales.order_line.discount_non_negative:
 
 ### 14.2 読み取った範囲と判定の範囲を混同しない
 
-`within`の最初の受入対象は**一つの行の三つの数値**である。同じ行に対して三値をそろえられれば、その行の範囲判定はできる。ただし、そこからRelation全件についての成立は主張しない。Relation全件・集約・重複検査を行うOperatorでは、既存のQuery資格・Coverage・実Readの同一トランザクション／Snapshotの条件を別に満たす必要がある。
+`within`の最初の受入対象は**一つの行の三つの数値**である。ただし、三値が存在するだけでは判定可能とは限らない。参照する値は同じ業務対象・粒度に属し、同じRead Attempt／Snapshot、または明示的に整合を確認できる時点・取得条件に結び付いていなければならない。定数入力に実DBのSnapshotを要求するのではなく、**実際に読み取るAttribute間の整合性**を確かめる。複数Providerに共通Snapshotがあるとは推定しない。これを満たした行の範囲判定から、Relation全件についての成立を主張することもできない。Relation全件・集約・重複検査を行うOperatorでは、既存のQuery資格・Coverage・実Readの同一トランザクション／Snapshotの条件を別に満たす必要がある。
 
 数値は原文の十進値を保持して厳密に比較する。`low > high`は定数なら検証時の誤り、実データで判明したなら当該評価の誤りとし、範囲外という不成立へ読み替えない。NULL・未取得・非開示・部分取得はそれぞれ根拠を保ち、計算できない理由を消さない。全入力がそろう前に、見えている一部の値だけから恣意的に成立を推定しない。
 
@@ -421,6 +421,11 @@ rule sales.order_line.discount_non_negative:
 | B-07 | NULL／未取得／partial／値0 | これらを同値にしない。行単位の答えとRelation全件の資格も分離する |
 | B-08 | Sourceの説明文変更・別パスへの移動 | 意味が同じでも旧Source Index・Model Revisionを再利用しない |
 | B-09 | 宣言の署名と選択実装／例表が不一致 | 別実装へ暗黙にfallbackせず、契約に従って拒否する |
+| B-10 | 同じ行IDの`value`と`low`／`high`を異なるRead Attemptから取得 | 単に値が揃っただけでは同一時点の判定として受理しない。取得条件の整合を確かめられなければ判定不能とし、勝手に共通Snapshotを仮定しない |
+| B-11 | 異なるAttribute参照が現時点では同じ数値を返す | 判定結果が等しくても、参照先のIdentity・依存関係・編集対象を同一視しない。変更後の再評価対象を取り違えない |
+| B-12 | `low: 0 high: 100`の定数束縛と、同値を返すAttribute参照の束縛を比較 | 前者の論理的な読取要求はRule主語だけ、後者は主語と参照した属性。結果の一致をRead FootprintやProvider呼出の同値としない |
+
+B-10〜12は、Function Data Contextの結果粒度・時点（#2506）と、Operatorの観測同値性（#988）を、このRuleで測定可能な形にしたものである。論理的な読取要求と物理的なSQL／Provider呼出回数は別に観測する。**判定値が等しいことは、依存先・読取経路・編集対象まで等しい証拠にはならない。**
 
 各ExpectedはParser・Evaluatorから逆算せずに固定する。`1`と`1.0`は数値として等しく、三入力の例表では**数値組全体**で重複を検査する。現行の一数値・真偽値専用の`OperatorCase`に三入力を仮詰めしたり、「判定できない」を`false`で代用したりしない。対応前は明示的に未対応で停止する。
 
@@ -428,4 +433,6 @@ rule sales.order_line.discount_non_negative:
 
 S式のForm、中置`expr:`、KaTeX、Markdown表、Graphvizは、ここで確定した入力束縛と意味への**入口または投影**の候補である。Clojure Runtimeや新しい式評価器を増やす理由にはしない。中置構文を将来導入する場合、演算子の優先順位・結合方向・十進精度・NULL／未取得の扱いを固定し、同じ署名と独立ExpectedへLowerできる場合だけ実行入口へ昇格させる。Go ASTはGo Targetの生成に使い、Meaningや図表の正本とはしない。原Sourceの局所編集は非対象byteを保存し、位置と版の資格を既存Acceptanceへ戻す。
 
-**着手順は変えない。** `plan/NOW.md`の受注初回利用者による五段階受入を先に検収し、Studioの一巡は既定の唯一の並行線とする。その後の道5でB-01〜09を既存`internal/syntax`・`internal/workspace`・`internal/semantic`・`internal/semantic/validationeval`の経路に接続する。新Parser・第二Resolver・第二評価器・第二Meaning正本を追加しない。
+**着手順は変えない。** `plan/NOW.md`の受注初回利用者による五段階受入を先に検収し、Studioの一巡は既定の唯一の並行線とする。その後の道5でB-01〜12を既存`internal/syntax`・`internal/workspace`・`internal/semantic`・`internal/semantic/validationeval`の経路に接続する。新Parser・第二Resolver・第二評価器・第二Meaning正本を追加しない。
+
+**既存開発環境からの離脱可能性も損なわない。** このRuleを将来Go等のTargetへ生成する場合、原Markdown設計書と生成コードには、署名・入力参照・境界条件・依存関係をTEI Studioなしで追える情報を残す。TEIのSource Indexや受理証拠をTargetの実行依存へ埋め込むこととは区別し、生成したTargetが単独でビルド・動作することは別のConsumer試験で確認する（#4191／#1121）。本節のRead資格試験をもって、その離脱可能性まで実証したことにはしない。
