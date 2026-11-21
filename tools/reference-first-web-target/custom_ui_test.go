@@ -193,6 +193,7 @@ func TestCustomSubmitUIGetIsPresentationOnlyAndContainsNoPresetCredential(t *tes
 		"<form method=\"post\" action=\"/custom-submit\"",
 		"name=\"loginId\"",
 		"name=\"credential\" type=\"password\"",
+		`name="from" value="2026-09-01T00:00:00Z" required`,
 		"commandScenarioRunner",
 		`name="row" type="number" min="0" required`,
 		testBaselineRevision,
