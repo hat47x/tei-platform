@@ -59,7 +59,7 @@ TEIは、分野固有の知識と実装技術を分けて管理するローコ�
 - **安全性と品質**: 安全性、個人情報、第三者の素材の利用条件、権限設定に関する包括的な監査、体系的な人的確認、本番運用での耐久性・高可用性の確認は未完了です。
 - **開発用CIと製品上の受入**: GitHub Actionsでは固定した版ごとにコード検証とStudioのHost・実ブラウザー・Windows WebView2スモーク確認を実施しています。一方、まだ確認していない改訂や別のプルリクエストまで自動的に合格とはなりません。Studioの確認は、初めて利用する人による一連の操作、三つの視点の編集と再反映、データベースへの保存、独立した読取りによる結果確認、認可境界、実利用者の価値を示しません。PoC A/B/Cの完了判定と必要な製品実証は[協調Issue #1824](https://github.com/hat47x/tei-platform/issues/1824)、[要件の優先順位 #982](https://github.com/hat47x/tei-platform/issues/982)、[横断受入 #1119](https://github.com/hat47x/tei-platform/issues/1119)で追跡します。`main`の保護（PR経由のみ・強制更新と削除の拒否・迂回なし）は2026年10月31日に適用済みで、適用・読み戻し・拒否試験の記録は[課題 #1189](https://github.com/hat47x/tei-platform/issues/1189)にあります。同じ定義を同日、TAI Pleroma・SEI・EKI・MMI・SUIの`main`にも適用し、各リポジトリの適用・読み戻し・拒否試験の記録を残しました（[TAI #178](https://github.com/hat47x/tai-pleroma/issues/178)、[SEI #763](https://github.com/hat47x/sei-cognition/issues/763)、[EKI #331](https://github.com/hat47x/eki-fabric/issues/331)、[MMI #750](https://github.com/hat47x/markdown-matrix-injector/issues/750)、[SUI #3316](https://github.com/hat47x/sui-sensemaking/issues/3316)）。
 
-検証済みの実装と、まだ確定していない設計を区別して開発を進めます。優先順位は[TEIの全体計画](../plan/MASTER_PLAN.md)、技術上の境界は[全体構成](architecture.md)、業務設計の考え方は[業務システム設計](business-system-design.md)を参照してください。
+検証済みの実装と、まだ確定していない設計を区別して開発を進めます。優先順位は[いま進めること](../plan/NOW.md)を正本とし、[全体計画](../plan/MASTER_PLAN.md)はこれまでの経緯を確認するために参照してください。直近の実装対象は、初回利用者による受注規則追加の完走（[#1119](https://github.com/hat47x/tei-platform/issues/1119)）と、StudioのSource一セル正式保存（[#4583](https://github.com/hat47x/tei-platform/issues/4583)）です。技術上の境界は[全体構成](architecture.md)、業務設計の考え方は[業務システム設計](business-system-design.md)にまとめています。
 
 ## 最初に動かす
 
