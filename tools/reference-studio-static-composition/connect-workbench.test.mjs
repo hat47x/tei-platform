@@ -149,7 +149,7 @@ test('new generated Inspector closure is qualified separately from historical na
     Object.keys(oldEvidencePin.closureBlobs).map(path => [path, closureSources[path]]));
   assert.throws(() => inspectPinnedDependencies(
     oldEvidencePin, commandSource, responsesSource, graphSource, oldEvidenceClosure),
-    /workbench_closure_revision_mismatch:reference\\/tei-studio-workbench\\/source-locations\\.test\\.mjs/);
+    /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/source-locations\.test\.mjs/);
   assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources), true);
   // The prior qualified closure cannot silently accept the new editable-draft surface.
   const prior = WORKBENCH_PINS.find(value => value.head === WORKBENCH_PIN_INSPECTION_TESTS_HEAD);
