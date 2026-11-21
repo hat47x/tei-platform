@@ -547,31 +547,70 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 		}
 	})
 	t.Run("query-cannot-supply-post-credentials-or-from", func(t *testing.T) {
-		// The recording runner observes parsing only. The URL must not
-		// provide identity, credential or read time absent from the POST body.
-		recording.calls = nil
+		// A missing required login or credential is rejected before any
+		// business runner, even when the URL query supplies the missing value.
 		query := url.Values{
 			"loginId":    {"query-user"},
 			"credential": {"query-credential"},
 			"from":       {"2026-09-18T08:30:00Z"},
 			"row":        {"1"},
 		}
-		body := url.Values{"row": {"0"}}.Encode()
+		for _, tc := range []struct {
+			name string
+			form url.Values
+			want string
+		}{
+			{"missing-login", url.Values{
+				"row":        {"0"},
+				"credential": {"body-credential"},
+			}, "login ID is required"},
+			{"missing-credential", url.Values{
+				"row":     {"0"},
+				"loginId": {"body-user"},
+			}, "credential is required"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				recording.calls = nil
+				request := httptest.NewRequest(http.MethodPost,
+					"/custom-submit?"+query.Encode(), strings.NewReader(tc.form.Encode()))
+				request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				response := httptest.NewRecorder()
+				server.Handler().ServeHTTP(response, request)
+				if response.Code != http.StatusBadRequest ||
+					!strings.Contains(response.Body.String(), tc.want) ||
+					!strings.Contains(response.Body.String(), `id="input-error"`) {
+					t.Fatalf("missing POST input accepted: status=%d body=%q", response.Code, response.Body.String())
+				}
+				if len(recording.calls) != 0 {
+					t.Fatalf("missing POST input invoked command: %d calls", len(recording.calls))
+				}
+				for _, secret := range []string{"query-credential", "body-credential"} {
+					if strings.Contains(response.Body.String(), secret) {
+						t.Fatal("credential exposed in input error")
+					}
+				}
+			})
+		}
+		// The read-time field remains optional at the server boundary; only
+		// its documented default, never a URL query value, may be used.
+		recording.calls = nil
+		body := url.Values{
+			"row":        {"0"},
+			"loginId":    {"body-user"},
+			"credential": {"body-credential"},
+		}.Encode()
 		request := httptest.NewRequest(http.MethodPost,
 			"/custom-submit?"+query.Encode(), strings.NewReader(body))
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		response := httptest.NewRecorder()
 		server.Handler().ServeHTTP(response, request)
-		if response.Code != http.StatusOK {
-			t.Fatalf("POST-only parsing failed: status=%d", response.Code)
-		}
-		if len(recording.calls) != 1 {
-			t.Fatalf("POST-only parsing invoked runner %d times, want 1", len(recording.calls))
+		if response.Code != http.StatusOK || len(recording.calls) != 1 {
+			t.Fatalf("valid POST without read time rejected: status=%d calls=%d", response.Code, len(recording.calls))
 		}
 		got := recording.calls[0]
-		if got.LoginID != "" || got.Credential != "" ||
+		if got.LoginID != "body-user" || got.Credential != "body-credential" ||
 			got.From != "2026-09-01T00:00:00Z" || got.RowIndex != 0 {
-			t.Fatal("URL query provided identity, credential, time or row to the command")
+			t.Fatal("URL query supplied the omitted read time or overrode POST fields")
 		}
 	})
 	t.Run("post-body-wins-over-conflicting-query", func(t *testing.T) {
