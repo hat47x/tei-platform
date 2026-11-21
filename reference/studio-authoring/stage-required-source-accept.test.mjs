@@ -17,6 +17,12 @@ const baseline = [
   "| schemaVersion | std.text | yes | Schema |",
   "| snapshotFingerprint | std.text | no | Snapshot |", ""
 ].join("\n");
+// An unrelated, ordinary Markdown file must survive a one-cell TEI change byte-for-byte.
+// Preserve UTF-8 and CRLF too: a user may continue editing it outside TEI Studio.
+const independentNotes = Buffer.from(
+  "# チームの設計メモ\r\n\r\n" +
+  "外部IDEでも編集する独立したMarkdown文書。\r\n\r\n" +
+  "```sql\r\nSELECT 1;\r\n```\r\n", "utf8");
 
 test("offline Studio candidate passes one real Review/Accept and reloads exact Source", { timeout: 240_000 }, () => {
   const temp = mkdtempSync(join(tmpdir(), "tei-studio-stage-source-"));
@@ -27,6 +33,7 @@ test("offline Studio candidate passes one real Review/Accept and reloads exact S
     writeFileSync(join(before, "tei.workspace.yaml"),
       "workspace: studio_reader\nformatVersion: 1\nsources:\n  - semantic\nlanguages:\n  - tei.authoring/v1\n");
     writeFileSync(join(before, source), baseline);
+    writeFileSync(join(before, "TEAM_NOTES.md"), independentNotes);
     execFileSync(process.execPath, [driver, before, after, receipt], {
       cwd: repo, encoding: "utf8", timeout: 240_000,
       env: { ...process.env, GOWORK: "off", GOTOOLCHAIN: "local" }
@@ -47,6 +54,9 @@ test("offline Studio candidate passes one real Review/Accept and reloads exact S
       "| snapshotFingerprint | std.text | no | Snapshot |",
       "| snapshotFingerprint | std.text | yes | Snapshot |");
     assert.equal(readFileSync(join(after, source), "utf8"), revised);
+    assert.deepEqual(readFileSync(join(before, "TEAM_NOTES.md")), independentNotes);
+    assert.deepEqual(readFileSync(join(after, "TEAM_NOTES.md")), independentNotes,
+      "one-cell Accept changed unrelated Markdown bytes");
 
     // A repeated attempt must not clobber an existing accepted Workspace.
     const repeated = spawnSync(process.execPath, [driver, before, after, join(temp, "second.json")], {
@@ -54,6 +64,8 @@ test("offline Studio candidate passes one real Review/Accept and reloads exact S
     });
     assert.notEqual(repeated.status, 0);
     assert.equal(readFileSync(join(after, source), "utf8"), revised);
+    assert.deepEqual(readFileSync(join(after, "TEAM_NOTES.md")), independentNotes,
+      "rejected second Accept changed unrelated Markdown bytes");
 
     // If real-browser mode was requested, missing Playwright MUST fail before
     // Preview/Review/Accept rather than quietly reverting to a simulated DOM.
