@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/driver"
+	"tei/internal/realization"
 	"tei/internal/workspace"
 )
 
@@ -69,5 +71,68 @@ func TestPostgresReadRunnerRequiresADeclaredExecutorBinding(t *testing.T) {
 	}
 	if !strings.Contains(buildErr.Error(), "binding") {
 		t.Fatalf("the refusal does not name the missing binding: %q", buildErr)
+	}
+}
+
+
+// A binding for some PostgreSQL Query cannot authorize the selected
+// order-line Query or its Database instance. The previous constructor
+// accepted any nonempty PostgreSQL binding set, postponing the mismatch
+// until after Browse had already started reading the database.
+func TestPostgresReadRunnerRefusesUnrelatedExecutorBindingBeforeBrowse(t *testing.T) {
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := driver.NewResolver(loaded.World).ResolveHeaderDetailContractQuery(
+		"order_entry", "order_entry.order_lines",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("pgx", "host=127.0.0.1 port=1 user=none dbname=none sslmode=disable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	for _, tc := range []struct {
+		name   string
+		change func(*realization.ContractQueryExecutorBinding)
+	}{
+		{"other target", func(b *realization.ContractQueryExecutorBinding) { b.Target.Query = "unrelated_query" }},
+		{"other Environment", func(b *realization.ContractQueryExecutorBinding) { b.Environment = "other_environment" }},
+		{"other Database instance", func(b *realization.ContractQueryExecutorBinding) { b.Instance = "other_instance" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			world := loaded.World
+			world.ContractQueryExecutorBindings = append(
+				[]realization.ContractQueryExecutorBinding(nil),
+				loaded.World.ContractQueryExecutorBindings...,
+			)
+			changed := false
+			postgresStillDeclared := false
+			for i := range world.ContractQueryExecutorBindings {
+				binding := &world.ContractQueryExecutorBindings[i]
+				if binding.Environment == "development" &&
+					binding.Target == resolved.Binding.Target &&
+					binding.Executor == "database.query.postgres" {
+					tc.change(binding)
+					changed = true
+				}
+				if binding.Executor == "database.query.postgres" {
+					postgresStillDeclared = true
+				}
+			}
+			if !changed || !postgresStillDeclared {
+				t.Fatal("fixture did not preserve a declared PostgreSQL executor while breaking selected binding")
+			}
+			_, buildErr := newPostgresReadRunner(world, db)
+			if buildErr == nil ||
+				!strings.Contains(buildErr.Error(), "order_entry.order_lines") ||
+				!strings.Contains(buildErr.Error(), "binding") {
+				t.Fatalf("unrelated PostgreSQL binding qualified the selected read: %v", buildErr)
+			}
+		})
 	}
 }
