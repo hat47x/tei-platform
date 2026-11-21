@@ -60,6 +60,11 @@ try {
       await page.locator("#read-result").count() !== 0) {
     throw new Error("the unsubmitted GET form already has a result or lacks a password field");
   }
+  // The published first-change guide starts browsing on September 1. Check
+  // the value a real browser displays before the test explicitly fills it.
+  if (await form.locator('input[name="from"]').inputValue() !== "2026-09-01T00:00:00Z") {
+    throw new Error("the shipped form's initial Browse from differs from the first-change guide");
+  }
   await form.locator('input[name="loginId"]').fill("legacy-order-editor");
   await form.locator('input[name="credential"]').fill("editor-secret");
   await form.locator('input[name="from"]').fill("2026-09-01T00:00:00Z");
