@@ -41,11 +41,13 @@ func (b *StudioBridge) ValidateWorkspace(workspaceID string) studiohost.Validati
 func (b *StudioBridge) InspectSubject(workspaceID, kind, subjectID string) studiohost.InspectionResponse {
 	return b.host.InspectSubject(workspaceID, kind, subjectID)
 }
+
 // InspectSubjectAtSnapshot is a read-only freshness check for an earlier
 // Inspect result. It neither verifies raw Source bytes nor authorizes a save.
 func (b *StudioBridge) InspectSubjectAtSnapshot(workspaceID, kind, subjectID, expectedSnapshotFingerprint string) studiohost.InspectionResponse {
 	return b.host.InspectSubjectAtSnapshot(workspaceID, kind, subjectID, expectedSnapshotFingerprint)
 }
+
 func (b *StudioBridge) ObserveXead(workspaceID, relativePath string) studiohost.XeadObservationResponse {
 	return b.host.ObserveXead(workspaceID, relativePath)
 }
