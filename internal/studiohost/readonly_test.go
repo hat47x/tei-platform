@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"tei/internal/operations"
+	"tei/internal/sourceindex"
 )
 
 func rootReplacementPair(t *testing.T) (string, string) {
@@ -186,6 +189,56 @@ func TestInspectSubjectAtSnapshotRejectsMissingAndStaleEvidence(t *testing.T) {
 	if unlisted.OK || unlisted.Failure == nil ||
 		unlisted.Failure.Code != "WORKSPACE_NOT_ALLOWED" {
 		t.Fatalf("allowlist was bypassed by snapshot check: %+v", unlisted)
+	}
+}
+
+type snapshotInspectionService struct {
+	result operations.SubjectInspection
+	calls  *int
+}
+
+func (s snapshotInspectionService) Inspect(_ sourceindex.Subject) (operations.SubjectInspection, error) {
+	(*s.calls)++
+	return s.result, nil
+}
+
+func TestSelectedInspectorAlsoEnforcesExpectedSnapshot(t *testing.T) {
+	root := filepath.Join("..", "..", "reference", "workspace")
+	baseline, err := NewReadOnly([]string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog := baseline.CatalogWorkspace("workspace-1", "")
+	if !catalog.OK || catalog.Value == nil || len(catalog.Value.Entries) == 0 {
+		t.Fatalf("missing fixture subjects: %+v", catalog)
+	}
+	subject := catalog.Value.Entries[0].Subject
+	observed := baseline.InspectSubject("workspace-1", subject.Kind, subject.ID)
+	if !observed.OK || observed.Value == nil || observed.Value.SnapshotFingerprint == "" {
+		t.Fatalf("missing fixture inspection: %+v", observed)
+	}
+	calls := 0
+	selected, err := NewReadOnlyWithFactory([]string{root}, func(string) (RootServices, error) {
+		return RootServices{Inspection: snapshotInspectionService{
+			result: *observed.Value, calls: &calls,
+		}}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := selected.InspectSubjectAtSnapshot(
+		"workspace-1", subject.Kind, subject.ID, observed.Value.SnapshotFingerprint)
+	if !match.OK || match.Value == nil || calls != 1 {
+		t.Fatalf("selected Inspector rejected matching snapshot: %+v, calls=%d", match, calls)
+	}
+	stale := selected.InspectSubjectAtSnapshot(
+		"workspace-1", subject.Kind, subject.ID, "sha256:"+strings.Repeat("f", 64))
+	if stale.Failure == nil || stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" || stale.Failure.EffectUnknown {
+		t.Fatalf("selected Provider did not reject stale snapshot safely: %+v", stale)
+	}
+	if calls != 2 {
+		t.Fatalf("selected Inspector was bypassed: %d calls", calls)
 	}
 }
 
