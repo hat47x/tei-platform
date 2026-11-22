@@ -186,6 +186,14 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		len(before.Value.Sources.References) != 1 || len(before.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("first Host Inspect: %+v", before)
 	}
+	// The same Host and current Source must accept the original observation.
+	current := host.InspectSubjectAtSnapshot("workspace-1", subjectKind, subjectID,
+		before.Value.SnapshotFingerprint)
+	if !current.OK || current.Value == nil ||
+		current.Value.SnapshotFingerprint != before.Value.SnapshotFingerprint ||
+		current.Value.Effect != "read-only" {
+		t.Fatalf("Host rejected the current Source snapshot: %+v", current)
+	}
 	if err := os.Rename(oldPath, newPath); err != nil {
 		t.Fatal(err)
 	}
@@ -202,6 +210,26 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		after.Value.Effect != "read-only" || after.Value.SourceStatus != "indexed" ||
 		len(after.Value.Sources.References) != 1 || len(after.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("Host did not re-read the moved Source: catalog=%+v inspect=%+v", afterCatalog, after)
+	}
+	// Identical Source bytes and semantic World cannot qualify the old
+	// occurrence. The guarded read must reject it before any Writer exists.
+	stale := host.InspectSubjectAtSnapshot("workspace-1", subjectKind, subjectID,
+		before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Value != nil || stale.Failure == nil ||
+		stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" ||
+		stale.Failure.Retryable != "not_retryable" || stale.Failure.EffectUnknown {
+		t.Fatalf("old Source snapshot was reused after relocation: %+v", stale)
+	}
+	fresh := host.InspectSubjectAtSnapshot("workspace-1", subjectKind, subjectID,
+		after.Value.SnapshotFingerprint)
+	if !fresh.OK || fresh.Value == nil ||
+		fresh.Value.SnapshotFingerprint != after.Value.SnapshotFingerprint ||
+		fresh.Value.SourceIndexFingerprint != after.Value.SourceIndexFingerprint ||
+		len(fresh.Value.Sources.References) != 1 ||
+		fresh.Value.Sources.References[0].ArtifactPath != after.Value.Sources.References[0].ArtifactPath ||
+		fresh.Value.Effect != "read-only" {
+		t.Fatalf("Host failed to requalify the relocated Source: %+v", fresh)
 	}
 	if string(before.Value.Canonical) != string(after.Value.Canonical) ||
 		before.Value.WorldFingerprint != after.Value.WorldFingerprint {
