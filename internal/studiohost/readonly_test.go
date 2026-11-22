@@ -186,8 +186,23 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		len(before.Value.Sources.References) != 1 || len(before.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("first Host Inspect: %+v", before)
 	}
+	current := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, before.Value.SnapshotFingerprint)
+	if !current.OK || current.Value == nil ||
+		current.Value.SnapshotFingerprint != before.Value.SnapshotFingerprint ||
+		current.Value.Effect != "read-only" {
+		t.Fatalf("unchanged real Source was rejected by conditional Inspect: %+v", current)
+	}
 	if err := os.Rename(oldPath, newPath); err != nil {
 		t.Fatal(err)
+	}
+	stale := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Value != nil || stale.Failure == nil ||
+		stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" ||
+		stale.Failure.Retryable != "not_retryable" || stale.Failure.EffectUnknown {
+		t.Fatalf("real Source relocation did not invalidate the previous snapshot: %+v", stale)
 	}
 	reloadedBytes, err := os.ReadFile(newPath)
 	if err != nil {
@@ -202,6 +217,14 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		after.Value.Effect != "read-only" || after.Value.SourceStatus != "indexed" ||
 		len(after.Value.Sources.References) != 1 || len(after.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("Host did not re-read the moved Source: catalog=%+v inspect=%+v", afterCatalog, after)
+	}
+	fresh := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, after.Value.SnapshotFingerprint)
+	if !fresh.OK || fresh.Value == nil ||
+		fresh.Value.SnapshotFingerprint != after.Value.SnapshotFingerprint ||
+		fresh.Value.SourceIndexFingerprint != after.Value.SourceIndexFingerprint ||
+		fresh.Value.Effect != "read-only" {
+		t.Fatalf("new Source location was not accepted by conditional Inspect: %+v", fresh)
 	}
 	if string(before.Value.Canonical) != string(after.Value.Canonical) ||
 		before.Value.WorldFingerprint != after.Value.WorldFingerprint {
