@@ -36,6 +36,7 @@
 | [`GUI_CUI_PINNED_CONTEXT_WORKBENCH_2026-11.md`](GUI_CUI_PINNED_CONTEXT_WORKBENCH_2026-11.md) | GUI/CUIでの対象固定、Source／Selection／Contextの寿命、非同期応答の失効と引継ぎを扱う設計。 |
 | [`HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md`](HUMAN_AI_COLLABORATIVE_STUDIO_UX_2026-11.md) | 人間と生成AIが共通操作・対象固定・差分提案・検証を介してStudioで協業するためのUX設計。 |
 | [`IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md`](IMPLEMENTATION_TO_MODEL_DOGFOOD_2026-11.md) | TEI自身の実装から意味あるData／Function／Rule／Processを抽出し、図・DSL・生成と照合するdogfooding計画。 |
+| [`THREE_ELEMENT_CRUD_INSPECTOR_CONSUMER_PLAN_2026-11-22.md`](THREE_ELEMENT_CRUD_INSPECTOR_CONSUMER_PLAN_2026-11-22.md) | 三要素CRUD Snapshotの既存CLI結果をStudio Inspector・Source参照へつなぐread-only検収計画。正式なSource保存やWindows Stage2受入は未実施。 |
 | [`PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md`](PLUGIN_CONNECTION_EVIDENCE_AND_COMPOSITION_SLICE_2026-11.md) | Pluginの接続、構成、実行・検証証拠を一つの小さな実証に結び付ける設計。 |
 | [`PLUGIN_CONTRACT_TO_ACTUAL_USE_HANDOFF_2026-11.md`](PLUGIN_CONTRACT_TO_ACTUAL_USE_HANDOFF_2026-11.md) | Pluginの契約・選択・生成・起動・実使用・受領の資格を分離する横断引渡し設計。 |
 | [`REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md`](REA_EXTERNAL_EVIDENCE_INTAKE_2026-11.md) | 外部逆解析Evidenceを入力元のbyteと由来を保持して受領し、候補の意味受理と区別する設計。 |
