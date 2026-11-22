@@ -107,7 +107,6 @@ func TestSelectedInspectorAlsoEnforcesExpectedSnapshot(t *testing.T) {
 	}
 }
 
-
 // A real file relocation changes the Source Index even if its bytes, semantic
 // subject and World fingerprint do not change. Conditional reinspection must
 // reject the old observation and accept the newly read one without a write.
