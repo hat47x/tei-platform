@@ -53,7 +53,7 @@ func runThreeElementCRUDCell(args []string, out io.Writer) (int, error) {
 		OK:            true,
 		OKScope:       "model-snapshot-cell-inspected-only",
 		Result: struct {
-			SchemaVersion      string `json:"schemaVersion"`
+			SchemaVersion string `json:"schemaVersion"`
 			threeelement.CRUDCellInspection
 			StructuralOK       bool   `json:"structuralOk"`
 			CRUDConflictStatus string `json:"crudConflictStatus"`
