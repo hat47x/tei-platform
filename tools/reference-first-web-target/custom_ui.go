@@ -40,6 +40,18 @@ func (s *webTargetServer) handleCustomSubmit(w http.ResponseWriter, r *http.Requ
 		// ParseForm also collects URL query parameters into Form. Only POST
 		// body fields may supply a submitted value to this operation.
 		form := r.PostForm
+		// A submitted operation field must have exactly one value when present.
+		// PostForm excludes URL queries, but Get would silently select the first
+		// body value if a client sent two rows, identities or credentials.
+		for _, field := range []string{"row", "loginId", "credential", "from"} {
+			if len(form[field]) > 1 {
+				s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
+					Projection: s.projection,
+					InputError: "form field must appear once: " + field,
+				})
+				return
+			}
+		}
 		rawRow := form.Get("row")
 		if rawRow == "" {
 			s.renderCustomSubmit(w, http.StatusBadRequest, customSubmitPageData{
