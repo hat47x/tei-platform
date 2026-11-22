@@ -526,6 +526,42 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 			}
 		})
 	}
+	t.Run("repeated-post-operation-fields", func(t *testing.T) {
+		// A browser form supplies a single value for each of these inputs.
+		// Never let url.Values.Get choose a value for a malformed POST.
+		for _, field := range []string{"row", "loginId", "credential", "from"} {
+			for _, duplicate := range []string{"same", "different"} {
+				t.Run(field+"-"+duplicate, func(t *testing.T) {
+					recording.calls = nil
+					form := url.Values{
+						"row":        {"0"},
+						"loginId":    {"test-user"},
+						"credential": {"test-credential"},
+						"from":       {"2026-09-01T00:00:00Z"},
+					}
+					second := form.Get(field)
+					if duplicate == "different" {
+						second = "other-" + field
+					}
+					form.Add(field, second)
+					response := postCustomSubmit(t, server.Handler(), form)
+					if response.Code != http.StatusBadRequest ||
+						!strings.Contains(response.Body.String(), "form field must appear once: "+field) ||
+						!strings.Contains(response.Body.String(), `id="input-error"`) {
+						t.Fatalf("ambiguous POST was not rejected: status=%d body=%q",
+							response.Code, response.Body.String())
+					}
+					if len(recording.calls) != 0 {
+						t.Fatalf("ambiguous %s reached command runner: %d", field, len(recording.calls))
+					}
+					for _, secret := range []string{"test-credential", "other-credential"} {
+						if strings.Contains(response.Body.String(), secret) {
+							t.Fatal("credential was included in a form error")
+						}
+				})
+			}
+		}
+	})
 	t.Run("query-cannot-supply-post-row", func(t *testing.T) {
 		// A submitted form with no row must stay invalid even if a caller
 		// appends a row to the URL. The command must not be invoked.
