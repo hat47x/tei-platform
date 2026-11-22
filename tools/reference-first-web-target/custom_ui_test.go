@@ -558,6 +558,7 @@ func TestCustomSubmitUIRejectsMissingOrInvalidRowBeforeCommand(t *testing.T) {
 						if strings.Contains(response.Body.String(), secret) {
 							t.Fatal("credential was included in a form error")
 						}
+					}
 				})
 			}
 		}
