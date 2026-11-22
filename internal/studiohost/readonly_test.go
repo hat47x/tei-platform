@@ -186,6 +186,14 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		len(before.Value.Sources.References) != 1 || len(before.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("first Host Inspect: %+v", before)
 	}
+	// A previously observed Source/World snapshot is usable before relocation.
+	currentBeforeMove := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, before.Value.SnapshotFingerprint)
+	if !currentBeforeMove.OK || currentBeforeMove.Value == nil ||
+		currentBeforeMove.Value.SnapshotFingerprint != before.Value.SnapshotFingerprint ||
+		currentBeforeMove.Value.Effect != "read-only" {
+		t.Fatalf("Host rejected the current snapshot before relocation: %+v", currentBeforeMove)
+	}
 	if err := os.Rename(oldPath, newPath); err != nil {
 		t.Fatal(err)
 	}
@@ -219,6 +227,30 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 	if before.Value.Sources.Artifacts[0].Fingerprint !=
 		after.Value.Sources.Artifacts[0].Fingerprint {
 		t.Fatal("moving a file without changing bytes changed its Artifact fingerprint")
+	}
+	// Reuse the *observed* old token, not an invented stale fingerprint. A
+	// same-byte relocation must be rejected by the actual Host entrypoint.
+	stale := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Value != nil || stale.Failure == nil ||
+		stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" ||
+		stale.Failure.Retryable != "not_retryable" || stale.Failure.EffectUnknown {
+		t.Fatalf("Host reused the stale Source/World snapshot: %+v", stale)
+	}
+	currentAfterMove := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, after.Value.SnapshotFingerprint)
+	if !currentAfterMove.OK || currentAfterMove.Value == nil ||
+		currentAfterMove.Value.SnapshotFingerprint != after.Value.SnapshotFingerprint ||
+		currentAfterMove.Value.Effect != "read-only" ||
+		len(currentAfterMove.Value.Sources.References) != 1 ||
+		currentAfterMove.Value.Sources.References[0].ArtifactPath !=
+			after.Value.Sources.References[0].ArtifactPath {
+		t.Fatalf("Host did not accept the newly observed Source position: %+v", currentAfterMove)
+	}
+	unchangedBytes, err := os.ReadFile(newPath)
+	if err != nil || string(unchangedBytes) != string(sourceBytes) {
+		t.Fatalf("read-only freshness check changed the relocated Source: err=%v", err)
 	}
 	// Neither response claims that a readable Source is writable or approved.
 	for _, observed := range []string{before.Value.Effect, after.Value.Effect} {
