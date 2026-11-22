@@ -55,6 +55,7 @@ func TestThreeElementCRUDCellCLIConsumesPriorSnapshotWithoutWriting(t *testing.T
 		OK            bool   `json:"ok"`
 		OKScope       string `json:"okScope"`
 		Result        struct {
+			SchemaVersion       string                            `json:"schemaVersion"`
 			ModelFingerprint    string                            `json:"modelFingerprint"`
 			SourceQualification string                            `json:"sourceQualification"`
 			Row                 threeelement.CRUDTable            `json:"row"`
@@ -65,6 +66,7 @@ func TestThreeElementCRUDCellCLIConsumesPriorSnapshotWithoutWriting(t *testing.T
 		t.Fatal(err)
 	}
 	if !got.OK || got.SchemaVersion != "tei.cli.three-element.crud-cell/v0" ||
+		got.Result.SchemaVersion != "tei.three-element.crud-cell/v0" ||
 		got.OKScope != "model-snapshot-cell-inspected-only" ||
 		got.Result.ModelFingerprint != envelope.Result.ModelFingerprint ||
 		got.Result.SourceQualification != "model-local-only" ||
