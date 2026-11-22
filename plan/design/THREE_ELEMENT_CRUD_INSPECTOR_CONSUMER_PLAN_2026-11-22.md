@@ -49,3 +49,24 @@ DesktopセルフビルドのP0を維持する。CLIだけの成功でStage2の�
 ## 実施状態
 
 この文書は実装済みのProducerと未実装・未検証のConsumerを接続するための作業計画である。#5698のCLI実装とテストコードはmainに存在する。ただし、この文書更新に伴ってGoテストや通常CLIを新たに実行した記録ではない。Windows Studio実行、DB Effect、Owner意味受理も未検証。
+
+## DT-02C：一セルを再照合するCLI Consumer（2026-11-22）
+
+`crud-snapshot`が同一モデルの`Rows`・`Origins`・`ModelFingerprint`を返すようになったため、次は**以前表示したセルを、再ロードしたモデルの中で読み取り直す**小さなConsumerを用意する。
+
+```sh
+tei three-element crud-snapshot -model order-model.json
+tei three-element crud-cell -model order-model.json \
+  -expected-fingerprint sha256:<先ほど取得したモデル指紋> \
+  -function submit -data order
+```
+
+新しい`crud-cell`は既存のJSON読込を利用し、入力ファイルを再読込してから現在の`ModelFingerprint`を照合する。応答は対象セル一件と元宣言すべてを含む。`okScope`は`model-snapshot-cell-inspected-only`、出典の資格は`model-local-only`と明示する。Sourceの移動、Source Revision、World Fingerprint、Provider Effect、Owner受理を主張しない。
+
+**失敗時のふるまい**：指紋の省略は拒否、異なる指紋は`STALE_SNAPSHOT`、存在しない組は`CRUD_CELL_NOT_FOUND`、同一Kind内の重複IDは`CRUD_CELL_AMBIGUOUS`として拒否する。異Kind間の同名IDは正当なため混同しない。対立する明示CRUDは消さずに閲覧へ残す。
+
+### Studioへ引き渡す二段階の現在性
+
+Studioに接続する際は、モデルの`ModelFingerprint`でセルと元宣言を再照合した後、既存の`InspectSubjectAtSnapshot`によって**World＋Source Indexの現在性**を別に確認する。これらが一致しても、qualifiedなSource位置の一意性や書込資格は得られない。#5749／#5764のSource移動後Snapshot失効の負例を参照し、古い位置へ自動的に付け替えない。
+
+CLIの一セル取得はStudioの実Consumerと同一ではない。Studio UI→Host選択→実Invocation→実応答→Windows WebView2／Stage2の検証、および正式Source保存／Review／Accept／結果照会は引き続き未検証の工程とする。新規CLIコード・テストの実行結果は対象PRのCIで別途確認する。
