@@ -55,10 +55,10 @@ func TestThreeElementCRUDCellCLIConsumesPriorSnapshotWithoutWriting(t *testing.T
 		OK            bool   `json:"ok"`
 		OKScope       string `json:"okScope"`
 		Result        struct {
-			ModelFingerprint    string                              `json:"modelFingerprint"`
-			SourceQualification string                              `json:"sourceQualification"`
-			Row                 threeelement.CRUDTable              `json:"row"`
-			Facts               []threeelement.CRUDFactOccurrence   `json:"facts"`
+			ModelFingerprint    string                            `json:"modelFingerprint"`
+			SourceQualification string                            `json:"sourceQualification"`
+			Row                 threeelement.CRUDTable            `json:"row"`
+			Facts               []threeelement.CRUDFactOccurrence `json:"facts"`
 		} `json:"result"`
 	}
 	if err := json.Unmarshal([]byte(selected.String()), &got); err != nil {
