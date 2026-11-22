@@ -220,6 +220,23 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		after.Value.Sources.Artifacts[0].Fingerprint {
 		t.Fatal("moving a file without changing bytes changed its Artifact fingerprint")
 	}
+	// The conditional read must reject the previous snapshot after the real
+	// Source move, even though the semantic World and Artifact bytes match.
+	stale := host.InspectSubjectAtSnapshot("workspace-1", subjectKind, subjectID,
+		before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Value != nil || stale.Failure == nil ||
+		stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" ||
+		stale.Failure.Retryable != "not_retryable" || stale.Failure.EffectUnknown {
+		t.Fatalf("old snapshot survived a real Source relocation: %+v", stale)
+	}
+	current := host.InspectSubjectAtSnapshot("workspace-1", subjectKind, subjectID,
+		after.Value.SnapshotFingerprint)
+	if !current.OK || current.Value == nil ||
+		current.Value.SnapshotFingerprint != after.Value.SnapshotFingerprint ||
+		current.Value.Effect != "read-only" {
+		t.Fatalf("current Source snapshot did not re-inspect read-only: %+v", current)
+	}
 	// Neither response claims that a readable Source is writable or approved.
 	for _, observed := range []string{before.Value.Effect, after.Value.Effect} {
 		if observed != "read-only" {
