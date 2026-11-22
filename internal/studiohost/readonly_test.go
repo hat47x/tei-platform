@@ -186,6 +186,16 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		len(before.Value.Sources.References) != 1 || len(before.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("first Host Inspect: %+v", before)
 	}
+	// A current real-Host inspection is eligible for read-only reinspection.
+	// It is not a Source writer grant.
+	current := host.InspectSubjectAtSnapshot("workspace-1", subjectKind,
+		subjectID, before.Value.SnapshotFingerprint)
+	if !current.OK || current.Value == nil ||
+		current.Value.Effect != "read-only" ||
+		current.Value.SnapshotFingerprint != before.Value.SnapshotFingerprint {
+		t.Fatalf("current Host Source snapshot was rejected: %+v", current)
+	}
+
 	if err := os.Rename(oldPath, newPath); err != nil {
 		t.Fatal(err)
 	}
@@ -203,6 +213,26 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		len(after.Value.Sources.References) != 1 || len(after.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("Host did not re-read the moved Source: catalog=%+v inspect=%+v", afterCatalog, after)
 	}
+	// The same semantic bytes at a different Source location invalidate
+	// the old observation, even when the World fingerprint stays equal.
+	stale := host.InspectSubjectAtSnapshot("workspace-1", subjectKind,
+		subjectID, before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Failure == nil ||
+		stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" ||
+		stale.Failure.Retryable != "not_retryable" || stale.Failure.EffectUnknown {
+		t.Fatalf("old snapshot was reused after real Source relocation: %+v", stale)
+	}
+	fresh := host.InspectSubjectAtSnapshot("workspace-1", subjectKind,
+		subjectID, after.Value.SnapshotFingerprint)
+	if !fresh.OK || fresh.Value == nil ||
+		fresh.Value.Effect != "read-only" ||
+		fresh.Value.SnapshotFingerprint != after.Value.SnapshotFingerprint ||
+		len(fresh.Value.Sources.References) != 1 ||
+		fresh.Value.Sources.References[0].ArtifactPath != after.Value.Sources.References[0].ArtifactPath {
+		t.Fatalf("current moved Source could not be re-inspected: %+v", fresh)
+	}
+
 	if string(before.Value.Canonical) != string(after.Value.Canonical) ||
 		before.Value.WorldFingerprint != after.Value.WorldFingerprint {
 		t.Fatal("a physical Source move changed the semantic value of the fixture")
