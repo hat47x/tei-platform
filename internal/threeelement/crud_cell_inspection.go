@@ -18,12 +18,12 @@ var (
 // that contributed to the corresponding model-local origin group. Neither
 // position nor fingerprint is a qualified Source location or write grant.
 type CRUDCellInspection struct {
-	ModelFingerprint   string               `json:"modelFingerprint"`
-	FunctionID         string               `json:"functionId"`
-	DataID             string               `json:"dataId"`
-	Row                CRUDTable            `json:"row"`
-	Facts              []CRUDFactOccurrence `json:"facts"`
-	SourceQualification string              `json:"sourceQualification"`
+	ModelFingerprint    string               `json:"modelFingerprint"`
+	FunctionID          string               `json:"functionId"`
+	DataID              string               `json:"dataId"`
+	Row                 CRUDTable            `json:"row"`
+	Facts               []CRUDFactOccurrence `json:"facts"`
+	SourceQualification string               `json:"sourceQualification"`
 }
 
 // InspectCRUDCellAtSnapshot performs the first consumer-side join against one
