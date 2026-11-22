@@ -105,4 +105,3 @@ func TestSelectedInspectorAlsoEnforcesExpectedSnapshot(t *testing.T) {
 		t.Fatalf("selected Inspector was bypassed: %d calls", calls)
 	}
 }
-
