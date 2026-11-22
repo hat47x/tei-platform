@@ -459,6 +459,22 @@ M1には生成型・解釈型の両方を許すが、**M3のセルフビルド�
 **実装担当**：#2620/#4359（Shape／Role）、#2621/#988/#1018（Reader）、#1121/#4544（Generator）、#943/#951/#1251（Plugin）、#2595/#2831（実Build）、#2600（失効）、#1180/#2514（独立Expected）。#5056の生成Goと実入力の取り違え拒否、#5054のOperator選択後の旧Scenario失効は別PRとして扱う。新Host・Registry・万能Meta Interpreter・独立Expected正本は増やさない。
 
 **現状**：手書きGoのShape検査、独立基線、Rule生成Goの実CLI Buildは存在する。M1〜M3の移行、Generator自身のTEI実セルフビルド、定義簡素化の実測、正式R3 Provider／Windows Studio Stage2の成立をこの追補では主張しない。
+
+### 15.5 自己構築した成果物を、TEIなしでも使い続けられるか
+
+セルフビルドが成功しても、完成したアプリケーションの保守にTEIが必須であれば、既存プロジェクトへの導入や段階的な撤退が難しくなる。通常の案件ではTEI DSLを主な実装手段としつつ、**納品物は標準の言語・ビルドツール・Markdown設計書だけでも利用できる**ことを目指す。TEI自身を構築する工程の再帰性と、生成物がTEIから独立して存続できることを、同じ成功判定にまとめない。
+
+| 検収 | 独立に確かめること |
+| --- | --- |
+| **E1 実行** | TEI CLI／Studio／専用Hostが入っていない環境で、生成した実行ファイルまたはLibraryを起動し、独立Expectedと一致する |
+| **E2 ビルド** | 生成されたSourceと通常のToolchain・公開依存だけで再ビルドできる。TEI本体のGo内部packageや専用Runtimeを必要としない |
+| **E3 保守** | TEIを使わず、生成した通常コードを変更してビルド・試験できる。変更を再びTEIへ取り込めることは別の受入とする |
+| **E4 意味の継承** | 同梱したMarkdown・生成元との対応・独立Scenarioにより、TEI固有の画面を開かなくても実装の業務上の意味と未解決点を辿れる |
+
+現行`internal/semantic/validationgen/positive.go`が生成するGoは`tei/internal/semantic/validationeval`をimportする。既存の`TestSelectedRuleGoThroughRealCLISelfBuild`はTEIモジュール**内**の実ビルドを検収したものであり、別モジュールでのE2を示さない。ここを現在の具体的な不足として記録する。既存の生成関数を無条件に外部公開したり、別Runtime／独自Hostを追加したりして埋め合わせない。
+
+最初の後続コード差分は、`internal/semantic/validationgen/positive_product_test.go`の検収から派生させ、生成した一つの正値判定を**TEIと無関係な一時Goモジュール**へ置く対照試験とする。最初に実際の依存・ビルド失敗を観測し、現行出力を無理にPASS扱いしない。外部向け公開計算APIと入出力Adapterの最小変更が#2390／#2513／#4191の既存契約に適合した段階で、同じ五つの独立Expected（正・零・負・NULL・未取得）を実行し、E1とE2を再審査する。E3とE4は実際に変更したコード・設計書・Scenarioで別に検収する。これらはM1のRequired Shape実判断、M2の手書き条件置換、M3のStage再入を妨げる先行必須条件にはしない。実行資格や業務Ownerの受理も、成果物の可搬性からは生じない。
+
 ---
 
 <!-- data-form-path-dogfood-20261116 -->
