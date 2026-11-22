@@ -186,6 +186,14 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		len(before.Value.Sources.References) != 1 || len(before.Value.Sources.Artifacts) != 1 {
 		t.Fatalf("first Host Inspect: %+v", before)
 	}
+	// A snapshot observed by the same Host is current before any Source move.
+	currentBefore := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, before.Value.SnapshotFingerprint)
+	if !currentBefore.OK || currentBefore.Value == nil ||
+		currentBefore.Value.Effect != "read-only" ||
+		currentBefore.Value.SnapshotFingerprint != before.Value.SnapshotFingerprint {
+		t.Fatalf("current Source snapshot rejected before relocation: %+v", currentBefore)
+	}
 	if err := os.Rename(oldPath, newPath); err != nil {
 		t.Fatal(err)
 	}
@@ -219,6 +227,26 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 	if before.Value.Sources.Artifacts[0].Fingerprint !=
 		after.Value.Sources.Artifacts[0].Fingerprint {
 		t.Fatal("moving a file without changing bytes changed its Artifact fingerprint")
+	}
+	// The earlier fingerprint cannot authorize even a read-only reinspection
+	// after a real path-only move. The current fingerprint may be read again.
+	stale := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Failure == nil ||
+		stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" ||
+		stale.Failure.Retryable != "not_retryable" || stale.Failure.EffectUnknown {
+		t.Fatalf("old snapshot survived real Source relocation: %+v", stale)
+	}
+	currentAfter := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, after.Value.SnapshotFingerprint)
+	if !currentAfter.OK || currentAfter.Value == nil ||
+		currentAfter.Value.Effect != "read-only" ||
+		currentAfter.Value.SnapshotFingerprint != after.Value.SnapshotFingerprint ||
+		len(currentAfter.Value.Sources.References) != 1 ||
+		currentAfter.Value.Sources.References[0].ArtifactPath !=
+			after.Value.Sources.References[0].ArtifactPath {
+		t.Fatalf("new snapshot did not re-read relocated Source: %+v", currentAfter)
 	}
 	// Neither response claims that a readable Source is writable or approved.
 	for _, observed := range []string{before.Value.Effect, after.Value.Effect} {
