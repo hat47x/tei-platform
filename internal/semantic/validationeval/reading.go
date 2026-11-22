@@ -265,7 +265,7 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		return decided(satisfiedResult(satisfied))
 
 	default:
-		return Decision{}, fmt.Errorf("kind %q of semantic validation %s has no corresponding Evaluator", rule.ID, rule.Kind)
+		return Decision{}, fmt.Errorf("kind %q of semantic validation %s has no corresponding Evaluator", rule.Kind, rule.ID)
 	}
 }
 
