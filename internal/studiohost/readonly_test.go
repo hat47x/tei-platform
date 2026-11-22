@@ -220,6 +220,25 @@ func TestHostReinspectAfterSameByteSourceMove(t *testing.T) {
 		after.Value.Sources.Artifacts[0].Fingerprint {
 		t.Fatal("moving a file without changing bytes changed its Artifact fingerprint")
 	}
+	// An old observation cannot authorize even a read-only conditional
+	// re-Inspect after the Source occurrence moves with identical bytes.
+	stale := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, before.Value.SnapshotFingerprint)
+	if stale.OK || stale.Failure == nil ||
+		stale.Failure.Code != "STALE_SNAPSHOT" ||
+		stale.Failure.Kind != "business_rejection" ||
+		stale.Failure.Retryable != "not_retryable" || stale.Failure.EffectUnknown {
+		t.Fatalf("old snapshot survived an actual same-byte Source move: %+v", stale)
+	}
+	// A new observation is usable only with its new snapshot fingerprint.
+	current := host.InspectSubjectAtSnapshot(
+		"workspace-1", subjectKind, subjectID, after.Value.SnapshotFingerprint)
+	if !current.OK || current.Value == nil || current.Value.Effect != "read-only" ||
+		current.Value.SnapshotFingerprint != after.Value.SnapshotFingerprint ||
+		len(current.Value.Sources.References) != 1 ||
+		current.Value.Sources.References[0].ArtifactPath != after.Value.Sources.References[0].ArtifactPath {
+		t.Fatalf("new snapshot did not identify the relocated Source: %+v", current)
+	}
 	// Neither response claims that a readable Source is writable or approved.
 	for _, observed := range []string{before.Value.Effect, after.Value.Effect} {
 		if observed != "read-only" {
