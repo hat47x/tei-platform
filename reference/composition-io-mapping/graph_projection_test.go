@@ -96,7 +96,7 @@ func TestPlanGraphTwoConsumersPreserveDistinctUseAndPorts(t *testing.T) {
 	})
 	p.Mappings = append(p.Mappings, Mapping{
 		From: p.Mappings[0].From,
-		To: Ref{Slot: "consumer-2", Contract: targetContract, Field: "value"},
+		To:   Ref{Slot: "consumer-2", Contract: targetContract, Field: "value"},
 	})
 	got := ProjectPlanGraph(r, p)
 	if got.Verdict != composition.ProposalCandidate ||
