@@ -86,15 +86,20 @@ func TestSelectedMarkdownPositiveRuleGeneratesExecutableGo(t *testing.T) {
 		t.Fatalf("lower selected Rule: %v", err)
 	}
 	code := out.File("quantity_is_positive.go")
-	if !bytes.Contains(code, []byte("return quantity.Sign() > 0")) ||
-		!bytes.Contains(code, []byte("quantity には属性 sales.order_line.quantity の値を渡します。")) {
-		t.Fatalf("Go code does not contain the Rule's actual decision and binding:\n%s", code)
+	if !bytes.Contains(code, []byte("return quantity.Sign() > 0")) {
+		t.Fatalf("Go code does not contain the Rule's actual decision:\n%s", code)
+	}
+	// The binding is the Trace, checked against the declared check function.
+	if binding := goemittest.SingleBinding(t, out); binding != (goemittest.Binding{
+		Check: "CheckQuantityIsPositive", Parameter: "quantity", Attribute: attributeID,
+	}) {
+		t.Fatalf("generated Go is not bound to the selected Attribute: %+v", binding)
 	}
 	if imports, err := goemittest.TEIImports(goemittest.Files(out)); err != nil || len(imports) != 0 {
 		t.Fatalf("generated Go depends on TEI: %v %v", imports, err)
 	}
 
-	// The harness reads the attribute the generated doc comment names, once
+	// The harness reads the attribute the Trace binds to the check, once
 	// per case, and passes the value to the generated check function. A null
 	// value and a value that was not fetched both reach the check as nil and
 	// are undecided, as validationeval.Decide answers for them; the old
@@ -139,16 +144,18 @@ func TestPositiveGoLoweringRejectsUnsupportedOrUnresolvedMeaning(t *testing.T) {
 			}
 		})
 	}
-	a, err := validationgen.GeneratePositive(good, "std.decimal", "main")
+	a, _, err := tracedPositive(good, "std.decimal", "main")
 	if err != nil {
 		t.Fatal(err)
 	}
 	good.Attribute = "sales.order_line.quantity_override"
-	b, err := validationgen.GeneratePositive(good, "std.decimal", "main")
+	b, trace, err := tracedPositive(good, "std.decimal", "main")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Equal(a, b) || !bytes.Contains(b, []byte("quantity_override")) {
-		t.Fatal("semantic Attribute change did not change generated Go's read target")
+	if _, err := observeGeneratedPositiveGo(b, trace); err != nil || bytes.Equal(a, b) ||
+		trace.Attribute != good.Attribute || trace.Parameter != "quantityOverride" ||
+		!bytes.Contains(b, []byte("func CheckQuantityOverrideIsPositive(quantityOverride *big.Rat) Result")) {
+		t.Fatalf("semantic Attribute change did not change generated Go's read target: %+v %v", trace, err)
 	}
 }

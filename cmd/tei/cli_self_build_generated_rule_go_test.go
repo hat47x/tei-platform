@@ -112,7 +112,7 @@ func TestSelectedRuleGoThroughRealCLISelfBuild(t *testing.T) {
 		bytes.Contains(generated, []byte("validationeval")) {
 		t.Fatal("generated Go must perform the selected decision itself")
 	}
-	// The harness reads the attribute named by the generated doc comment and
+	// The harness reads the attribute the Trace binds to the check function and
 	// passes its value to the generated check function. It and the generated
 	// files use only the standard library.
 	program := goemittest.Program(t, emitted, generatedRuleCases)

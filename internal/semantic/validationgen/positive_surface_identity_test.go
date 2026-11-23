@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
-	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -70,6 +71,7 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	type witness struct {
 		rule              semantic.Validation
 		code              []byte
+		trace             goemit.Trace
 		ast               observedPositiveGo
 		sourceStart       int
 		sourceEnd         int
@@ -146,23 +148,24 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 		if !found {
 			t.Fatal("Source Index omitted the selected authoring file")
 		}
-		goSource, err := validationgen.GeneratePositive(rule, attributeType, "main")
+		goSource, trace, err := tracedPositive(rule, attributeType, "main")
 		if err != nil {
 			t.Fatalf("generate Go from selected typed Rule: %v", err)
 		}
 		if _, err := parser.ParseFile(token.NewFileSet(), "generated.go", goSource, parser.AllErrors); err != nil {
 			t.Fatalf("generated Go syntax: %v", err)
 		}
-		if !bytes.Contains(goSource, []byte("属性 "+attributeID+" の値を渡します。")) ||
+		if string(trace.Attribute) != attributeID || trace.Check != "CheckQuantityIsPositive" ||
+			trace.Parameter != "quantity" ||
 			!bytes.Contains(goSource, []byte("quantity.Sign() > 0")) ||
 			bytes.Contains(goSource, []byte("validationeval")) {
 			t.Fatal("Go generator no longer implements the selected read and decision")
 		}
-		ast, err := observeGeneratedPositiveGo(goSource)
+		ast, err := observeGeneratedPositiveGo(goSource, trace)
 		if err != nil || ast.BoundAttribute != string(rule.Attribute) || ast.BindingCount != 1 {
 			t.Fatalf("selected typed Rule does not match generated Go AST: %+v / %v", ast, err)
 		}
-		return witness{rule: rule, code: goSource, ast: ast,
+		return witness{rule: rule, code: goSource, trace: trace, ast: ast,
 			sourceStart: start, sourceEnd: end, index: index,
 			sourceFingerprint: fingerprint, modelRevision: sourceindex.ModelRevision(index)}
 	}
@@ -212,27 +215,44 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	}
 
 	// A generated-code mutation can preserve the same syntactic shape while
-	// binding to a *different* Attribute. The authored Rule must not silently
-	// inherit that new read target just because the Go parser accepts it.
-	readMutant := bytes.Replace(markdown.code,
-		[]byte("属性 "+attributeID+" の値"),
-		[]byte("属性 sales.order_line.discount の値"), 1)
-	if bytes.Equal(readMutant, markdown.code) {
-		t.Fatal("read-target mutant was not applied")
-	}
-	observedMutant, err := observeGeneratedPositiveGo(readMutant)
+	// binding to a *different* Attribute. The binding is the Trace, so the
+	// mutant is a Trace that names another Attribute for the same check
+	// function. The authored Rule must not silently inherit that new read
+	// target just because the Go parser accepts the file.
+	readMutant := markdown.trace
+	readMutant.Attribute = "sales.order_line.discount"
+	observedMutant, err := observeGeneratedPositiveGo(markdown.code, readMutant)
 	if err != nil {
 		t.Fatalf("read-target mutant should remain structurally observable: %v", err)
 	}
 	if observedMutant.BoundAttribute == string(markdown.rule.Attribute) {
 		t.Fatal("mutant generated Go was incorrectly bound to its original authored Rule")
 	}
+	// A comment that names another attribute is not a new read target:
+	// every comment is replaced with one claiming discount, whatever the
+	// generator's wording, and the observed binding does not move.
+	rewritten, err := goemittest.RewriteComments(goemit.Output{
+		Files: []goemit.File{{Path: markdown.trace.File, Content: markdown.code}},
+	}, func(string, string) string {
+		return "quantity には属性 sales.order_line.discount の値を渡します。"
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	commentMutant := rewritten.File(markdown.trace.File)
+	if bytes.Equal(commentMutant, markdown.code) {
+		t.Fatal("comment mutant was not applied")
+	}
+	observedComment, err := observeGeneratedPositiveGo(commentMutant, markdown.trace)
+	if err != nil || observedComment.BoundAttribute != string(markdown.rule.Attribute) {
+		t.Fatalf("a comment edit changed the observed binding: %+v %v", observedComment, err)
+	}
 	thresholdMutant := bytes.Replace(markdown.code, []byte("quantity.Sign() > 0"),
 		[]byte("quantity.Sign() >= 0"), 1)
 	if bytes.Equal(thresholdMutant, markdown.code) {
 		t.Fatal("threshold mutant was not applied")
 	}
-	if _, err := observeGeneratedPositiveGo(thresholdMutant); err == nil {
+	if _, err := observeGeneratedPositiveGo(thresholdMutant, markdown.trace); err == nil {
 		t.Fatal("non-strict threshold was accepted as the original positive Rule")
 	}
 }

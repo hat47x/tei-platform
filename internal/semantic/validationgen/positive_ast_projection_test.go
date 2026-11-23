@@ -8,10 +8,12 @@ import (
 	"go/token"
 	"os"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
+	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationgen"
 )
@@ -21,9 +23,12 @@ import (
 // complete control-flow equivalence, a public Capability, or a Build receipt.
 //
 // The generated code reads nothing itself: the caller passes the value. What
-// the code is bound to is the doc sentence of the check function that names
-// the attribute ("quantity には属性 sales.order_line.quantity の値を渡します。").
-// BoundAttribute and the Binding span record that sentence.
+// the code is bound to is the structured Trace of goemit.Emit, which names the
+// Attribute, the check function and its parameter. The observation holds only
+// when the parsed file declares that check function with that parameter.
+// BoundAttribute comes from the Trace; the Binding span is the parameter in
+// the check function's signature. Comments are never read: rewording them
+// leaves the observation as it is.
 type observedPositiveGo struct {
 	BoundAttribute    string
 	BindingCount      int
@@ -40,7 +45,23 @@ type observedPositiveGo struct {
 	ConditionEnd      int
 }
 
-var observedBinding = regexp.MustCompile(`^// (\S+) には属性 (\S+) の値を渡します。$`)
+// tracedPositive lowers rule with GeneratePositive and returns the rule file
+// with the Trace that goemit.Emit gives for the same input. It fails when the
+// two disagree on the bytes.
+func tracedPositive(rule semantic.Validation, attributeType core.CanonicalID, packageName string) ([]byte, goemit.Trace, error) {
+	src, err := validationgen.GeneratePositive(rule, attributeType, packageName)
+	if err != nil {
+		return nil, goemit.Trace{}, err
+	}
+	out := goemit.Emit(goemit.Input{PackageName: packageName, Rules: []goemit.Rule{{Validation: rule, AttributeType: attributeType}}})
+	if err := out.Err(); err != nil {
+		return nil, goemit.Trace{}, err
+	}
+	if len(out.Trace) != 1 || !bytes.Equal(src, out.File(out.Trace[0].File)) {
+		return nil, goemit.Trace{}, fmt.Errorf("GeneratePositive and goemit.Emit disagree: %+v", out.Trace)
+	}
+	return src, out.Trace[0], nil
+}
 
 // ratParameter returns the name of the single *big.Rat parameter of fn and
 // the name of its single result type, or "" when fn has another shape.
@@ -82,7 +103,7 @@ func returnsIdent(body *ast.BlockStmt, name string) bool {
 	return ok && len(ret.Results) == 1 && identNamed(ret.Results[0], name)
 }
 
-func observeGeneratedPositiveGo(src []byte) (observedPositiveGo, error) {
+func observeGeneratedPositiveGo(src []byte, trace goemit.Trace) (observedPositiveGo, error) {
 	var observed observedPositiveGo
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "generated.go", src, parser.ParseComments)
@@ -166,29 +187,27 @@ func observeGeneratedPositiveGo(src []byte) (observedPositiveGo, error) {
 		}
 	}
 
-	// Binding: the check function's doc sentence for its parameter.
-	if check.Doc != nil {
-		for _, comment := range check.Doc.List {
-			match := observedBinding.FindStringSubmatch(comment.Text)
-			if match == nil || match[1] != observed.Parameter {
-				continue
-			}
-			observed.BindingCount++
-			observed.BoundAttribute = match[2]
-			var okSpan bool
-			observed.BindingStart, observed.BindingEnd, okSpan = span(comment.Pos(), comment.End())
-			if !okSpan {
-				return observed, fmt.Errorf("binding sentence has no exact Go byte span")
-			}
+	// Binding: the Trace names the check function, its parameter and the
+	// Attribute whose value that parameter receives. It counts only when the
+	// declared functions are the ones the Trace names.
+	if trace.Check == observed.Check && trace.Decision == observed.Decision &&
+		trace.Parameter == observed.Parameter && trace.Attribute != "" {
+		observed.BindingCount++
+		observed.BoundAttribute = string(trace.Attribute)
+		parameter := check.Type.Params.List[0].Names[0]
+		var okSpan bool
+		observed.BindingStart, observed.BindingEnd, okSpan = span(parameter.Pos(), parameter.End())
+		if !okSpan {
+			return observed, fmt.Errorf("bound parameter has no exact Go byte span")
 		}
 	}
 
 	if observed.BindingCount != 1 || observed.BoundAttribute == "" ||
 		!observed.StrictPositive || !observed.NilGuardUndecided ||
 		!observed.TrueResult || !observed.FalseResult {
-		return observed, fmt.Errorf("generated decision is not the observed bound positive shape: %+v", observed)
+		return observed, fmt.Errorf("generated decision is not the observed bound positive shape: %+v (trace %s)", observed, trace)
 	}
-	if !bytes.Contains(src[observed.BindingStart:observed.BindingEnd], []byte("属性 "+observed.BoundAttribute)) ||
+	if string(src[observed.BindingStart:observed.BindingEnd]) != observed.Parameter ||
 		string(src[observed.ConditionStart:observed.ConditionEnd]) != observed.Parameter+".Sign() > 0" {
 		return observed, fmt.Errorf("AST byte spans do not match the generated binding and condition")
 	}
@@ -201,26 +220,27 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 		Kind:      semantic.ValidationPositive,
 		Attribute: "sales.order_line.quantity",
 	}
-	generated, err := validationgen.GeneratePositive(rule, "std.decimal", "main")
+	generated, trace, err := tracedPositive(rule, "std.decimal", "main")
 	if err != nil {
 		t.Fatal(err)
 	}
-	observed, err := observeGeneratedPositiveGo(generated)
+	observed, err := observeGeneratedPositiveGo(generated, trace)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if observed.BoundAttribute != "sales.order_line.quantity" || observed.Check != "CheckQuantityIsPositive" {
+	if observed.BoundAttribute != "sales.order_line.quantity" || observed.Check != "CheckQuantityIsPositive" ||
+		observed.Parameter != "quantity" {
 		t.Fatalf("Go AST observed the wrong bound attribute: %+v", observed)
 	}
 	// A second typed Rule can produce an equally shaped Go function, but it
 	// is bound to a different attribute. Code formatting alone does not
 	// confer identity.
 	rule.Attribute = "sales.order_line.discount"
-	second, err := validationgen.GeneratePositive(rule, "std.decimal", "main")
+	second, secondTrace, err := tracedPositive(rule, "std.decimal", "main")
 	if err != nil {
 		t.Fatal(err)
 	}
-	changed, err := observeGeneratedPositiveGo(second)
+	changed, err := observeGeneratedPositiveGo(second, secondTrace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,21 +248,47 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 		bytes.Equal(generated, second) {
 		t.Fatalf("Rule target edit was not visible in actual Go AST: %+v", changed)
 	}
-
-	// A source comment is not a new branch or binding. Offsets are
-	// recalculated for the new bytes, while the observed shape is identical.
-	commented := append([]byte("// display-only text\n"), generated...)
-	afterComment, err := observeGeneratedPositiveGo(commented)
-	if err != nil {
-		t.Fatal(err)
+	// The Trace binds only the functions the file declares: the discount
+	// Trace does not bind the quantity file.
+	if _, err := observeGeneratedPositiveGo(generated, secondTrace); err == nil {
+		t.Fatal("a Trace naming functions the file does not declare was accepted as its binding")
 	}
+
 	withoutPositions := func(o observedPositiveGo) observedPositiveGo {
 		o.BindingStart, o.BindingEnd, o.ConditionStart, o.ConditionEnd = 0, 0, 0, 0
 		return o
 	}
+	// A source comment is not a new branch or binding. Offsets are
+	// recalculated for the new bytes, while the observed shape is identical.
+	commented := append([]byte("// display-only text\n"), generated...)
+	afterComment, err := observeGeneratedPositiveGo(commented, trace)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(withoutPositions(observed), withoutPositions(afterComment)) ||
 		afterComment.BindingStart <= observed.BindingStart {
 		t.Fatal("comment-only change was mistaken for a new Go decision")
+	}
+	// Rewriting every comment, the doc sentence that names the attribute
+	// among them, leaves the observation as it is: nothing is read from
+	// comment text.
+	reworded, err := goemittest.RewriteComments(goemit.Output{
+		Files: []goemit.File{{Path: trace.File, Content: generated}},
+		Trace: []goemit.Trace{trace},
+	}, func(string, string) string { return "説明だけを書き換えた。" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	rewordedSrc := reworded.File(trace.File)
+	if bytes.Contains(rewordedSrc, []byte("sales.order_line.quantity")) {
+		t.Fatalf("the comment rewrite left the attribute in the file:\n%s", rewordedSrc)
+	}
+	afterReword, err := observeGeneratedPositiveGo(rewordedSrc, trace)
+	if err != nil {
+		t.Fatalf("rewording comments broke the observation: %v", err)
+	}
+	if !reflect.DeepEqual(withoutPositions(observed), withoutPositions(afterReword)) {
+		t.Fatalf("rewording comments changed the observation: %+v / %+v", observed, afterReword)
 	}
 
 	// The visible control-flow diagram must be derived from actual code.
@@ -252,7 +298,7 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 	if bytes.Equal(mutated, generated) {
 		t.Fatal("positive branch mutant was not applied")
 	}
-	if _, err := observeGeneratedPositiveGo(mutated); err == nil {
+	if _, err := observeGeneratedPositiveGo(mutated, trace); err == nil {
 		t.Fatal("modified threshold was incorrectly observed as strict positive")
 	}
 
@@ -263,7 +309,7 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 	if bytes.Equal(missingAsFailure, generated) {
 		t.Fatal("nil-guard mutant was not applied")
 	}
-	if _, err := observeGeneratedPositiveGo(missingAsFailure); err == nil {
+	if _, err := observeGeneratedPositiveGo(missingAsFailure, trace); err == nil {
 		t.Fatal("a nil guard without Undecided was accepted as missing-value handling")
 	}
 }

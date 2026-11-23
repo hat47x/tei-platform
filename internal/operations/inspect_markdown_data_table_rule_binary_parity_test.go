@@ -61,13 +61,19 @@ func (s *tableRuleParitySource) ReadRelationKeys(relation, attribute core.Canoni
 
 // A marked Markdown Data table and its adjacent Rule reach the product
 // Evaluator and an actually compiled/generated Go binary. Equality of result
-// alone is not enough: the attribute the binary reads must be the same.
+// alone is not enough: the attribute read for the binary must be the same.
 //
 // The generated Go reads nothing itself. Its check function receives the
 // value, and the Trace that goemit.Emit returns names the attribute that value
-// comes from. The driver takes the generated mode's binding from that Trace,
-// never from this test or from comment prose. The two adversarial modes are
-// written by this test, so their bindings are too, and say so.
+// comes from. The driver reads that attribute and passes the value; the
+// Trace, not this test or comment prose, chooses it for the generated mode.
+// The two adversarial modes are byte copies of the generated file with
+// renamed functions, so their compiled logic is the same as the generated
+// one; the attribute each reads is chosen by this test. Differences between
+// modes therefore come from the binding the driver applies, not from
+// different compiled decisions. The misbound mode shows that the comparison
+// below rejects a wrong binding whose outcome matches; it does not show that
+// compiled code can detect one.
 // This proves a bounded pure-Rule G/P comparison, not Builder R2-P, Provider
 // R3, Owner authority, or a second Semantic engine.
 func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
@@ -153,10 +159,11 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		t.Fatalf("generator changed the expected binding or entry: %+v %v", bindings, err)
 	}
 	generated := out.File(out.Trace[0].File)
-	// One-factor adversarial implementation: the decision and the outcome
-	// stay identical for the supplied values, but the copy is bound to
-	// another Attribute and must not qualify. The copy is renamed only so it
-	// can share the package with the generated file.
+	// One-factor adversarial binding: the copy's code is the generated code
+	// renamed, so the decision and the outcome stay identical for the
+	// supplied values, but the driver feeds it another Attribute and it must
+	// not qualify. The copy is renamed only so it can share the package with
+	// the generated file.
 	misbound := bytes.ReplaceAll(generated, []byte("AllocationIsPositive"), []byte("MisboundAllocationIsPositive"))
 	// A Target symbol may change without changing the selected semantic Rule.
 	// Keep the meaning and the binding constant while renaming only the Go
@@ -290,10 +297,11 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 }
 
 // markedDataParityDriver is compiled together with the actual
-// product-generated Go, in a module of its own. Each mode reads the attribute
-// it is bound to; the misbound copy is bound to another
-// attribute that happens to hold the same value, so outcome parity alone
-// would accept it. The test fills in the modes.
+// product-generated Go, in a module of its own. For each mode the driver
+// reads the attribute that mode is bound to and passes the value to the
+// mode's check function; the misbound copy is bound to another attribute that
+// happens to hold the same value, so outcome parity alone would accept it.
+// The test fills in the modes.
 const markedDataParityDriver = `package main
 
 import (

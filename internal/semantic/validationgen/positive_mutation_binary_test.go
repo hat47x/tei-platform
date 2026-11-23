@@ -137,7 +137,8 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 	// The record is identical in both: 2 for quantity, 0 for secondary
 	// quantity. main.go and cases.go are identical too; binding.go names the
 	// attribute and check function from Emit's Trace, so the harness reports
-	// the attribute the generated Go is bound to.
+	// the attribute the Trace binds. The generated Go reads no attribute
+	// itself; which value reaches it is decided by that Trace-driven harness.
 	record := []goemittest.Case{{Name: "fixed", Row: map[string]goemittest.Cell{
 		"sales.order_line.quantity":           {Text: "2"},
 		"sales.order_line.secondary_quantity": {Text: "0"},
@@ -202,8 +203,13 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 		!bytes.Contains(afterGo, []byte("func CheckSecondaryQuantityIsPositive(")) {
 		t.Fatalf("generated Go is not bound to the edited attribute: %+v", afterOut.Trace[0])
 	}
-	// Same record, same main.go and cases.go: the different results come from
-	// the generated check function and the attribute its Trace binds.
+	// Same record, same main.go and cases.go. The different result comes from
+	// the binding, not from different compiled logic: binding.go, written from
+	// the Trace, makes the harness read secondary_quantity (0) instead of
+	// quantity (2), and both check functions decide "> 0" the same way. What
+	// the generated package adds is the renamed check function: binding.go
+	// calls CheckSecondaryQuantityIsPositive, so the binary builds only when
+	// the regenerated package declares the function the Trace names.
 	buildAndExecute("after", afterOut, "fixed:not-satisfied:1:sales.order_line.secondary_quantity\n")
 	if err := afterIndex.Validate(readCurrent); err != nil {
 		t.Fatalf("new Source Index rejected actual edited bytes: %v", err)

@@ -134,12 +134,12 @@ func TestPositiveGoLoweringTracksSelectedMarkdownSourceEdit(t *testing.T) {
 		return out, index
 	}
 	ruleGo := func(out goemit.Output) []byte { return out.File(out.Trace[0].File) }
-	binding := func(attribute string) []byte { return []byte("属性 " + attribute + " の値を渡します。") }
+	binding := func(out goemit.Output) goemittest.Binding { return goemittest.SingleBinding(t, out) }
 
 	// Inputs remain identical across both processes: quantity=0 and bonus=2.
 	// Only the Markdown predicate selects which field the generated Go is
-	// bound to; the harness reads the field the generated doc comment names
-	// and reports what it read.
+	// bound to; the harness reads the field the Trace binds to the check
+	// function and reports what it read.
 	inputs := []goemittest.Case{{Name: "fixed", Row: map[string]goemittest.Cell{
 		firstAttribute:  {Text: "0"},
 		secondAttribute: {Text: "2"},
@@ -152,8 +152,7 @@ func TestPositiveGoLoweringTracksSelectedMarkdownSourceEdit(t *testing.T) {
 	}
 
 	before, oldIndex := loadAndLower()
-	if !bytes.Contains(ruleGo(before), binding(firstAttribute)) ||
-		!bytes.Contains(ruleGo(before), []byte("func CheckQuantityIsPositive(")) {
+	if binding(before) != (goemittest.Binding{Check: "CheckQuantityIsPositive", Parameter: "quantity", Attribute: firstAttribute}) {
 		t.Fatal("initial generated Go is not bound to the selected quantity Attribute")
 	}
 	runGenerated(before, "fixed:not-satisfied:1:"+firstAttribute+"\n")
@@ -180,9 +179,7 @@ func TestPositiveGoLoweringTracksSelectedMarkdownSourceEdit(t *testing.T) {
 
 	after, newIndex := loadAndLower()
 	if bytes.Equal(ruleGo(before), ruleGo(after)) ||
-		!bytes.Contains(ruleGo(after), binding(secondAttribute)) ||
-		!bytes.Contains(ruleGo(after), []byte("func CheckBonusQuantityIsPositive(")) ||
-		bytes.Contains(ruleGo(after), binding(firstAttribute)) ||
+		binding(after) != (goemittest.Binding{Check: "CheckBonusQuantityIsPositive", Parameter: "bonusQuantity", Attribute: secondAttribute}) ||
 		bytes.Contains(ruleGo(after), []byte("func CheckQuantityIsPositive(")) {
 		t.Fatal("edited selected Rule did not change the generated Go binding")
 	}

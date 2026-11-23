@@ -117,6 +117,11 @@ func (o Output) Err() error {
 
 const decimalType core.CanonicalID = "std.decimal"
 
+// maxFileNameBytes is the longest emitted file name Emit accepts. Common file
+// systems refuse names over 255 bytes; the margin leaves room for a suffix a
+// tool may add, such as an editor's backup or a "_test" variant.
+const maxFileNameBytes = 200
+
 //go:embed internal/stdpart/result.go internal/stdpart/decimal.go
 var standardParts embed.FS
 
@@ -171,6 +176,10 @@ func Emit(input Input) Output {
 		names, ok := namePositive(string(v.Attribute))
 		if !ok {
 			report(CodeNameInvalid, v.ID, "semantic validation %s: attribute %s does not give a Go name; rename it with ASCII letters and digits that start with a letter", v.ID, v.Attribute)
+			continue
+		}
+		if len(names.File) > maxFileNameBytes {
+			report(CodeNameInvalid, v.ID, "semantic validation %s: attribute %s gives the file name %s of %d bytes, longer than %d; shorten the attribute name", v.ID, v.Attribute, names.File, len(names.File), maxFileNameBytes)
 			continue
 		}
 		if why := reservedName(names.Parameter); why != "" {

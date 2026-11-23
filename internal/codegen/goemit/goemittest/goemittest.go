@@ -9,9 +9,11 @@
 package goemittest
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"os"
@@ -140,8 +142,15 @@ type Binding struct {
 
 // Bindings returns one binding per emitted rule, taken from the structured
 // Trace that Emit returns, never from comment prose. Each one is checked
-// against the generated file: the file must declare a function named Check
-// that takes one *big.Rat named Parameter and returns Result.
+// against the syntax of the generated file, comments left out:
+//
+//   - the file declares Check(Parameter *big.Rat) Result and
+//     Decision(Parameter *big.Rat) bool;
+//   - Check compares Parameter with nil and passes Parameter itself to
+//     Decision.
+//
+// So a binding holds only when the value the caller passes for Attribute is
+// the one the check function guards and decides on.
 func Bindings(out goemit.Output) ([]Binding, error) {
 	if len(out.Trace) == 0 {
 		return nil, errors.New("no emitted rule")
@@ -156,24 +165,103 @@ func Bindings(out goemit.Output) ([]Binding, error) {
 		if err != nil {
 			return nil, err
 		}
-		found := false
+		var check, decision *ast.FuncDecl
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if ok && fn.Recv == nil && fn.Name.Name == trace.Check && isCheckSignature(fn.Type) &&
-				fn.Type.Params.List[0].Names[0].Name == trace.Parameter {
-				found = true
-				break
+			if !ok || fn.Recv != nil || fn.Body == nil {
+				continue
+			}
+			switch {
+			case fn.Name.Name == trace.Check && ratParameter(fn.Type, "Result") == trace.Parameter:
+				check = fn
+			case fn.Name.Name == trace.Decision && ratParameter(fn.Type, "bool") == trace.Parameter:
+				decision = fn
 			}
 		}
-		if !found {
+		if check == nil {
 			return nil, fmt.Errorf("%s declares no check function %s(%s *big.Rat) Result", trace.File, trace.Check, trace.Parameter)
+		}
+		if decision == nil {
+			return nil, fmt.Errorf("%s declares no decision function %s(%s *big.Rat) bool", trace.File, trace.Decision, trace.Parameter)
+		}
+		if !guardsAndDecides(check.Body, trace.Parameter, trace.Decision) {
+			return nil, fmt.Errorf("%s: %s does not compare %s with nil and pass it to %s", trace.File, trace.Check, trace.Parameter, trace.Decision)
 		}
 		bindings = append(bindings, Binding{Check: trace.Check, Parameter: trace.Parameter, Attribute: string(trace.Attribute)})
 	}
 	return bindings, nil
 }
 
-func isCheckSignature(fn *ast.FuncType) bool {
+// guardsAndDecides reports whether body holds "parameter == nil" and the call
+// "decision(parameter)".
+func guardsAndDecides(body *ast.BlockStmt, parameter, decision string) bool {
+	guarded, decided := false, false
+	ast.Inspect(body, func(node ast.Node) bool {
+		switch n := node.(type) {
+		case *ast.BinaryExpr:
+			if n.Op == token.EQL && isIdent(n.X, parameter) && isIdent(n.Y, "nil") {
+				guarded = true
+			}
+		case *ast.CallExpr:
+			if isIdent(n.Fun, decision) && len(n.Args) == 1 && isIdent(n.Args[0], parameter) {
+				decided = true
+			}
+		}
+		return true
+	})
+	return guarded && decided
+}
+
+func isIdent(expr ast.Expr, name string) bool {
+	id, ok := expr.(*ast.Ident)
+	return ok && id.Name == name
+}
+
+// ratParameter returns the name of the one *big.Rat parameter of fn when fn
+// returns exactly the type named result, or "".
+func ratParameter(fn *ast.FuncType, result string) string {
+	if !isCheckSignature(fn, result) {
+		return ""
+	}
+	return fn.Params.List[0].Names[0].Name
+}
+
+// RewriteComments returns a copy of out in which the text of every comment of
+// every Go file is replaced by rewrite(path, text). Code, Trace and
+// Diagnostics are kept as they are. Tests use it to show that nothing they
+// bind on or run is read from comments. rewrite must return one line.
+func RewriteComments(out goemit.Output, rewrite func(path, text string) string) (goemit.Output, error) {
+	rewritten := out
+	rewritten.Files = make([]goemit.File, len(out.Files))
+	for i, file := range out.Files {
+		rewritten.Files[i] = file
+		if !strings.HasSuffix(file.Path, ".go") {
+			continue
+		}
+		fset := token.NewFileSet()
+		parsed, err := parser.ParseFile(fset, file.Path, file.Content, parser.ParseComments)
+		if err != nil {
+			return goemit.Output{}, err
+		}
+		for _, group := range parsed.Comments {
+			for _, comment := range group.List {
+				text := rewrite(file.Path, comment.Text)
+				if strings.ContainsAny(text, "\r\n  ") {
+					return goemit.Output{}, fmt.Errorf("%s: rewritten comment %q is not one line", file.Path, text)
+				}
+				comment.Text = "// " + text
+			}
+		}
+		var b bytes.Buffer
+		if err := format.Node(&b, fset, parsed); err != nil {
+			return goemit.Output{}, err
+		}
+		rewritten.Files[i] = goemit.File{Path: file.Path, Content: b.Bytes()}
+	}
+	return rewritten, nil
+}
+
+func isCheckSignature(fn *ast.FuncType, result string) bool {
 	if fn.Params == nil || len(fn.Params.List) != 1 || len(fn.Params.List[0].Names) != 1 ||
 		fn.Results == nil || len(fn.Results.List) != 1 {
 		return false
@@ -187,8 +275,8 @@ func isCheckSignature(fn *ast.FuncType) bool {
 		return false
 	}
 	pkg, ok := sel.X.(*ast.Ident)
-	result, okResult := fn.Results.List[0].Type.(*ast.Ident)
-	return ok && pkg.Name == "big" && okResult && result.Name == "Result"
+	named, okResult := fn.Results.List[0].Type.(*ast.Ident)
+	return ok && pkg.Name == "big" && okResult && named.Name == result
 }
 
 // Cell is one value of a record. A Null cell holds no value.

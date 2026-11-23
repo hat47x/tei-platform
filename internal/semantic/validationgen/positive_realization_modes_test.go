@@ -122,7 +122,7 @@ func TestSelectedPositiveRuleDirectAndGeneratedEvaluation(t *testing.T) {
 	}
 
 	// Generated: the emitted package in a module of its own. The harness
-	// reads the attribute named by the generated doc comment.
+	// reads the attribute the Trace binds to the check function.
 	var harness []goemittest.Case
 	var want strings.Builder
 	for _, c := range cases {

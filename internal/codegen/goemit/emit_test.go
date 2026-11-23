@@ -292,6 +292,9 @@ func TestEmittedRuleFileHasTheTwoLayers(t *testing.T) {
 		"// QuantityIsPositive は、規則「数量は正の数」（sales.order_line.quantity_positive）の判定です。\n",
 		"// quantity には属性 sales.order_line.quantity の値を渡します。\n",
 	} {
+		// The two comment lines pin the wording people read, nothing
+		// more. No binding is taken from them: see
+		// TestBindingAndBehaviourDoNotDependOnCommentText.
 		if !bytes.Contains(src, []byte(want)) {
 			t.Fatalf("rule file lacks %q:\n%s", want, src)
 		}
@@ -322,33 +325,86 @@ func TestEmittedRuleFileHasTheTwoLayers(t *testing.T) {
 	}
 }
 
-// Rewording the doc comment does not change the binding: a comment that no
-// longer names the attribute still gives the same Binding, because only the
-// Trace and the declared function are read.
-func TestBindingDoesNotDependOnDocCommentProse(t *testing.T) {
-	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{quantityRule}})
+// Comment text is prose for people, never a contract. Every comment of every
+// emitted file is replaced with text that names no attribute and no rule, and
+// the bindings, the observed syntax and the run of the generated code stay the
+// same. A test that reads its binding from the doc comment fails here.
+func TestBindingAndBehaviourDoNotDependOnCommentText(t *testing.T) {
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{
+		quantityRule,
+		positiveRule("sales.order_line.discount_positive", "sales.order_line.discount"),
+	}})
 	if err := out.Err(); err != nil {
 		t.Fatal(err)
 	}
-	reworded := out
-	reworded.Files = append([]goemit.File(nil), out.Files...)
-	for i, file := range reworded.Files {
-		if file.Path == out.Trace[0].File {
-			content := bytes.ReplaceAll(file.Content, []byte("sales.order_line.quantity"), []byte("(reworded)"))
-			reworded.Files[i] = goemit.File{Path: file.Path, Content: content}
+	rewritten, err := goemittest.RewriteComments(out, func(path, _ string) string {
+		return "unrelated text in " + path
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range rewritten.Files {
+		for _, gone := range []string{"の値を渡します", "sales.order_line.", "DO NOT EDIT"} {
+			if bytes.Contains(file.Content, []byte(gone)) {
+				t.Fatalf("%s still holds %q after the comment rewrite:\n%s", file.Path, gone, file.Content)
+			}
+		}
+		if bytes.Equal(file.Content, out.File(file.Path)) {
+			t.Fatalf("%s was not rewritten", file.Path)
 		}
 	}
 	before, errBefore := goemittest.Bindings(out)
-	after, errAfter := goemittest.Bindings(reworded)
-	if errBefore != nil || errAfter != nil || len(after) != 1 || before[0] != after[0] {
-		t.Fatalf("binding changed with comment prose: %+v %v / %+v %v", before, errBefore, after, errAfter)
+	after, errAfter := goemittest.Bindings(rewritten)
+	if errBefore != nil || errAfter != nil || len(after) != 2 || fmt.Sprint(before) != fmt.Sprint(after) {
+		t.Fatalf("binding changed with comment text: %+v %v / %+v %v", before, errBefore, after, errAfter)
 	}
+	// The code itself is the same: only comments were touched.
+	stripped := func(o goemit.Output) map[string]string {
+		code := map[string]string{}
+		for _, file := range o.Files {
+			fset := token.NewFileSet()
+			parsed, err := parser.ParseFile(fset, file.Path, file.Content, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var b bytes.Buffer
+			if err := format.Node(&b, fset, parsed); err != nil {
+				t.Fatal(err)
+			}
+			code[file.Path] = b.String()
+		}
+		return code
+	}
+	if fmt.Sprint(stripped(out)) != fmt.Sprint(stripped(rewritten)) {
+		t.Fatal("the comment rewrite changed code")
+	}
+	// The rewritten files still build and give the same answers.
+	single := func(o goemit.Output) goemit.Output {
+		o.Trace = o.Trace[:1]
+		return o
+	}
+	cases := []goemittest.Case{
+		{Name: "positive", Row: map[string]goemittest.Cell{"sales.order_line.discount": {Text: "2"}}},
+		{Name: "zero", Row: map[string]goemittest.Cell{"sales.order_line.discount": {Text: "0"}}},
+		{Name: "missing", Row: map[string]goemittest.Cell{}},
+	}
+	if got, want := goemittest.Run(t, single(rewritten), cases), goemittest.Run(t, single(out), cases); got != want {
+		t.Fatalf("comment rewrite changed the run:\n%s\nwant:\n%s", got, want)
+	}
+
 	// A Trace naming a function the file does not declare is refused.
 	broken := out
 	broken.Trace = append([]goemit.Trace(nil), out.Trace...)
 	broken.Trace[0].Check = "CheckSomethingElse"
 	if _, err := goemittest.Bindings(broken); err == nil {
 		t.Fatal("a trace naming an undeclared check function was accepted")
+	}
+	// So is a Trace whose check function does not pass its value to the
+	// decision function the Trace names.
+	broken.Trace[0] = out.Trace[0]
+	broken.Trace[0].Decision = out.Trace[1].Decision
+	if _, err := goemittest.Bindings(broken); err == nil {
+		t.Fatal("a trace naming another rule's decision function was accepted")
 	}
 }
 
@@ -462,6 +518,11 @@ func TestNamesFollowTheAttributeWords(t *testing.T) {
 		// Documented odd spellings: iD splits at its case boundary, and
 		// HTTPSUrl gives the HTTPS initialism followed by url.
 		{"sales.order.iD", "IDIsPositive", "CheckIDIsPositive", "iD", "i_d_is_positive.go"},
+		{"sales.order.iDs", "IDsIsPositive", "CheckIDsIsPositive", "iDs", "i_ds_is_positive.go"},
+		// The plural rule covers the listed initialisms only: any other
+		// capital run before a final 's' splits before its last capital.
+		{"sales.order.userABCs", "UserAbCsIsPositive", "CheckUserAbCsIsPositive", "userAbCs", "user_ab_cs_is_positive.go"},
+		{"sales.order.apiURLs", "APIURLsIsPositive", "CheckAPIURLsIsPositive", "apiURLs", "api_urls_is_positive.go"},
 		{"web.call.HTTPSUrl", "HTTPSURLIsPositive", "CheckHTTPSURLIsPositive", "httpsURL", "https_url_is_positive.go"},
 		// A lower-case run after "s" is not a plural: IDsum splits as before.
 		{"sales.order.userIDsum", "UserIDsumIsPositive", "CheckUserIDsumIsPositive", "userIDsum", "user_i_dsum_is_positive.go"},
@@ -517,6 +578,31 @@ func TestDecisionNameEqualToAnotherCheckNameGivesNameCollision(t *testing.T) {
 			!strings.Contains(message, "CheckQuantityIsPositive") || len(out.Files) != 0 {
 			t.Fatalf("collision does not name both elements and the name, or still emitted: %s", message)
 		}
+	}
+}
+
+// A file name of 200 bytes is emitted; one byte more gives NAME_INVALID.
+func TestOverlongFileNameGivesNameInvalid(t *testing.T) {
+	const suffix = "_is_positive.go"
+	fits := core.CanonicalID("sales.order_line." + strings.Repeat("q", 200-len(suffix)))
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{positiveRule("x.rule", fits)}})
+	if err := out.Err(); err != nil || len(out.Trace) != 1 || len(out.Trace[0].File) != 200 {
+		t.Fatalf("a 200-byte file name was refused: %v %+v", err, out.Trace)
+	}
+	tooLong := fits + "q"
+	out = goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{positiveRule("x.rule", tooLong)}})
+	if got := diagnosticCodes(out); len(got) != 1 || got[0] != goemit.CodeNameInvalid || len(out.Files) != 0 {
+		t.Fatalf("a 201-byte file name gave codes %v", got)
+	}
+	if !strings.Contains(out.Diagnostics[0].Message, "201 bytes") || out.Diagnostics[0].Element != "x.rule" {
+		t.Fatalf("diagnostic does not name the length: %+v", out.Diagnostics[0])
+	}
+	// Underscores between words count too: the limit is on the file name,
+	// not on the attribute.
+	words := core.CanonicalID("sales.order_line." + strings.Repeat("ab_", 62) + "ab")
+	out = goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{positiveRule("x.rule", words)}})
+	if got := diagnosticCodes(out); len(got) != 1 || got[0] != goemit.CodeNameInvalid {
+		t.Fatalf("a %d-byte file name from words gave codes %v", 62*3+2+len(suffix), got)
 	}
 }
 

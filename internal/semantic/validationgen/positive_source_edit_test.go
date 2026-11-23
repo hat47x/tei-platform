@@ -131,7 +131,7 @@ func TestSelectedMarkdownRuleEditRebuildsActualGoDecision(t *testing.T) {
 		}
 	}
 	// The harness reads quantity=0 and discount=2 from one fixed record. It
-	// reads the attribute the generated doc comment names and reports it.
+	// reads the attribute the Trace binds to the check function and reports it.
 	record := []goemittest.Case{{Name: "fixed", Row: map[string]goemittest.Cell{
 		"sales.order_line.quantity": {Text: "0"},
 		"sales.order_line.discount": {Text: "2"},
@@ -183,8 +183,9 @@ func TestSelectedMarkdownRuleEditRebuildsActualGoDecision(t *testing.T) {
 	changedGo := emitted(changedOut)
 	if changedAttribute != "sales.order_line.discount" ||
 		bytes.Equal(changedGo, initialGo) ||
-		!bytes.Contains(changedGo, []byte("func CheckDiscountIsPositive(")) ||
-		!bytes.Contains(changedGo, []byte("属性 sales.order_line.discount の値を渡します。")) {
+		goemittest.SingleBinding(t, changedOut) != (goemittest.Binding{
+			Check: "CheckDiscountIsPositive", Parameter: "discount", Attribute: "sales.order_line.discount",
+		}) {
 		t.Fatal("authored Rule read target was not reflected in the regenerated Go")
 	}
 	if got := execute(changedOut); got != "fixed:satisfied:1:sales.order_line.discount\n" {

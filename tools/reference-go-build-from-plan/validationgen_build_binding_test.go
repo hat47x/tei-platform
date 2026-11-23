@@ -93,7 +93,7 @@ func TestSelectedRuleGoIsActuallyConsumedByBuildPlanBuilder(t *testing.T) {
 		bytes.Contains(generated, []byte("validationeval")) {
 		t.Fatal("generated Go must implement its own comparison and branch")
 	}
-	// The harness reads the attribute named by the generated doc comment.
+	// The harness reads the attribute the Trace binds to the check function.
 	// A null value and a value that was not fetched both reach the check
 	// function as nil and are undecided.
 	const attr = "sales.order_line.quantity"

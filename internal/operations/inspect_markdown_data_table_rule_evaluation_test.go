@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationeval"
@@ -97,9 +99,14 @@ func TestMarkedDataTableRuleSharesEvaluatorAndGoLoweringMeaning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lower product-selected table Rule: %v", err)
 	}
-	// The generated Go reads nothing itself; its check function names the
-	// attribute whose value the caller passes.
-	if !bytes.Contains(generated, []byte("allocation には属性 "+attributeID+" の値を渡します。")) ||
+	// The generated Go reads nothing itself; the Trace of the same lowering
+	// names the attribute whose value the caller passes to the check
+	// function, checked against the function the file declares.
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: rule, AttributeType: attribute.TypeRef}}})
+	if !bytes.Equal(generated, out.File("allocation_is_positive.go")) ||
+		goemittest.SingleBinding(t, out) != (goemittest.Binding{
+			Check: "CheckAllocationIsPositive", Parameter: "allocation", Attribute: attributeID,
+		}) ||
 		!bytes.Contains(generated, []byte("func CheckAllocationIsPositive(allocation *big.Rat) Result")) ||
 		!bytes.Contains(generated, []byte("allocation.Sign() > 0")) ||
 		bytes.Contains(generated, []byte("validationeval")) {

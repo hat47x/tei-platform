@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationgen"
@@ -31,14 +32,13 @@ func TestPositiveRuleShapeIndependentBaseline(t *testing.T) {
 			t.Fatalf("valid numeric Rule rejected: %v", err)
 		}
 		// The generated code no longer reads a Source: the decision takes the
-		// present value, the check function answers Undecided without one, and
-		// its doc comment names the attribute the caller passes.
+		// present value, and the check function answers Undecided without
+		// one. Which attribute the caller passes is the Trace below.
 		for _, want := range []string{
 			"func QuantityIsPositive(quantity *big.Rat) bool {",
 			"return quantity.Sign() > 0",
 			"func CheckQuantityIsPositive(quantity *big.Rat) Result {",
 			"return Undecided",
-			"quantity には属性 sales.order_line.quantity の値を渡します。",
 		} {
 			if !bytes.Contains(got, []byte(want)) {
 				t.Fatalf("generated Rule does not bind and decide the independently chosen positive obligation (%q):\n%s", want, got)
@@ -48,6 +48,12 @@ func TestPositiveRuleShapeIndependentBaseline(t *testing.T) {
 		out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: base, AttributeType: "std.decimal"}}})
 		if !bytes.Equal(got, out.File("quantity_is_positive.go")) {
 			t.Fatal("GeneratePositive and goemit.Emit disagree on the rule file")
+		}
+		// The check function takes the value of the rule's own Attribute.
+		if binding := goemittest.SingleBinding(t, out); binding != (goemittest.Binding{
+			Check: "CheckQuantityIsPositive", Parameter: "quantity", Attribute: string(base.Attribute),
+		}) {
+			t.Fatalf("generated Rule is not bound to the independently chosen Attribute: %+v", binding)
 		}
 	})
 

@@ -23,15 +23,22 @@ import (
 //   - file: the words in lower case joined by '_', then "_is_positive.go".
 //
 // The initialisms ID, URL, HTTP, HTTPS and API are written in upper case
-// (customer_id -> CustomerIDIsPositive, parameter customerID). An initialism
-// followed by a lower-case 's' at the end of a word is its plural and stays
-// one word: userIDs and user_ids both give UserIDsIsPositive, parameter
-// userIDs, file user_ids_is_positive.go. Only the case boundaries listed
-// above split a word, so some spellings give names that look odd but are
-// still predictable:
+// (customer_id -> CustomerIDIsPositive, parameter customerID).
+//
+// Plurals of those initialisms only. A run of capitals that spells one of
+// the initialisms, followed by a lower-case 's' that ends the word (the
+// last letter, or one followed by '.', '_', '-' or a capital), is the plural
+// and stays one word: userIDs and user_ids both give UserIDsIsPositive,
+// parameter userIDs, file user_ids_is_positive.go. Any other capital run
+// followed by 's' splits by the usual rule, the last capital starting a new
+// word: userABCs gives user, ab, cs (UserAbCsIsPositive). Some spellings
+// therefore give names that look odd but are still predictable:
 //
 //   - iD splits into i and d (IDIsPositive, parameter iD, file
 //     i_d_is_positive.go); write id instead;
+//   - iDs splits into i and ds, because the run before 's' is the single
+//     capital D, not ID (IDsIsPositive, parameter iDs, file
+//     i_ds_is_positive.go); write ids instead;
 //   - HTTPSUrl splits into https and url (HTTPSURLIsPositive, parameter
 //     httpsURL, file https_url_is_positive.go).
 //
@@ -39,8 +46,8 @@ import (
 // functions share one name space, so two rules that give the
 // same name produce NAME_COLLISION, a parameter that is a Go keyword or a
 // predeclared or imported name produces NAME_RESERVED, and a segment that
-// does not give a Go identifier produces NAME_INVALID. The author then renames
-// the attribute.
+// does not give a Go identifier, or gives a file name longer than 200 bytes,
+// produces NAME_INVALID. The author then renames the attribute.
 
 // initialisms are the words written in upper case inside a Go name.
 var initialisms = map[string]string{
@@ -97,7 +104,7 @@ func splitWords(name string) []string {
 			previous := current[len(current)-1]
 			nextLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
 			if unicode.IsLower(previous) || unicode.IsDigit(previous) ||
-				(unicode.IsUpper(previous) && nextLower && !pluralEnd(runes, i+1)) {
+				(unicode.IsUpper(previous) && nextLower && !initialismPlural(current, r, runes, i+1)) {
 				flush()
 			}
 		}
@@ -107,9 +114,20 @@ func splitWords(name string) []string {
 	return words
 }
 
+// initialismPlural reports whether the capital run current+last spells one of
+// the initialisms and runes[at] is the 's' that ends its word. current holds
+// only capitals here: splitWords starts a new word at every lower-to-upper
+// and digit-to-upper boundary. "IDs" in userIDs and userIDsCount is then one
+// word, while "IDsum" and "ABCs" still split before their last capital.
+func initialismPlural(current []rune, last rune, runes []rune, at int) bool {
+	if _, ok := initialisms[strings.ToLower(string(current)+string(last))]; !ok {
+		return false
+	}
+	return pluralEnd(runes, at)
+}
+
 // pluralEnd reports whether runes[at] is an 's' that ends a word: the last
-// rune, or one followed by a separator or an upper-case letter. "IDs" in
-// userIDs and userIDsCount is then one word, while "IDsum" still splits.
+// rune, or one followed by a separator or an upper-case letter.
 func pluralEnd(runes []rune, at int) bool {
 	if runes[at] != 's' {
 		return false
