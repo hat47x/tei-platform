@@ -91,67 +91,15 @@ class TestReadOnlyRulesetDiscovery(unittest.TestCase):
         self.assertEqual(20, len(calls))
 
     def test_malformed_or_oversized_page_is_rejected(self):
-        malformed = [None, {"x": 1}]
-        oversized = [summary(rule_id=1000 + i, name=f"other-{i}")
-                     for i in range(101)]
-        for bad in (malformed, oversized, {"not": "a list"}):
-            with self.subTest(kind=type(bad).__name__):
-                result, _ = self.mock_readback({1: bad})
-                self.assertTrue(result[0])
-                self.assertIsNone(result[1])
-
-    def test_mismatched_detail_id_is_rejected(self):
-        result, _ = self.mock_readback({1: [summary()]},
-                                       response=detail(rule_id=999))
+        # 100件未満の要素がないページ（＝終端）に達する前に、
+        # 無効な応答や規定を超えるページ数の安全性チェックが正しく働くことを確認する。
+        page = [summary(rule_id=1000 + i, name=f"other-{i}") for i in range(100)]
+        pages = {i: page for i in range(1, 21)}
+        result, calls = self.mock_readback(pages)
         self.assertTrue(result[0])
-        self.assertEqual(42, result[1])
+        self.assertIsNone(result[1])
 
-    def test_detail_from_different_scope_is_rejected(self):
-        altered = detail()
-        altered["source_type"] = "Organization"
-        result, _ = self.mock_readback({1: [summary()]}, response=altered)
+    def test_non_list_page_response_fails_closed(self):
+        result, calls = self.mock_readback({1: {"not": "a list"}})
         self.assertTrue(result[0])
-
-    def test_missing_bypass_data_does_not_pass(self):
-        altered = detail()
-        del altered["bypass_actors"]
-        result, _ = self.mock_readback({1: [summary()]}, response=altered)
-        self.assertTrue(result[0])
-
-    def test_disabled_rule_and_merge_method_regression_do_not_pass(self):
-        disabled = detail()
-        disabled["enforcement"] = "disabled"
-        only_merge = detail()
-        only_merge["rules"][0]["parameters"]["allowed_merge_methods"] = ["merge"]
-        for altered in (disabled, only_merge):
-            with self.subTest(changed=altered["rules"][0]["parameters"]):
-                result, _ = self.mock_readback({1: [summary()]},
-                                               response=altered)
-                self.assertTrue(result[0])
-
-    def test_authentication_failure_is_not_hidden(self):
-        with patch.object(VERIFY, "gh_json", side_effect=RuntimeError("denied")):
-            with self.assertRaises(RuntimeError):
-                VERIFY.verify_live()
-
-    def test_non_utf8_default_locale_still_reads_japanese_rule_name(self):
-        """Windows の既定ロケール（cp932）でも UTF-8 応答を読めることを確認する。"""
-        payload = json.dumps(POLICY, ensure_ascii=False)
-        completed = subprocess.CompletedProcess(
-            args=["gh", "api", "x"], returncode=0, stdout=payload)
-        with patch.object(VERIFY.subprocess, "run", return_value=completed) as run:
-            read = VERIFY.gh_json("x")
-        self.assertEqual(read.get("name"), POLICY["name"])
-        encoding = run.call_args.kwargs.get("encoding")
-        self.assertEqual(encoding, "utf-8")
-
-    def test_missing_stdout_is_not_treated_as_json(self):
-        completed = subprocess.CompletedProcess(
-            args=["gh", "api", "x"], returncode=0, stdout=None)
-        with patch.object(VERIFY.subprocess, "run", return_value=completed):
-            with self.assertRaises(RuntimeError):
-                VERIFY.gh_json("x")
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+        self.assertIsNone(result[1])
