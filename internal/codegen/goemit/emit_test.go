@@ -431,6 +431,25 @@ func TestTwoRulesWithOneNameGiveNameCollision(t *testing.T) {
 	}
 }
 
+// A decision name of one rule can equal the check name of another:
+// attribute check_quantity gives the decision CheckQuantityIsPositive, which
+// is the check function of attribute quantity. Both orders must be refused.
+func TestDecisionNameEqualToAnotherCheckNameGivesNameCollision(t *testing.T) {
+	quantity := positiveRule("a.r1", "a.quantity")
+	checkQuantity := positiveRule("a.r2", "a.check_quantity")
+	for _, rules := range [][]goemit.Rule{{quantity, checkQuantity}, {checkQuantity, quantity}} {
+		out := goemit.Emit(goemit.Input{PackageName: "rules", Rules: rules})
+		if got := diagnosticCodes(out); len(got) != 1 || got[0] != "NAME_COLLISION" {
+			t.Fatalf("codes %v", got)
+		}
+		message := out.Diagnostics[0].Message
+		if !strings.Contains(message, "a.r1") || !strings.Contains(message, "a.r2") ||
+			!strings.Contains(message, "CheckQuantityIsPositive") || len(out.Files) != 0 {
+			t.Fatalf("collision does not name both elements and the name, or still emitted: %s", message)
+		}
+	}
+}
+
 func TestReservedOrInvalidNamesAreRefused(t *testing.T) {
 	cases := []struct {
 		attribute core.CanonicalID

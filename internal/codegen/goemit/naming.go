@@ -25,7 +25,8 @@ import (
 // The initialisms ID, URL, HTTP and API are written in upper case
 // (customer_id -> CustomerIDIsPositive, parameter customerID).
 //
-// A name is never changed to make it unique or legal. Two rules that give the
+// A name is never changed to make it unique or legal. Decision and check
+// functions share one name space, so two rules that give the
 // same name produce NAME_COLLISION, a parameter that is a Go keyword or a
 // predeclared or imported name produces NAME_RESERVED, and a segment that
 // does not give a Go identifier produces NAME_INVALID. The author then renames

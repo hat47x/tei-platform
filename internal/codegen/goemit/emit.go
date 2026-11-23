@@ -161,11 +161,22 @@ func Emit(input Input) Output {
 			report(CodeNameReserved, v.ID, "semantic validation %s: the parameter name %q from attribute %s is %s; rename the attribute", v.ID, names.Parameter, v.Attribute, why)
 			continue
 		}
-		if first, taken := owner[names.Decision]; taken {
-			report(CodeNameCollision, v.ID, "semantic validations %s and %s both give the Go name %s; rename one of the attributes", first, v.ID, names.Decision)
+		// Decision and check functions share the package scope, so one
+		// rule's decision name ("CheckQuantityIsPositive" from attribute
+		// check_quantity) can equal another rule's check name.
+		collided := false
+		for _, name := range []string{names.Decision, names.Check} {
+			if first, taken := owner[name]; taken {
+				report(CodeNameCollision, v.ID, "semantic validations %s and %s both give the Go name %s; rename one of the attributes", first, v.ID, name)
+				collided = true
+				break
+			}
+		}
+		if collided {
 			continue
 		}
 		owner[names.Decision] = v.ID
+		owner[names.Check] = v.ID
 		accepted = append(accepted, named{rule: rule, names: names})
 	}
 	if len(diagnostics) > 0 {
