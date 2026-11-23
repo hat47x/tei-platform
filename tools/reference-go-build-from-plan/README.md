@@ -53,7 +53,7 @@ Go commandのBuildPlanでは、`go-package`と`go-module`を実際に読むSourc
 
 ### Rule Markdownから生成したGoをビルドする場合
 
-[製品Ruleを使った既存Go回帰](validationgen_build_binding_test.go)では、選択済みMarkdown Rule→型付き意味→`GeneratePositive`→一時Go package→`DirSourceResolver`で固定したBuildPlan→隔離Build→実バイナリの独立Expectedまでのコードがmainに収録されています。このファイルがmainにあることと、提案元PRのマージ状態、対象HEADの`go test`成功は区別します。
+[製品Ruleを使った既存Go回帰](validationgen_build_binding_test.go)では、選択済みMarkdown Rule→型付き意味→`goemit.Emit`で生成したGo package（照合用のmain関数は`goemittest`がTraceの対応づけから書き足す）→`DirSourceResolver`で固定したBuildPlan→隔離Build→実バイナリの独立Expectedまでのコードがmainに収録されています。このファイルがmainにあることと、提案元PRのマージ状態、対象HEADの`go test`成功は区別します。
 
 このBuildPlanが検査するのは**生成済みGoとGo依存Source**です。元の`*.tei.md`や型宣言`*.tei`はGoコマンドの直接入力ではないため、BuildPlanの`Sources`へ見かけ上だけ追加してはいけません。そうすると`checkSourcesAreRead`が拒否するか、入力の由来とコンパイル対象を混同します。
 

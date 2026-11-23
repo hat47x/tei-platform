@@ -313,10 +313,42 @@ func TestEmittedRuleFileHasTheTwoLayers(t *testing.T) {
 		}
 		return true
 	})
-	bindings, err := goemittest.Bindings(src)
+	// The binding is structured data in the Trace, checked against the
+	// declared function, not read from the comment.
+	bindings, err := goemittest.Bindings(out)
 	if err != nil || len(bindings) != 1 ||
 		bindings[0] != (goemittest.Binding{Check: "CheckQuantityIsPositive", Parameter: "quantity", Attribute: "sales.order_line.quantity"}) {
-		t.Fatalf("binding sentence: %+v %v", bindings, err)
+		t.Fatalf("binding: %+v %v", bindings, err)
+	}
+}
+
+// Rewording the doc comment does not change the binding: a comment that no
+// longer names the attribute still gives the same Binding, because only the
+// Trace and the declared function are read.
+func TestBindingDoesNotDependOnDocCommentProse(t *testing.T) {
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{quantityRule}})
+	if err := out.Err(); err != nil {
+		t.Fatal(err)
+	}
+	reworded := out
+	reworded.Files = append([]goemit.File(nil), out.Files...)
+	for i, file := range reworded.Files {
+		if file.Path == out.Trace[0].File {
+			content := bytes.ReplaceAll(file.Content, []byte("sales.order_line.quantity"), []byte("(reworded)"))
+			reworded.Files[i] = goemit.File{Path: file.Path, Content: content}
+		}
+	}
+	before, errBefore := goemittest.Bindings(out)
+	after, errAfter := goemittest.Bindings(reworded)
+	if errBefore != nil || errAfter != nil || len(after) != 1 || before[0] != after[0] {
+		t.Fatalf("binding changed with comment prose: %+v %v / %+v %v", before, errBefore, after, errAfter)
+	}
+	// A Trace naming a function the file does not declare is refused.
+	broken := out
+	broken.Trace = append([]goemit.Trace(nil), out.Trace...)
+	broken.Trace[0].Check = "CheckSomethingElse"
+	if _, err := goemittest.Bindings(broken); err == nil {
+		t.Fatal("a trace naming an undeclared check function was accepted")
 	}
 }
 
@@ -363,12 +395,38 @@ func TestRejectedInputGivesItsDiagnosticAndNoFiles(t *testing.T) {
 	}{
 		{"package", goemit.Input{PackageName: "not-a-go-identifier", Rules: []goemit.Rule{quantityRule}},
 			"INVALID_PACKAGE_NAME", "invalid Go package name"},
+		{"blank package", goemit.Input{PackageName: "_", Rules: []goemit.Rule{quantityRule}},
+			"INVALID_PACKAGE_NAME", "a package named _ cannot be built"},
 		{"kind", goemit.Input{PackageName: "main", Rules: []goemit.Rule{kind}},
 			"UNSUPPORTED_KIND", "unsupported generated kind"},
 		{"relation", goemit.Input{PackageName: "main", Rules: []goemit.Rule{relation}},
 			"INVALID_RULE_SHAPE", "positive validation must have an ID, one Attribute, and no Relation"},
 		{"type", goemit.Input{PackageName: "main", Rules: []goemit.Rule{text}},
 			"UNSUPPORTED_TYPE", "requires resolved std.decimal"},
+	}
+	// Text written into comments must not end the comment. Each of these
+	// once made Emit panic in format.Source.
+	for _, bad := range []struct {
+		name string
+		edit func(*goemit.Rule)
+	}{
+		{"id newline", func(r *goemit.Rule) { r.Validation.ID = "sales.order_line.quantity_positive\nfunc init() {}" }},
+		{"id carriage return", func(r *goemit.Rule) { r.Validation.ID = "sales.order_line.quantity_positive\r" }},
+		{"display name newline", func(r *goemit.Rule) { r.DisplayName = "数量は\n正の数" }},
+		{"display name tab", func(r *goemit.Rule) { r.DisplayName = "数量は\t正の数" }},
+		{"display name invalid UTF-8", func(r *goemit.Rule) { r.DisplayName = "\xff" }},
+		{"display name line separator", func(r *goemit.Rule) { r.DisplayName = "数量は\u2028正の数" }},
+		{"attribute newline", func(r *goemit.Rule) { r.Validation.Attribute = "sales.order\n_line.quantity" }},
+	} {
+		rule := quantityRule
+		bad.edit(&rule)
+		cases = append(cases, struct {
+			name    string
+			input   goemit.Input
+			code    string
+			message string
+		}{bad.name, goemit.Input{PackageName: "main", Rules: []goemit.Rule{rule}},
+			"INVALID_RULE_SHAPE", "cannot be written into a Go comment"})
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -395,6 +453,18 @@ func TestNamesFollowTheAttributeWords(t *testing.T) {
 		{"web.call.api_url_count", "APIURLCountIsPositive", "CheckAPIURLCountIsPositive", "apiURLCount", "api_url_count_is_positive.go"},
 		{"web.call.HTTPRetryLimit", "HTTPRetryLimitIsPositive", "CheckHTTPRetryLimitIsPositive", "httpRetryLimit", "http_retry_limit_is_positive.go"},
 		{"sales.order_line.line2_amount", "Line2AmountIsPositive", "CheckLine2AmountIsPositive", "line2Amount", "line2_amount_is_positive.go"},
+		// An initialism followed by a plural 's' at the end of a word stays
+		// one word, in camel and snake case alike.
+		{"sales.order.userIDs", "UserIDsIsPositive", "CheckUserIDsIsPositive", "userIDs", "user_ids_is_positive.go"},
+		{"sales.order.user_ids", "UserIDsIsPositive", "CheckUserIDsIsPositive", "userIDs", "user_ids_is_positive.go"},
+		{"sales.order.userIDsCount", "UserIDsCountIsPositive", "CheckUserIDsCountIsPositive", "userIDsCount", "user_ids_count_is_positive.go"},
+		{"web.call.apiURLCount", "APIURLCountIsPositive", "CheckAPIURLCountIsPositive", "apiURLCount", "api_url_count_is_positive.go"},
+		// Documented odd spellings: iD splits at its case boundary, and
+		// HTTPSUrl gives the HTTPS initialism followed by url.
+		{"sales.order.iD", "IDIsPositive", "CheckIDIsPositive", "iD", "i_d_is_positive.go"},
+		{"web.call.HTTPSUrl", "HTTPSURLIsPositive", "CheckHTTPSURLIsPositive", "httpsURL", "https_url_is_positive.go"},
+		// A lower-case run after "s" is not a plural: IDsum splits as before.
+		{"sales.order.userIDsum", "UserIDsumIsPositive", "CheckUserIDsumIsPositive", "userIDsum", "user_i_dsum_is_positive.go"},
 	}
 	for _, c := range cases {
 		out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{positiveRule("x.rule", c.attribute)}})

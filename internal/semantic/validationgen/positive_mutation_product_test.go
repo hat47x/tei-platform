@@ -118,7 +118,7 @@ func TestSelectedMarkdownRuleMutationChangesGeneratedGoAndRealResult(t *testing.
 			t.Fatalf("lower actual selected Rule: %v", err)
 		}
 		code := out.File(out.Trace[0].File)
-		bindings, err := goemittest.Bindings(code)
+		bindings, err := goemittest.Bindings(out)
 		if err != nil || len(bindings) != 1 || bindings[0].Attribute != wantAttribute ||
 			!bytes.Contains(code, []byte(bindings[0].Parameter+".Sign() > 0")) ||
 			bytes.Contains(code, []byte("validationeval")) {

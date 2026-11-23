@@ -2,7 +2,6 @@ package validationgen_test
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -136,14 +135,14 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 
 	// These are *independent* expected results for the two generated binaries.
 	// The record is identical in both: 2 for quantity, 0 for secondary
-	// quantity. main.go is identical too; binding.go names the attribute and
-	// check function that the generated doc comment names, so the harness
-	// reports the attribute the generated Go is bound to.
+	// quantity. main.go and cases.go are identical too; binding.go names the
+	// attribute and check function from Emit's Trace, so the harness reports
+	// the attribute the generated Go is bound to.
 	record := []goemittest.Case{{Name: "fixed", Row: map[string]goemittest.Cell{
 		"sales.order_line.quantity":           {Text: "2"},
 		"sales.order_line.secondary_quantity": {Text: "0"},
 	}}}
-	buildAndExecute := func(name string, out goemit.Output, want string) [32]byte {
+	buildAndExecute := func(name string, out goemit.Output, want string) {
 		t.Helper()
 		// A module of its own, outside the repository: the generated Go and
 		// the harness need nothing but the standard library.
@@ -153,10 +152,6 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 			binaryPath += ".exe"
 		}
 		goemittest.RunGo(t, buildRoot, "build", "-trimpath", "-o", binaryPath, ".")
-		binary, err := os.ReadFile(binaryPath)
-		if err != nil {
-			t.Fatal(err)
-		}
 		run := exec.Command(binaryPath)
 		run.Dir = buildRoot
 		output, err := run.CombinedOutput()
@@ -166,11 +161,10 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 		if string(output) != want {
 			t.Fatalf("generated %s consumer output=%q, want %q", name, output, want)
 		}
-		return sha256.Sum256(binary)
 	}
 
 	beforeOut, beforeIndex := selectAndGenerate()
-	beforeBinary := buildAndExecute("before", beforeOut, "fixed:satisfied:1:sales.order_line.quantity\n")
+	buildAndExecute("before", beforeOut, "fixed:satisfied:1:sales.order_line.quantity\n")
 
 	ruleBytes, err := os.ReadFile(ruleSourcePath)
 	if err != nil {
@@ -195,17 +189,37 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 	}
 
 	afterOut, afterIndex := selectAndGenerate()
-	beforeGo, afterGo := beforeOut.File(beforeOut.Trace[0].File), afterOut.File(afterOut.Trace[0].File)
-	if bytes.Equal(beforeGo, afterGo) ||
-		!bytes.Contains(afterGo, []byte("func CheckSecondaryQuantityIsPositive(")) ||
-		!bytes.Contains(afterGo, []byte("属性 sales.order_line.secondary_quantity の値")) {
-		t.Fatal("changed product meaning did not change generated Go")
+	// The generated package itself must change, not only the harness: compare
+	// the files Emit returned, which the harness never writes. Comparing the
+	// compiled binaries would pass on binding.go alone, because the harness
+	// writes the bound attribute name into it.
+	if samePackage(goemittest.Files(beforeOut), goemittest.Files(afterOut)) {
+		t.Fatal("changed product meaning did not change the generated package bytes")
 	}
-	afterBinary := buildAndExecute("after", afterOut, "fixed:not-satisfied:1:sales.order_line.secondary_quantity\n")
-	if beforeBinary == afterBinary {
-		t.Fatal("different generated rule behaviors produced identical compiled binary bytes")
+	afterGo := afterOut.File(afterOut.Trace[0].File)
+	if afterOut.Trace[0].Attribute != "sales.order_line.secondary_quantity" ||
+		afterOut.Trace[0].Check != "CheckSecondaryQuantityIsPositive" ||
+		!bytes.Contains(afterGo, []byte("func CheckSecondaryQuantityIsPositive(")) {
+		t.Fatalf("generated Go is not bound to the edited attribute: %+v", afterOut.Trace[0])
 	}
+	// Same record, same main.go and cases.go: the different results come from
+	// the generated check function and the attribute its Trace binds.
+	buildAndExecute("after", afterOut, "fixed:not-satisfied:1:sales.order_line.secondary_quantity\n")
 	if err := afterIndex.Validate(readCurrent); err != nil {
 		t.Fatalf("new Source Index rejected actual edited bytes: %v", err)
 	}
+}
+
+// samePackage reports whether two emitted packages have the same paths and
+// bytes.
+func samePackage(a, b map[string][]byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for path, content := range a {
+		if other, ok := b[path]; !ok || !bytes.Equal(content, other) {
+			return false
+		}
+	}
+	return true
 }
