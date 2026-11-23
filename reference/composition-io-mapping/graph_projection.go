@@ -45,8 +45,8 @@ type PlanGraphPort struct {
 type PlanGraphDataEdge struct {
 	ViewID            string
 	Mapping           Mapping
-	FromPortViewID     string
-	ToPortViewID       string
+	FromPortViewID    string
+	ToPortViewID      string
 	EndpointsResolved bool
 }
 
