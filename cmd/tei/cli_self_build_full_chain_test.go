@@ -26,8 +26,15 @@ type fullChainReport struct {
 		Unmet   []string `json:"unmet"`
 	} `json:"l2b"`
 	PlanReceipt *struct {
-		State string `json:"state"`
+		State           string `json:"state"`
+		PlanFingerprint string `json:"planFingerprint"`
 	} `json:"planReceipt"`
+	PlanHandover *struct {
+		State               string `json:"state"`
+		PlanPath            string `json:"planPath"`
+		PlanFingerprint     string `json:"planFingerprint"`
+		UnchangedAfterChild *bool  `json:"unchangedAfterChild"`
+	} `json:"planHandover"` 
 	PlanCrossCheck *struct {
 		State string `json:"state"`
 	} `json:"planCrossCheck"`
@@ -47,7 +54,11 @@ type fullChainReport struct {
 	} `json:"childIsolation"`
 	ChildRun *struct {
 		ChildArtifactDigest string `json:"childArtifactDigest"`
-	} `json:"childRun"`
+		ChildPlanFingerprint string `json:"childPlanFingerprint"`
+		Invoked *struct {
+			Argv []string `json:"argv"`
+		} `json:"invoked"`
+	} `json:"childRun"` 
 	Error *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -170,7 +181,6 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 	cli := buildToolBinary(t, ".", "tei")
 	builder := buildToolBinary(t, filepath.Join("..", "..", "tools", "reference-go-build-from-plan"), "go-build-from-plan")
 	authoring := buildToolBinary(t, filepath.Join("..", "..", "tools", "reference-build-catalog-authoring"), "catalog-author")
-	resolverTool := buildToolBinary(t, filepath.Join("..", "..", "tools", "reference-build-authoring-intent"), "resolver")
 
 	// Go writes its module cache read-only, so t.TempDir's cleanup cannot remove
 	// the state directory this build creates. A manual directory with a
@@ -213,27 +223,8 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The plan, derived by the reference resolver, so the child is given exactly
-	// the plan the entry will compare against.
-	// The entry derives it itself, so the child only needs the declaration path.
-	planPath := filepath.Join(dir, "plan.json")
-	derive := func() {
-		cmd := exec.Command(resolverTool, "-intent", intentPath, "-catalog", catalogPath, "-source-root", repoRoot)
-		out, err := cmd.Output()
-		if err != nil {
-			t.Fatalf("derive the plan: %v", err)
-		}
-		var receipt struct {
-			Plan json.RawMessage `json:"plan"`
-		}
-		if err := json.Unmarshal(out, &receipt); err != nil {
-			t.Fatalf("decode the receipt: %v", err)
-		}
-		if err := os.WriteFile(planPath, append(receipt.Plan, '\n'), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	derive()
+	// The entry resolves its own Plan and passes that exact file to the builder.
+	// A second resolver or caller-written plan would not prove this hand-over.
 
 	goExe, err := exec.LookPath("go")
 	if err != nil {
@@ -250,7 +241,6 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 		t.Skipf("the module download cache is unavailable: %v", statErr)
 	}
 	childArg, err := json.Marshal([]string{
-		"-plan", planPath,
 		"-intent", intentPath,
 		"-repo", repoRoot,
 		"-go", goExe,
@@ -269,6 +259,7 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 		"-build-catalog", catalogPath,
 		"-build-catalog-digest", digestOfBytes(catalogBytes),
 		"-build-source-root", repoRoot,
+		"-hand-over-plan",
 		"-child", builder,
 		"-child-arg", string(childArg),
 		"-supply", supply,
@@ -287,6 +278,36 @@ func TestSelfBuildFullChainOnTheRealSubject(t *testing.T) {
 	}
 	if report.L2B == nil || !report.L2B.Claimed {
 		t.Fatalf("l2b was not claimed: %+v", report.L2B)
+	}
+	// On the real ./cmd/tei Source closure, Stage1's own resolved Plan must
+	// be the one handed to the builder, not a caller-authored lookalike.
+	h := report.PlanHandover
+	if h == nil || h.State != "handed-over" || h.PlanPath == "" ||
+		h.UnchangedAfterChild == nil || !*h.UnchangedAfterChild {
+		t.Fatalf("the entry did not hand over its unchanged plan: %+v", h)
+	}
+	if report.PlanReceipt == nil || report.ChildRun == nil ||
+		h.PlanFingerprint == "" ||
+		h.PlanFingerprint != report.PlanReceipt.PlanFingerprint ||
+		h.PlanFingerprint != report.ChildRun.ChildPlanFingerprint {
+		t.Fatalf("plan fingerprint differs across entry, file, and child: receipt=%+v handover=%+v child=%+v",
+			report.PlanReceipt, h, report.ChildRun)
+	}
+	if report.ChildRun.Invoked == nil {
+		t.Fatal("the builder invocation was not recorded")
+	}
+	plans := 0
+	argv := report.ChildRun.Invoked.Argv
+	for i, arg := range argv {
+		if arg == "-plan" {
+			plans++
+			if i+1 >= len(argv) || argv[i+1] != h.PlanPath {
+				t.Fatalf("the child received another Plan path: %v", argv)
+			}
+		}
+	}
+	if plans != 1 {
+		t.Fatalf("the child must receive exactly one entry-written Plan: %v", argv)
 	}
 	for name, state := range map[string]string{
 		"planReceipt":             receiptStateOf(report.PlanReceipt),
