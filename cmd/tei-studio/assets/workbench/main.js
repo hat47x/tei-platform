@@ -19405,6 +19405,7 @@ function renderPin() {
   const pinnedEligible = intent !== null && pinnedCatalogMatches() && inspectEligibility(catalogSnapshot, intent.subject).ok;
   element("pin-current").disabled = disposed || !client || !workspace.value || !eligible;
   element("unpin-current").disabled = !intent;
+  element("open-pinned").disabled = !intent || disposed || !client || intent.workspaceId !== workspace.value || intent.workspaceEpoch !== workspaceEpoch || !pinnedEligible || pinState.observation.state !== "inspected";
   element("inspect-pinned").disabled = !intent || disposed || !client || intent.workspaceId !== workspace.value || !pinnedEligible;
   element("pin-subject").textContent = intent ? `${intent.subject.kind} \xB7 ${intent.subject.id}\uFF08${intent.workspaceId}\uFF09` : "\u56FA\u5B9A\u5BFE\u8C61\u306F\u3042\u308A\u307E\u305B\u3093\u3002";
   let status = "\u672A\u56FA\u5B9A";
@@ -19742,6 +19743,11 @@ element("pin-current").addEventListener("click", () => {
   pinnedVersion = null;
   renderPin();
   void refreshPinnedSubject();
+});
+element("open-pinned").addEventListener("click", () => {
+  const intent = pinState.intent;
+  if (!intent || !client || disposed || intent.workspaceId !== workspace.value || intent.workspaceEpoch !== workspaceEpoch || !pinnedCatalogMatches() || pinState.observation.state !== "inspected" || !inspectEligibility(catalogSnapshot, intent.subject).ok) return;
+  void inspect(intent.subject).catch(showFailure);
 });
 element("unpin-current").addEventListener("click", () => {
   responses.invalidate("pinned-inspection");
