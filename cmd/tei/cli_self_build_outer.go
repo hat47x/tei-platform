@@ -67,6 +67,9 @@ type selfBuildOuterEvidence struct {
 	// ChildIsolation is what the builder said about the tree it built from. It is
 	// recorded, not required: the five conditions do not include it.
 	ChildIsolation *selfBuildChildIsolationRecord `json:"childIsolation,omitempty"`
+	// PlanHandover says whether the child was started with the plan this entry
+	// resolved, or with a plan file the caller supplied.
+	PlanHandover *selfBuildPlanHandover `json:"planHandover,omitempty"`
 	// ArtifactReproducibility is §4.21: a second, independent build of the same
 	// plan produced the same artifact bytes. Together with planArtifactBinding it
 	// is the observation §4.8(c) asks for; it is never present with state
@@ -180,6 +183,10 @@ type selfBuildOuterArgs struct {
 	// BuildIntent resolver to the exact child image before it starts.
 	// Opt-in preserves the legacy observation-only path.
 	BindResolvedBuilder bool
+	// HandOverPlan makes this entry write the plan it resolved in process and
+	// pass it to the child as -plan, instead of leaving the plan file to the
+	// caller. Opt-in; see cli_self_build_plan_handover.go.
+	HandOverPlan bool
 }
 
 // looksLikeOuterShape reports whether the caller used any §4 flag. A caller that
@@ -191,7 +198,7 @@ func looksLikeOuterShape(args []string) bool {
 			name = arg[:index]
 		}
 		switch name {
-		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check", "-bind-resolved-builder",
+		case "-workspace", "-intent", "-intent-file", "-supply", "-state", "-output", "-rebuild-check", "-bind-resolved-builder", "-hand-over-plan",
 			"-build-catalog", "-build-catalog-digest", "-build-source-root":
 			return true
 		}
@@ -212,6 +219,7 @@ func newSelfBuildOuterFlagSet(parsed *selfBuildOuterArgs) *flag.FlagSet {
 	fs.StringVar(&parsed.Output, "output", "", "artifact path written by the child (no-clobber)")
 	fs.StringVar(&parsed.Child, "child", "", "exact child executable (required; never resolved from PATH)")
 	fs.BoolVar(&parsed.BindResolvedBuilder, "bind-resolved-builder", false, "require the in-process resolved BuildPlan Builder artifact digest to match the child image before starting it")
+	fs.BoolVar(&parsed.HandOverPlan, "hand-over-plan", false, "write the plan this entry resolved in process and pass it to the child as -plan; requires -build-catalog, and -child-arg must not set -plan")
 	fs.StringVar(&parsed.ChildArgs, "child-arg", "", "extra child arguments as a JSON array of strings")
 	fs.StringVar(&parsed.SupplyVerifier, "supply-verifier", "", "exact executable that classifies the supply (SB-0b)")
 	fs.StringVar(&parsed.SupplyVerifierArg, "supply-verifier-arg", "", "extra arguments for the supply verifier as a JSON array")
@@ -552,6 +560,19 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		}
 		selectedBuilderDigest = resolved.Plan.Builder.ArtifactDigest
 	}
+	report.PlanHandover = planHandoverNotAsked()
+	if parsed.HandOverPlan {
+		if flagIn(childArgs, "-plan") {
+			return 2, errors.New("INVALID_ARGUMENT: -child-arg must not set -plan together with -hand-over-plan; this entry supplies it")
+		}
+		handover, planDir, handErr := writePlanForChild(report.PlanReceipt)
+		if handErr != nil {
+			return 2, fmt.Errorf("INVALID_ARGUMENT: %w", handErr)
+		}
+		defer os.RemoveAll(planDir)
+		report.PlanHandover = handover
+		childArgs = append(childArgs, "-plan", handover.PlanPath)
+	}
 	if parsed.Supply != "" {
 		childArgs = append(childArgs, "-supply", parsed.Supply)
 	}
@@ -564,6 +585,7 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 		if parsed.BindResolvedBuilder && strings.Contains(err.Error(), "selected child builder digest mismatch") {
 			// Preserve the resolved-plan evidence on refusal; no child process
 			// exists and no artifact is permitted to have been written.
+			markPlanNotStarted(report.PlanHandover)
 			report.Error = &cliFailure{Code: "SELF_BUILD_BUILDER_SELECTION_MISMATCH", Message: err.Error()}
 			if encodeErr := encodeIndented(out, report); encodeErr != nil {
 				return 1, encodeErr
@@ -704,6 +726,10 @@ func runSelfBuildOuterShape(args []string, out io.Writer) (int, error) {
 	if report.ToolchainObservation.NamedByPlan && !report.ToolchainObservation.MatchesPlan {
 		appendSelfBuildFailure(&evidence, report.ToolchainObservation.PlanReason)
 	}
+	confirmPlanUnchanged(report.PlanHandover)
+	if report.PlanHandover.UnchangedAfterChild != nil && !*report.PlanHandover.UnchangedAfterChild {
+		appendSelfBuildFailure(&evidence, report.PlanHandover.Reason)
+	}
 	report.OK = evidence.CrossCheckOK && evidence.FailureCause == ""
 	if !report.OK {
 		report.Error = &cliFailure{Code: "SELF_BUILD_CHILD_FAILED", Message: evidence.FailureCause}
@@ -730,10 +756,12 @@ var reservedChildFlags = []string{"-artifact-out", "-state", "-supply"}
 // child arguments, including the -flag=value spelling, or "" when none is.
 func reservedChildFlagIn(childArgs []string) string {
 	for _, arg := range childArgs {
-		name := arg
-		if index := strings.IndexByte(name, '='); index >= 0 {
-			name = name[:index]
+		// This entry appends its own flags after the caller's. A terminator
+		// would turn them into positional arguments the child ignores.
+		if arg == "--" {
+			return "--"
 		}
+		name := childFlagName(arg)
 		for _, reserved := range reservedChildFlags {
 			if name == reserved {
 				return reserved
@@ -741,6 +769,30 @@ func reservedChildFlagIn(childArgs []string) string {
 		}
 	}
 	return ""
+}
+
+// flagIn reports whether name appears among args, in any spelling the flag
+// package accepts: -name, --name, and either with =value.
+func flagIn(args []string, name string) bool {
+	for _, arg := range args {
+		if childFlagName(arg) == name {
+			return true
+		}
+	}
+	return false
+}
+
+// childFlagName returns the flag an argument sets, written with one dash, or
+// the argument itself when it is not a flag.
+func childFlagName(arg string) string {
+	name := arg
+	if index := strings.IndexByte(name, '='); index >= 0 {
+		name = name[:index]
+	}
+	if strings.HasPrefix(name, "--") && len(name) > 2 {
+		name = name[1:]
+	}
+	return name
 }
 
 func selfBuildOuterPrecondition(out io.Writer, report selfBuildOuterEvidence, message string) (int, error) {
