@@ -95,9 +95,9 @@ const WORKBENCH_REQUIRED_EVIDENCE_SOURCE_RELOCATION_CLOSURE = Object.freeze({
 
 
 // New candidate: foreground opening of an inspected pinned Subject is
- // explicit user navigation. Preserve prior qualified Source+closure pins.
- // This candidate identifies the exact current-main source snapshot, not a
- // Writer Grant, runtime deployment, or Windows WebView2 qualification.
+// explicit user navigation. Preserve prior qualified Source+closure pins.
+// This candidate identifies the exact current-main source snapshot, not a
+// Writer Grant, runtime deployment, or Windows WebView2 qualification.
 export const WORKBENCH_FOREGROUND_OPEN_HEAD = 'd20f75636d3bc7dc947f1b2d73b4f96399162678';
 export const WORKBENCH_FOREGROUND_OPEN_MAIN_BLOB = 'b5cfcd0c6cd714c226cfe58515460890452a6af8';
 const WORKBENCH_FOREGROUND_OPEN_CLOSURE = Object.freeze({
