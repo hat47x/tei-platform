@@ -335,6 +335,13 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 	if nt.Kind == TokenColon {
 		inputName = inputTok.Text
 		inputNameSpan = tokenAnchor(inputTok)
+		// The name is how a rule assigns this input. A text the rule surface
+		// could never write would leave a declaration that looks usable but
+		// cannot be referred to, so it is refused here rather than stored.
+		if _, err := core.ParseLocalName(inputName); err != nil {
+			return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
+				"%q is not a usable input name: %v", inputName, err))
+		}
 		if _, err := p.next(); err != nil {
 			return OperatorAuthoring{}, err
 		}
