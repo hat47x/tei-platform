@@ -512,4 +512,10 @@ func TestTheOlderEntryStillAnswersTheSame(t *testing.T) {
 		!strings.Contains(err.Error(), "has no corresponding Evaluator") {
 		t.Fatalf("the entry without operators decided an operator rule: got=%q err=%v", got, err)
 	}
+	// The message names the kind first and the rule second, so a reader can
+	// tell which rule needs an Evaluator for which kind.
+	if _, err := validationeval.Evaluate(discountRule, &operatorSource{value: rat("1")}); err == nil ||
+		!strings.Contains(err.Error(), `kind "operator" of semantic validation sales.order_line.discount_non_negative has no corresponding Evaluator`) {
+		t.Fatalf("the message does not name the kind and the rule in order: %v", err)
+	}
 }
