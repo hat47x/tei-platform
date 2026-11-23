@@ -232,7 +232,7 @@ Plugin公開基盤の議論で用いるDeclared（宣言）/Resolved（選択・
 
 ## 14. 三要素×分析層と帰納・演繹の証拠境界（2026-11-02）
 
-2026-11-02に[三要素分析法の説明記事](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)と現在のTEI main `3784a4432a28502ca04057325689e409d14d9140`、Studio [Draft PR1 #2583](https://github.com/hat47x/tei-platform/pull/2583)、[Draft #2457](https://github.com/hat47x/tei-platform/pull/2457)を照合した。出典記事は「データ構成・機能構成・業務構成」という三つの観点と、論理要件／物理制約／実装を区別している。**それは歴史的な方法論の紹介であり、TEIの既存Semantic schemaやX-TEA M49の全挙動を検証した証拠ではない**。三要素を一つの図法に平坦化しないためのPressureとして使う。
+2026-11-02に現在のTEI main `3784a4432a28502ca04057325689e409d14d9140`、Studio [Draft PR1 #2583](https://github.com/hat47x/tei-platform/pull/2583)、[Draft #2457](https://github.com/hat47x/tei-platform/pull/2457)を照合した。TEIは「データ構成・機能構成・業務構成」という三つの観点に、論理要件／物理制約／実装というTEI側の区別を併用する。**この区別はX-TEAの図法ではなく、TEIの既存Semantic schemaやX-TEA M49の全挙動を検証した証拠でもない**。三要素を一つの図法に平坦化しないためのPressureとして使う。
 
 | 各観点の独立軸 | 論理要件・設計意味 | 物理制約・実現の構成 | 実装・観測結果 |
 | --- | --- | --- | --- |

@@ -876,7 +876,7 @@ StudioでUI要素を選択しAI/DSH系Harnessへ細かく指示する設計は�
 
 ### 34.1 三要素と三層は直交するが、9種類の正本を作らない
 
-[三要素分析法の原典説明](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)ではData／Function／Businessの各観点を論理要件・物理制約・実装で見る。TEIではこれを**9個のモデルや状態フィールドではなく、既存Source・Semantic Role・Binding/Target・Evidenceに対する問い相対のProjection**として扱う。元の方法論は業務システムに特化するので、汎用TEIの他Domainへ全語彙を強制しない。
+TEIはData／Function／Businessの各観点を、TEI側の区別である論理要件・物理制約・実装でも見る。これを**9個のモデルや状態フィールドではなく、既存Source・Semantic Role・Binding/Target・Evidenceに対する問い相対のProjection**として扱う。三要素分析法は業務システムに特化するので、汎用TEIの他Domainへ全語彙を強制しない。
 
 | 観点 | 論理要件 | 物理制約 | 実装・観測 |
 | --- | --- | --- | --- |
@@ -1175,9 +1175,9 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 
 ## 38. 三視点の局所completeと「図中になければ無い」の成立範囲（2026-11-13、設計追補）
 
-### 38.1 原典の九観点と現在のread-only三視点は同一の完全性Claimではない
+### 38.1 TEIの九観点と現在のread-only三視点は同一の完全性Claimではない
 
-原典の三要素分析法は**Data/Function/Businessの三つのアスペクト**を、**論理要件・物理制約・実装**の三層から見る九観点を説明している（[原典解説](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)）。TEIはこれを第二Canonicalや9新型にせず、既存Source/Decision/実Observationを問相対に重ねるMethod Profileとして扱う。最新[X-TEA read-only Plugin Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)の`three-view-navigation/v0`は、**一件の`.xead` Sourceについての構造候補・Function宣言CRUD・表示位置**を返す。単独で論理要件/物理制約/実装の九観点の完全な実観測や原典Modelerとの意味同等性を証明したわけではない。
+TEIは**Data/Function/Businessの三つのアスペクト**を、**論理要件・物理制約・実装**の三層から見る九観点を使う。これは第二Canonicalや9新型にせず、既存Source/Decision/実Observationを問相対に重ねるMethod Profileとして扱う。最新[X-TEA read-only Plugin Draft #4570](https://github.com/hat47x/tei-platform/pull/4570)の`three-view-navigation/v0`は、**一件の`.xead` Sourceについての構造候補・Function宣言CRUD・表示位置**を返す。単独で論理要件/物理制約/実装の九観点の完全な実観測やX-TEA Modelerとの意味同等性を証明したわけではない。
 
 「図中になければ存在しない」と即断可能な完全性は、**必要なSource/Plugin/Build/Effectの宣言集合が閉じ、現在の開示資格とReader Attemptが整合し、その問いの投影が完全な場合にだけ成立する条件付きClaim**として表す。単一`.xead`を局所的に完全投影できたことから、別`.xead`、`.xeaf`、人手業務、未観測Provider、実Writerの不存在は導かれない。開示が限定された利用者への表示ではPrivate項目の件数すら無資格に漏らさない。
 
@@ -1227,7 +1227,7 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 
 ### 39.2 九つの観点を増やさず、二つの独立受入問いで突き合わせる
 
-[三要素分析法の原典](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)ではData/Function/Businessと論理要件／物理制約／実装を直交に扱い、**業務実装とは業務手順を遂行できる実際の要員**も含む。既存[Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)は九観点を既に表形式で設計済みであり、ここで新しい9型・新Matrix SSOT・Business Workflow強制を提案しない。本§39は、Producerの支持範囲が異なる証拠を同じ図表に置くときの、独立Expectedを具体化する差分である。
+TEIではData/Function/Businessと論理要件／物理制約／実装を直交に扱い、**業務実装には業務手順を遂行できる実際の要員**も含める。既存[Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)は九観点を既に表形式で設計済みであり、ここで新しい9型・新Matrix SSOT・Business Workflow強制を提案しない。本§39は、Producerの支持範囲が異なる証拠を同じ図表に置くときの、独立Expectedを具体化する差分である。
 
 | ID | 最小合成対照・独立Expected | 既存Ownerと停止線 |
 | --- | --- | --- |
@@ -1246,9 +1246,9 @@ M0/M1で一Relationの照合を成立させたら、[#1031](https://github.com/h
 
 ## 40. 原典準拠のMethod検収と、構造不変でも変わる検証資格（2026-11-14、採用前）
 
-### 40.1 原典が要求する「システム観」とTEI汎用構造を対応付ける
+### 40.1 X-TEAの三要素分析法とTEI汎用構造を対応付ける
 
-三要素分析法の[原典講座前編](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)と[後編のサブシステム／CRUD説明](https://www.itmedia.co.jp/im/articles/0605/09/news085_2.html)を再確認。三つのアスペクトは**データ構成・機能構成・業務構成**。論理要件と物理制約のせめぎ合いの上に実装が成立する見方であって、Data/Function/Businessの型が存在するだけでは原典の再現に達しない。原典では業務上の利用者・取引先という社会的文脈、テーブルと機能のサブシステム内凝集・越境CUDの抑制、複数の図面を用いた反復が重要である。既存[#1124](https://github.com/hat47x/tei-platform/issues/1124)のDG-01〜06と[Method Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を**原典忠実性の主たる実装Owner／九観点の既存設計**とし、本節は不足している判定資格と独立Expectedだけを追加する。九つの新Canonical Kind、新しい万能Method Schemaは作らない。
+X-TEA Modelerの三つのアスペクトは**データ構成・機能構成・業務構成**である。Data/Function/Businessの型が存在するだけではX-TEAの再現に達しない。X-TEAでは、テーブルと機能のサブシステム内凝集・越境CUDの抑制、複数の図面を用いた反復が重要である。既存[#1124](https://github.com/hat47x/tei-platform/issues/1124)のDG-01〜06と[Method Diagram Contract §14](THREE_ELEMENT_METHOD_DIAGRAM_CONTRACT_2026-10.md)を**X-TEAとの整合の主たる実装Owner／九観点の既存設計**とし、本節は不足している判定資格と独立Expectedだけを追加する。九つの新Canonical Kind、新しい万能Method Schemaは作らない。
 
 | 原典の成果物・働き | TEIで使い得る現在の接点 | 原典忠実性を主張するための不足／停止線 |
 | --- | --- | --- |

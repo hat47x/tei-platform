@@ -849,15 +849,10 @@ CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは
 
 **観測上限**：設計・Source/Issue照合と独立負例案であり、新UI/Go/CUI/MCP/LLM/OS/Networkの実試験・実装・変更・正式受理はNOT RUN。Pinの既存§16.11〜12を出荷済みの製品機能として扱わない。
 
-### 16.14 三要素分析法の原典に忠実なModeler表現と、TEI汎用拡張を分ける（2026-11-12）
+### 16.14 X-TEA Modelerに準拠した三要素分析法の表現と、TEI汎用拡張を分ける（2026-11-12）
 
-**原典を先に確認する**。渡辺幸三氏の三要素分析法は業務システムのデータモデル・機能モデル・業務モデルの**相互牽制**に基づく分析・設計方法論。Data/Function/Businessという抽象フィールドの単純な3分割や、TEI独自Method Profileそのものと同義ではない。
+**X-TEAを先に確認する**。三要素分析法は、X-TEA Modelerではデータモデル・機能モデル・業務モデルと、その**相互参照（クロスレファレンス）**として実装されている。Data/Function/Businessという抽象フィールドの単純な3分割や、TEI独自Method Profileそのものと同義ではない。
 
-本人解説：
-- [2005年：三要素分析法の論理要件・物理制約・実装と三構成](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/01.html)
-- [2006年：3モデルの相互牽制とほぼ並行するモデリング](https://www.itmedia.co.jp/im/articles/0605/09/news085.html)
-- [2006年：データモデルの例値／サブシステム、機能モデルのUI・階層・CRUDとクロスレファレンス](https://www.itmedia.co.jp/im/articles/0605/09/news085_2.html)
-- [2006年：業務モデルの職務・業務マニュアル／アクションツリー、イベント付き業務フロー](https://www.itmedia.co.jp/im/articles/0605/09/news085_3.html)
 
 **用語**：説明には「三要素分析法」「データモデル」「機能モデル」「業務モデル」「業務フロー」「サブシステム」「クロスレファレンス」を用いる。TEIの汎用`Data`/`Function`/`Business`、Script-first/Role、AI操作・科学/XRへの利用は**TEI独自の写像／拡張**として明記する。原典の「機能モデル」をUIなしFunction一覧へ、業務モデルを純粋な実行Workflowへ、業務フローを単なる汎用DFDへ置換しない。サブジェクトエリアとサブシステムの違いも残す。名称の厳密な互換を名乗る場合はX-TEA Modeler固定版の実形式/描画と実Consumerを照合する。
 
@@ -876,11 +871,11 @@ CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは
 
 **記述上の差異ラベル（提案）**：原典準拠／TEIによる異表現／TEI独自拡張／意図的差異／原典未確認。このラベルは説明・受入票上の列であり、新Core列挙の要件ではない。
 
-**今回の到達点**：本人寄稿と公開Source/既存固定ソース調査の照合・計画のみ。現X-TEA Modeler実GUI・サンプルモデル、TEI実GUI/3モデルの同時編集、旧XML round-trip、Diagram E2E/CIは未実施。「互換達成」ではない。
+**今回の到達点**：公開Source/既存固定ソース調査の照合・計画のみ。現X-TEA Modeler実GUI・サンプルモデル、TEI実GUI/3モデルの同時編集、旧XML round-trip、Diagram E2E/CIは未実施。「互換達成」ではない。
 
 ### 16.15 三モデル・設計段階・対応一覧を混同しない（2026-11-12）
 
-三要素分析法の**データモデル・機能モデル・業務モデル**は相互牽制する。渡辺幸三氏の解説にある**論理要件・物理制約・実装**は別の軸であり、3モデルの同義語でも「九つの正式モデル」でもない。TEIの汎用Role/Method Profile、3×3の照合表は**TEI側の説明・実現方式**であり、原典の正式な図法として扱わない。本文の`三要素`は、別Issue #2514で使うSoundness/Binding/Coverageという適合の三観点とも区別する。
+三要素分析法の**データモデル・機能モデル・業務モデル**は相互に参照し合う。TEIが併用する**論理要件・物理制約・実装**の区別はTEI側の観点であり、3モデルの同義語でも「九つの正式モデル」でもない。TEIの汎用Role/Method Profile、3×3の照合表は**TEI側の説明・実現方式**であり、X-TEAの図法として扱わない。本文の`三要素`は、別Issue #2514で使うSoundness/Binding/Coverageという適合の三観点とも区別する。
 
 **原典忠実性の未解決点**：旧X-TEA Modelerが出力する「五種類の対応一覧」について、既存#1803・`plan/design/AUTHORING_TOOL_FEATURE_TRANSFER_MAP_2026-10.md`は存在と概略を記録しているが、**五つの正式名称・行列軸・セル意味・元の定義・出力条件**をすべて独立照合した証拠ではない。単一のCRUD表に集約して同等性を宣言しない。旧Sourceの固定版／実出力の比較と、TEI受理済みモデルからの導出を別の検証段階とする。
 
@@ -895,7 +890,7 @@ CSW/SUIのKJ法的なCard/Islandの集合をTEI Relationへ投影するときは
 
 **最小縦断例**：注文確定の業務手順→承認画面/確定Function→注文の確定時単価という三モデルの対応をたどる。承認を経ず確定単価を現在マスター価格へ書き換える提案に対し、画面・CRUD・データモデルの各単体検査がPASSでも業務意味の矛盾を検出し、根拠と変更可能なSourceへ戻れること。旧X-TEAの操作・実出力を再現できたか、TEI側の意味的な代替を検証できたか、実Hostで実Effectを観測したかは別欄にする。
 
-**今回の資格**：既存の公開Xead Source調査・本人寄稿・TEIの既存Issueを照合した計画。X-TEA Modelerの五一覧の実出力比較、実GUI、TEIの新実装・独立E2Eは未実行。既存Conformance/Source/Runtimeへ委譲し、専用Coreの「九モデル」や第二の検証基盤を追加しない。
+**今回の資格**：既存の公開Xead Source調査・TEIの既存Issueを照合した計画。X-TEA Modelerの五一覧の実出力比較、実GUI、TEIの新実装・独立E2Eは未実行。既存Conformance/Source/Runtimeへ委譲し、専用Coreの「九モデル」や第二の検証基盤を追加しない。
 
 ### 16.16 原典の業務モデルとTEIの時点付き組織・実認可を区別する（2026-11-12）
 

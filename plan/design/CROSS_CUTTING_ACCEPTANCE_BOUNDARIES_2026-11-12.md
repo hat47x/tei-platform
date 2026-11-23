@@ -6,7 +6,7 @@
 
 TEIのCore最小化、Everything is Data、Everything is Plugin、専門家可読のDSL、Go単一バイナリを基本とし、外部Host向けJava/.NET/WASM等は既存のTarget契約から実現する。SQLはSourceとして許容し、Data Operations／明示Function Data Contextで通常Queryを表す。Native SQLを無条件排除したり、構文のGo親和性から人間のAuthoringを決めたりしない。
 
-**三要素分析法**は渡辺幸三氏の設計手法として、データ構成・機能構成・業務構成、および**データモデル・機能モデル・業務モデル**を区別して扱う。TEIのGraph／CRUD表／Model Mapは、X-TEA Modelerのモデルと相互参照するための拡張Projection候補であり、図面やCRUD表だけを業務意味の第二正本にしない。旧計画の便宜的な「三視点」表記を手法の正式名称としては使用しない。X-TEA由来の図面・関係・粒度・参照位置とTEI拡張部分のFit/Gapは #1124 / [Draft #3263](https://github.com/hat47x/tei-platform/pull/3263) / #2514 に従って個別検証する。参考：[渡辺幸三氏の三要素分析法の説明](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)。
+**三要素分析法**は、X-TEA Modelerに示されるとおり、データ構成・機能構成・業務構成、および**データモデル・機能モデル・業務モデル**を区別して扱う。TEIのGraph／CRUD表／Model Mapは、X-TEA Modelerのモデルと相互参照するための拡張Projection候補であり、図面やCRUD表だけを業務意味の第二正本にしない。旧計画の便宜的な「三視点」表記を手法の正式名称としては使用しない。X-TEA由来の図面・関係・粒度・参照位置とTEI拡張部分のFit/Gapは #1124 / [Draft #3263](https://github.com/hat47x/tei-platform/pull/3263) / #2514 に従って個別検証する。照合する原典はX-TEAとする（[業務システム設計の要求解釈 §2](../../requirements/BUSINESS_SYSTEM_DESIGN_REQUIREMENTS.md)）。
 
 ## 2. 同じものとみなさない境界
 
