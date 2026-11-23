@@ -94,6 +94,17 @@ const WORKBENCH_REQUIRED_EVIDENCE_SOURCE_RELOCATION_CLOSURE = Object.freeze({
 });
 
 
+// New candidate: foreground opening of an inspected pinned Subject is
+ // explicit user navigation. Preserve prior qualified Source+closure pins.
+ // This candidate identifies the exact current-main source snapshot, not a
+ // Writer Grant, runtime deployment, or Windows WebView2 qualification.
+export const WORKBENCH_FOREGROUND_OPEN_HEAD = 'd20f75636d3bc7dc947f1b2d73b4f96399162678';
+export const WORKBENCH_FOREGROUND_OPEN_MAIN_BLOB = 'b5cfcd0c6cd714c226cfe58515460890452a6af8';
+const WORKBENCH_FOREGROUND_OPEN_CLOSURE = Object.freeze({
+  ...WORKBENCH_REQUIRED_EVIDENCE_SOURCE_RELOCATION_CLOSURE,
+  'reference/tei-studio-workbench/index.html': 'a5bd1d2aac58e5c607aaa805a975ddcf0891813f',
+});
+
 export const WORKBENCH_PINS = Object.freeze([
   Object.freeze({head: WORKBENCH_HEAD, mainBlob: WORKBENCH_MAIN_BLOB,
     commandHead: '26f47772ed49f5c4a9e1c50026c335783bc5e153',
@@ -160,6 +171,13 @@ export const WORKBENCH_PINS = Object.freeze([
     responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
     graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
     closureBlobs: WORKBENCH_REQUIRED_EVIDENCE_SOURCE_RELOCATION_CLOSURE}),
+  Object.freeze({head: WORKBENCH_FOREGROUND_OPEN_HEAD,
+    mainBlob: WORKBENCH_FOREGROUND_OPEN_MAIN_BLOB,
+    commandHead: WORKBENCH_MAIN_CONSUMER_HEAD,
+    commandBlob: 'bb56f3dba6387f7d9bf9604de9b519fb68feb50d',
+    responsesBlob: 'e1fa0d6b8e07af1158416d6c6d2469a408f64495',
+    graphBlob: '436c7d07c56802dbbc6d1dfeb1251470fca75cf6',
+    closureBlobs: WORKBENCH_FOREGROUND_OPEN_CLOSURE}),
 ]);
 const graphImport = 'import { mountReadonlyGraph } from "../tei-studio-graph/graph.ts";\n';
 const commandImport = 'import { mountCommandPanel } from "../tei-studio-command/command.ts";\n';
