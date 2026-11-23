@@ -637,11 +637,11 @@ MAP-22は理解課題であり、§19.5のM2と同じく、人の評価が得ら
 - **担当**：Model Mapの包含関係と現在地の導出は#1124、区画をまたぐBusiness/Event Flowの集約は#1125、選択・表示位置の連携はPresentation stateとして[表現型間の連携設計](REPRESENTATION_CROSSVIEW_COORDINATION_2026-11.md)と#2500の境界、AI向け表現と開示判定は#2516、CLI・MCPの入口は[ADR-0048](../adr/0048-shared-application-api-and-transport-adapters.md)の共通API、要素から生成器・Plugin実装への参照は§19.6／§19.7の担当（#2090/#2092/#2096、#951/#3278）、独立したExpectedは#2514/#1180。本節は表示・案内の受入条件を加えるだけで、これらの正本を複製しない。
 - **撤回条件**：区画化や現在地表示が、利用者の理解課題（MAP-22）で全体を一枚で見せる場合より改善しないと分かった場合、G4の分割方式を見直す。現在地・往復・欠落表示（G1・G2・G5）は、改善の有無にかかわらず誤った全体像を見せないための条件として維持する。
 
-## 19. Trait根拠の三視点Bind Reference（2026-11-07、限定試験）
+## 19B. Trait根拠の三視点Bind Reference（2026-11-07、限定試験）
 
 **依存関係の更新**: 本設計の旧[Draft #2878](https://github.com/hat47x/tei-platform/pull/2878)およびTrait定義・Intent／Observation／Assessmentの[Draft #3027](https://github.com/hat47x/tei-platform/pull/3027)は**2026-11-07にmain統合済み**。両者の設計文書を新たな第二正本に複製しない。本節は前節T10〜T13を、独立したread-only Reference [Draft PR #2972](https://github.com/hat47x/tei-platform/pull/2972)でどこまで実証したかを追記するもの。Product採用・本番Provider・Meaning Acceptanceではない。
 
-### 19.1 意図・事実・適合を三視点の表示Occurrenceへ明示結合
+### 19B.1 意図・事実・適合を三視点の表示Occurrenceへ明示結合
 
 追加した`reference/tei-three-element-method/trait-attachments.mjs`の`bindPublicTraitClaims(publicProjection, envelope)`は、既存`projectPublicTeaSlice`が返す**公開資格済みData/Function/Business Occurrence**を入力とし、外部Ownerが選択・開示したTraitの参照だけを束縛する。演繹や判定は行わず、`Intent`、`Observation`、`Assessment`の来歴・局所状態・Evidence参照を**そのまま**表示向けに運ぶ。概念上は`Trait Reference → (Qualified Subject, Role, View Occurrence, exact caller snapshot)`という対応。Reference内で新しいTrait Definition/Proof/Assessment/Policy/Source ReaderやWriterは実装しない。
 
@@ -650,7 +650,7 @@ MAP-22は理解課題であり、§19.5のM2と同じく、人の評価が得ら
 - 「強属性」は厳密な原典定義未確認につき追加しない。物理PK・業務Identity・FD・immutable等の異なるClaimを自動統合せず、新`tei.std` Role/Facetや「Strong」というBadgeを生成しない。ClosedDomainとMECEの母集団/排他/網羅も別。
 - 入力は**すでに開示資格確認済み**である必要がある。非公開TraitやSecret Source Pathを投入して「出力から消えたから安全」とみなさない。#2516の実二世界Disclosure判断、#1124の実DOM/ARIA/Tool/Workbenchと旧応答失効は独立検証。新しい`lanes/states`定数は合成Fixture内の表現であってTEI正式Enumではない。
 
-### 19.2 追加Referenceの限定実証
+### 19B.2 追加Referenceの限定実証
 
 2026-11-07、**Node.js 22.16.0**で、既存`public-slice.mjs`→新`trait-attachments.mjs`を**同一テスト内で実行**した。10件すべてPASS。主な検査はT10（Intent/Observation/Assessmentを区分して表示・静的観測から適合を捏造しない）、T11（強属性/業務Identityを捏造しない）、T12（別Scope/旧Snapshot拒否）、T13（Public投影に存在しないPrivate Trait拒否）、入力順序、Claim ID重複、未知Role/過剰Metadata、Getter非実行。ローカル実行ファイルとGitHubのBlob SHAを照合した。
 
@@ -662,17 +662,17 @@ MAP-22は理解課題であり、§19.5のM2と同じく、人の評価が得ら
 
 **未実行・未資格**: 実Java/Go/.NET Enum Reader・実DDL/DB値・未読込Writer inventory、実Source Index/Role/Operator Pins、実PolicyがPrivateから正しいPublic Sliceを生成すること、完全な同一AttemptでのSource→Studio 4入口・Graph/DOM/ARIA/Tool/AI、現在Grant/Source readback、Owner受理/Target Effect、trusted全Repo Health。旧`public-slice`の9件と新10件は**別Fixture資格**であり、両者を合算してTEI製品E2E合格とはしない。JavaScriptの任意Proxy・特殊配列による入力side effectも一般保証しない。
 
-### 19.3 次のP0への引渡しと撤回条件
+### 19B.3 次のP0への引渡しと撤回条件
 
 直接クリティカルパスは従来どおり[#1124](https://github.com/hat47x/tei-platform/issues/1124) M0実CLI→M1同一Workbenchの曖昧0/一意1 InspectとGraph旧DOM拒否。三要素MethodはこのConsumerへ**すでに資格確認されたSlice/Role/Claim**を渡すのを優先し、Method独自の認可・Source Writer・Plugin Resolver・Assessmentを新設しない。並行Referenceの次の最小一巡は`sales.order.status`について同一Source/Scope/Attemptを固定し、(1)実Script/Roleの必須Source・Parser診断、(2)実Sourceで観測されたJava/DB/Function制約、(3)既存Trait Ownerによる比較・現在Disclosure、(4)実Workbench三視点の同一根拠表示を順に結ぶ。実Providerが不在なら`unverified`を出し、架空の独立Expectedを採用しない。
 
 **停止**: 方法論Plugin更新や表示だけでAccepted Meaningが変わる、Java EnumからMECEを証明したことにする、未知Writerを0件とみなす、Private Traitの存在を件数やBadgeで漏らす、局所PASSを全Consumer／Production／セルフビルドの資格へ昇格する場合には、受入対象を縮小・撤回して既存Ownerへ返す。
 
-### 19.4 三者Snapshotの結合不足を閉じる限定Reference（2026-11-08）
+### 19B.4 三者Snapshotの結合不足を閉じる限定Reference（2026-11-08）
 
 [Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)の前版は、`Envelope.snapshot = Claim.snapshot`を検査していたが、**実際の公開ProjectionにSnapshotがなく**、同じ`viewId`を持つ旧図へ新Claimを結べた。Sourceの現在性とは別の、合成Reference内部の欠陥である。新Referenceは`projectPublicTeaSlice(publicSlice, callerSnapshot)`が公開されたOccurrenceに**任意の呼出元世代Witness**を付与できるようにし、`bindPublicTraitClaims`で`Projection.snapshot = Envelope.snapshot = 各Claim.snapshot`を要求する。Stampなしの従来Projectionは単独閲覧を維持するが、Trait結合を拒否。旧版と新版で同じ`viewId`のまま、前者を新Envelopeに渡す反例とStamp未提供の負例を加えた。
 
-**追加の限定検証**: GitHubから実ソース4件を取得し、そのままV8内で読み込んだNode test互換ハーネスで**22/22件PASS**（`public-slice`10件＋`trait-attachments`12件、うち新規T12 Projection世代差・未Stamp拒否）。これは正規の`node --test`による実行ではない。これを補うため[別Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)へ専用の[exact-head Node 22 CI](https://github.com/hat47x/tei-platform/blob/reference/tea-public-slice-two-world-20261106/.github/workflows/tei-tea-three-view-reference-node.yml)を追加し、同じ10件＋12件を実Node test runnerで確認する契約を置いた。[PR #2972 exact head `7289e86581af9e91a74e7e3b73667293886c5f9f`の専用synthetic-nodeジョブ](https://github.com/hat47x/tei-platform/actions/runs/42385331823/job/128441389821)は**completed / success**。ワークフローはNode 22.16.0と実headを固定し、上記公開Slice10件・Trait Bind12件を正規`node --test`で実行する。これは新しい**局所Native Node資格**であり、Repository Health・脆弱性スキャン・Studio製品受入の成功を含意しない。新コードの固定Git blobは`public-slice.mjs=265206ab45a3a8d357e113dd9e02a65e2137ed59`、`trait-attachments.mjs=2d9e2eefdb2e4edb2370471c0a1c1ce0c7b29b13`、テストは`ca83ee66a97550213653db5a8a0bf8c8282afbe0`／`3795cbedbbff2cf1bf6f7f2dee55468ec9a41f19`。旧§19.2の10件Node PASSは更新前の履歴で、今回の最新資格と混ぜない。
+**追加の限定検証**: GitHubから実ソース4件を取得し、そのままV8内で読み込んだNode test互換ハーネスで**22/22件PASS**（`public-slice`10件＋`trait-attachments`12件、うち新規T12 Projection世代差・未Stamp拒否）。これは正規の`node --test`による実行ではない。これを補うため[別Draft #2972](https://github.com/hat47x/tei-platform/pull/2972)へ専用の[exact-head Node 22 CI](https://github.com/hat47x/tei-platform/blob/reference/tea-public-slice-two-world-20261106/.github/workflows/tei-tea-three-view-reference-node.yml)を追加し、同じ10件＋12件を実Node test runnerで確認する契約を置いた。[PR #2972 exact head `7289e86581af9e91a74e7e3b73667293886c5f9f`の専用synthetic-nodeジョブ](https://github.com/hat47x/tei-platform/actions/runs/42385331823/job/128441389821)は**completed / success**。ワークフローはNode 22.16.0と実headを固定し、上記公開Slice10件・Trait Bind12件を正規`node --test`で実行する。これは新しい**局所Native Node資格**であり、Repository Health・脆弱性スキャン・Studio製品受入の成功を含意しない。新コードの固定Git blobは`public-slice.mjs=265206ab45a3a8d357e113dd9e02a65e2137ed59`、`trait-attachments.mjs=2d9e2eefdb2e4edb2370471c0a1c1ce0c7b29b13`、テストは`ca83ee66a97550213653db5a8a0bf8c8282afbe0`／`3795cbedbbff2cf1bf6f7f2dee55468ec9a41f19`。旧§19B.2の10件Node PASSは更新前の履歴で、今回の最新資格と混ぜない。
 
 **重要な非主張**: このSnapshotは呼出元が割り当てる**等値Witness**であって、改版した実Source、Source Index、Role/Operator実bytes、現在のGrant、Producerが実読んだ対象、Callback時の表示世代を独立して証明しない。同じ文字列の再利用・ABAや偽Stampを単体では検知できない。#1124 M0/M1と#2516の実Consumerでは、Source/Role/Policy/Consumerの独立現行証拠と画面上の失効・後着拒否を別assertする。いま達成したのは、**明示的に異なる表示世代の合成Reference内誤結合を拒否すること**だけである。
 
