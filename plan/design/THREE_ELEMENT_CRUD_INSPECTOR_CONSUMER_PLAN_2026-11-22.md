@@ -1,6 +1,6 @@
 # 三要素CRUD：SnapshotからStudio Inspectorまでの実装・検収計画（2026-11-22）
 
-> **位置づけ：実装計画。** #5310、#5323、#5356で実装済みのread-only Producerを基線とする。通常CLIの`crud-snapshot`公開は#5698で**実装済み**。Studio・Source Reader接続、Windows Stage2、Owner受理は**未検証**。
+> **位置づけ：実装計画。** #5310、#5323、#5356で実装済みのread-only Producerを基線とする。通常CLIの`crud-snapshot`公開は#5698で**実装済み**。さらに#5783でモデルSnapshotに基づく一セルCLI再照合が実装済み。Studio・Source Reader接続、Windows Stage2、Owner受理は**未検証**。
 
 ## 目的と既存成果
 
@@ -10,7 +10,9 @@
 | --- | --- | --- |
 | #5310 | 同一Function×Dataの複数操作を一セルに集約 | 実DBの更新回数、Action単位のEffect |
 | #5323 | 元のFunctionOperation／CRUDDefinitionを個別に列挙 | Source Span、永続的な宣言ID |
-| #5356 | 一つのモデル入力からCRUD表・Origins・ModelFingerprintを生成 | Source Revision、別要求間のSnapshot一致、編集資格 |\n| #5698 | `three-element crud-snapshot -model`を既存CLIに追加。JSONでRows・Origins・ModelFingerprint・診断を返す | 実Studio Consumer、Source Navigate、Owner受理 |
+| #5356 | 一つのモデル入力からCRUD表・Origins・ModelFingerprintを生成 | Source Revision、別要求間のSnapshot一致、編集資格 |
+| #5698 | `three-element crud-snapshot -model`を既存CLIに追加。JSONでRows・Origins・ModelFingerprint・診断を返す | 実Studio Consumer、Source Navigate、Owner受理 |
+| #5783 | `three-element crud-cell`で期待するModelFingerprintとFunction／Data IDを再照合し、対象セルと元宣言を読み取り専用で返す | World／Source Indexの現在性、Source位置、Writer Grant、Studio操作 |
 
 これらは既存の`internal/threeelement`の補助Projectionであり、第二の意味正本ではない。
 
@@ -38,7 +40,7 @@ Expectedは実装出力から逆算せず、Sourceの固定版と対象範囲を
 
 | 順序 | 既存の担当 | 完了条件 |
 | --- | --- | --- |
-| 1 | #5698／#1124／#4472 | CLI配線・Focused Testのコードは実装済み。通常製品CLIの実行結果と出力互換性を改めて確認 |
+| 1 | #5698／#5783／#1124／#4472 | `crud-snapshot`と`crud-cell`のCLI配線・Goテストは実装済み。実バイナリの独立Consumer試行と従来`crud`出力の互換性を別に確認 |
 | 2 | #2514 | E1〜E6を独立Expectedと比較し、失敗・未取得を隠さない |
 | 3 | #3788 | qualified Source解決の正例・曖昧・stale・unavailableを確認 |
 | 4 | #1824／#2831 | 実Wails Inspectorでセル→Originsを操作し、Windows Stage2で再現 |
@@ -48,11 +50,11 @@ DesktopセルフビルドのP0を維持する。CLIだけの成功でStage2の�
 
 ## 実施状態
 
-この文書は実装済みのProducerと未実装・未検証のConsumerを接続するための作業計画である。#5698のCLI実装とテストコードはmainに存在する。ただし、この文書更新に伴ってGoテストや通常CLIを新たに実行した記録ではない。Windows Studio実行、DB Effect、Owner意味受理も未検証。
+この文書は実装済みのSnapshot Producer・モデル内CLI Consumerから、未検証のStudio／Qualified Source Consumerへ渡すための実装計画である。#5698と#5783のGoコード・テストはmainに存在し、#5783は対象HEADの11系統CIが成功している。この文書更新に伴う新たなGoテストや通常CLIの別OSプロセス実行は行っていない。Windows Studio、Source Writer、DB Effect、Owner意味受理も未検証。
 
-## DT-02C：一セルを再照合するCLI Consumer（2026-11-22）
+## DT-02C：一セルを再照合するCLI Consumer（#5783で実装済み）
 
-`crud-snapshot`が同一モデルの`Rows`・`Origins`・`ModelFingerprint`を返すようになったため、次は**以前表示したセルを、再ロードしたモデルの中で読み取り直す**小さなConsumerを用意する。
+`crud-snapshot`が返す`Rows`・`Origins`・`ModelFingerprint`を受け、**以前表示した一セルを再ロード後のモデルで照合する**read-only Consumerが#5783でmainへ統合された。CLIで成立したのはモデル内の選択と出典保持までである。
 
 ```sh
 tei three-element crud-snapshot -model order-model.json
@@ -61,7 +63,7 @@ tei three-element crud-cell -model order-model.json \
   -function submit -data order
 ```
 
-新しい`crud-cell`は既存のJSON読込を利用し、入力ファイルを再読込してから現在の`ModelFingerprint`を照合する。応答は対象セル一件と元宣言すべてを含む。`okScope`は`model-snapshot-cell-inspected-only`、出典の資格は`model-local-only`と明示する。Sourceの移動、Source Revision、World Fingerprint、Provider Effect、Owner受理を主張しない。
+実装済みの`crud-cell`は既存のJSON読込を利用し、入力ファイルを再読込してから現在の`ModelFingerprint`を照合する。応答は対象セル一件と元宣言すべてを含む。`okScope`は`model-snapshot-cell-inspected-only`、出典の資格は`model-local-only`と明示する。Sourceの移動、Source Revision、World Fingerprint、Provider Effect、Owner受理を主張しない。
 
 **失敗時のふるまい**：指紋の省略は拒否、異なる指紋は`STALE_SNAPSHOT`、存在しない組は`CRUD_CELL_NOT_FOUND`、同一Kind内の重複IDは`CRUD_CELL_AMBIGUOUS`として拒否する。異Kind間の同名IDは正当なため混同しない。対立する明示CRUDは消さずに閲覧へ残す。
 
@@ -69,4 +71,4 @@ tei three-element crud-cell -model order-model.json \
 
 Studioに接続する際は、モデルの`ModelFingerprint`でセルと元宣言を再照合した後、既存の`InspectSubjectAtSnapshot`によって**World＋Source Indexの現在性**を別に確認する。これらが一致しても、qualifiedなSource位置の一意性や書込資格は得られない。#5749／#5764のSource移動後Snapshot失効の負例を参照し、古い位置へ自動的に付け替えない。
 
-CLIの一セル取得はStudioの実Consumerと同一ではない。Studio UI→Host選択→実Invocation→実応答→Windows WebView2／Stage2の検証、および正式Source保存／Review／Accept／結果照会は引き続き未検証の工程とする。新規CLIコード・テストの実行結果は対象PRのCIで別途確認する。
+CLIの一セル取得はStudioの実Consumerと同一ではない。Studio UI→Host選択→実Invocation→実応答→Windows WebView2／Stage2の検証、および正式Source保存／Review／Accept／結果照会は引き続き未検証の工程とする。既存CLIの一セル取得は#5783の正確なHEADで11/11 CI成功を確認した範囲の実績である。これを、Studioの実ConsumerやWindows Desktop操作の成功に読み替えない。
