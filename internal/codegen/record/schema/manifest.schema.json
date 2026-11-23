@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tei.codegen.manifest/draft.1",
+  "title": "TEI code generation manifest",
+  "description": "The files one generation wrote, sorted by path with no path twice, each with the SHA-256 of its content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "files"],
+  "properties": {
+    "schema": { "const": "tei.codegen.manifest/draft.1" },
+    "input": { "$ref": "#/$defs/sha256" },
+    "files": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/file" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "writer"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "writer": { "type": "string", "minLength": 1 },
+        "hook": { "type": "string" }
+      }
+    }
+  }
+}
