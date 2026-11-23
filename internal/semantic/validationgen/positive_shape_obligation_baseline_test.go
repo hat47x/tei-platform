@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
 	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationgen"
@@ -29,9 +30,24 @@ func TestPositiveRuleShapeIndependentBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("valid numeric Rule rejected: %v", err)
 		}
-		if !bytes.Contains(got, []byte("source.Number(\"sales.order_line.quantity\")")) ||
-			!bytes.Contains(got, []byte("value.Sign() > 0")) {
-			t.Fatalf("generated Rule does not read and decide the independently chosen positive obligation:\n%s", got)
+		// The generated code no longer reads a Source: the decision takes the
+		// present value, the check function answers Undecided without one, and
+		// its doc comment names the attribute the caller passes.
+		for _, want := range []string{
+			"func QuantityIsPositive(quantity *big.Rat) bool {",
+			"return quantity.Sign() > 0",
+			"func CheckQuantityIsPositive(quantity *big.Rat) Result {",
+			"return Undecided",
+			"quantity には属性 sales.order_line.quantity の値を渡します。",
+		} {
+			if !bytes.Contains(got, []byte(want)) {
+				t.Fatalf("generated Rule does not bind and decide the independently chosen positive obligation (%q):\n%s", want, got)
+			}
+		}
+		// GeneratePositive returns exactly the rule file goemit emits.
+		out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: base, AttributeType: "std.decimal"}}})
+		if !bytes.Equal(got, out.File("quantity_is_positive.go")) {
+			t.Fatal("GeneratePositive and goemit.Emit disagree on the rule file")
 		}
 	})
 

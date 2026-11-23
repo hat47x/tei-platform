@@ -10,10 +10,11 @@ import (
 	"testing"
 
 	"tei/internal/buildintent"
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/plugin"
 	"tei/internal/semantic"
-	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -82,13 +83,29 @@ func TestSelectedRuleGoIsActuallyConsumedByBuildPlanBuilder(t *testing.T) {
 		t.Fatalf("Rule Source anchor is not the authored Rule: %+v", refs[0])
 	}
 
-	generated, err := validationgen.GeneratePositive(rule, attributeType, "main")
-	if err != nil {
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: rule, AttributeType: attributeType}}})
+	if err := out.Err(); err != nil {
 		t.Fatalf("lowering the actual selected Rule failed: %v", err)
 	}
-	if !bytes.Contains(generated, []byte("value.Sign() > 0")) ||
-		bytes.Contains(generated, []byte("validationeval.Evaluate(")) {
+	const ruleFile = "quantity_is_positive.go"
+	generated := out.File(ruleFile)
+	if !bytes.Contains(generated, []byte("return quantity.Sign() > 0")) ||
+		bytes.Contains(generated, []byte("validationeval")) {
 		t.Fatal("generated Go must implement its own comparison and branch")
+	}
+	// The harness reads the attribute named by the generated doc comment.
+	// A null value and a value that was not fetched both reach the check
+	// function as nil and are undecided.
+	const attr = "sales.order_line.quantity"
+	program := goemittest.Program(t, out, []goemittest.Case{
+		{Name: "positive", Row: map[string]goemittest.Cell{attr: {Text: "2.5"}}},
+		{Name: "zero", Row: map[string]goemittest.Cell{attr: {Text: "0"}}},
+		{Name: "negative", Row: map[string]goemittest.Cell{attr: {Text: "-1"}}},
+		{Name: "null", Row: map[string]goemittest.Cell{attr: {Null: true}}},
+		{Name: "missing", Row: map[string]goemittest.Cell{}},
+	})
+	if imports, err := goemittest.TEIImports(program); err != nil || len(imports) != 0 {
+		t.Fatalf("generated program depends on TEI packages: %v %v", imports, err)
 	}
 
 	packageDir, err := os.MkdirTemp(root, "tei-rule-build-")
@@ -107,45 +124,20 @@ func TestSelectedRuleGoIsActuallyConsumedByBuildPlanBuilder(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("generated.go", generated)
-	write("main.go", []byte(strings.Join([]string{
-		"package main",
-		"import (\"errors\"; \"fmt\"; \"math/big\"; \"tei/internal/core\")",
-		"type input struct { number *big.Rat; missing bool; reads int }",
-		"func (s *input) Number(id core.CanonicalID) (*big.Rat, error) {",
-		" if id != \"sales.order_line.quantity\" { return nil, errors.New(\"wrong source read\") }",
-		" s.reads++",
-		" if s.missing { return nil, errors.New(\"input unavailable\") }",
-		" return s.number, nil",
-		"}",
-		"func (s *input) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) { return nil, errors.New(\"unexpected relation read\") }",
-		"func main() {",
-		" for _, tc := range []struct { label, value string; missing bool }{",
-		"  {\"positive\", \"2.5\", false}, {\"zero\", \"0\", false},",
-		"  {\"negative\", \"-1\", false}, {\"null\", \"\", false}, {\"missing\", \"\", true},",
-		" } {",
-		"  var value *big.Rat",
-		"  if tc.value != \"\" { value = new(big.Rat); if _, ok := value.SetString(tc.value); !ok { panic(tc.value) } }",
-		"  source := &input{number: value, missing: tc.missing}",
-		"  result, err := EvaluateSelected(source)",
-		"  if err != nil { fmt.Printf(\"%s:error:%d\\n\", tc.label, source.reads) } else { fmt.Printf(\"%s:%s:%d\\n\", tc.label, result, source.reads) }",
-		" }",
-		"}",
-	}, "\n")+"\n"))
+	for name, data := range program {
+		write(name, data)
+	}
 
-	// These are exactly the module-local package sources the compiled program
-	// requires. Include the Go module itself so -isolate cannot silently read
-	// the working tree's module context during compilation.
+	// The generated package and its harness use only the standard library,
+	// so the plan names no TEI package. Include the Go module itself so
+	// -isolate cannot silently read the working tree's module context during
+	// compilation.
 	plan := planFor(t, root, relDir, "./"+relDir, "runtime-artifact")
 	plan.Target = "host/" + runtime.GOOS + "/" + runtime.GOARCH
 	resolver := buildintent.DirSourceResolver{Root: root}
 	for _, source := range []struct {
 		kind, id, path string
 	}{
-		{"go-package", "identity", "core/identity"},
-		{"go-package", "core", "internal/core"},
-		{"go-package", "semantic", "internal/semantic"},
-		{"go-package", "evaluator", "internal/semantic/validationeval"},
 		{"go-module", "gomod", "go.mod"},
 		{"go-module", "gosum", "go.sum"},
 	} {
@@ -166,7 +158,7 @@ func TestSelectedRuleGoIsActuallyConsumedByBuildPlanBuilder(t *testing.T) {
 	planPath := writePlan(t, dir, plan)
 
 	// A source edit after plan resolution must be rejected before compilation.
-	write("generated.go", append(append([]byte(nil), generated...), []byte("\n// stale planned input\n")...))
+	write(ruleFile, append(append([]byte(nil), generated...), []byte("\n// stale planned input\n")...))
 	if _, err := runTool(t,
 		"-plan", planPath, "-repo", root,
 		"-artifact-out", filepath.Join(dir, "should-not-build"),
@@ -174,7 +166,7 @@ func TestSelectedRuleGoIsActuallyConsumedByBuildPlanBuilder(t *testing.T) {
 	); err == nil || !strings.Contains(err.Error(), "the plan does not describe") {
 		t.Fatalf("stale generated-Go input was accepted or misreported: %v", err)
 	}
-	write("generated.go", generated)
+	write(ruleFile, generated)
 
 	artifact := filepath.Join(dir, "generated-rule")
 	if runtime.GOOS == "windows" {
@@ -207,12 +199,13 @@ func TestSelectedRuleGoIsActuallyConsumedByBuildPlanBuilder(t *testing.T) {
 			t.Fatalf("actual Builder source digest did not match plan: %+v", source)
 		}
 	}
-	out, err := exec.Command(artifact).CombinedOutput()
+	output, err := exec.Command(artifact).CombinedOutput()
 	if err != nil {
-		t.Fatalf("actual Builder-produced Go executable failed: %v\n%s", err, out)
+		t.Fatalf("actual Builder-produced Go executable failed: %v\n%s", err, output)
 	}
-	const expected = "positive:satisfied:1\nzero:not-satisfied:1\nnegative:not-satisfied:1\nnull:error:1\nmissing:error:1\n"
-	if string(out) != expected {
-		t.Fatalf("Builder-produced binary had incorrect decision/read behavior:\n%s\nexpected:\n%s", out, expected)
+	const expected = "positive:satisfied:1:" + attr + "\nzero:not-satisfied:1:" + attr +
+		"\nnegative:not-satisfied:1:" + attr + "\nnull:undecided:1:" + attr + "\nmissing:undecided:1:" + attr + "\n"
+	if string(output) != expected {
+		t.Fatalf("Builder-produced binary had incorrect decision/read behavior:\n%s\nexpected:\n%s", output, expected)
 	}
 }

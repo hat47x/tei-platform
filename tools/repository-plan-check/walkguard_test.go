@@ -12,11 +12,12 @@ import (
 // entry it was handed can no longer be read.
 //
 // Several tests create a temporary directory under the repository root and
-// remove it again (internal/semantic/validationgen and internal/operations do,
-// for build fixtures). When the removal lands between a directory being listed
-// and being visited, WalkDir reports fs.ErrNotExist for a path that has nothing
-// to do with the property being checked, and the check fails for reasons that
-// depend on test scheduling. Skipping only that case keeps the run deterministic.
+// remove it again (cmd/tei and tools/reference-go-build-from-plan do, for
+// build fixtures whose plans locate sources relative to the repository).
+// When the removal lands between a directory being listed and being visited,
+// WalkDir reports fs.ErrNotExist for a path that has nothing to do with the
+// property being checked, and the check fails for reasons that depend on test
+// scheduling. Skipping only that case keeps the run deterministic.
 //
 // Every other error is returned to the caller. A permission failure or an I/O
 // error could hide a file the check exists to inspect, and swallowing those

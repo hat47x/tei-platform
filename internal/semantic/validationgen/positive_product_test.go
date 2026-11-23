@@ -3,12 +3,12 @@ package validationgen_test
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationgen"
@@ -81,67 +81,36 @@ func TestSelectedMarkdownPositiveRuleGeneratesExecutableGo(t *testing.T) {
 		t.Fatalf("Rule Source span does not identify selected rule: %+v", refs[0])
 	}
 
-	code, err := validationgen.GeneratePositive(rule, attributeType, "main")
-	if err != nil {
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: rule, AttributeType: attributeType}}})
+	if err := out.Err(); err != nil {
 		t.Fatalf("lower selected Rule: %v", err)
 	}
-	if !bytes.Contains(code, []byte("value.Sign() > 0")) ||
-		!bytes.Contains(code, []byte("source.Number(")) ||
-		bytes.Contains(code, []byte("validationeval.Evaluate(")) {
-		t.Fatal("Go code does not contain the Rule's actual decision and read logic")
+	code := out.File("quantity_is_positive.go")
+	if !bytes.Contains(code, []byte("return quantity.Sign() > 0")) ||
+		!bytes.Contains(code, []byte("quantity には属性 sales.order_line.quantity の値を渡します。")) {
+		t.Fatalf("Go code does not contain the Rule's actual decision and binding:\n%s", code)
+	}
+	if imports, err := goemittest.TEIImports(goemittest.Files(out)); err != nil || len(imports) != 0 {
+		t.Fatalf("generated Go depends on TEI: %v %v", imports, err)
 	}
 
-	dir, err := os.MkdirTemp(repoRoot, "validationgen_")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	write := func(name, source string) {
-		t.Helper()
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(source), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	write("generated.go", string(code))
-	write("main.go", strings.Join([]string{
-		"package main",
-		"import (\"errors\"; \"fmt\"; \"math/big\"; \"tei/internal/core\")",
-		"type numberSource struct { n *big.Rat; missing bool; reads int }",
-		"func (s *numberSource) Number(id core.CanonicalID) (*big.Rat, error) {",
-		" if id != \"sales.order_line.quantity\" { return nil, errors.New(\"wrong attribute\") }",
-		" s.reads++",
-		" if s.missing { return nil, errors.New(\"missing input\") }",
-		" return s.n, nil",
-		"}",
-		"func (s *numberSource) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {",
-		" return nil, errors.New(\"unexpected relation read\")",
-		"}",
-		"func main() {",
-		" for _, tc := range []struct { name, number string; missing bool }{",
-		"  {\"positive\", \"2.5\", false}, {\"zero\", \"0\", false},",
-		"  {\"negative\", \"-1\", false}, {\"null\", \"\", false},",
-		"  {\"missing\", \"\", true},",
-		" } {",
-		"  var n *big.Rat",
-		"  if tc.number != \"\" { n = new(big.Rat); if _, ok := n.SetString(tc.number); !ok { panic(tc.number) } }",
-		"  source := &numberSource{n: n, missing: tc.missing}",
-		"  result, err := EvaluateSelected(source)",
-		"  if err != nil { fmt.Printf(\"%s:error:%d\\n\", tc.name, source.reads) } else {",
-		"   fmt.Printf(\"%s:%s:%d\\n\", tc.name, result, source.reads)",
-		"  }",
-		" }",
-		"}",
-	}, "\n")+"\n")
-	cmd := exec.Command("go", "run", ".")
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GOWORK=off")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("generated Go did not compile/run: %v\n%s", err, out)
-	}
-	const want = "positive:satisfied:1\nzero:not-satisfied:1\nnegative:not-satisfied:1\nnull:error:1\nmissing:error:1\n"
-	if string(out) != want {
-		t.Fatalf("wrong generated decision/read footprint:\n%s\nwant:\n%s", out, want)
+	// The harness reads the attribute the generated doc comment names, once
+	// per case, and passes the value to the generated check function. A null
+	// value and a value that was not fetched both reach the check as nil and
+	// are undecided, as validationeval.Decide answers for them; the old
+	// Source contract reported both as errors.
+	const attr = "sales.order_line.quantity"
+	got := goemittest.Run(t, out, []goemittest.Case{
+		{Name: "positive", Row: map[string]goemittest.Cell{attr: {Text: "2.5"}}},
+		{Name: "zero", Row: map[string]goemittest.Cell{attr: {Text: "0"}}},
+		{Name: "negative", Row: map[string]goemittest.Cell{attr: {Text: "-1"}}},
+		{Name: "null", Row: map[string]goemittest.Cell{attr: {Null: true}}},
+		{Name: "missing", Row: map[string]goemittest.Cell{}},
+	})
+	const want = "positive:satisfied:1:" + attr + "\nzero:not-satisfied:1:" + attr +
+		"\nnegative:not-satisfied:1:" + attr + "\nnull:undecided:1:" + attr + "\nmissing:undecided:1:" + attr + "\n"
+	if got != want {
+		t.Fatalf("wrong generated decision/read footprint:\n%s\nwant:\n%s", got, want)
 	}
 }
 

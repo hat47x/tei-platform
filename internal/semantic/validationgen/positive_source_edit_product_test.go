@@ -3,15 +3,15 @@ package validationgen_test
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
-	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -67,7 +67,7 @@ func TestPositiveGoLoweringTracksSelectedMarkdownSourceEdit(t *testing.T) {
 	const secondAttribute = "sales.order_line.bonus_quantity"
 	subject := sourceindex.Subject{Kind: "semantic-validation", ID: ruleID}
 
-	loadAndLower := func() ([]byte, sourceindex.Index) {
+	loadAndLower := func() (goemit.Output, sourceindex.Index) {
 		t.Helper()
 		loaded, err := workspace.Load(root)
 		if err != nil {
@@ -127,64 +127,36 @@ func TestPositiveGoLoweringTracksSelectedMarkdownSourceEdit(t *testing.T) {
 		if attributeType != "std.decimal" {
 			t.Fatalf("unresolved or changed type for %s: %s", selected.Attribute, attributeType)
 		}
-		goSource, err := validationgen.GeneratePositive(selected, attributeType, "main")
-		if err != nil {
+		out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: selected, AttributeType: attributeType}}})
+		if err := out.Err(); err != nil {
 			t.Fatalf("lower actual selected Rule: %v", err)
 		}
-		return goSource, index
+		return out, index
 	}
+	ruleGo := func(out goemit.Output) []byte { return out.File(out.Trace[0].File) }
+	binding := func(attribute string) []byte { return []byte("属性 " + attribute + " の値を渡します。") }
 
 	// Inputs remain identical across both processes: quantity=0 and bonus=2.
-	// Only the Markdown predicate selects which field the generated Go reads.
-	runGenerated := func(generated []byte, want string) {
+	// Only the Markdown predicate selects which field the generated Go is
+	// bound to; the harness reads the field the generated doc comment names
+	// and reports what it read.
+	inputs := []goemittest.Case{{Name: "fixed", Row: map[string]goemittest.Cell{
+		firstAttribute:  {Text: "0"},
+		secondAttribute: {Text: "2"},
+	}}}
+	runGenerated := func(out goemit.Output, want string) {
 		t.Helper()
-		dir, err := os.MkdirTemp(repoRoot, "validationgen_edit_")
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = os.RemoveAll(dir) })
-		harness := strings.Join([]string{
-			"package main",
-			"import (\"fmt\"; \"math/big\"; \"tei/internal/core\")",
-			"type input struct { read core.CanonicalID; count int }",
-			"func (s *input) Number(id core.CanonicalID) (*big.Rat, error) {",
-			" s.count++; s.read = id",
-			" switch id {",
-			" case \"sales.order_line.quantity\": return big.NewRat(0, 1), nil",
-			" case \"sales.order_line.bonus_quantity\": return big.NewRat(2, 1), nil",
-			" default: return nil, fmt.Errorf(\"unexpected read: %s\", id)",
-			" }",
-			"}",
-			"func (s *input) RelationKeys(_, _ core.CanonicalID) ([]string, error) {",
-			" return nil, fmt.Errorf(\"unexpected relation read\")",
-			"}",
-			"func main() {",
-			" s := &input{}",
-			" result, err := EvaluateSelected(s)",
-			" fmt.Printf(\"%s|%s|%d|%v\\n\", result, s.read, s.count, err)",
-			"}",
-		}, "\n") + "\n"
-		for name, data := range map[string][]byte{
-			"generated.go": generated, "main.go": []byte(harness),
-		} {
-			if err := os.WriteFile(filepath.Join(dir, name), data, 0600); err != nil {
-				t.Fatal(err)
-			}
-		}
-		cmd := exec.Command("go", "run", ".")
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		output, err := cmd.CombinedOutput()
-		if err != nil || string(output) != want {
-			t.Fatalf("generated Go run err=%v, output=%q, want=%q", err, output, want)
+		if got := goemittest.Run(t, out, inputs); got != want {
+			t.Fatalf("generated Go run output=%q, want=%q", got, want)
 		}
 	}
 
 	before, oldIndex := loadAndLower()
-	if !bytes.Contains(before, []byte("source.Number(\""+firstAttribute+"\")")) {
-		t.Fatal("initial generated Go did not read the selected quantity Attribute")
+	if !bytes.Contains(ruleGo(before), binding(firstAttribute)) ||
+		!bytes.Contains(ruleGo(before), []byte("func CheckQuantityIsPositive(")) {
+		t.Fatal("initial generated Go is not bound to the selected quantity Attribute")
 	}
-	runGenerated(before, "not-satisfied|"+firstAttribute+"|1|<nil>\n")
+	runGenerated(before, "fixed:not-satisfied:1:"+firstAttribute+"\n")
 
 	ruleFile := filepath.Join(root, filepath.FromSlash(rulePath))
 	original, err := os.ReadFile(ruleFile)
@@ -207,16 +179,17 @@ func TestPositiveGoLoweringTracksSelectedMarkdownSourceEdit(t *testing.T) {
 	}
 
 	after, newIndex := loadAndLower()
-	if bytes.Equal(before, after) ||
-		!bytes.Contains(after, []byte("source.Number(\""+secondAttribute+"\")")) ||
-		bytes.Contains(after, []byte("source.Number(\""+firstAttribute+"\")")) {
-		t.Fatal("edited selected Rule did not change the generated Go read target")
+	if bytes.Equal(ruleGo(before), ruleGo(after)) ||
+		!bytes.Contains(ruleGo(after), binding(secondAttribute)) ||
+		!bytes.Contains(ruleGo(after), []byte("func CheckBonusQuantityIsPositive(")) ||
+		bytes.Contains(ruleGo(after), binding(firstAttribute)) ||
+		bytes.Contains(ruleGo(after), []byte("func CheckQuantityIsPositive(")) {
+		t.Fatal("edited selected Rule did not change the generated Go binding")
 	}
 	if err := newIndex.Validate(func(name string) ([]byte, error) {
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 	}); err != nil {
 		t.Fatalf("fresh Load Index is invalid: %v", err)
 	}
-	runGenerated(after, "satisfied|"+secondAttribute+"|1|<nil>\n")
-
+	runGenerated(after, "fixed:satisfied:1:"+secondAttribute+"\n")
 }

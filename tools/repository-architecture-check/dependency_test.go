@@ -133,6 +133,13 @@ func boundaryViolation(e importEdge, module string) string {
 			return "permission model may depend only on core"
 		}
 	case "semantic":
+		// validationgen is a code generator kept under semantic for its
+		// existing callers. It forwards to goemit until those callers move
+		// to goemit and validationgen is removed (#5770). No other semantic
+		// package may import codegen.
+		if e.source == "internal/semantic/validationgen" && e.path == module+"/internal/codegen/goemit" {
+			return ""
+		}
 		if e.path != module+"/internal/core" && e.path != module+"/internal/semantic" &&
 			!strings.HasPrefix(e.path, module+"/internal/semantic/") {
 			return "semantic model must not depend on realization or runtime packages"
@@ -271,6 +278,10 @@ func TestBoundaryViolationClassification(t *testing.T) {
 		{"internal/semantic/capabilityinvoke", "tei/internal/core", false},
 		{"internal/semantic/capabilityinvoke", "tei/internal/semantic", false},
 		{"internal/semantic", "tei/internal/database", true},
+		{"internal/semantic/validationgen", "tei/internal/codegen/goemit", false},
+		{"internal/semantic/validationgen", "tei/internal/codegen", true},
+		{"internal/semantic/validationeval", "tei/internal/codegen/goemit", true},
+		{"internal/semantic", "tei/internal/codegen/goemit", true},
 		{"internal/permission", "tei/internal/core", false},
 		{"internal/permission", "tei/internal/deployment", true},
 		{"internal/stdlib", "tei/internal/semantic", false},

@@ -3,15 +3,14 @@ package validationgen_test
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
-	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -55,6 +54,7 @@ func TestSelectedMarkdownRuleMutationChangesGeneratedGoAndRealResult(t *testing.
 
 	const ruleID = "sales.order_line.quantity_positive"
 	type proof struct {
+		out                 goemit.Output
 		code                []byte
 		modelRevision       string
 		artifactFingerprint string
@@ -113,14 +113,16 @@ func TestSelectedMarkdownRuleMutationChangesGeneratedGoAndRealResult(t *testing.
 			rule.Kind != semantic.ValidationPositive || attributeType != "std.decimal" {
 			t.Fatalf("typed Rule or resolved Attribute changed: %+v, type=%s", rule, attributeType)
 		}
-		code, err := validationgen.GeneratePositive(rule, attributeType, "main")
-		if err != nil {
+		out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: rule, AttributeType: attributeType}}})
+		if err := out.Err(); err != nil {
 			t.Fatalf("lower actual selected Rule: %v", err)
 		}
-		if !bytes.Contains(code, []byte("value.Sign() > 0")) ||
-			!bytes.Contains(code, []byte("source.Number(\""+wantAttribute+"\")")) ||
-			bytes.Contains(code, []byte("validationeval.Evaluate(")) {
-			t.Fatal("generated Go does not contain the selected Rule's real read and decision")
+		code := out.File(out.Trace[0].File)
+		bindings, err := goemittest.Bindings(code)
+		if err != nil || len(bindings) != 1 || bindings[0].Attribute != wantAttribute ||
+			!bytes.Contains(code, []byte(bindings[0].Parameter+".Sign() > 0")) ||
+			bytes.Contains(code, []byte("validationeval")) {
+			t.Fatalf("generated Go does not contain the selected Rule's real binding and decision: %+v %v", bindings, err)
 		}
 		var artifactFP string
 		for _, artifact := range index.Artifacts {
@@ -132,7 +134,7 @@ func TestSelectedMarkdownRuleMutationChangesGeneratedGoAndRealResult(t *testing.
 			t.Fatal("selected Source artifact does not match original bytes")
 		}
 		return proof{
-			code: code, modelRevision: sourceindex.ModelRevision(index),
+			out: out, code: code, modelRevision: sourceindex.ModelRevision(index),
 			artifactFingerprint: artifactFP, rangeStart: start, rangeEnd: end,
 		}
 	}
@@ -161,59 +163,16 @@ func TestSelectedMarkdownRuleMutationChangesGeneratedGoAndRealResult(t *testing.
 	}
 
 	// The entry code and fixed test input are identical for both Go attempts.
-	// Only the generated Go source is replaced between actual process runs.
-	dir, err := os.MkdirTemp(repoRoot, "validationgen_mutation_")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	const runner = `package main
-import (
-    "errors"
-    "fmt"
-    "math/big"
-    "tei/internal/core"
-)
-type fixedSource struct { reads []core.CanonicalID }
-func (s *fixedSource) Number(id core.CanonicalID) (*big.Rat, error) {
-    s.reads = append(s.reads, id)
-    switch id {
-    case "sales.order_line.quantity": return big.NewRat(0, 1), nil
-    case "sales.order_line.second_quantity": return big.NewRat(2, 1), nil
-    default: return nil, fmt.Errorf("unexpected numeric read %s", id)
-    }
-}
-func (s *fixedSource) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {
-    return nil, errors.New("unexpected relation read")
-}
-func main() {
-    s := &fixedSource{}
-    outcome, err := EvaluateSelected(s)
-    if err != nil || len(s.reads) != 1 { panic(fmt.Sprintf("outcome=%s error=%v reads=%v", outcome, err, s.reads)) }
-    fmt.Printf("%s:%s:%d\n", outcome, s.reads[0], len(s.reads))
-}
-`
-	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte(runner), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	run := func(code []byte) string {
-		t.Helper()
-		if err := os.WriteFile(filepath.Join(dir, "generated.go"), code, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		cmd := exec.Command("go", "run", ".")
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("generated Go failed in another process: %v\n%s", err, out)
-		}
-		return strings.TrimSpace(string(out))
-	}
-	if got := run(before.code); got != "not-satisfied:sales.order_line.quantity:1" {
+	// Only the generated Go, and the binding the harness takes from its doc
+	// comment, change between actual process runs.
+	fixed := []goemittest.Case{{Name: "fixed", Row: map[string]goemittest.Cell{
+		"sales.order_line.quantity":        {Text: "0"},
+		"sales.order_line.second_quantity": {Text: "2"},
+	}}}
+	if got := goemittest.Run(t, before.out, fixed); got != "fixed:not-satisfied:1:sales.order_line.quantity\n" {
 		t.Fatalf("old generated Rule ignored fixed input: %q", got)
 	}
-	if got := run(after.code); got != "satisfied:sales.order_line.second_quantity:1" {
+	if got := goemittest.Run(t, after.out, fixed); got != "fixed:satisfied:1:sales.order_line.second_quantity\n" {
 		t.Fatalf("re-generated Rule ignored changed read target: %q", got)
 	}
 }

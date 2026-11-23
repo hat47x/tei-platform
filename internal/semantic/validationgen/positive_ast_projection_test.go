@@ -8,7 +8,7 @@ import (
 	"go/token"
 	"os"
 	"reflect"
-	"strconv"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -19,66 +19,75 @@ import (
 // This is a read-only I2M-0 observation of real generated Go. It records
 // syntactic evidence and exact Go byte ranges, not accepted TEI meaning,
 // complete control-flow equivalence, a public Capability, or a Build receipt.
+//
+// The generated code reads nothing itself: the caller passes the value. What
+// the code is bound to is the doc sentence of the check function that names
+// the attribute ("quantity には属性 sales.order_line.quantity の値を渡します。").
+// BoundAttribute and the Binding span record that sentence.
 type observedPositiveGo struct {
-	ReadAttribute  string
-	ReadCount      int
-	StrictPositive bool
-	TrueResult     bool
-	FalseResult    bool
-	SourceNilGuard bool
-	ValueNilGuard  bool
-	ReadErrorGuard bool
-	ReadStart      int
-	ReadEnd        int
-	ConditionStart int
-	ConditionEnd   int
+	BoundAttribute    string
+	BindingCount      int
+	Decision          string
+	Check             string
+	Parameter         string
+	StrictPositive    bool
+	NilGuardUndecided bool
+	TrueResult        bool
+	FalseResult       bool
+	BindingStart      int
+	BindingEnd        int
+	ConditionStart    int
+	ConditionEnd      int
 }
 
-func selectorName(expr ast.Expr, receiver, method string) bool {
-	sel, ok := expr.(*ast.SelectorExpr)
-	if !ok || sel.Sel.Name != method {
+var observedBinding = regexp.MustCompile(`^// (\S+) には属性 (\S+) の値を渡します。$`)
+
+// ratParameter returns the name of the single *big.Rat parameter of fn and
+// the name of its single result type, or "" when fn has another shape.
+func ratParameter(fn *ast.FuncDecl) (string, string) {
+	params, results := fn.Type.Params, fn.Type.Results
+	if params == nil || len(params.List) != 1 || len(params.List[0].Names) != 1 ||
+		results == nil || len(results.List) != 1 {
+		return "", ""
+	}
+	star, ok := params.List[0].Type.(*ast.StarExpr)
+	if !ok {
+		return "", ""
+	}
+	sel, ok := star.X.(*ast.SelectorExpr)
+	if !ok || sel.Sel.Name != "Rat" {
+		return "", ""
+	}
+	if pkg, ok := sel.X.(*ast.Ident); !ok || pkg.Name != "big" {
+		return "", ""
+	}
+	result, ok := results.List[0].Type.(*ast.Ident)
+	if !ok {
+		return "", ""
+	}
+	return params.List[0].Names[0].Name, result.Name
+}
+
+func identNamed(expr ast.Expr, name string) bool {
+	id, ok := expr.(*ast.Ident)
+	return ok && id.Name == name
+}
+
+// returnsIdent reports whether body is exactly "return <name>".
+func returnsIdent(body *ast.BlockStmt, name string) bool {
+	if body == nil || len(body.List) != 1 {
 		return false
 	}
-	id, ok := sel.X.(*ast.Ident)
-	return ok && id.Name == receiver
-}
-
-func observedReturn(expr ast.Expr, result string) bool {
-	return selectorName(expr, "validationeval", result)
-}
-
-func bodyReturnsError(body *ast.BlockStmt) bool {
-	for _, stmt := range body.List {
-		ret, ok := stmt.(*ast.ReturnStmt)
-		if !ok || len(ret.Results) != 2 {
-			continue
-		}
-		call, ok := ret.Results[1].(*ast.CallExpr)
-		if ok && selectorName(call.Fun, "fmt", "Errorf") {
-			return true
-		}
-	}
-	return false
+	ret, ok := body.List[0].(*ast.ReturnStmt)
+	return ok && len(ret.Results) == 1 && identNamed(ret.Results[0], name)
 }
 
 func observeGeneratedPositiveGo(src []byte) (observedPositiveGo, error) {
 	var observed observedPositiveGo
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "generated.go", src, 0)
+	file, err := parser.ParseFile(fset, "generated.go", src, parser.ParseComments)
 	if err != nil {
 		return observed, err
-	}
-	var fn *ast.FuncDecl
-	for _, decl := range file.Decls {
-		if candidate, ok := decl.(*ast.FuncDecl); ok && candidate.Name.Name == "EvaluateSelected" {
-			if fn != nil {
-				return observed, fmt.Errorf("more than one EvaluateSelected")
-			}
-			fn = candidate
-		}
-	}
-	if fn == nil || fn.Body == nil {
-		return observed, fmt.Errorf("generated EvaluateSelected function not found")
 	}
 	span := func(start, end token.Pos) (int, int, bool) {
 		sf := fset.File(start)
@@ -88,95 +97,100 @@ func observeGeneratedPositiveGo(src []byte) (observedPositiveGo, error) {
 		a, b := sf.Offset(start), sf.Offset(end)
 		return a, b, a >= 0 && a < b && b <= len(src)
 	}
-	var malformed error
-	ast.Inspect(fn.Body, func(node ast.Node) bool {
-		if malformed != nil {
-			return false
+	var decision, check *ast.FuncDecl
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
 		}
-		switch n := node.(type) {
-		case *ast.CallExpr:
-			if !selectorName(n.Fun, "source", "Number") {
-				break
+		switch _, result := ratParameter(fn); result {
+		case "bool":
+			if decision != nil {
+				return observed, fmt.Errorf("more than one decision function")
 			}
-			observed.ReadCount++
-			if len(n.Args) != 1 {
-				malformed = fmt.Errorf("Source.Number must receive exactly one Attribute")
-				return false
+			decision = fn
+		case "Result":
+			if check != nil {
+				return observed, fmt.Errorf("more than one check function")
 			}
-			lit, ok := n.Args[0].(*ast.BasicLit)
-			if !ok || lit.Kind != token.STRING {
-				malformed = fmt.Errorf("Source.Number Attribute is not a string literal")
-				return false
-			}
-			observed.ReadAttribute, malformed = strconv.Unquote(lit.Value)
-			if malformed != nil {
-				return false
-			}
-			var okSpan bool
-			observed.ReadStart, observed.ReadEnd, okSpan = span(n.Pos(), n.End())
-			if !okSpan {
-				malformed = fmt.Errorf("Source.Number has no exact generated Go byte span")
-				return false
-			}
-		case *ast.IfStmt:
-			cmp, ok := n.Cond.(*ast.BinaryExpr)
-			if !ok {
-				break
-			}
-			if id, ok := cmp.X.(*ast.Ident); ok {
-				if other, ok := cmp.Y.(*ast.Ident); ok && other.Name == "nil" && bodyReturnsError(n.Body) {
-					switch {
-					case id.Name == "source" && cmp.Op == token.EQL:
-						observed.SourceNilGuard = true
-					case id.Name == "value" && cmp.Op == token.EQL:
-						observed.ValueNilGuard = true
-					case id.Name == "err" && cmp.Op == token.NEQ:
-						observed.ReadErrorGuard = true
+			check = fn
+		}
+	}
+	if decision == nil || check == nil {
+		return observed, fmt.Errorf("generated decision and check functions not found")
+	}
+	observed.Decision, observed.Check = decision.Name.Name, check.Name.Name
+	observed.Parameter, _ = ratParameter(check)
+	if parameter, _ := ratParameter(decision); parameter != observed.Parameter {
+		return observed, fmt.Errorf("decision and check functions take different values")
+	}
+
+	// Decision: exactly "return <p>.Sign() > 0".
+	if len(decision.Body.List) == 1 {
+		if ret, ok := decision.Body.List[0].(*ast.ReturnStmt); ok && len(ret.Results) == 1 {
+			if cmp, ok := ret.Results[0].(*ast.BinaryExpr); ok && cmp.Op == token.GTR {
+				call, okCall := cmp.X.(*ast.CallExpr)
+				zero, okZero := cmp.Y.(*ast.BasicLit)
+				if okCall && okZero && len(call.Args) == 0 &&
+					zero.Kind == token.INT && zero.Value == "0" {
+					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Sign" &&
+						identNamed(sel.X, observed.Parameter) {
+						var okSpan bool
+						observed.ConditionStart, observed.ConditionEnd, okSpan = span(cmp.Pos(), cmp.End())
+						if !okSpan {
+							return observed, fmt.Errorf("positive condition has no exact Go byte span")
+						}
+						observed.StrictPositive = true
 					}
 				}
 			}
-			if cmp.Op != token.GTR {
-				break
-			}
-			call, ok := cmp.X.(*ast.CallExpr)
-			if !ok || !selectorName(call.Fun, "value", "Sign") || len(call.Args) != 0 {
-				break
-			}
-			zero, ok := cmp.Y.(*ast.BasicLit)
-			if !ok || zero.Kind != token.INT || zero.Value != "0" {
-				break
-			}
-			observed.StrictPositive = true
-			var okSpan bool
-			observed.ConditionStart, observed.ConditionEnd, okSpan = span(cmp.Pos(), cmp.End())
-			if !okSpan {
-				malformed = fmt.Errorf("positive condition has no exact Go byte span")
-				return false
-			}
-			for _, stmt := range n.Body.List {
-				if ret, ok := stmt.(*ast.ReturnStmt); ok && len(ret.Results) == 2 &&
-					observedReturn(ret.Results[0], "ResultSatisfied") {
-					observed.TrueResult = true
-				}
-			}
-		case *ast.ReturnStmt:
-			if len(n.Results) == 2 && observedReturn(n.Results[0], "ResultNotSatisfied") {
-				observed.FalseResult = true
+		}
+	}
+
+	// Check: nil guard, decision call, final answer.
+	if len(check.Body.List) == 3 {
+		if guard, ok := check.Body.List[0].(*ast.IfStmt); ok && guard.Init == nil && guard.Else == nil {
+			if cmp, ok := guard.Cond.(*ast.BinaryExpr); ok && cmp.Op == token.EQL &&
+				identNamed(cmp.X, observed.Parameter) && identNamed(cmp.Y, "nil") {
+				observed.NilGuardUndecided = returnsIdent(guard.Body, "Undecided")
 			}
 		}
-		return true
-	})
-	if malformed != nil {
-		return observed, malformed
+		if decide, ok := check.Body.List[1].(*ast.IfStmt); ok && decide.Init == nil && decide.Else == nil {
+			if call, ok := decide.Cond.(*ast.CallExpr); ok && identNamed(call.Fun, observed.Decision) &&
+				len(call.Args) == 1 && identNamed(call.Args[0], observed.Parameter) {
+				observed.TrueResult = returnsIdent(decide.Body, "Satisfied")
+			}
+		}
+		if ret, ok := check.Body.List[2].(*ast.ReturnStmt); ok && len(ret.Results) == 1 {
+			observed.FalseResult = identNamed(ret.Results[0], "NotSatisfied")
+		}
 	}
-	if observed.ReadCount != 1 || observed.ReadAttribute == "" ||
-		!observed.StrictPositive || !observed.TrueResult || !observed.FalseResult ||
-		!observed.SourceNilGuard || !observed.ValueNilGuard || !observed.ReadErrorGuard {
-		return observed, fmt.Errorf("generated decision is not the observed single-read positive shape: %+v", observed)
+
+	// Binding: the check function's doc sentence for its parameter.
+	if check.Doc != nil {
+		for _, comment := range check.Doc.List {
+			match := observedBinding.FindStringSubmatch(comment.Text)
+			if match == nil || match[1] != observed.Parameter {
+				continue
+			}
+			observed.BindingCount++
+			observed.BoundAttribute = match[2]
+			var okSpan bool
+			observed.BindingStart, observed.BindingEnd, okSpan = span(comment.Pos(), comment.End())
+			if !okSpan {
+				return observed, fmt.Errorf("binding sentence has no exact Go byte span")
+			}
+		}
 	}
-	if !bytes.Contains(src[observed.ReadStart:observed.ReadEnd], []byte("source.Number(")) ||
-		string(src[observed.ConditionStart:observed.ConditionEnd]) != "value.Sign() > 0" {
-		return observed, fmt.Errorf("AST byte spans do not match the generated read and condition")
+
+	if observed.BindingCount != 1 || observed.BoundAttribute == "" ||
+		!observed.StrictPositive || !observed.NilGuardUndecided ||
+		!observed.TrueResult || !observed.FalseResult {
+		return observed, fmt.Errorf("generated decision is not the observed bound positive shape: %+v", observed)
+	}
+	if !bytes.Contains(src[observed.BindingStart:observed.BindingEnd], []byte("属性 "+observed.BoundAttribute)) ||
+		string(src[observed.ConditionStart:observed.ConditionEnd]) != observed.Parameter+".Sign() > 0" {
+		return observed, fmt.Errorf("AST byte spans do not match the generated binding and condition")
 	}
 	return observed, nil
 }
@@ -195,11 +209,12 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if observed.ReadAttribute != "sales.order_line.quantity" {
-		t.Fatalf("Go AST observed the wrong read target: %+v", observed)
+	if observed.BoundAttribute != "sales.order_line.quantity" || observed.Check != "CheckQuantityIsPositive" {
+		t.Fatalf("Go AST observed the wrong bound attribute: %+v", observed)
 	}
-	// A second typed Rule can produce an equally shaped Go function, but its
-	// read target is different. Code formatting alone does not confer identity.
+	// A second typed Rule can produce an equally shaped Go function, but it
+	// is bound to a different attribute. Code formatting alone does not
+	// confer identity.
 	rule.Attribute = "sales.order_line.discount"
 	second, err := validationgen.GeneratePositive(rule, "std.decimal", "main")
 	if err != nil {
@@ -209,31 +224,31 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if changed.ReadAttribute != "sales.order_line.discount" ||
+	if changed.BoundAttribute != "sales.order_line.discount" || changed.Check != "CheckDiscountIsPositive" ||
 		bytes.Equal(generated, second) {
 		t.Fatalf("Rule target edit was not visible in actual Go AST: %+v", changed)
 	}
 
-	// A source comment is not a new branch or read. Offsets are recalculated
-	// for the new bytes, while the observed behavior shape remains identical.
+	// A source comment is not a new branch or binding. Offsets are
+	// recalculated for the new bytes, while the observed shape is identical.
 	commented := append([]byte("// display-only text\n"), generated...)
 	afterComment, err := observeGeneratedPositiveGo(commented)
 	if err != nil {
 		t.Fatal(err)
 	}
 	withoutPositions := func(o observedPositiveGo) observedPositiveGo {
-		o.ReadStart, o.ReadEnd, o.ConditionStart, o.ConditionEnd = 0, 0, 0, 0
+		o.BindingStart, o.BindingEnd, o.ConditionStart, o.ConditionEnd = 0, 0, 0, 0
 		return o
 	}
 	if !reflect.DeepEqual(withoutPositions(observed), withoutPositions(afterComment)) ||
-		afterComment.ReadStart <= observed.ReadStart {
+		afterComment.BindingStart <= observed.BindingStart {
 		t.Fatal("comment-only change was mistaken for a new Go decision")
 	}
 
 	// The visible control-flow diagram must be derived from actual code.
 	// It cannot keep asserting a strict-positive predicate after a >= mutant.
-	mutated := bytes.Replace(generated, []byte("value.Sign() > 0"),
-		[]byte("value.Sign() >= 0"), 1)
+	mutated := bytes.Replace(generated, []byte("quantity.Sign() > 0"),
+		[]byte("quantity.Sign() >= 0"), 1)
 	if bytes.Equal(mutated, generated) {
 		t.Fatal("positive branch mutant was not applied")
 	}
@@ -242,44 +257,50 @@ func TestGeneratedPositiveASTHasTraceableReadAndDecision(t *testing.T) {
 	}
 
 	// A syntactic nil check is not sufficient: the guarded branch must
-	// actually return an error, otherwise a diagram would invent failure
-	// behavior that the generated implementation no longer guarantees.
-	droppedError := bytes.Replace(generated, []byte("fmt.Errorf("), []byte("fmt.Sprintf("), 1)
-	if bytes.Equal(droppedError, generated) {
-		t.Fatal("error-return mutant was not applied")
+	// actually answer Undecided. A guard that answers NotSatisfied would
+	// read a missing value as a failed rule.
+	missingAsFailure := bytes.Replace(generated, []byte("return Undecided"), []byte("return NotSatisfied"), 1)
+	if bytes.Equal(missingAsFailure, generated) {
+		t.Fatal("nil-guard mutant was not applied")
 	}
-	if _, err := observeGeneratedPositiveGo(droppedError); err == nil {
-		t.Fatal("a nil guard without an error return was accepted as failure handling")
+	if _, err := observeGeneratedPositiveGo(missingAsFailure); err == nil {
+		t.Fatal("a nil guard without Undecided was accepted as missing-value handling")
 	}
 }
 
 func TestGeneratorSourceAndGeneratedDecisionRemainDistinct(t *testing.T) {
 	// Observe TEI's handwritten generator separately from its output: an
 	// implementation of a Generator is not the business Rule it emits.
-	src, err := os.ReadFile("positive.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "positive.go", src, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	observedGenerator := false
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "GeneratePositive" || fn.Body == nil {
-			continue
+	// GeneratePositive forwards to goemit; the Go is built in goemit.
+	observe := func(path, function, want string) {
+		t.Helper()
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
 		}
-		observedGenerator = true
-		start := fset.File(fn.Pos()).Offset(fn.Pos())
-		end := fset.File(fn.End()).Offset(fn.End())
-		if start < 0 || end <= start || end > len(src) ||
-			!strings.Contains(string(src[start:end]), "format.Source") {
-			t.Fatal("Generator AST was not bound to the real implementation byte range")
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, path, src, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		observedGenerator := false
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Name.Name != function || fn.Body == nil {
+				continue
+			}
+			observedGenerator = true
+			start := fset.File(fn.Pos()).Offset(fn.Pos())
+			end := fset.File(fn.End()).Offset(fn.End())
+			if start < 0 || end <= start || end > len(src) ||
+				!strings.Contains(string(src[start:end]), want) {
+				t.Fatalf("Generator AST %s was not bound to the real implementation byte range", function)
+			}
+		}
+		if !observedGenerator {
+			t.Fatalf("the real %s source was not observed", function)
 		}
 	}
-	if !observedGenerator {
-		t.Fatal("the real GeneratePositive source was not observed")
-	}
+	observe("positive.go", "GeneratePositive", "goemit.Emit(")
+	observe("../../codegen/goemit/positive.go", "positiveFile", "printer.Fprint(")
 }

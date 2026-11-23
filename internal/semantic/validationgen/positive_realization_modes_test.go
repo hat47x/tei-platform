@@ -2,15 +2,17 @@ package validationgen_test
 
 import (
 	"bytes"
-	"os"
-	"os/exec"
+	"fmt"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
-	"tei/internal/semantic/validationgen"
+	"tei/internal/semantic/validationeval"
 	"tei/internal/workspace"
 )
 
@@ -21,10 +23,7 @@ func TestSelectedPositiveRuleDirectAndGeneratedEvaluation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("generated Go must be compiled and run")
 	}
-	goExe, err := exec.LookPath("go")
-	if err != nil {
-		t.Skipf("Go toolchain unavailable: %v", err)
-	}
+	goemittest.GoExecutable(t)
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("test source path unavailable")
@@ -68,117 +67,93 @@ func TestSelectedPositiveRuleDirectAndGeneratedEvaluation(t *testing.T) {
 		t.Fatalf("unsupported or unresolved selected Rule: %+v, type=%s", rule, attributeType)
 	}
 
-	generated, err := validationgen.GeneratePositive(rule, attributeType, "main")
-	if err != nil {
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: rule, AttributeType: attributeType}}})
+	if err := out.Err(); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(generated, []byte("value.Sign() > 0")) ||
-		bytes.Contains(generated, []byte("validationeval.Evaluate(")) {
+	if generated := out.File("quantity_is_positive.go"); !bytes.Contains(generated, []byte("return quantity.Sign() > 0")) ||
+		bytes.Contains(generated, []byte("validationeval")) {
 		t.Fatal("generated Go does not own the positive decision")
 	}
 
 	// Each realization is checked against fixed expectations, not against
 	// the other realization's output. Runtime evaluation is limited to the
-	// Shape that GeneratePositive accepts.
-	const consumer = `package main
-import (
-	"fmt"
-	"math/big"
-	"tei/internal/core"
-	"tei/internal/semantic"
-	"tei/internal/semantic/validationeval"
-)
-
-type numberSource struct {
-	number *big.Rat
-	unavailable bool
-	reads int
-	requested core.CanonicalID
-}
-func (s *numberSource) Number(id core.CanonicalID) (*big.Rat, error) {
-	s.reads++
-	s.requested = id
-	if s.unavailable { return nil, fmt.Errorf("unfetched") }
-	return s.number, nil
-}
-func (s *numberSource) RelationKeys(_, _ core.CanonicalID) ([]string, error) {
-	return nil, fmt.Errorf("unexpected relation read")
-}
-func main() {
-	rule := semantic.Validation{
-		ID: "sales.order_line.quantity_positive",
-		Kind: semantic.ValidationPositive,
-		Attribute: "sales.order_line.quantity",
-	}
-	evaluators := []struct {
-		name string
-		evaluate func(validationeval.Source) (validationeval.Result, error)
-	}{
-		{"direct", func(s validationeval.Source) (validationeval.Result, error) {
-			return validationeval.Evaluate(rule, s)
-		}},
-		{"generated", EvaluateSelected},
-	}
+	// Shape that goemit accepts. A null value and a value that was not
+	// fetched are both undecided: Decide says so with its reason, and the
+	// generated check function, which receives nil for both, says Undecided.
 	cases := []struct {
 		name, value, want string
-		unavailable bool
+		state             validationeval.ValueState
 	}{
-		{"positive", "2.5", "satisfied", false},
-		{"zero", "0", "not-satisfied", false},
-		{"negative", "-1", "not-satisfied", false},
-		{"null", "", "error", false},
-		{"unavailable", "", "error", true},
-	}
-	for _, c := range cases {
-		var value *big.Rat
-		if c.value != "" {
-			value = new(big.Rat)
-			if _, ok := value.SetString(c.value); !ok { panic(c.value) }
-		}
-		for _, evaluator := range evaluators {
-			s := &numberSource{number: value, unavailable: c.unavailable}
-			result, err := evaluator.evaluate(s)
-			if c.want == "error" {
-				if err == nil || result != "" {
-					panic(fmt.Sprintf("%s/%s: expected a failed evaluation, got %s / %v", evaluator.name, c.name, result, err))
-				}
-			} else if err != nil || string(result) != c.want {
-				panic(fmt.Sprintf("%s/%s: got %s / %v, want %s", evaluator.name, c.name, result, err, c.want))
-			}
-			if s.reads != 1 || s.requested != rule.Attribute {
-				panic(fmt.Sprintf("%s/%s: wrong read count or attribute: %d %s", evaluator.name, c.name, s.reads, s.requested))
-			}
-		}
-	}
-	for _, evaluator := range evaluators {
-		result, err := evaluator.evaluate(nil)
-		if err == nil || result != "" {
-			panic(fmt.Sprintf("%s: nil source accepted", evaluator.name))
-		}
-	}
-	fmt.Println("direct-and-generated:passed")
-}
-`
-	directory, err := os.MkdirTemp(root, "tei-realization-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(directory)
-	if err := os.WriteFile(filepath.Join(directory, "generated.go"), generated, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(directory, "main.go"), []byte(consumer), 0600); err != nil {
-		t.Fatal(err)
+		{"positive", "2.5", "satisfied", validationeval.ValuePresent},
+		{"zero", "0", "not-satisfied", validationeval.ValuePresent},
+		{"negative", "-1", "not-satisfied", validationeval.ValuePresent},
+		{"null", "", "undecided", validationeval.ValueNull},
+		{"unavailable", "", "undecided", validationeval.ValueNotFetched},
 	}
 
-	command := exec.Command(goExe, "run", ".")
-	command.Dir = directory
-	command.Env = append(os.Environ(), "GOWORK=off")
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("direct/generated Go comparison failed: %v\n%s", err, output)
+	// Direct: the existing evaluator, in this process.
+	for _, c := range cases {
+		source := &directNumber{reading: validationeval.NumberReading{State: c.state}}
+		if c.state == validationeval.ValuePresent {
+			value, err := semantic.ParseOperatorCaseValue(c.value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			source.reading.Value = value
+		}
+		decision, err := validationeval.Decide(rule, source, validationeval.Operators{})
+		if err != nil {
+			t.Fatalf("direct/%s: %v", c.name, err)
+		}
+		got := string(decision.Result)
+		if decision.Undecided != nil {
+			got = "undecided"
+			if decision.Undecided.Attribute != rule.Attribute {
+				t.Fatalf("direct/%s: undecided on %s", c.name, decision.Undecided.Attribute)
+			}
+		}
+		if got != c.want || source.reads != 1 || source.requested != rule.Attribute {
+			t.Fatalf("direct/%s: got %s, reads=%d %s; want %s", c.name, got, source.reads, source.requested, c.want)
+		}
 	}
-	if string(output) != "direct-and-generated:passed\n" {
-		t.Fatalf("unexpected direct/generated comparison output: %s", output)
+	if _, err := validationeval.Decide(rule, nil, validationeval.Operators{}); err == nil {
+		t.Fatal("direct: nil source accepted")
 	}
+
+	// Generated: the emitted package in a module of its own. The harness
+	// reads the attribute named by the generated doc comment.
+	var harness []goemittest.Case
+	var want strings.Builder
+	for _, c := range cases {
+		row := map[string]goemittest.Cell{}
+		switch c.state {
+		case validationeval.ValuePresent:
+			row[string(rule.Attribute)] = goemittest.Cell{Text: c.value}
+		case validationeval.ValueNull:
+			row[string(rule.Attribute)] = goemittest.Cell{Null: true}
+		}
+		harness = append(harness, goemittest.Case{Name: c.name, Row: row})
+		fmt.Fprintf(&want, "%s:%s:1:%s\n", c.name, c.want, rule.Attribute)
+	}
+	if got := goemittest.Run(t, out, harness); got != want.String() {
+		t.Fatalf("generated evaluation:\n%s\nwant:\n%s", got, want.String())
+	}
+}
+
+// directNumber reports one fixed reading and counts the reads.
+type directNumber struct {
+	reading   validationeval.NumberReading
+	reads     int
+	requested core.CanonicalID
+}
+
+func (s *directNumber) ReadNumber(attribute core.CanonicalID) (validationeval.NumberReading, error) {
+	s.reads++
+	s.requested = attribute
+	return s.reading, nil
+}
+
+func (s *directNumber) ReadRelationKeys(core.CanonicalID, core.CanonicalID) (validationeval.RelationReading, error) {
+	return validationeval.RelationReading{}, fmt.Errorf("unexpected relation read")
 }

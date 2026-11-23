@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
-	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/workspace"
 )
@@ -64,7 +65,7 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 
 	const ruleID = "sales.order_line.quantity_positive"
 	ruleSourcePath := filepath.Join(workspaceRoot, filepath.FromSlash(ruleFile))
-	selectAndGenerate := func() ([]byte, sourceindex.Index) {
+	selectAndGenerate := func() (goemit.Output, sourceindex.Index) {
 		t.Helper()
 		loaded, err := workspace.Load(workspaceRoot)
 		if err != nil {
@@ -121,94 +122,55 @@ func TestSelectedRuleAttributeEditChangesCompiledGeneratedGo(t *testing.T) {
 		if string(source[at.Start.Offset:at.End.Offset]) != ruleID {
 			t.Fatalf("source range does not identify selected rule: %+v", at)
 		}
-		generated, err := validationgen.GeneratePositive(rule, attributeType, "main")
-		if err != nil {
+		out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: rule, AttributeType: attributeType}}})
+		if err := out.Err(); err != nil {
 			t.Fatal(err)
 		}
-		if !bytes.Contains(generated, []byte("value.Sign() > 0")) ||
-			bytes.Contains(generated, []byte("validationeval.Evaluate(")) {
+		generated := out.File(out.Trace[0].File)
+		if !bytes.Contains(generated, []byte(".Sign() > 0")) ||
+			bytes.Contains(generated, []byte("validationeval")) {
 			t.Fatalf("generated code contains no owned positive decision:\n%s", generated)
 		}
-		return generated, index
+		return out, index
 	}
 
 	// These are *independent* expected results for the two generated binaries.
-	// The consumer is identical and returns 2 for quantity, 0 for secondary
-	// quantity. It reports the actual attribute name requested by generated Go.
-	const consumer = `package main
-import (
-	"fmt"
-	"math/big"
-	"tei/internal/core"
-)
-type probe struct { reads int; requested string }
-func (p *probe) Number(id core.CanonicalID) (*big.Rat, error) {
-	p.reads++
-	p.requested = string(id)
-	switch string(id) {
-	case "sales.order_line.quantity":
-		return big.NewRat(2, 1), nil
-	case "sales.order_line.secondary_quantity":
-		return big.NewRat(0, 1), nil
-	default:
-		return nil, fmt.Errorf("unexpected attribute %s", id)
-	}
-}
-func (p *probe) RelationKeys(_, _ core.CanonicalID) ([]string, error) {
-	return nil, fmt.Errorf("unexpected relation read")
-}
-func main() {
-	p := &probe{}
-	result, err := EvaluateSelected(p)
-	if err != nil {
-		fmt.Printf("error:%s:%d\n", p.requested, p.reads)
-		return
-	}
-	fmt.Printf("%s:%s:%d\n", p.requested, result, p.reads)
-}
-`
-	// Work under the real module so Go's internal import rule is respected.
-	buildRoot, err := os.MkdirTemp(repoRoot, "validationgen_mutation_")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(buildRoot) })
-	if err := os.WriteFile(filepath.Join(buildRoot, "main.go"), []byte(consumer), 0600); err != nil {
-		t.Fatal(err)
-	}
-	buildAndExecute := func(name string, generated []byte, want string) [32]byte {
+	// The record is identical in both: 2 for quantity, 0 for secondary
+	// quantity. main.go is identical too; binding.go names the attribute and
+	// check function that the generated doc comment names, so the harness
+	// reports the attribute the generated Go is bound to.
+	record := []goemittest.Case{{Name: "fixed", Row: map[string]goemittest.Cell{
+		"sales.order_line.quantity":           {Text: "2"},
+		"sales.order_line.secondary_quantity": {Text: "0"},
+	}}}
+	buildAndExecute := func(name string, out goemit.Output, want string) [32]byte {
 		t.Helper()
-		if err := os.WriteFile(filepath.Join(buildRoot, "generated.go"), generated, 0600); err != nil {
-			t.Fatal(err)
-		}
+		// A module of its own, outside the repository: the generated Go and
+		// the harness need nothing but the standard library.
+		buildRoot := goemittest.WriteModule(t, goemittest.Program(t, out, record))
 		binaryPath := filepath.Join(buildRoot, name)
 		if runtime.GOOS == "windows" {
 			binaryPath += ".exe"
 		}
-		cmd := exec.Command("go", "build", "-trimpath", "-o", binaryPath, ".")
-		cmd.Dir = buildRoot
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		if output, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("generated %s could not be built: %v\n%s", name, err, output)
-		}
+		goemittest.RunGo(t, buildRoot, "build", "-trimpath", "-o", binaryPath, ".")
 		binary, err := os.ReadFile(binaryPath)
 		if err != nil {
 			t.Fatal(err)
 		}
 		run := exec.Command(binaryPath)
 		run.Dir = buildRoot
-		out, err := run.CombinedOutput()
+		output, err := run.CombinedOutput()
 		if err != nil {
-			t.Fatalf("generated %s binary failed: %v\n%s", name, err, out)
+			t.Fatalf("generated %s binary failed: %v\n%s", name, err, output)
 		}
-		if string(out) != want {
-			t.Fatalf("generated %s consumer output=%q, want %q", name, out, want)
+		if string(output) != want {
+			t.Fatalf("generated %s consumer output=%q, want %q", name, output, want)
 		}
 		return sha256.Sum256(binary)
 	}
 
-	beforeGo, beforeIndex := selectAndGenerate()
-	beforeBinary := buildAndExecute("before", beforeGo, "sales.order_line.quantity:satisfied:1\n")
+	beforeOut, beforeIndex := selectAndGenerate()
+	beforeBinary := buildAndExecute("before", beforeOut, "fixed:satisfied:1:sales.order_line.quantity\n")
 
 	ruleBytes, err := os.ReadFile(ruleSourcePath)
 	if err != nil {
@@ -232,12 +194,14 @@ func main() {
 		t.Fatalf("old Source Index survived the one-factor rule change: %v", err)
 	}
 
-	afterGo, afterIndex := selectAndGenerate()
+	afterOut, afterIndex := selectAndGenerate()
+	beforeGo, afterGo := beforeOut.File(beforeOut.Trace[0].File), afterOut.File(afterOut.Trace[0].File)
 	if bytes.Equal(beforeGo, afterGo) ||
-		!bytes.Contains(afterGo, []byte("sales.order_line.secondary_quantity")) {
+		!bytes.Contains(afterGo, []byte("func CheckSecondaryQuantityIsPositive(")) ||
+		!bytes.Contains(afterGo, []byte("属性 sales.order_line.secondary_quantity の値")) {
 		t.Fatal("changed product meaning did not change generated Go")
 	}
-	afterBinary := buildAndExecute("after", afterGo, "sales.order_line.secondary_quantity:not-satisfied:1\n")
+	afterBinary := buildAndExecute("after", afterOut, "fixed:not-satisfied:1:sales.order_line.secondary_quantity\n")
 	if beforeBinary == afterBinary {
 		t.Fatal("different generated rule behaviors produced identical compiled binary bytes")
 	}

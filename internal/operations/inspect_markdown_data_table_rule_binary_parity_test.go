@@ -4,17 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"math/big"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	"tei/internal/codegen/goemit"
+	"tei/internal/codegen/goemit/goemittest"
 	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationeval"
-	"tei/internal/semantic/validationgen"
 	"tei/internal/sourceindex"
 	"tei/internal/validation"
 	"tei/internal/workspace"
@@ -29,47 +31,49 @@ type tableRuleParitySource struct {
 	readState string
 }
 
-func (s *tableRuleParitySource) Number(id core.CanonicalID) (*big.Rat, error) {
+func (s *tableRuleParitySource) ReadNumber(id core.CanonicalID) (validationeval.NumberReading, error) {
 	s.reads = append(s.reads, id)
 	switch id {
 	case "organization.transfer_request.allocation",
 		"organization.transfer_request.person_id":
 	default:
-		return nil, errors.New("unexpected Attribute read")
+		return validationeval.NumberReading{}, errors.New("unexpected Attribute read")
 	}
 	if s.missing {
 		s.readState = "not-fetched"
-		return nil, errors.New("source was not obtained")
+		return validationeval.NumberReading{State: validationeval.ValueNotFetched}, nil
 	}
 	if s.value == "" {
 		s.readState = "null"
-		return nil, nil
+		return validationeval.NumberReading{State: validationeval.ValueNull}, nil
 	}
 	s.readState = "present"
-	n, ok := new(big.Rat).SetString(s.value)
-	if !ok {
-		return nil, errors.New("invalid numeric test input")
+	n, err := semantic.ParseOperatorCaseValue(s.value)
+	if err != nil {
+		return validationeval.NumberReading{}, err
 	}
-	return n, nil
+	return validationeval.NumberReading{State: validationeval.ValuePresent, Value: n}, nil
 }
 
-func (s *tableRuleParitySource) RelationKeys(relation, attribute core.CanonicalID) ([]string, error) {
-	return nil, errors.New("unexpected Relation read")
+func (s *tableRuleParitySource) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
+	return validationeval.RelationReading{}, errors.New("unexpected Relation read")
 }
 
 // A marked Markdown Data table and its adjacent Rule reach the product
 // Evaluator and an actually compiled/generated Go binary. Equality of result
-// alone is not enough: the binary's observed Number target must be the same.
+// alone is not enough: the attribute the binary reads must be the same.
+//
+// The generated Go reads nothing itself. Its check function receives the
+// value, and its doc comment names the attribute that value comes from. The
+// driver takes that binding from each compiled file, never from this test,
+// so a file bound to another attribute reads another attribute.
 // This proves a bounded pure-Rule G/P comparison, not Builder R2-P, Provider
 // R3, Owner authority, or a second Semantic engine.
 func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 	if testing.Short() {
 		t.Skip("focused test compiles a generated Go binary")
 	}
-	goExe, err := exec.LookPath("go")
-	if err != nil {
-		t.Fatalf("Go compiler unavailable: %v", err)
-	}
+	goemittest.GoExecutable(t)
 	fixture := filepath.Join("..", "workspace", "testdata", "tei-md-data-table")
 	const sourcePath = "semantic/organization/transfer-request.tei.md"
 	const ruleID = "organization.transfer_request.allocation_positive"
@@ -138,63 +142,60 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		rule.Attribute != attribute.ID || rule.Relation != "" {
 		t.Fatalf("Data table and selected Rule no longer share a valid typed target: %+v / %+v", attribute, rule)
 	}
-	generated, err := validationgen.GeneratePositive(rule, attribute.TypeRef, "main")
-	if err != nil {
+	out := goemit.Emit(goemit.Input{PackageName: "main", Rules: []goemit.Rule{{Validation: rule, AttributeType: attribute.TypeRef}}})
+	if err := out.Err(); err != nil {
 		t.Fatal(err)
 	}
-	const selectedCall = "source.Number(\"organization.transfer_request.allocation\")"
-	const otherCall = "source.Number(\"organization.transfer_request.person_id\")"
-	if bytes.Count(generated, []byte(selectedCall)) != 1 ||
-		bytes.Count(generated, []byte("func EvaluateSelected(")) != 1 {
-		t.Fatalf("generator changed the expected read or entry: %s", generated)
+	generated := out.File("allocation_is_positive.go")
+	const selectedBinding = "allocation には属性 organization.transfer_request.allocation の値を渡します。"
+	const otherBinding = "allocation には属性 organization.transfer_request.person_id の値を渡します。"
+	if bytes.Count(generated, []byte(selectedBinding)) != 1 ||
+		bytes.Count(generated, []byte("func CheckAllocationIsPositive(")) != 1 {
+		t.Fatalf("generator changed the expected binding or entry: %s", generated)
 	}
-	// One-factor adversarial implementation: the outcome stays identical for
-	// the supplied values, but it reads another Attribute and must not qualify.
-	misbound := bytes.Replace(generated, []byte(selectedCall), []byte(otherCall), 1)
-	misbound = bytes.Replace(misbound, []byte("func EvaluateSelected("), []byte("func EvaluateMisbound("), 1)
-	if bytes.Equal(generated, misbound) || !bytes.Contains(misbound, []byte(otherCall)) {
+	// One-factor adversarial implementation: the decision and the outcome
+	// stay identical for the supplied values, but the file is bound to
+	// another Attribute and must not qualify.
+	misbound := bytes.Replace(generated, []byte(selectedBinding), []byte(otherBinding), 1)
+	misbound = bytes.ReplaceAll(misbound, []byte("AllocationIsPositive"), []byte("MisboundAllocationIsPositive"))
+	if bytes.Equal(generated, misbound) || !bytes.Contains(misbound, []byte(otherBinding)) {
 		t.Fatal("wrong-read negative was not produced")
 	}
 	// A Target symbol may change without changing the selected semantic Rule.
-	// Keep the meaning and observed Read constant while renaming only the Go
+	// Keep the meaning and the binding constant while renaming only the Go
 	// entry. A future Test ID must not be keyed to this generated function name.
-	renamed := bytes.Replace(generated, []byte("func EvaluateSelected("), []byte("func EvaluateRenamed("), 1)
-	if bytes.Equal(generated, renamed) || !bytes.Contains(renamed, []byte("func EvaluateRenamed(")) ||
-		!bytes.Contains(renamed, []byte(selectedCall)) {
-		t.Fatal("method-rename positive was not produced without changing the Read")
+	renamed := bytes.ReplaceAll(generated, []byte("AllocationIsPositive"), []byte("RenamedAllocationIsPositive"))
+	if bytes.Equal(generated, renamed) || !bytes.Contains(renamed, []byte("func CheckRenamedAllocationIsPositive(")) ||
+		!bytes.Contains(renamed, []byte(selectedBinding)) {
+		t.Fatal("method-rename positive was not produced without changing the binding")
 	}
 
-	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pkgDir, err := os.MkdirTemp(repoRoot, "tei-data-rule-binary-parity-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(pkgDir) })
-	// This temporary package belongs to module tei, which owns the generated
-	// code's existing tei/internal import. It is not a delivered artifact.
-	for name, data := range map[string][]byte{
-		"generated.go": generated,
-		"renamed.go":   renamed,
-		"misbound.go":  misbound,
-		"main.go":      []byte(markedDataParityDriver),
-	} {
-		if err := os.WriteFile(filepath.Join(pkgDir, name), data, 0o600); err != nil {
-			t.Fatal(err)
+	// The driver binds each mode to what its compiled file says.
+	var entries strings.Builder
+	for _, mode := range []struct {
+		name string
+		src  []byte
+	}{{"generated", generated}, {"renamed", renamed}, {"misbound", misbound}} {
+		bindings, err := goemittest.Bindings(mode.src)
+		if err != nil || len(bindings) != 1 {
+			t.Fatalf("%s: binding not observable: %+v %v", mode.name, bindings, err)
 		}
+		fmt.Fprintf(&entries, "\t\t{%q, %q, %s},\n", mode.name, bindings[0].Attribute, bindings[0].Check)
 	}
+	files := goemittest.Files(out)
+	files["renamed.go"] = renamed
+	files["misbound.go"] = misbound
+	files["main.go"] = []byte(fmt.Sprintf(markedDataParityDriver, entries.String()))
+	if imports, err := goemittest.TEIImports(files); err != nil || len(imports) != 0 {
+		t.Fatalf("parity program depends on TEI: %v %v", imports, err)
+	}
+	// A module of its own, outside the repository: nothing in it imports TEI.
+	pkgDir := goemittest.WriteModule(t, files)
 	binary := filepath.Join(t.TempDir(), "tei-data-rule-parity")
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
-	build := exec.Command(goExe, "build", "-o", binary, ".")
-	build.Dir = pkgDir
-	build.Env = append(os.Environ(), "GOWORK=off")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("compile actual generated Go: %v\n%s", err, output)
-	}
+	goemittest.RunGo(t, pkgDir, "build", "-o", binary, ".")
 	run := exec.Command(binary)
 	var stdout, stderr bytes.Buffer
 	run.Stdout, run.Stderr = &stdout, &stderr
@@ -223,6 +224,9 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		}
 		records[key] = got
 	}
+	// A null value and a value that was not obtained are both undecided:
+	// Decide reports the reason, and the generated check function, which
+	// receives nil for both, answers Undecided. Neither is an error any more.
 	cases := []struct {
 		name, value, want, wantReadState string
 		missing, wantError               bool
@@ -231,8 +235,8 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		{"zero", "0", "not-satisfied", "present", false, false},
 		{"negative", "-1", "not-satisfied", "present", false, false},
 		{"negative-zero", "-0", "not-satisfied", "present", false, false},
-		{"null", "", "", "null", false, true},
-		{"not-obtained", "", "", "not-fetched", true, true},
+		{"null", "", "undecided", "null", false, false},
+		{"not-obtained", "", "undecided", "not-fetched", true, false},
 	}
 	if len(records) != len(cases)*3 {
 		t.Fatalf("binary returned %d records, want %d", len(records), len(cases)*3)
@@ -241,15 +245,19 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// An independent fixed expected outcome is never derived from G.
 			source := &tableRuleParitySource{value: tc.value, missing: tc.missing}
-			direct, err := validationeval.Evaluate(rule, source)
-			if string(direct) != tc.want || (err != nil) != tc.wantError ||
+			decision, err := validationeval.Decide(rule, source, validationeval.Operators{})
+			direct := string(decision.Result)
+			if decision.Undecided != nil {
+				direct = "undecided"
+			}
+			if direct != tc.want || (err != nil) != tc.wantError ||
 				len(source.reads) != 1 || source.reads[0] != core.CanonicalID(attributeID) ||
 				source.readState != tc.wantReadState {
 				t.Fatalf("P did not match the fixed Law/Read: %q %v %v", direct, err, source.reads)
 			}
 			// Test identity belongs to the chosen Rule and case, not the
 			// generated Go entry symbol. The observed reading state must survive
-			// the P/G boundary even when both missing inputs produce an error.
+			// the P/G boundary even when both missing inputs are undecided.
 			caseID := ruleID + "/" + tc.name
 			got := records["generated/"+tc.name]
 			if got.CaseID != caseID || got.Mode != "generated" || got.Name != tc.name ||
@@ -281,9 +289,11 @@ func TestMarkedDataTableRuleRealGoAndEvaluatorReadParity(t *testing.T) {
 	}
 }
 
-// This driver is compiled together with the actual product-generated Go.
-// The second implementation intentionally performs a wrong but value-equal
-// Read: outcome parity alone would accept it.
+// markedDataParityDriver is compiled together with the actual
+// product-generated Go, in a module of its own. Each mode reads the attribute
+// its compiled file is bound to; the misbound file is bound to another
+// attribute that happens to hold the same value, so outcome parity alone
+// would accept it. The test fills in the modes.
 const markedDataParityDriver = `package main
 
 import (
@@ -291,9 +301,6 @@ import (
 	"errors"
 	"math/big"
 	"os"
-
-	"tei/internal/core"
-	"tei/internal/semantic/validationeval"
 )
 
 type probe struct {
@@ -302,52 +309,71 @@ type probe struct {
 	reads     []string
 	readState string
 }
-func (p *probe) Number(id core.CanonicalID) (*big.Rat,error) {
-	p.reads=append(p.reads,string(id))
+
+func (p *probe) number(id string) (*big.Rat, error) {
+	p.reads = append(p.reads, id)
 	switch id {
 	case "organization.transfer_request.allocation", "organization.transfer_request.person_id":
-	default: return nil,errors.New("unexpected read")
+	default:
+		return nil, errors.New("unexpected read")
 	}
-	if p.missing { p.readState="not-fetched"; return nil,errors.New("not obtained") }
-	if p.value=="" { p.readState="null"; return nil,nil }
-	p.readState="present"
-	n,ok:=new(big.Rat).SetString(p.value)
-	if !ok { return nil,errors.New("bad input") }
-	return n,nil
+	if p.missing {
+		p.readState = "not-fetched"
+		return nil, nil
+	}
+	if p.value == "" {
+		p.readState = "null"
+		return nil, nil
+	}
+	p.readState = "present"
+	return ParseDecimal(p.value)
 }
-func (p *probe) RelationKeys(relation, attribute core.CanonicalID)([]string,error){
-	return nil,errors.New("unexpected relation")
-}
+
 type result struct {
-	CaseID string
-	Mode string
-	Name string
-	Result string
-	Error bool
-	Reads int
+	CaseID    string
+	Mode      string
+	Name      string
+	Result    string
+	Error     bool
+	Reads     int
 	Attribute string
 	ReadState string
 }
-func main(){
-	cases:=[]struct{name,value string; missing bool}{
-		{"positive","2.5",false},
-		{"zero","0",false},
-		{"negative","-1",false},
-		{"negative-zero","-0",false},
-		{"null","",false},
-		{"not-obtained","",true},
+
+func main() {
+	cases := []struct {
+		name, value string
+		missing     bool
+	}{
+		{"positive", "2.5", false},
+		{"zero", "0", false},
+		{"negative", "-1", false},
+		{"negative-zero", "-0", false},
+		{"null", "", false},
+		{"not-obtained", "", true},
 	}
-	enc:=json.NewEncoder(os.Stdout)
-	for _,tc:=range cases {
-		for _,mode:=range []string{"generated","renamed","misbound"}{
-			src:=&probe{value:tc.value,missing:tc.missing}
-			var got validationeval.Result
-			var err error
-			if mode=="generated" {got,err=EvaluateSelected(src)} else if mode=="renamed" {got,err=EvaluateRenamed(src)} else {got,err=EvaluateMisbound(src)}
+	modes := []struct {
+		name, attribute string
+		check           func(*big.Rat) Result
+	}{
+%s	}
+	enc := json.NewEncoder(os.Stdout)
+	for _, tc := range cases {
+		for _, mode := range modes {
+			src := &probe{value: tc.value, missing: tc.missing}
+			value, err := src.number(mode.attribute)
+			got := ""
+			if err == nil {
+				got = string(mode.check(value))
+			}
 			// This ID is attached to the Rule/case, never to the Go method.
-			record:=result{CaseID:"organization.transfer_request.allocation_positive/"+tc.name,Mode:mode,Name:tc.name,Result:string(got),Error:err!=nil,Reads:len(src.reads),ReadState:src.readState}
-			if len(src.reads)>0 {record.Attribute=src.reads[0]}
-			if err:=enc.Encode(record);err!=nil{panic(err)}
+			record := result{CaseID: "organization.transfer_request.allocation_positive/" + tc.name, Mode: mode.name, Name: tc.name, Result: got, Error: err != nil, Reads: len(src.reads), ReadState: src.readState}
+			if len(src.reads) > 0 {
+				record.Attribute = src.reads[0]
+			}
+			if err := enc.Encode(record); err != nil {
+				panic(err)
+			}
 		}
 	}
 }

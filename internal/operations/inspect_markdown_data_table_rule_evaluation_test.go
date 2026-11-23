@@ -97,9 +97,12 @@ func TestMarkedDataTableRuleSharesEvaluatorAndGoLoweringMeaning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lower product-selected table Rule: %v", err)
 	}
-	if !bytes.Contains(generated, []byte("source.Number(\""+attributeID+"\")")) ||
-		!bytes.Contains(generated, []byte("value.Sign() > 0")) ||
-		bytes.Contains(generated, []byte("validationeval.Evaluate(")) {
+	// The generated Go reads nothing itself; its check function names the
+	// attribute whose value the caller passes.
+	if !bytes.Contains(generated, []byte("allocation には属性 "+attributeID+" の値を渡します。")) ||
+		!bytes.Contains(generated, []byte("func CheckAllocationIsPositive(allocation *big.Rat) Result")) ||
+		!bytes.Contains(generated, []byte("allocation.Sign() > 0")) ||
+		bytes.Contains(generated, []byte("validationeval")) {
 		t.Fatalf("generated Go lost the selected attribute or the actual decision:\n%s", generated)
 	}
 

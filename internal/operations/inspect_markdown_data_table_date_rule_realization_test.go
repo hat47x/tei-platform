@@ -161,7 +161,8 @@ func TestMarkedDataTableNotAfterUsesPButExplicitlyRejectsUnsupportedG(t *testing
 		t.Fatal(err)
 	}
 	if goSource, err := validationgen.GeneratePositive(positive, "std.decimal", "main"); err != nil ||
-		!bytes.Contains(goSource, []byte("value.Sign() > 0")) {
+		!bytes.Contains(goSource, []byte("func AllocationIsPositive(allocation *big.Rat) bool")) ||
+		!bytes.Contains(goSource, []byte("allocation.Sign() > 0")) {
 		t.Fatalf("a supported sibling Rule unexpectedly lost G: %v %s", err, goSource)
 	}
 	for _, tc := range []struct {

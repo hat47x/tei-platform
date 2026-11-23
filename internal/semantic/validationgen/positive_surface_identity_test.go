@@ -153,13 +153,13 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 		if _, err := parser.ParseFile(token.NewFileSet(), "generated.go", goSource, parser.AllErrors); err != nil {
 			t.Fatalf("generated Go syntax: %v", err)
 		}
-		if !bytes.Contains(goSource, []byte("source.Number(\""+attributeID+"\")")) ||
-			!bytes.Contains(goSource, []byte("value.Sign() > 0")) ||
-			bytes.Contains(goSource, []byte("validationeval.Evaluate(")) {
+		if !bytes.Contains(goSource, []byte("属性 "+attributeID+" の値を渡します。")) ||
+			!bytes.Contains(goSource, []byte("quantity.Sign() > 0")) ||
+			bytes.Contains(goSource, []byte("validationeval")) {
 			t.Fatal("Go generator no longer implements the selected read and decision")
 		}
 		ast, err := observeGeneratedPositiveGo(goSource)
-		if err != nil || ast.ReadAttribute != string(rule.Attribute) || ast.ReadCount != 1 {
+		if err != nil || ast.BoundAttribute != string(rule.Attribute) || ast.BindingCount != 1 {
 			t.Fatalf("selected typed Rule does not match generated Go AST: %+v / %v", ast, err)
 		}
 		return witness{rule: rule, code: goSource, ast: ast,
@@ -180,7 +180,7 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	// An AST byte span addresses the generated Go, not either authored Rule.
 	if markdown.sourceStart >= markdown.sourceEnd ||
 		traditional.sourceStart >= traditional.sourceEnd ||
-		markdown.ast.ReadStart >= markdown.ast.ReadEnd ||
+		markdown.ast.BindingStart >= markdown.ast.BindingEnd ||
 		markdown.ast.ConditionStart >= markdown.ast.ConditionEnd {
 		t.Fatal("authored and generated Go ranges are not independently observable")
 	}
@@ -215,8 +215,8 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	// binding to a *different* Attribute. The authored Rule must not silently
 	// inherit that new read target just because the Go parser accepts it.
 	readMutant := bytes.Replace(markdown.code,
-		[]byte("source.Number(\""+attributeID+"\")"),
-		[]byte("source.Number(\"sales.order_line.discount\")"), 1)
+		[]byte("属性 "+attributeID+" の値"),
+		[]byte("属性 sales.order_line.discount の値"), 1)
 	if bytes.Equal(readMutant, markdown.code) {
 		t.Fatal("read-target mutant was not applied")
 	}
@@ -224,11 +224,11 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	if err != nil {
 		t.Fatalf("read-target mutant should remain structurally observable: %v", err)
 	}
-	if observedMutant.ReadAttribute == string(markdown.rule.Attribute) {
+	if observedMutant.BoundAttribute == string(markdown.rule.Attribute) {
 		t.Fatal("mutant generated Go was incorrectly bound to its original authored Rule")
 	}
-	thresholdMutant := bytes.Replace(markdown.code, []byte("value.Sign() > 0"),
-		[]byte("value.Sign() >= 0"), 1)
+	thresholdMutant := bytes.Replace(markdown.code, []byte("quantity.Sign() > 0"),
+		[]byte("quantity.Sign() >= 0"), 1)
 	if bytes.Equal(thresholdMutant, markdown.code) {
 		t.Fatal("threshold mutant was not applied")
 	}
