@@ -234,7 +234,7 @@ func TestSameRuleFromTwoProductSurfacesGeneratesIdenticalGoButDistinctSourceEvid
 	rewritten, err := goemittest.RewriteComments(goemit.Output{
 		Files: []goemit.File{{Path: markdown.trace.File, Content: markdown.code}},
 	}, func(string, string) string {
-		return "quantity には属性 sales.order_line.discount の値を渡します。"
+		return "quantity reads attribute sales.order_line.discount"
 	})
 	if err != nil {
 		t.Fatal(err)

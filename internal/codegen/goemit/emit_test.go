@@ -289,12 +289,10 @@ func TestEmittedRuleFileHasTheTwoLayers(t *testing.T) {
 		"import \"math/big\"\n",
 		"func QuantityIsPositive(quantity *big.Rat) bool {\n\treturn quantity.Sign() > 0\n}\n",
 		"func CheckQuantityIsPositive(quantity *big.Rat) Result {\n\tif quantity == nil {\n\t\treturn Undecided\n\t}\n\tif QuantityIsPositive(quantity) {\n\t\treturn Satisfied\n\t}\n\treturn NotSatisfied\n}\n",
-		"// QuantityIsPositive は、規則「数量は正の数」（sales.order_line.quantity_positive）の判定です。\n",
-		"// quantity には属性 sales.order_line.quantity の値を渡します。\n",
 	} {
-		// The two comment lines pin the wording people read, nothing
-		// more. No binding is taken from them: see
-		// TestBindingAndBehaviourDoNotDependOnCommentText.
+		// Only code is matched here, never comment wording. Comment text
+		// is free to change; the binding is checked through the Trace
+		// below (see TestBindingAndBehaviourDoNotDependOnCommentText).
 		if !bytes.Contains(src, []byte(want)) {
 			t.Fatalf("rule file lacks %q:\n%s", want, src)
 		}
@@ -344,7 +342,7 @@ func TestBindingAndBehaviourDoNotDependOnCommentText(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, file := range rewritten.Files {
-		for _, gone := range []string{"の値を渡します", "sales.order_line.", "DO NOT EDIT"} {
+		for _, gone := range []string{"sales.order_line.", "DO NOT EDIT"} {
 			if bytes.Contains(file.Content, []byte(gone)) {
 				t.Fatalf("%s still holds %q after the comment rewrite:\n%s", file.Path, gone, file.Content)
 			}
