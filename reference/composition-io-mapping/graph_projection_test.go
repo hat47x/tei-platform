@@ -151,3 +151,64 @@ func TestPlanGraphDuplicateSlotNotResolvedByFirstMatch(t *testing.T) {
 		t.Fatalf("duplicate local slot was silently chosen: %+v", got)
 	}
 }
+
+func TestPlanGraphOrderOnlyNeverInventsDataMapping(t *testing.T) {
+	r, p := fixture(t)
+	p.Mappings = nil
+	p.After = []Ordering{{Before: "producer", After: "consumer", Reason: "dependency-only"}}
+
+	got := ProjectPlanGraph(r, p)
+	if len(got.Nodes) != 2 || len(got.Ports) != 3 ||
+		len(got.DataEdges) != 0 || len(got.OrderConstraints) != 1 ||
+		!got.OrderConstraints[0].EndpointsResolved {
+		t.Fatalf("UG-02/10: order-only plan inferred a transfer: %+v", got)
+	}
+	// The missing required consumer input makes the plan invalid, but does
+	// not erase the declarative ordering constraint or invent a data edge.
+	if got.Verdict != composition.ProposalConflict ||
+		!hasGraphDiagnostic(got, "required-input-unmapped") {
+		t.Fatalf("UG-02: missing input was accepted: %+v", got)
+	}
+}
+
+func TestPlanGraphDuplicateOutputFieldsRemainAmbiguous(t *testing.T) {
+	r, p := fixture(t)
+	p.Slots[0].Outputs = append(p.Slots[0].Outputs, field("value"))
+	got := ProjectPlanGraph(r, p)
+	if len(got.Nodes) != 2 || len(got.Ports) != 4 ||
+		len(got.DataEdges) != 1 || got.DataEdges[0].EndpointsResolved ||
+		got.DataEdges[0].FromPortViewID != "" ||
+		got.Verdict != composition.ProposalConflict ||
+		!hasGraphDiagnostic(got, "duplicate-or-empty-field") {
+		t.Fatalf("UG-04: same-named output was silently chosen: %+v", got)
+	}
+}
+
+func TestPlanGraphRegistryABARetainsRevisionChange(t *testing.T) {
+	r, p := fixture(t)
+	original := ProjectPlanGraph(r, p)
+	first := r.Snapshot()
+	_, err := r.Apply(first.Revision, []composition.Provider{{
+		ID: "unrelated-p", Scope: "app",
+		Offers: composition.Contract{ID: "unrelated", Version: "1", Shape: "other"},
+	}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	middle := ProjectPlanGraph(r, p)
+	_, err = r.Apply(r.Snapshot().Revision, nil, []string{"unrelated-p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored := ProjectPlanGraph(r, p)
+	if original.RegistryRevision != first.Revision ||
+		middle.RegistryRevision <= original.RegistryRevision ||
+		restored.RegistryRevision <= middle.RegistryRevision ||
+		restored.Verdict != composition.ProposalCandidate ||
+		len(restored.DataEdges) != 1 {
+		t.Fatalf("UG-09: A-B-A reused old inspection revision: %+v / %+v / %+v",
+			original, middle, restored)
+	}
+	// The caller must additionally pin Source/Workspace and reject the
+	// original report against the latest revision. ViewIDs are not grants.
+}
