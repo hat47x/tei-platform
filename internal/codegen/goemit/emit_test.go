@@ -628,3 +628,69 @@ func TestReservedOrInvalidNamesAreRefused(t *testing.T) {
 
 // sameNumber keeps the comparison on values, not on how they print.
 func sameNumber(a, b *big.Rat) bool { return a.Cmp(b) == 0 }
+
+// The doc comments are free prose, so no test matches their wording. What a
+// reader needs from them is still checked: the comment on each emitted
+// function names the rule it comes from, the comment on the check function
+// names the attribute whose value the caller passes, and a display name, when
+// given, is shown. The facts are taken from the Trace, not from the comments.
+func TestDocCommentsNameTheRuleTheAttributeAndTheDisplayName(t *testing.T) {
+	rule := quantityRule
+	rule.DisplayName = "数量は正の数"
+	other := positiveRule("sales.order_line.discount_positive", "sales.order_line.discount")
+	out := goemit.Emit(goemit.Input{PackageName: "rules", Rules: []goemit.Rule{rule, other}})
+	if err := out.Err(); err != nil {
+		t.Fatal(err)
+	}
+	display := map[core.CanonicalID]string{rule.Validation.ID: rule.DisplayName}
+	for _, trace := range out.Trace {
+		file, err := parser.ParseFile(token.NewFileSet(), trace.File, out.File(trace.File), parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		docs := map[string]string{}
+		for _, decl := range file.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Doc != nil {
+				docs[fn.Name.Name] = fn.Doc.Text()
+			}
+		}
+		for _, name := range []string{trace.Decision, trace.Check} {
+			doc, ok := docs[name]
+			if !ok {
+				t.Fatalf("%s: function %s has no doc comment", trace.File, name)
+			}
+			if !namesID(doc, trace.Element) {
+				t.Errorf("%s: doc comment of %s does not name rule %s:\n%s", trace.File, name, trace.Element, doc)
+			}
+			if want := display[trace.Element]; want != "" && !strings.Contains(doc, want) {
+				t.Errorf("%s: doc comment of %s does not show display name %q:\n%s", trace.File, name, want, doc)
+			}
+		}
+		if doc := docs[trace.Check]; !namesID(doc, trace.Attribute) {
+			t.Errorf("%s: doc comment of %s does not name attribute %s:\n%s", trace.File, trace.Check, trace.Attribute, doc)
+		}
+	}
+}
+
+// namesID reports whether text names id as a whole identifier. Plain
+// substring matching would accept the rule ID sales.order_line.quantity_positive
+// as naming the attribute sales.order_line.quantity.
+func namesID(text string, id core.CanonicalID) bool {
+	isIDChar := func(b byte) bool {
+		return b == '.' || b == '_' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+	}
+	s := string(id)
+	for from := 0; ; {
+		i := strings.Index(text[from:], s)
+		if i < 0 {
+			return false
+		}
+		start, end := from+i, from+i+len(s)
+		// A trailing '.' ends a sentence; it does not continue the ID.
+		if (start == 0 || !isIDChar(text[start-1])) &&
+			(end == len(text) || !isIDChar(text[end]) || text[end] == '.' && (end+1 == len(text) || !isIDChar(text[end+1]))) {
+			return true
+		}
+		from = start + 1
+	}
+}
