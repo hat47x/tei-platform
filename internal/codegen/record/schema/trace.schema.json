@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tei.codegen.trace/draft.1",
+  "title": "TEI code generation trace line",
+  "description": "Ties one generated symbol to the design element it came from. lines is the first and last line of the symbol, 1-based and inclusive, with first <= last.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "file", "lines", "symbol", "element", "role"],
+  "properties": {
+    "schema": { "const": "tei.codegen.trace/draft.1" },
+    "file": { "type": "string", "minLength": 1 },
+    "lines": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 1 }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "symbol": { "type": "string", "minLength": 1 },
+    "element": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "provider": { "type": "string" }
+  }
+}

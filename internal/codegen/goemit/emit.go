@@ -14,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"tei/internal/codegen/diag"
 	"tei/internal/core"
 	"tei/internal/semantic"
 )
@@ -29,17 +30,28 @@ const (
 	CodeNameCollision      = "NAME_COLLISION"
 )
 
-// SeverityError marks a diagnostic that stops emission.
-const SeverityError = "error"
+// SeverityError marks a diagnostic that stops emission. Every diagnostic of
+// Emit has it.
+const SeverityError = diag.SeverityError
 
-// Diagnostic explains why a rule could not be emitted. It is local to goemit
-// until a shared diagnostic record exists (#5771).
-type Diagnostic struct {
-	Code     string
-	Severity string
-	// Element is the design element the diagnostic is about, when there is one.
-	Element core.CanonicalID
-	Message string
+// fixers says who removes the cause of each diagnostic:
+//
+//   - the designer, when the rule itself cannot be generated: its kind, its
+//     shape or its Attribute type;
+//   - the developer, when the Go names do not work: the package name the
+//     caller chose, or a Go name, parameter or file name taken from the
+//     Attribute. Today the remedy for a NAME_* code is to rename the
+//     Attribute; the code still goes to the developer, because the name is a
+//     Go concern and a later hook point may let the developer supply it
+//     without changing the design.
+var fixers = map[string]string{
+	CodeInvalidPackageName: diag.FixerDeveloper,
+	CodeUnsupportedKind:    diag.FixerDesigner,
+	CodeInvalidRuleShape:   diag.FixerDesigner,
+	CodeUnsupportedType:    diag.FixerDesigner,
+	CodeNameInvalid:        diag.FixerDeveloper,
+	CodeNameReserved:       diag.FixerDeveloper,
+	CodeNameCollision:      diag.FixerDeveloper,
 }
 
 // Rule is one selected rule and the resolved type of its Attribute.
@@ -90,7 +102,7 @@ func (t Trace) String() string {
 type Output struct {
 	Files       []File
 	Trace       []Trace
-	Diagnostics []Diagnostic
+	Diagnostics []diag.Record
 }
 
 // File returns the content emitted at path, or nil.
@@ -137,11 +149,12 @@ func Emit(input Input) Output {
 		return a.Attribute < b.Attribute
 	})
 
-	var diagnostics []Diagnostic
+	var diagnostics []diag.Record
 	report := func(code string, element core.CanonicalID, format string, args ...any) {
-		diagnostics = append(diagnostics, Diagnostic{
+		diagnostics = append(diagnostics, diag.Record{
 			Code: code, Severity: SeverityError, Element: element,
 			Message: fmt.Sprintf(format, args...),
+			Fixer:   fixers[code],
 		})
 	}
 	switch {

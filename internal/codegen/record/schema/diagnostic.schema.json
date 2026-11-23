@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tei.codegen.diagnostic/draft.1",
+  "title": "TEI code generation diagnostic",
+  "description": "One diagnostic of a code generator. Offsets are UTF-8 byte offsets; line and column are 1-based, the column counted in bytes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "severity", "message"],
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^([a-z0-9]+(\\.[a-z0-9-]+)*/)?[A-Z][A-Z0-9_]*$"
+    },
+    "severity": { "enum": ["error", "warning", "info"] },
+    "file": { "type": "string" },
+    "range": { "$ref": "#/$defs/range" },
+    "line": { "type": "integer", "minimum": 0 },
+    "column": { "type": "integer", "minimum": 0 },
+    "element": { "type": "string" },
+    "message": { "type": "string", "minLength": 1 },
+    "related": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/related" }
+    },
+    "fixer": { "enum": ["designer", "developer", "provider"] },
+    "provider": { "type": "string" }
+  },
+  "$defs": {
+    "range": {
+      "description": "Half-open span [start, end) of UTF-8 byte offsets; start <= end.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "related": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role"],
+      "properties": {
+        "file": { "type": "string" },
+        "range": { "$ref": "#/$defs/range" },
+        "element": { "type": "string" },
+        "role": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
