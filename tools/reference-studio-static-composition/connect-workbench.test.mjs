@@ -155,13 +155,18 @@ test('new generated Inspector closure is qualified separately from historical na
   assert.throws(() => inspectPinnedDependencies(
     requiredFieldsPin, commandSource, responsesSource, graphSource, requiredFieldsClosure),
     /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/package.json/);
-  // Prior evidence-display closure must refuse the new relocated Source test.
+  // The historical evidence pin still rejects the relocated Source test,
+  // and the current HTML also differs. The alphabetical exact-closure check
+  // encounters index.html first; never weaken that fail-closed behavior.
   const oldEvidencePin = WORKBENCH_PINS.find(value => value.head === WORKBENCH_REQUIRED_EVIDENCE_HEAD);
   const oldEvidenceClosure = Object.fromEntries(
     Object.keys(oldEvidencePin.closureBlobs).map(path => [path, closureSources[path]]));
+  assert.notEqual(
+    oldEvidencePin.closureBlobs['reference/tei-studio-workbench/source-locations.test.mjs'],
+    pin.closureBlobs['reference/tei-studio-workbench/source-locations.test.mjs']);
   assert.throws(() => inspectPinnedDependencies(
     oldEvidencePin, commandSource, responsesSource, graphSource, oldEvidenceClosure),
-    /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/source-locations\.test\.mjs/);
+    /workbench_closure_revision_mismatch:reference\/tei-studio-workbench\/index\.html/);
   assert.equal(inspectPinnedDependencies(pin, commandSource, responsesSource, graphSource, closureSources), true);
   // The prior qualified closure cannot silently accept the new editable-draft surface.
   const prior = WORKBENCH_PINS.find(value => value.head === WORKBENCH_PIN_INSPECTION_TESTS_HEAD);
