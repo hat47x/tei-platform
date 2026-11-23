@@ -471,9 +471,19 @@ M1には生成型・解釈型の両方を許すが、**M3のセルフビルド�
 | **E3 保守** | TEIを使わず、生成した通常コードを変更してビルド・試験できる。変更を再びTEIへ取り込めることは別の受入とする |
 | **E4 意味の継承** | 同梱したMarkdown・生成元との対応・独立Scenarioにより、TEI固有の画面を開かなくても実装の業務上の意味と未解決点を辿れる |
 
-現行`internal/semantic/validationgen/positive.go`が生成するGoは`tei/internal/semantic/validationeval`をimportする。既存の`TestSelectedRuleGoThroughRealCLISelfBuild`はTEIモジュール**内**の実ビルドを検収したものであり、別モジュールでのE2を示さない。ここを現在の具体的な不足として記録する。既存の生成関数を無条件に外部公開したり、別Runtime／独自Hostを追加したりして埋め合わせない。
+**実装済みの限定経路（[#5787](https://github.com/hat47x/tei-platform/pull/5787)）**：`internal/codegen/goemit.Emit`は、選択済みの`positive` Ruleから、判定関数・確認関数と標準部品（Result／ParseDecimal）をGo Sourceとして返す。`validationgen.GeneratePositive`は当面この生成器の呼出し口として残る。新しい生成Goには`tei/` importがなく、`TestEmittedPackageBuildsAndTestsInAStandaloneModule`はTEIの外に作った一時Goモジュールで通常の`go build`／`go vet`／`go test`を実行し、依存一覧にTEIが含まれないことを検査する。**E2は、この正値Ruleの生成パッケージに限って動く。** 独立の確認関数は、値がなければ`Undecided`を返す。旧GeneratorのNULL／未取得時のGo errorと同一の結果契約だとは扱わず、利用先のAdapterと受入Scenarioで状態の保存を確認する。
 
-最初の後続コード差分は、`internal/semantic/validationgen/positive_product_test.go`の検収から派生させ、生成した一つの正値判定を**TEIと無関係な一時Goモジュール**へ置く対照試験とする。最初に実際の依存・ビルド失敗を観測し、現行出力を無理にPASS扱いしない。外部向け公開計算APIと入出力Adapterの最小変更が#2390／#2513／#4191の既存契約に適合した段階で、同じ五つの独立Expected（正・零・負・NULL・未取得）を実行し、E1とE2を再審査する。E3とE4は実際に変更したコード・設計書・Scenarioで別に検収する。これらはM1のRequired Shape実判断、M2の手書き条件置換、M3のStage再入を妨げる先行必須条件にはしない。実行資格や業務Ownerの受理も、成果物の可搬性からは生じない。
+**引き続き未実証の範囲**：生成した業務アプリケーション全体をTEIなしで起動するE1、生成コードを通常の開発者が変更して継続保守するE3、設計書・Scenarioだけから成果物の意味と制約を辿るE4。外部Goモジュールでの一Ruleの実行はE1の先行証拠に留める。既存の`TestSelectedRuleGoThroughRealCLISelfBuild`も、製品CLIによる実Buildの一経路であり、公開Runtime Provider／Owner意味受理／すべてのTargetの適合を示さない。E1〜E4はM1のRequired Shape実判断、M2の手書き条件置換、M3のStage再入を妨げる先行必須条件にはしない。
+
+### 15.6 Studioから独立したビルドの起点と、実計画の引渡し
+
+ビルドの起動主体はCLI、CI、Studioのどれでもよい。StudioはSourceを編集・表示するConsumerであり、ビルドの意味やBuilder選択の正本ではない。既存の[Process Lifecycle／Trigger設計](PROCESS_LIFECYCLE_TRIGGER_OPERATION_SEMANTICS_2026-11.md)が扱う契機から、型付きOperationとして既存`Build Intent`へ接続する。通常の処理と共有するのは「何をきっかけにどの契約を起動し、どの版・入力・結果を観測したか」という関係であり、ビルド専用Event Loopや別のPipeline Runnerは不要である。
+
+最低限必要な縦断は、**Trigger → 選択済みSource／Target → EntryによるBuild Intent解決 → Plan引渡し → 選択Builderの実入力 → Artifact → 実Consumer**。各段階のAttempt・資格・失効は既存のExecution／Evidence／Artifactへ返す。Build Intent解決と生成器の意味受理、Planを渡したことと子Builderがそのbyteを実読取したこと、Artifactの再利用とEvidenceの再利用を同じ成功条件へまとめない。
+
+[#5786](https://github.com/hat47x/tei-platform/pull/5786)で、`tei self-build -hand-over-plan`は**Entryがin-processで解決したPlanを子Builderへ引き渡す**限定経路を持った。変更前の`TestSelfBuildFullChainOnTheRealSubject`は、試験が別Resolverで書いた`plan.json`を子へ渡していたため、この経路の証拠にはならない。**次の製品コード差分**は、同じ全鎖試験の実`./cmd/tei`を対象に、呼出側の`-plan`と別Resolverを取り除き、`-hand-over-plan`を指定すること。Entryが解決・書出し・子へ指定したPlanの同一性、子のPlan報告、既存のBuilder入力閉包・隔離・実Artifact・再現性を同じAttemptで検収する（[本変更のPR](https://github.com/hat47x/tei-platform/pulls?q=is%3Apr+head%3Afeat%2Fself-build-full-chain-entry-plan-20261123)）。この全鎖試験は環境変数`TEI_SELF_BUILD_FULL_CHAIN=1`の明示実行を要する。Codeの収録と、その試験を実行して合格したことは分けて記録する。
+
+汎用パイプラインをDSLとして書く場合も、まず標準のOperation／依存Edge／Triggerへの投影として検討する。括弧なしClojureのような表記は、同じ意味構造に対するAuthoring候補であり、意味・実行・依存解決を別実装する理由にはしない。言語別のGenerator／Builder／Target Adapterは既存Plugin Contributionで差し替える。独自のBuild Plugin階層、すべての言語に共通のRuntime、Studio専用Builderを先行追加しない。導入の判断は、Goの実全鎖が通り、次に異なるTargetで**既存契約だけでは表現できない差分**が確認された段階へ送る。
 
 ---
 
