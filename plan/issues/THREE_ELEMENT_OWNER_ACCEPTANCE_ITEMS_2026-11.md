@@ -4,7 +4,7 @@
 
 ## 受理済みの前提
 
-- 三要素分析法は渡辺幸三氏の手法に基づき、要素は **Data / Function / Business** の三つとする（ADR-0033）。
+- 三要素分析法はX-TEA Modelerの実装を原典とし、要素は **Data / Function / Business** の三つとする（ADR-0033）。
 - 既存の `tei.xeadsource.cross-view/v4` 派生方針は読み取り専用Projectionとして参照するが、本パッケージは独立した標準データモデルを提供する。
 - TEI Modeler上での図面編集は将来の標準操作として想定するが、本実装はCLI/機械可読操作を優先する。
 

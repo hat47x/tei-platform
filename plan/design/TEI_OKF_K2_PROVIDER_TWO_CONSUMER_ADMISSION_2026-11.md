@@ -85,7 +85,7 @@ K2の各Gateは将来のTEI標準データ構造とLifecycle図から表現・�
 
 ### モデルの意味と出典の関係
 
-TEIで業務モデルを記述する際は、渡辺幸三氏の**三要素分析法**を基準用語として用い、X-TEA Modelerで示されるData/Function/Businessの図面・相互参照・CRUD表を可能な限り正確に扱う。OKFのConceptやRelationを三要素分析法のモデルへ自動的に同一視しない。対応付けは**出典付き候補→独立した意味照合→Owner受理**の順とし、X-TEAの原方式から拡張・変更した箇所は明記する。
+TEIで業務モデルを記述する際は、X-TEA Modelerの**三要素分析法**を基準用語として用い、X-TEA Modelerで示されるData/Function/Businessの図面・相互参照・CRUD表を可能な限り正確に扱う。OKFのConceptやRelationを三要素分析法のモデルへ自動的に同一視しない。対応付けは**出典付き候補→独立した意味照合→Owner受理**の順とし、X-TEAの原方式から拡張・変更した箇所は明記する。
 
 K2のReaderが受領するものはまず**原文と構造候補**であり、Data/Function/Business上の業務的意味ではない。K2-CのRequired閉包は「必要なSource/Role/Relationを受領したか」を確認する段階であって、業務概念の受理ではない。構造のidentity/方向/多重度を失わず、同label別Identity・多重辺・複合キー・NULL/欠損/非開示を別々に表現する。
 

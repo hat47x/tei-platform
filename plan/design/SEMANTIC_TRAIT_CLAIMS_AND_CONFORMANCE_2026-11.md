@@ -55,7 +55,7 @@ Assess(intentClaim, observedFacts, useSite, disclosureContext)
 | Ownership / existence dependency | 親・所有者・参照先変更と個体の同一性はどう関係するか | 設計者＋Relation/DDL/操作検査 |
 | Derived / authoritative | その値は正本か、条件付き導出値か、materialized cacheか | 宣言＋式/Query/Lineageの静的照合 |
 
-**未解決調査**：「強属性」の厳密な定義が掲載された原記事・版・文脈を確認し、上記のどれに当たるか・または別のFacetが必要かを再判定する。一次資料未確認の現時点では、`strong-attribute`という標準Role／Facet／DSLを追加しない。参考：[渡辺氏による三要素分析の解説](https://atmarkit.itmedia.co.jp/fbiz/cbuild/complete/doa/01/02.html)、[著書の出版社ページ](https://www.njg.co.jp/book/9784534057778/)（**これらは「強属性」の原定義の根拠ではない**）。
+**未解決調査**：「強属性」がX-TEAの資料・ソースに定義されているかを確認し、上記のどれに当たるか・または別のFacetが必要かを再判定する。X-TEAに定義が見つからない現時点では、`strong-attribute`という標準Role／Facet／DSLを追加しない。
 
 ## 4. 特性の探索対象と設定・観測責務
 
