@@ -34,7 +34,7 @@ type fullChainReport struct {
 		PlanPath            string `json:"planPath"`
 		PlanFingerprint     string `json:"planFingerprint"`
 		UnchangedAfterChild *bool  `json:"unchangedAfterChild"`
-	} `json:"planHandover"` 
+	} `json:"planHandover"`
 	PlanCrossCheck *struct {
 		State string `json:"state"`
 	} `json:"planCrossCheck"`
@@ -53,12 +53,12 @@ type fullChainReport struct {
 		ModuleFiles []string `json:"moduleFiles"`
 	} `json:"childIsolation"`
 	ChildRun *struct {
-		ChildArtifactDigest string `json:"childArtifactDigest"`
+		ChildArtifactDigest  string `json:"childArtifactDigest"`
 		ChildPlanFingerprint string `json:"childPlanFingerprint"`
-		Invoked *struct {
+		Invoked              *struct {
 			Argv []string `json:"argv"`
 		} `json:"invoked"`
-	} `json:"childRun"` 
+	} `json:"childRun"`
 	Error *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -378,7 +378,8 @@ func removeReadOnlyTree(root string) {
 }
 
 func receiptStateOf(r *struct {
-	State string `json:"state"`
+	State           string `json:"state"`
+	PlanFingerprint string `json:"planFingerprint"`
 }) string {
 	if r == nil {
 		return ""
