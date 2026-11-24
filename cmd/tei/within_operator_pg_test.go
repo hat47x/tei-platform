@@ -59,7 +59,10 @@ func TestWithinOperatorDecidesRealPostgresRows(t *testing.T) {
 		order_id bigint not null,
 		line_number bigint not null,
 		item_code varchar not null,
-		quantity numeric(12,3) not null,
+		-- quantity is nullable so a row that holds no value can be read: a value
+		-- the row does not hold is
+		-- decided differently from a value outside the range.
+		quantity numeric(12,3),
 		unit_price numeric(12,2) not null
 	)`); err != nil {
 		t.Fatal(err)
@@ -161,4 +164,43 @@ func TestWithinOperatorDecidesRealPostgresRows(t *testing.T) {
 			}
 		})
 	}
+
+	// A row that holds no quantity cannot be decided. The rule reads a value
+	// the row does not hold, so the answer is undecided with a reason, never
+	// not-satisfied: recording a missing value as a failed check would report
+	// a business failure that the row does not state.
+	t.Run("a row with no quantity", func(t *testing.T) {
+		if _, err := db.Exec(`insert into public.order_lines
+			(order_line_id, order_id, line_number, item_code, quantity, unit_price)
+			values (6, 1003, 1, 'D-400', null, 10)`); err != nil {
+			t.Fatalf("cannot insert a row with no quantity: %v", err)
+		}
+		t.Cleanup(func() { _, _ = db.Exec("delete from public.order_lines where order_line_id = 6") })
+
+		got := runCLIProcessWithStreams(t, binary,
+			"view", "-workspace", root, "-application", "order_entry",
+			"-pattern", "order_entry.order_lines", "-environment", "development",
+			"-input", "order_id=1003", "-format", "json",
+		)
+		if got.code != 0 {
+			t.Fatalf("view failed on a row with no value: %s%s", got.stdout, got.stderr)
+		}
+		var report struct {
+			OK     bool `json:"ok"`
+			Result struct {
+				PerRow map[string]map[string]string `json:"perRow"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal([]byte(got.stdout), &report); err != nil || !report.OK {
+			t.Fatalf("cannot read the report: %v\n%s", err, got.stdout)
+		}
+		answers, held := report.Result.PerRow["6"]
+		if !held {
+			t.Fatalf("the row holding no quantity was not read: %+v", report.Result.PerRow)
+		}
+		if answer := answers["sales.order_line.quantity_within_price"]; answer != "undecided" {
+			t.Fatalf("a row with no quantity answered %q; a value the row does not hold is undecided, not a failed check (%+v)",
+				answer, answers)
+		}
+	})
 }
