@@ -32,8 +32,13 @@ type Decisions struct {
 // otherwise be answered row by row, and that answer would look decided.
 func (d *Detail) Decide(rule semantic.Validation, operators validationeval.Operators) (Decisions, error) {
 	decisions := Decisions{Rule: rule.ID}
-	switch rule.Kind {
-	case semantic.ValidationRelationUnique, semantic.ValidationNoOverlap:
+	switch {
+	case rule.Kind == semantic.ValidationRelationUnique,
+		rule.Kind == semantic.ValidationNoOverlap,
+		// A rule whose operator declares an input read over all rows is asked
+		// of the rows as a collection (decision section 15.4). Answering it
+		// row by row would look decided while the declaration says otherwise.
+		rule.Kind == semantic.ValidationOperator && declaresRowScopedOperator(rule, operators):
 		decision, err := validationeval.Decide(rule, d, operators)
 		if err != nil {
 			return Decisions{}, err
@@ -41,7 +46,10 @@ func (d *Detail) Decide(rule semantic.Validation, operators validationeval.Opera
 		decisions.Relation = &decision
 		return decisions, nil
 
-	case semantic.ValidationPositive, semantic.ValidationOperator, semantic.ValidationNotAfter, semantic.ValidationRequiredIf:
+	case rule.Kind == semantic.ValidationPositive,
+		rule.Kind == semantic.ValidationOperator,
+		rule.Kind == semantic.ValidationNotAfter,
+		rule.Kind == semantic.ValidationRequiredIf:
 		decisions.Rows = make([]validationeval.Decision, 0, len(d.rows))
 		for index := range d.rows {
 			decision, err := validationeval.Decide(rule, Row{detail: d, index: index}, operators)
@@ -76,4 +84,20 @@ func (d *Detail) readPresence(index int, attribute core.CanonicalID) (validation
 // is not parsed: an empty text is a value, and only SQL NULL is none.
 func (r Row) ReadPresence(attribute core.CanonicalID) (validationeval.PresenceReading, error) {
 	return r.detail.readPresence(r.index, attribute)
+}
+
+// declaresRowScopedOperator reports whether the operator this rule names
+// declares an input read over all rows of a relation.
+func declaresRowScopedOperator(rule semantic.Validation, operators validationeval.Operators) bool {
+	for _, contract := range operators.Declared {
+		if contract.ID != rule.Operator {
+			continue
+		}
+		for _, input := range contract.Inputs {
+			if input.OfEachRow {
+				return true
+			}
+		}
+	}
+	return false
 }

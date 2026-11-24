@@ -116,10 +116,23 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 	}
 
 	// Reject an implementation that does not match the arity of the contract.
+	//
+	// A row-scoped operator (one whose input reads every row) is decided by
+	// NumberRows, which receives the states of the rows rather than one value
+	// (decision section 15.3). It is a third shape, not a fallback: an
+	// implementation that offers it must offer only it, so a row-scoped rule
+	// cannot be answered by a function that never sees more than one row.
+	hasRows := implementation.NumberRows != nil
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
-	if !hasMulti && !hasSingle {
+	if !hasRows && !hasMulti && !hasSingle {
 		return none, fmt.Errorf("the implementation of operator %s has no decision function", rule.Operator)
+	}
+	if hasRows && (hasMulti || hasSingle) {
+		return none, fmt.Errorf("the implementation of operator %s provides a row-scoped function together with a single-row one", rule.Operator)
+	}
+	if hasRows {
+		return implementation, nil
 	}
 	if hasMulti && hasSingle {
 		return none, fmt.Errorf("the implementation of operator %s provides both single and multi-input functions", rule.Operator)

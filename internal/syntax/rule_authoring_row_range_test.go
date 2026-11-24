@@ -33,37 +33,42 @@ operator sales.op:
 	}
 }
 
-// Neither statement has a place in the meaning yet, so a declaration that states
-// one is refused by name rather than converted with the statement dropped. One
-// problem must not be reported as the other.
-func TestRuleAuthoringRefusesUnsupportedRangeAndRefutationByTheirOwnNames(t *testing.T) {
+// Both statements are carried into the meaning (decision section 15.5). A
+// refutation statement is carried only when some input reads every row: without
+// one there are no rows to witness, and the statement would claim something the
+// rule cannot support.
+func TestRowRangeAndRefutationAreCarriedIntoTheMeaning(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, want string
 	}{
 		{
-			name: "range",
+			name: "a row-range input converts",
 			body: "operator sales.op:\n  takes start: number of each row\n",
-			want: `no place for an input read over all rows`,
 		},
 		{
-			name: "refutation",
+			name: "a row-range input with a refutation converts",
+			body: "operator sales.op:\n  takes start: number of each row\n  refutes on some rows\n",
+		},
+		{
+			name: "a refutation without a row-range input is refused",
 			body: "operator sales.op:\n  takes start: number\n  refutes on some rows\n",
-			want: "no place for a refutation statement",
-		},
-		{
-			// The same statement on a later input. Before this it was carried
-			// into the declaration and the rule was answered row by row while
-			// the Source said it should be asked once per scope key.
-			name: "range on a later input",
-			body: "operator sales.op:\n  takes start: number\n  takes end: number of each row\n",
-			want: `no place for an input read over all rows`,
+			want: "declares no input read over all rows",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := "namespace sales\n" + tc.body
-			_, issues := syntax.RuleNamespace(mustParseRangeFile(t, src))
+			namespace, issues := syntax.RuleNamespace(mustParseRangeFile(t, src))
+			if tc.want == "" {
+				if len(issues) != 0 {
+					t.Fatalf("a valid declaration was refused: %+v", issues)
+				}
+				if len(namespace.Operators) != 1 {
+					t.Fatalf("operators=%+v, want the converted one", namespace.Operators)
+				}
+				return
+			}
 			if len(issues) != 1 {
-				t.Fatalf("issues=%+v, want the unsupported-statement one", issues)
+				t.Fatalf("issues=%+v, want one for the unsupported statement", issues)
 			}
 			if !strings.Contains(issues[0].Msg, tc.want) {
 				t.Fatalf("message=%q, want it to mention %q", issues[0].Msg, tc.want)

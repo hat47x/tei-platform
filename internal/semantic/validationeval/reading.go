@@ -409,6 +409,13 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			return Decision{}, fmt.Errorf("semantic validation %s uses operator %s, which is declared %d times", rule.ID, rule.Operator, len(declared))
 		}
 		contract := declared[0]
+		// A rule whose operator declares an input read over every row is asked
+		// of the rows as a collection, not of the subject's one row (decision
+		// section 15.4). Halfway would answer it row by row while the
+		// declaration says otherwise.
+		if declaresRowScopedInput(contract) {
+			return decideRowScopedOperator(rule, source, contract, implementation)
+		}
 		inputs := contractInputs(contract)
 		// The rule subject supplies the first input, and only it. A rule that
 		// also assigns that input by name binds it twice, so the instruction

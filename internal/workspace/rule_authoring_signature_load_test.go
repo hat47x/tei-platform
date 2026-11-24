@@ -37,15 +37,11 @@ func TestRuleAuthoringSignatureDiagnosticsReachLoad(t *testing.T) {
 			ruleID: "sales.item.probe",
 		},
 		{
-			name:   "input read over all rows",
-			body:   "namespace sales\noperator sales.op:\n  takes start: number of each row\n",
-			want:   "no place for an input read over all rows",
-			ruleID: "sales.op",
-		},
-		{
-			name:   "refutation statement",
+			// `of each row` is carried now, so the statement that is still
+			// refused is a refutation without any row-range input.
+			name:   "refutation without a row-range input",
 			body:   "namespace sales\noperator sales.op:\n  takes start: number\n  refutes on some rows\n",
-			want:   "no place for a refutation statement",
+			want:   "declares no input read over all rows",
 			ruleID: "sales.op",
 		},
 		{

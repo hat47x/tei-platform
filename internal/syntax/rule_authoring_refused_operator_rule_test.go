@@ -9,7 +9,8 @@ import (
 
 // An operator the conversion refuses contributes no contract, so a rule naming
 // it has no operator to be answered by. The rule used to be converted anyway:
-// one document holding `of each row` produced one issue for the operator and
+// one document holding a statement the meaning could not carry produced one
+// issue for the operator and
 // still handed a validation naming an undeclared operator to the validator,
 // which reports suspicions rather than a missing meaning. The product loader
 // only notices "a declaration of this region produced no meaning" when the
@@ -18,7 +19,8 @@ func TestRuleNamingARefusedOperatorIsRefusedWithIt(t *testing.T) {
 	const src = `namespace sales
 
 operator sales.all_lines_positive:
-  takes value: number of each row
+  takes value: number
+  refutes on some rows
 
 rule sales.order_line.all_positive:
   sales.order_line.line_number is sales.all_lines_positive
@@ -36,7 +38,7 @@ rule sales.order_line.all_positive:
 	}
 	var sawOperator, sawRule bool
 	for _, issue := range issues {
-		if issue.RuleID == "sales.all_lines_positive" && strings.Contains(issue.Msg, "no place for an input read over all rows") {
+		if issue.RuleID == "sales.all_lines_positive" && strings.Contains(issue.Msg, "declares no input read over all rows") {
 			sawOperator = true
 		}
 		if issue.RuleID == "sales.order_line.all_positive" &&
@@ -59,7 +61,8 @@ func TestAHealthyRuleSurvivesARefusedOperatorInTheSameSource(t *testing.T) {
 	const src = `namespace sales
 
 operator sales.all_lines_positive:
-  takes value: number of each row
+  takes value: number
+  refutes on some rows
 
 operator sales.within:
   takes value: number
@@ -70,7 +73,7 @@ rule sales.order_line.quantity_in_range:
   sales.order_line.quantity is sales.within low: 0 high: 100
 `
 	value, issues := syntax.RuleNamespace(parseRefusedOperatorSource(t, src))
-	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "no place for an input read over all rows") {
+	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "declares no input read over all rows") {
 		t.Fatalf("issues=%+v, want exactly the operator's", issues)
 	}
 	if len(value.Operators) != 1 || value.Operators[0].ID != "sales.within" {
