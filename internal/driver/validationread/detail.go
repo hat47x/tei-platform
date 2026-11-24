@@ -329,6 +329,32 @@ func (d *Detail) ReadRelationKeys(relation, attribute core.CanonicalID) (validat
 	return reading, nil
 }
 
+// ReadRelationNumbers reads one numeric attribute in every row of the relation,
+// in the order the rows were read, together with whether those rows are all the
+// rows. It is the row-scoped reader decision section 15.1 fixes: one call is one
+// reading, so every row-scoped input of one rule comes from this same attempt.
+func (d *Detail) ReadRelationNumbers(relation, attribute core.CanonicalID) (validationeval.NumberRowsReading, error) {
+	if err := d.checkRelation(relation); err != nil {
+		return validationeval.NumberRowsReading{}, err
+	}
+	reading := validationeval.NumberRowsReading{
+		Coverage: d.coverage,
+		Rows:     make([]validationeval.NumberReading, 0, len(d.rows)),
+	}
+	for index := range d.rows {
+		row, err := d.readNumber(index, attribute)
+		if err != nil {
+			// A row this reader cannot turn into a reading is the reader's
+			// error, not a value that was absent: it is returned rather than
+			// recorded as "no value", which would answer a question about the
+			// data with a statement about the read.
+			return validationeval.NumberRowsReading{}, err
+		}
+		reading.Rows = append(reading.Rows, row)
+	}
+	return reading, nil
+}
+
 // ReadRelationPeriods reads the period of every row and, when group is not
 // empty, the value rows are grouped by.
 func (d *Detail) ReadRelationPeriods(relation, start, end, group core.CanonicalID) (validationeval.PeriodRowsReading, error) {
@@ -373,6 +399,12 @@ func (r Row) ReadNumber(attribute core.CanonicalID) (validationeval.NumberReadin
 
 func (r Row) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, error) {
 	return r.detail.readDate(r.index, attribute)
+}
+
+// ReadRelationNumbers refuses for the same reason as ReadRelationKeys.
+func (r Row) ReadRelationNumbers(relation, attribute core.CanonicalID) (validationeval.NumberRowsReading, error) {
+	return validationeval.NumberRowsReading{}, fmt.Errorf(
+		"one row is not the rows of relation %s; a row-scoped input needs the reader of the whole relation", relation)
 }
 
 // ReadRelationKeys refuses: one row is not the rows of a relation.

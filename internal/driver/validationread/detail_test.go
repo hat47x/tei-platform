@@ -275,6 +275,48 @@ func TestPeriodsAreReadWithTheirStates(t *testing.T) {
 	}
 }
 
+// A row-scoped input reads one attribute over every row of the relation, in the
+// order the rows were read, and reports whether those are all the rows. Reading
+// one attribute of one row is a different question and must not be answered.
+func TestARowScopedInputReadsEveryRowWithItsCoverage(t *testing.T) {
+	detail := detailOf(t, validationeval.CoveragePartial,
+		row(map[core.CanonicalID]any{allocation: 3}),
+		row(map[core.CanonicalID]any{allocation: nil}),
+		row(map[core.CanonicalID]any{startsOn: "2026-04-01"}),
+	)
+	want := validationeval.NumberRowsReading{
+		Coverage: validationeval.CoveragePartial,
+		Rows: []validationeval.NumberReading{
+			{State: validationeval.ValuePresent, Value: ratOf("3")},
+			{State: validationeval.ValueNull},
+			{State: validationeval.ValueNotFetched},
+		},
+	}
+	got, err := detail.ReadRelationNumbers(membersID, allocation)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("got=%+v err=%v, want %+v", got, err, want)
+	}
+
+	// A value the reader cannot turn into a number is the reader's error, not a
+	// value that was absent: recording it as "not fetched" would answer a
+	// question about the data with a statement about the read.
+	unreadable := detailOf(t, validationeval.CoverageComplete,
+		row(map[core.CanonicalID]any{allocation: "not a number"}),
+	)
+	if _, err := unreadable.ReadRelationNumbers(membersID, allocation); err == nil {
+		t.Fatal("an unreadable numeric row was reported as a reading")
+	}
+
+	// One row does not stand for the rows of a relation.
+	one, err := detail.Row(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := one.ReadRelationNumbers(membersID, allocation); err == nil {
+		t.Fatal("a single row answered as the rows of a relation")
+	}
+}
+
 func TestTheReaderRefusesWhatItWasNotGiven(t *testing.T) {
 	detail := detailOf(t, validationeval.CoverageComplete, row(map[core.CanonicalID]any{allocation: "1", startsOn: "2026-04-01"}))
 	one, _ := detail.Row(0)
