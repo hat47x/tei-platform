@@ -14,6 +14,24 @@ import (
 // not do. Nothing here asserts that a save path calls it: no writer exists in
 // this slice, and the zero-write guarantee belongs to #4366.
 
+func sameValidation(a, b semantic.Validation) bool {
+	if a.ID != b.ID || a.Symbol != b.Symbol || a.Kind != b.Kind ||
+		a.Attribute != b.Attribute || a.Relation != b.Relation ||
+		a.Operator != b.Operator || a.Compared != b.Compared ||
+		a.IfPresent != b.IfPresent || a.GroupBy != b.GroupBy || a.OpenEnded != b.OpenEnded {
+		return false
+	}
+	if len(a.Inputs) != len(b.Inputs) {
+		return false
+	}
+	for i := range a.Inputs {
+		if a.Inputs[i] != b.Inputs[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestFormatRuleAuthoringCanonicalLayout(t *testing.T) {
 	const src = "namespace sales\nrule sales.order_line.quantity_positive:   sales.order_line.quantity is positive\n\nrule   sales.order.lines.line_number_unique:\n    sales.order_line.line_number is unique per sales.order.lines\n"
 	out, err := syntax.FormatRuleAuthoring(src)
@@ -113,7 +131,7 @@ func TestFormatRuleAuthoringChecksMeaningBeforeReturning(t *testing.T) {
 		t.Fatalf("counts differ")
 	}
 	for i := range original.Value.Validations {
-		if original.Value.Validations[i] != formatted.Value.Validations[i] {
+		if !sameValidation(original.Value.Validations[i], formatted.Value.Validations[i]) {
 			t.Fatalf("meaning changed:\n%#v\n%#v", original.Value.Validations[i], formatted.Value.Validations[i])
 		}
 	}

@@ -98,7 +98,7 @@ func TestRuleSurfaceNegativeCasesFromTheFixture(t *testing.T) {
 			t.Fatalf("counts differ")
 		}
 		for i := range firstNS.Validations {
-			if firstNS.Validations[i] != secondNS.Validations[i] {
+			if !sameValidation(firstNS.Validations[i], secondNS.Validations[i]) {
 				t.Fatalf("meaning changed with position: %#v vs %#v", firstNS.Validations[i], secondNS.Validations[i])
 			}
 		}

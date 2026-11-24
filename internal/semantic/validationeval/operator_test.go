@@ -130,7 +130,7 @@ func TestDeclaredOperatorIsNeverDecidedWithoutExactlyOneMatchingImplementation(t
 			Implementations: []validationeval.OperatorImplementation{wrongInput}}, "its implementation takes"},
 		{"implementation without a number function", validationeval.Operators{
 			Declared:        []semantic.Operator{nonNegativeContract},
-			Implementations: []validationeval.OperatorImplementation{noFunction}}, "cannot take a number"},
+			Implementations: []validationeval.OperatorImplementation{noFunction}}, "has no decision function"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

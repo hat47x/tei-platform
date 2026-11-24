@@ -83,7 +83,8 @@ func TestTEIMDOperatorDeclaredInADocumentDecidesARule(t *testing.T) {
 		t.Fatalf("validator rejects the declared operator: %v", codes)
 	}
 
-	want := semantic.Operator{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber}
+	want := semantic.Operator{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber,
+		Inputs: []semantic.OperatorInputDeclaration{{Name: "", Type: semantic.OperatorInputNumber}}}
 	declared := operatorsOf(loaded)
 	if len(declared) != 1 || !reflect.DeepEqual(declared[0], want) {
 		t.Fatalf("operators=%+v, want %+v", declared, want)

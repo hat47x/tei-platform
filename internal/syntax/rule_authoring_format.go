@@ -108,7 +108,25 @@ func sameValidations(left, right []semantic.Validation) bool {
 		return false
 	}
 	for i := range left {
-		if left[i] != right[i] {
+		if !sameValidation(left[i], right[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func sameValidation(a, b semantic.Validation) bool {
+	if a.ID != b.ID || a.Symbol != b.Symbol || a.Kind != b.Kind ||
+		a.Attribute != b.Attribute || a.Relation != b.Relation ||
+		a.Operator != b.Operator || a.Compared != b.Compared ||
+		a.IfPresent != b.IfPresent || a.GroupBy != b.GroupBy || a.OpenEnded != b.OpenEnded {
+		return false
+	}
+	if len(a.Inputs) != len(b.Inputs) {
+		return false
+	}
+	for i := range a.Inputs {
+		if a.Inputs[i] != b.Inputs[i] {
 			return false
 		}
 	}

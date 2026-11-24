@@ -50,7 +50,7 @@ func TestRuleAuthoringRefusesIncompleteOrUnknownNamedInputs(t *testing.T) {
 	}{
 		{"name without a type", "takes low:\n", "expected the type of input"},
 		{"type outside the closed list", "takes low: keys\n", `unknown operator input "keys"`},
-		{"second input", "takes low: number high: number\n", "exactly one input"},
+		{"second input", "takes low: number high: number\n", `unexpected "high" after the operator name`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: " + tc.tail)

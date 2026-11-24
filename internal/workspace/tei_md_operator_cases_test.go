@@ -42,6 +42,7 @@ func TestTEIMDOperatorCasesAreAttachedToTheDeclaredOperator(t *testing.T) {
 	}
 	want := semantic.Operator{
 		ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber,
+		Inputs: []semantic.OperatorInputDeclaration{{Name: "", Type: semantic.OperatorInputNumber}},
 		Cases: []semantic.OperatorCase{
 			{Value: "300", Satisfied: true}, {Value: "0", Satisfied: true}, {Value: "-0.01", Satisfied: false},
 		},
@@ -130,7 +131,8 @@ func TestSemanticOperatorCaseCodesAreProduced(t *testing.T) {
 			ID: "sales",
 			Operators: []semantic.Operator{{
 				ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber,
-				Cases: []semantic.OperatorCase{{Value: "0", Satisfied: true}, {Value: "-1", Satisfied: false}},
+				Inputs: []semantic.OperatorInputDeclaration{{Name: "", Type: semantic.OperatorInputNumber}},
+				Cases:  []semantic.OperatorCase{{Value: "0", Satisfied: true}, {Value: "-1", Satisfied: false}},
 			}},
 		}}}
 	}

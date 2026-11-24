@@ -12,9 +12,26 @@ import (
 
 func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 	// Expected values are the definitions written out for five numbers.
-	want := map[string]map[string]bool{
+	singleInputWant := map[string]map[string]bool{
 		"tei.number.non-negative": {"-3": false, "-1/100": false, "0": true, "1/100": true, "3": true},
 		"tei.number.non-zero":     {"-3": true, "-1/100": true, "0": false, "1/100": true, "3": true},
+	}
+	multiInputWant := map[string][]struct {
+		name    string
+		values  map[string]*big.Rat
+		want    bool
+		wantErr bool
+	}{
+		"tei.number.within": {
+			{name: "in-range", values: map[string]*big.Rat{"value": big.NewRat(0, 1), "low": big.NewRat(0, 1), "high": big.NewRat(100, 1)}, want: true},
+			{name: "at-low", values: map[string]*big.Rat{"value": big.NewRat(0, 1), "low": big.NewRat(0, 1), "high": big.NewRat(100, 1)}, want: true},
+			{name: "at-high", values: map[string]*big.Rat{"value": big.NewRat(100, 1), "low": big.NewRat(0, 1), "high": big.NewRat(100, 1)}, want: true},
+			{name: "below-low", values: map[string]*big.Rat{"value": big.NewRat(-1, 1), "low": big.NewRat(0, 1), "high": big.NewRat(100, 1)}, want: false},
+			{name: "above-high", values: map[string]*big.Rat{"value": big.NewRat(101, 1), "low": big.NewRat(0, 1), "high": big.NewRat(100, 1)}, want: false},
+			// low > high is a wrong range specification: it is reported, never
+			// answered as not-satisfied, and the bounds are not swapped.
+			{name: "low-greater-than-high", values: map[string]*big.Rat{"value": big.NewRat(50, 1), "low": big.NewRat(100, 1), "high": big.NewRat(0, 1)}, wantErr: true},
+		},
 	}
 	seen := map[string]bool{}
 	for _, implementation := range validationeval.BuiltinImplementations() {
@@ -22,23 +39,47 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			t.Fatalf("built-in implementation %s is listed twice", implementation.ID)
 		}
 		seen[implementation.ID] = true
-		expected, known := want[implementation.ID]
-		if !known {
-			t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
-		}
-		if implementation.Input != semantic.OperatorInputNumber {
-			t.Fatalf("%s input=%q", implementation.ID, implementation.Input)
-		}
-		for text, satisfied := range expected {
-			value, _ := new(big.Rat).SetString(text)
-			got, err := implementation.Number(value)
-			if err != nil || got != satisfied {
-				t.Fatalf("%s(%s)=%v err=%v, want %v", implementation.ID, text, got, err, satisfied)
+		if implementation.Number != nil {
+			expected, known := singleInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
 			}
+			if implementation.Input != semantic.OperatorInputNumber {
+				t.Fatalf("%s input=%q", implementation.ID, implementation.Input)
+			}
+			for text, satisfied := range expected {
+				value, _ := new(big.Rat).SetString(text)
+				got, err := implementation.Number(value)
+				if err != nil || got != satisfied {
+					t.Fatalf("%s(%s)=%v err=%v, want %v", implementation.ID, text, got, err, satisfied)
+				}
+			}
+		} else if implementation.Numbers != nil {
+			cases, known := multiInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.Numbers(tc.values)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%v err=nil, want an error", implementation.ID, tc.name, got)
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%v err=%v, want %v", implementation.ID, tc.name, got, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
+				}
+			}
+		} else {
+			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(want) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(want))
+	if len(seen) != len(singleInputWant)+len(multiInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant))
 	}
 }
 
