@@ -379,6 +379,52 @@ func TestModelSearchHelpListsItsOwnGrammar(t *testing.T) {
 	}
 }
 
+// The -kind help must not read as "you can search these" for a kind that
+// returns no hits. The response already names unsearchable kinds in
+// `notSearchableKinds` (#5228); the help said nothing, so a reader who picked
+// `-kind migration` learned why only from the answer. The help and the response
+// now name the same two groups, read from the same list.
+func TestModelSearchHelpSeparatesSearchableKindsFromAcceptedOnes(t *testing.T) {
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{"search", "-h"}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v out=%q", code, err, out.String())
+	}
+	text := out.String()
+
+	notSearchable := operations.NotSearchableKinds()
+	if len(notSearchable) == 0 {
+		t.Fatal("the search reports no unsearchable kind, so the help has nothing to separate")
+	}
+	marker := "accepted but not searchable"
+	index := strings.Index(text, marker)
+	if index < 0 {
+		t.Fatalf("the help does not say which accepted kinds return no hits: %q", text)
+	}
+	// The unsearchable group is the rest of the sentence it starts, up to the
+	// end of that line. Reading the line rather than the whole help keeps the
+	// per-kind flag list (which repeats every accepted value) out of this check.
+	rest := text[index:]
+	lineEnd := strings.Index(rest, "\n")
+	if lineEnd < 0 {
+		lineEnd = len(rest)
+	}
+	group := rest[:lineEnd]
+	for _, kind := range notSearchable {
+		if !strings.Contains(group, kind) {
+			t.Errorf("the help's unsearchable group omits %q: %q", kind, group)
+		}
+	}
+	// The searchable part before the marker must not name any of them, or the
+	// sentence would still read as "all of these are searchable".
+	searchable := text[:index]
+	for _, kind := range notSearchable {
+		if strings.Contains(searchable, "|"+kind+"|") || strings.Contains(searchable, "|"+kind+"\n") {
+			t.Errorf("the help lists unsearchable kind %q among the searchable ones: %q", kind, searchable)
+		}
+	}
+}
+
 // What `tei commands` advertises for this command is exactly the grammar its
 // own FlagSet accepts: a caller planning an invocation from the discovery
 // document must not be told about a flag the parser refuses, or miss one it

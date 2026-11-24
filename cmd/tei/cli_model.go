@@ -298,7 +298,14 @@ func modelSearchFlags(fs *flag.FlagSet) (root, term, kind *string, limit, offset
 	fs.SetOutput(io.Discard)
 	root = fs.String("workspace", "", "TEI workspace directory")
 	term = fs.String("term", "", "literal text to find; matched case-insensitively inside a Source line; required unless -kind is given")
-	kind = fs.String("kind", "", "restrict the search to one subject kind: "+strings.Join(operations.InspectionSubjectKinds, "|"))
+	// -kind accepts every kind `inspect` resolves, but only the ones the catalog
+	// enumerates can produce hits. The help names those first and lists the rest
+	// separately, because a reader who picks an unsearchable kind gets zero hits
+	// that the response explains as `notSearchableKinds` (#5228).
+	kind = fs.String("kind", "", "restrict the search to one subject kind: "+
+		strings.Join(searchableInspectionKinds(), "|")+
+		"; accepted but not searchable (the catalog enumerates no entry for them, so they return no hits): "+
+		strings.Join(notSearchableInspectionKinds(), "|"))
 	limit = fs.Int("limit", operations.SearchDefaultLimit, "maximum hits listed; total and kindCounts still cover every hit, subjectCount every distinct subject")
 	offset = fs.Int("offset", 0, "hits to skip; a value past the last hit is clamped and reported as requestedOffset")
 	return root, term, kind, limit, offset
@@ -394,4 +401,27 @@ func writeModelSearchResponse(out io.Writer, response modelSearchCLIResponse, ex
 		return 2, err
 	}
 	return exit, nil
+}
+
+// searchableInspectionKinds are the accepted kinds the catalog enumerates, so a
+// search over them can return hits. It is the accepted list minus the kinds the
+// search response reports as not searchable.
+func searchableInspectionKinds() []string {
+	notSearchable := map[string]bool{}
+	for _, kind := range operations.NotSearchableKinds() {
+		notSearchable[kind] = true
+	}
+	out := make([]string, 0, len(operations.InspectionSubjectKinds))
+	for _, kind := range operations.InspectionSubjectKinds {
+		if !notSearchable[kind] {
+			out = append(out, kind)
+		}
+	}
+	return out
+}
+
+// notSearchableInspectionKinds is the response's own list, unchanged, so the
+// flag text names exactly what the search refuses to return.
+func notSearchableInspectionKinds() []string {
+	return operations.NotSearchableKinds()
 }
