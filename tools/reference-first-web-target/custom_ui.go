@@ -337,6 +337,9 @@ Reference専用UIです。credentialはruntime inputとしてのみ使い、結�
 <article class="subcard" id="relation-answers">
 <h3>Answers about the whole relation</h3>
 {{range .Result.Read.RelationAnswers}}<p class="status-line"><code>{{.}}</code></p>{{end}}
+<p class="status-line">coverage: <code>{{.Result.Read.Coverage.Verdict}}</code></p>
+{{if .Result.Read.Coverage.Reason}}<p class="muted">coverage reason: {{.Result.Read.Coverage.Reason}}</p>{{end}}
+{{if .Result.Read.Coverage.Basis}}<p class="muted">coverage basis: {{.Result.Read.Coverage.Basis}}</p>{{end}}
 </article>
 {{end}}
 </section>
