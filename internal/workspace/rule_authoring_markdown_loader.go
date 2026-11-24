@@ -133,12 +133,29 @@ func attachOperatorCases(r *Result) error {
 		found := false
 		for i := range r.World.Semantics {
 			for j := range r.World.Semantics[i].Operators {
-				if r.World.Semantics[i].Operators[j].ID != table.Operator {
+				operator := &r.World.Semantics[i].Operators[j]
+				if operator.ID != table.Operator {
 					continue
 				}
 				found = true
+				// A column that names no declared input would make an example
+				// nobody can check. The declaration is in hand here, so the names
+				// are checked now rather than only when a rule is evaluated.
+				declared := operatorInputNames(*operator)
 				for _, example := range table.Cases {
-					r.World.Semantics[i].Operators[j].Cases = append(r.World.Semantics[i].Operators[j].Cases, example.Value)
+					for name := range example.Value.Inputs {
+						if !declared[name] {
+							span, ok := table.InputHeaderSpans[name]
+							if !ok {
+								span = example.InputSpans[name]
+							}
+							return r.collectSourceError(pending.filename, &syntax.ParseError{
+								Pos: span.Start, End: span.End,
+								Msg: fmt.Sprintf("operator %s declares no input named %q; an example column is one of its input names", operator.ID, name),
+							})
+						}
+					}
+					operator.Cases = append(operator.Cases, example.Value)
 				}
 			}
 		}
@@ -295,4 +312,22 @@ func mergeAuthoringMarkdown(root string, r *Result, filename string, regions []s
 		}
 	}
 	return len(regions) + len(tables), definitions, nil
+}
+
+// operatorInputNames is the set of names an operator's declared inputs answer to.
+// The unnamed single-input form answers to "value".
+func operatorInputNames(operator semantic.Operator) map[string]bool {
+	names := map[string]bool{}
+	if len(operator.Inputs) == 0 {
+		names["value"] = true
+		return names
+	}
+	for _, input := range operator.Inputs {
+		name := input.Name
+		if name == "" {
+			name = "value"
+		}
+		names[name] = true
+	}
+	return names
 }
