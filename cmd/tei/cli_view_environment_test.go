@@ -206,7 +206,7 @@ func TestEnvironmentRejectsInvalidBindingBeforeConnection(t *testing.T) {
 	}
 	t.Setenv("TEI_VIEW_PG_DSN", "")
 	_, err = readEnvironmentRows(world, "order_entry", "order_entry.order_lines",
-		"development", map[string]string{"order_id": "1001"})
+		"development", map[string]string{"order_id": "1001"}, nil)
 	if err == nil || !strings.Contains(err.Error(), "sales.order.nonexistent_id") {
 		t.Fatalf("invalid source binding was not rejected before the connection: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestEnvironmentRejectsContradictoryCoverageBeforeConnection(t *testing.T) {
 	}
 	t.Setenv("TEI_VIEW_PG_DSN", "")
 	_, err = readEnvironmentRows(world, "order_entry", "order_entry.order_lines",
-		"development", map[string]string{"order_id": "1001"})
+		"development", map[string]string{"order_id": "1001"}, nil)
 	if err == nil || !strings.Contains(err.Error(), "states both") {
 		t.Fatalf("contradictory coverage was not rejected: %v", err)
 	}

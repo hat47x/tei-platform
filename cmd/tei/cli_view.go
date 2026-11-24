@@ -485,7 +485,7 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		}
 		result, err := readEnvironmentRows(
 			loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID),
-			core.CanonicalID(*environmentID), values,
+			core.CanonicalID(*environmentID), values, loaded.OperatorImplementations,
 		)
 		if errors.Is(err, errViewEnvironmentInput) {
 			return fail("INVALID_ARGUMENT", err.Error(), 2)

@@ -25,7 +25,28 @@ import (
 	"tei/internal/ir"
 	"tei/internal/realization"
 	"tei/internal/semantic/validationeval"
+	"tei/internal/workspace"
 )
+
+// destinationOperators is what this entry tells an evaluation about operators:
+// every declaration the World carries, and exactly the implementations the
+// Workspace selected.
+//
+// Resolving the selections here, rather than passing an empty Operators, is
+// what lets a rule decided by an operator be answered at all. A selection that
+// names an implementation this tei does not carry is an error: it is never
+// dropped, because losing it would turn "the Workspace chose an implementation
+// I cannot run" into "no rule needed one".
+func destinationOperators(resolver driver.Resolver, selected []workspace.OperatorImplementationSelection) (validationeval.Operators, error) {
+	implementations, err := validationeval.ResolveImplementations(
+		scenarioImplementationSelections(selected),
+		validationeval.BuiltinImplementations(), nil,
+	)
+	if err != nil {
+		return validationeval.Operators{}, err
+	}
+	return validationeval.Operators{Declared: resolver.Operators(), Implementations: implementations}, nil
+}
 
 // destinationField records what the query actually returned, not an inferred
 // value for an attribute absent from its result.
@@ -176,6 +197,7 @@ func readEnvironmentRows(
 	world ir.World,
 	appID, patternID, envID core.CanonicalID,
 	inputs map[string]string,
+	selectedOperators []workspace.OperatorImplementationSelection,
 ) (destinationRead, error) {
 	resolver := driver.NewResolver(world)
 	prepared, err := resolver.ResolveHeaderDetailContractQuery(appID, patternID)
@@ -316,6 +338,14 @@ func readEnvironmentRows(
 	if err != nil {
 		return destinationRead{}, err
 	}
+	// A rule decided by a declared operator needs the implementation this
+	// Workspace selected. Passing an empty Operators here would refuse every
+	// operator rule as "not declared", so the read would answer fewer rules
+	// than the Application names.
+	operators, err := destinationOperators(resolver, selectedOperators)
+	if err != nil {
+		return destinationRead{}, err
+	}
 
 	result := destinationRead{
 		Application:      appID,
@@ -359,7 +389,7 @@ func readEnvironmentRows(
 		result.Rows = append(result.Rows, item)
 	}
 	for _, rule := range rules {
-		decisions, err := detail.Decide(rule, validationeval.Operators{})
+		decisions, err := detail.Decide(rule, operators)
 		if err != nil {
 			return destinationRead{}, fmt.Errorf("cannot decide rule %s: %w", rule.ID, err)
 		}
