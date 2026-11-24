@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 
 	"tei/internal/core"
+	"tei/internal/semantic"
 	"tei/internal/workspace"
 )
 
@@ -596,5 +597,89 @@ func TestReferenceCommandScenarioValidatesEveryOrderLine(t *testing.T) {
 	}
 	if result.Authorization != nil || result.Command != nil || result.Observation != nil {
 		t.Fatalf("Validation failure continued downstream: %+v", result)
+	}
+}
+
+// An order with no detail lines is not a satisfied order. The guide's order
+// 1003 holds no lines, and the first Web Target answers it with an Execution
+// Error rather than a Validation pass: "no rows" must not be read as "every
+// row passed".
+//
+// The check is made on the record-level path directly. Going through
+// RunCommand alone would not isolate it: the relation-wide rule fails over the
+// same empty collection with its own message, so a removed record-level guard
+// would still surface an error and the test would pass for the wrong reason.
+// Both paths are therefore exercised on their own.
+func TestReferenceCommandScenarioRefusesAnEmptyOrderLineCollection(t *testing.T) {
+	quantityPositive := semantic.Validation{
+		ID:   core.MustCanonicalID("sales.order_line.quantity_positive"),
+		Kind: semantic.ValidationPositive,
+	}
+
+	// Record-level: one rule asked of every line. No lines means no evaluation
+	// happened, and that must not be reported as satisfaction.
+	if _, err := evaluateCommandValidation(quantityPositive, nil); err == nil {
+		t.Fatal("a positive rule over no lines returned no error")
+	} else if !strings.Contains(err.Error(), "cannot evaluate positive validation") ||
+		!strings.Contains(err.Error(), string(quantityPositive.ID)) {
+		t.Fatalf("the refusal did not name the rule it could not evaluate: %v", err)
+	}
+
+	// Relation-wide: uniqueness asked once of the whole collection.
+	keys, err := commandValidationSource{orderLines: nil}.RelationKeys(
+		core.MustCanonicalID("sales.order.lines"),
+		core.MustCanonicalID("sales.order_line.line_number"),
+	)
+	if err == nil {
+		t.Fatal("relation-wide uniqueness over no lines returned a key list")
+	}
+	if keys != nil {
+		t.Fatalf("relation-wide uniqueness over no lines returned %v, want no keys", keys)
+	}
+	if !strings.Contains(err.Error(), "cannot validate relation") {
+		t.Fatalf("the refusal did not name the relation it could not validate: %v", err)
+	}
+
+	// The same refusal must reach a caller as an Execution Error, not as a
+	// Validation denial: a denial would say the order was judged and rejected,
+	// which is a claim about one row that does not exist.
+	loaded, err := workspace.Load(referenceWorkspacePath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	readResult, err := newReferenceReadScenarioRunner(loaded.World).Run(
+		context.Background(),
+		readScenarioInput{From: "2026-09-18T08:30:00Z", RowIndex: 0},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(readResult.OrderLineRows) < 2 {
+		t.Fatalf("test setup: the read must hold at least two lines, got %d", len(readResult.OrderLineRows))
+	}
+	readResult.OrderLineRows = nil
+	readResult.RowAnswers = nil
+
+	runner, err := newReferenceCommandScenarioRunner(
+		loaded.World,
+		legacyFixturePath(t, "users.json"),
+		legacyFixturePath(t, "authorization.json"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.read = staticReadScenarioRunner{result: readResult}
+
+	result, err := runner.RunCommand(context.Background(), commandScenarioInput{
+		LoginID:    "legacy-order-editor",
+		Credential: "editor-secret",
+		From:       "2026-09-18T08:30:00Z",
+		RowIndex:   0,
+	})
+	if err == nil {
+		t.Fatalf("an order with no lines completed as if every line had passed: %+v", result)
+	}
+	if result.Stage == "validation-not-satisfied" {
+		t.Fatal("an empty collection was reported as a Validation denial")
 	}
 }
