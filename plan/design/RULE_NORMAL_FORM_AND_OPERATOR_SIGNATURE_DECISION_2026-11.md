@@ -436,3 +436,76 @@ S式のForm、中置`expr:`、KaTeX、Markdown表、Graphvizは、ここで確�
 **着手順は変えない。** `plan/NOW.md`の受注初回利用者による五段階受入を先に検収し、Studioの一巡は既定の唯一の並行線とする。その後の道5でB-01〜12を既存`internal/syntax`・`internal/workspace`・`internal/semantic`・`internal/semantic/validationeval`の経路に接続する。新Parser・第二Resolver・第二評価器・第二Meaning正本を追加しない。
 
 **既存開発環境からの離脱可能性も損なわない。** このRuleを将来Go等のTargetへ生成する場合、原Markdown設計書と生成コードには、署名・入力参照・境界条件・依存関係をTEI Studioなしで追える情報を残す。TEIのSource Indexや受理証拠をTargetの実行依存へ埋め込むこととは区別し、生成したTargetが単独でビルド・動作することは別のConsumer試験で確認する（#4191／#1121）。本節のRead資格試験をもって、その離脱可能性まで実証したことにはしない。
+
+## 15. 2026年11月24日：`of each row` と `refutes on some rows` を評価へ接続する判断
+
+- **状態**：設計判断（所有者から`architect`ロールとして委任）。§3・§5・§6・§8・§12・§14.1・§14.3 の正規形と受入を変えず、行集合入力を**既存の一つの`Decide`経路**へ接続する。新しいDSL・第二の評価器・第二の意味正本・新しいRegistry・ADRは作らない。**実装は未着手で、この節も試験を一件も実行していない。** 根拠にしたコードはworktree `wt-eachrow` の静読である。
+- **読み取った現在地**：`internal/syntax/rule_authoring.go` は `OperatorInput.OfEachRow`・`OperatorAuthoring.RefutesOnSomeRows`・`RuleAuthoring.Scope`（`per <relation>`）を字句として既に読む。`internal/syntax/rule_authoring_validation.go` の `RuleNamespace` は、`OfEachRow` か `RefutesOnSomeRows` を宣言する Operator を**変換時に拒否**し meaning へ落とさない（§15.6）。`internal/semantic/model.go` の `OperatorInputDeclaration` は既に `OfEachRow`・`AbsentAs` を持ち、`Validation` は既に `Relation`・`GroupBy` を持つ（保存形の変更は不要）。`internal/semantic/validationeval/no_overlap.go` の `StatefulPeriodSource`／`PeriodRowsReading` と `tri`（triNo/triYes/triMaybe）が、行集合読み取りと三値判定の唯一の既存例である。`internal/driver/validationread/{detail,decide}.go` は coverage と attempt を持ち、`Detail.Decide` が Kind ごとに Detail へ一度／各行へ一度を分ける。`cmd/tei/cli_view_environment.go` は coverage を `QualifyHeaderDetailCoverage` で決め `detail.Decide` を規則ごとに呼ぶ。
+
+### 15.1 行集合入力の読みと設計
+
+**結論**：既存の `StatefulSource` は拡張しない。`StatefulPeriodSource` と同じ形の、狭い能力interfaceを一つ足す。型は `NumberRowsReading{ Coverage Coverage; Rows []NumberReading }`、メソッドは `ReadRelationNumbers(relation, attribute core.CanonicalID) (NumberRowsReading, error)`。`NumberReading`・`Coverage`・`ReadAttempt` は既存をそのまま再利用する。新しいRegistryは作らない。
+
+**根拠**：(a) `StatefulSource` へ増やすと `Row`・`legacySource` の全readerが実装を強いられ、`Row` は「一行に relation を訊かれた」と拒否する羽目になる（`ReadNumber`/`ReadDate` が Detail で拒否するのと対）。能力interfaceなら、実装しないreaderは型アサーションで検出でき、規則を**拒否**できる——`StatefulDateSource`/`StatefulPeriodSource` が既にこの形で、行化けした答えを出さない。(b) `PeriodRowsReading` は no-overlap 固有の固定形（`PeriodRow` が Start/End/Group）。`of each row` は任意の入力数を持つので、属性ごとの `ReadRelationNumbers` に一般化し、`NumberRowsReading` は「coverage + 各行の読み」という同一の形にそろえる。
+
+**要件／条件**：`NumberRowsReading` は `Coverage` と `Rows []NumberReading` だけを持つ。`ReadRelationNumbers` は `Detail` にだけ実装し、`Row` では `ReadRelationKeys` と同じく拒否する。評価器は `ValidationOperator` 分岐で型アサーションにより発見し、読めなければ規則を拒否（error）とする。行集合入力が複数なら入力ごとに一度ずつ呼び、すべて同じ `Detail` の同一 attempt・同一 coverage から来る（B-10 は自動的に保たれる）。
+
+### 15.2 `Coverage` と「一部の行での反証」の関係
+
+**結論**：partial と反証の分岐は**評価器（`validationeval`）**に置く。`driver.Qualified`／coverage の決め方は変えない。三値 `tri` を再利用し、`no_overlap.go` から共有定義へ移して一意にする（重複排除であり新Registryではない）。operator の行関数は「見えた行」から `tri` を返し、評価器が `tri × Coverage × RefutesOnSomeRows` を `Decision` に写す。
+
+| operator の `tri` | Coverage | RefutesOnSomeRows | 答え |
+| --- | --- | --- | --- |
+| triNo（見えた反例） | 問わない | 宣言あり | `not-satisfied` |
+| triNo（見えた反例） | partial | 宣言なし | `undecided`（`relation-partially-read`） |
+| triNo（見えた反例） | complete | 問わない | `not-satisfied`（全行を見たので宣言は無関係） |
+| triYes | complete | 問わない | `satisfied` |
+| triYes | partial | 問わない | `undecided`（`relation-partially-read`） |
+| triMaybe（行内の未読・null） | 問わない | 問わない | 行内の理由（`value-null`/`value-not-fetched`）を coverage より先に報告 |
+
+**根拠**：§6 の表（資格がなく、見えた行に反例があり、operator が一部の行で反証できると宣言していれば不成立、それ以外は判定できない）をそのまま実装にしたもの。`relation-unique`/`no-overlap` が既にこの厳密なロジックを持ち（`decideNoOverlap` の `overlapSeen→not-satisfied` と partial 順序）、`tri` はその中核である。次の答えを一つに絞る——partial・反例なしの答えは既存の `UndecidedRelationPartiallyRead` だけにし、新しい判定結果の種類は設けない（§8）。
+
+**要件／条件**：既存の `Decide` 一経路・`Operators` 選択・`read_attempt.go` の B-10 判定は変えない（追加のみ）。coverage は `QualifyHeaderDetailCoverage` と物理表照合が決める現行のまま。`triMaybe` を coverage より先に返す順序は `decideNoOverlap` の `anyUnsure||dateMaybe` の順を踏襲する。
+
+### 15.3 純粋関数の引数の形
+
+**結論**：平坦な `Numbers map[string]*big.Rat` は拡張しない（行の状態を運べず、単入力の「値の揃った入力だけを受け取る」契約＝§5 を壊す）。`NamedImplementation` と `OperatorImplementation` に、行集合入力用の別フィールドを一つ足す。引数は `map[string][]NumberReading`（入力名→その入力の列の、各行の値と状態）。返りは三値（`tri` と同じ厳密性を持つ exported な判定型。`tri` を exported に昇進させ no-overlap と共用する）。`absent as` は**行単位**で、評価器が rule が名付けた mapping を `Absent` で読み替えてから行関数へ渡す（`readAssignedInput` の absent 処理の行版）。
+
+**根拠**：no-overlap の判定は silent/unsure/stated の区別と `tri` の合成が必要で、値を剥いだ純粋関数では書けない。`NumberReading` は既に `State`（present/null/not-fetched）を持つので、行の状態は既存型で運べ、`PeriodRowsReading` が `[]PeriodRow`（各行が `DateReading` 二つ）であるのと対称である。§5 の表（値がある→実装へ、値なし＋読み替え→読み替え値、値なし指定なし→判定できない、未読→判定できない）は、行版にそのまま generalize して壊さない。
+
+**要件／条件**：単入力（`Number`）・複数入力平坦（`Numbers`）の経路はそのまま。行関数は Source を持たない純粋関数（§3・§5）。例の表現——`semantic.OperatorCase` は `Value string`・`Inputs map[string]string`・`Satisfied bool` しかなく、N行×M入力の「一表が一例」（§8）を表せない。**最小拡張**として `Rows []map[string]string`（行の配列、各要素が入力名→値テキスト）と、例が「判定できない」を期待できるようにする三値の期待（`Satisfied bool` は残し、`undecided` 期待を書ける欄を足す）を追加する。既存の単値・入力別値の例の読み方は変えない。
+
+### 15.4 規則の範囲の書き方
+
+**結論**：範囲は新フィールドでなく**既存の `Validation.Relation`** に乗せる（`for each <属性>` は既存の `Validation.GroupBy`）。§12 の `per <関係>` をそのまま operator 規則へ適用する。`Relation`/`GroupBy` の意味を「関係の行の上で問われる規則」——`unique`・`no-overlap` に加え、行集合入力を持つ operator——へ広げるだけで、保存形は変えない（フィールドは既存・既に JSON 化）。reader の dispatch（`Detail.Decide`）は「その operator が `of each row` 入力を宣言するか、Kind が unique/no-overlap」なら Detail に一度訊き、それ以外は行ごと、に拡張する。
+
+**根拠**：`RuleAuthoring.Scope` は `per <relation>` を、`Validation.Relation` は unique/no-overlap が既に使う。別 `Scope` 欄を足すと同一物の二重保存になり、§14.1 の「二種類の保存欄を同時に正本として解釈しない」に反する。subject 属性は第1入力の列で、`per <関係>` がその関係を名ぶる点は unique/no-overlap と同一である。
+
+**要件／条件**：operator 規則が scope を書けるのは「その operator が `of each row` 入力を宣言するときだけ」。`of each row` を宣言する operator の規則は scope が必須（どの関係の行か決まらないため）。per-row operator（`of each row` なし）への scope は現行どおり拒否する。衝突しない——unique/no-overlap と同じフィールド・同じ dispatch・同じ読み方を共用する。
+
+### 15.5 最小の独立Expected（反例を含む）を固定する試験
+
+**結論**：次で固定する。
+
+- **合成（`internal/semantic/validationeval`）**：新規 `operator_rows_test.go`。`tri × Coverage × RefutesOnSomeRows` の真理表を、**反例を必ず含めて**固定する。(a) 反例あり＋partial＋宣言あり→`not-satisfied`、(b) 同じ反例＋partial＋未宣言→`undecided: relation-partially-read`、(c) 反例＋complete→`not-satisfied`（宣言無関係）、(d) 反例なし＋partial→`undecided`、(e) 行内 null/not-fetched→`value-null`/`value-not-fetched` が partial より先、(f) `absent as` の行置換、(g) present-without-value は reader の誤りとして error、(h) 複数行入力が同一 attempt（B-10 保持）。既存 `read_attempt.go` の B-10 試験は変えない（追加のみ）。
+- **reader（`internal/driver/validationread`）**：既存 `sqlite_path_test.go`／`postgres_path_test.go` の `TestRulesAreDecidedFromRowsOfARealDatabase` の形に、`of each row` operator 規則を一つ追加。complete と partial（`covers some`/`LIMIT`）の両方を実DBの行で、反例を実装から独立に手で決めた期待と照合する。`periodsApart`/`personUnique` の前例に平行。
+- **構文（`internal/syntax`）**：`rule_authoring_validation_test.go` を、of-each-row/refutes-on-some-rows を受理する側へ更新。`Validation.Relation`/`GroupBy`・`OperatorInputDeclaration.OfEachRow` が填まること、行入力なし scope・per-row operator への scope の診断を確認する。
+- **製品（`cmd/tei`）**：`cli_view_environment` の e2e に、`of each row` operator の答えが `PerRelation`（`PerRow` でない）に入り、partial では refutes 未宣言なら `undecided` になることを足す。
+
+**根拠**：実DBを要するのは行の実読取・coverage・partial 経路・反例の実データである。`tri`/coverage の真理表・診断は合成で足りる。反例を含めることは判断点の必須要件である。
+
+**要件／条件**：実DB（SQLite/PostgreSQL）を要するもの（reader・製品）と合成で足りるもの（validationeval・構文）を上記で分離する。independent expected は実装とは別に手で決める。
+
+### 15.6 変換時の拒否を維持するか
+
+**結論**：変換時の拒否は、評価経路（行読み取り＋行関数＋dispatch＋`tri × Coverage × RefutesOnSomeRows`）と `Detail.ReadRelationNumbers` が揃い、実DBの反例で通るまで**維持する**。そしてその経路を**同一変更で**外す。「意味へ取り込んだが判定できない」半端状態を作らないのはこちらである。
+
+**根拠**：現在の拒否は load 時に Source 位置付き diagnostic を返し operator を meaning から落とすので、半端な受理が生まれない（安全）。意味へ先に取り込み評価時に未対応にすると、「受理したのに判定できない」が生まれる（避けるべき）。`OperatorInputDeclaration.OfEachRow` 等の欄は既に存在するので、取り込むのは schema 変更ではなく、拒否を外す**タイミング**の問題である。
+
+**要件／条件**：不変条件を一つに置く——**宣言は (a) load 時に Source 位置付き diagnostic で拒否、または (b) meaning へ完全に運ばれ既存の一つの `Decide` で判定できる、のどちらか。「意味に入ったが黙って判定不能」は作らない。** 拒否を外す変更と、判定できるようにする変更を同一単位にする。
+
+### 実装ワーカーが次に踏むべき一歩
+
+`internal/semantic/validationeval` に `NumberRowsReading` と `ReadRelationNumbers`、`tri` の共有定義、`tri × Coverage × RefutesOnSomeRows → Decision` の写しの一箇所を、**SQLite の実 `Detail` に対する合成試験（反例つき）で先に固定する**。変換時の拒否は、この経路と `Detail.ReadRelationNumbers` が実DBの反例で通るまで維持する。
+
+**一貫性（一文図式）**：`署名の of each row 入力 → Detail.ReadRelationNumbers(relation, attribute) が 1 読み取り（= 1 attempt）で []NumberReading を返す → operator の行関数は Source を持たず tri だけを返す → 評価器の一箇所が tri × Coverage × RefutesOnSomeRows を Decision に写す（反例は partial でも not-satisfied、それ以外は undecided）`。言い換えると——**1 行集合＝1 読み取り＝1 attempt。`of each row` の全入力は同じ `Detail` の同じ試行から読まれ、operator は純粋関数として `tri` だけを返し、`undecided` の理由と Coverage の結合は評価器の一箇所にしか置かない。**
