@@ -565,6 +565,16 @@ func knowledgeDataDesignCandidateReviewJSON(out io.Writer, workspacePath, subjec
 		return resultInvalidArgument(out, "knowledge-data-design-candidate-review",
 			"knowledge-data-design-candidate-review requires -data-design-candidate-kind and -data-design-candidate-fingerprint")
 	}
+	// The catalogue publishes which kinds exist, so a value outside that set is
+	// the same kind of failure as a missing flag: the caller wrote an argument
+	// this command does not have. It used to be answered with
+	// KNOWLEDGE_BUILD_FAILED, which names a problem with the Workspace or the
+	// build and sends the caller looking for something else (#5797).
+	if !candidateKindIsPublished(candidateKind) {
+		return resultInvalidArgument(out, "knowledge-data-design-candidate-review",
+			fmt.Sprintf("invalid -data-design-candidate-kind: kind %q is not one of %s",
+				candidateKind, strings.Join(candidateKinds, ", ")))
+	}
 	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
 		return emitResult(out, resultFailure("knowledge-data-design-candidate-review", resultCodeKnowledgeFailed, err), 2)
@@ -587,4 +597,16 @@ func flagPart(command string) string {
 		return " and -plugin-lock"
 	}
 	return ""
+}
+
+// candidateKindIsPublished reports whether the catalogue names the kind. The
+// command validates against that list rather than a second copy, so what
+// `tei commands` advertises and what it accepts cannot diverge (#5797).
+func candidateKindIsPublished(kind string) bool {
+	for _, published := range candidateKinds {
+		if published == kind {
+			return true
+		}
+	}
+	return false
 }
