@@ -214,6 +214,21 @@ func readEnvironmentRows(
 	if _, err := resolver.PrepareHeaderDetailContractQuery(appID, patternID, source, 0); err != nil {
 		return destinationRead{}, fmt.Errorf("invalid header-detail Contract Query input binding: %w", err)
 	}
+	// A rule decided by a declared operator needs the implementation this
+	// Workspace selected. Passing an empty Operators would refuse every
+	// operator rule as "not declared", so the read would answer fewer rules
+	// than the Application names.
+	//
+	// This is resolved here, before the connection, for the same reason the
+	// binding and declaration are checked here: a selection naming an
+	// implementation this tei does not carry must be refused without touching
+	// the database. Deciding it after the read would make a Workspace error
+	// look like a database failure.
+	operators, err := destinationOperators(resolver, selectedOperators)
+	if err != nil {
+		return destinationRead{}, err
+	}
+
 	// Refuse a self-contradictory coverage declaration before opening the
 	// database. The view path does not run static validation, and a read-only
 	// query is still external I/O that an invalid binding must not trigger.
@@ -335,14 +350,6 @@ func readEnvironmentRows(
 		return destinationRead{}, err
 	}
 	rules, err := resolver.ResolveApplicationValidations(appID)
-	if err != nil {
-		return destinationRead{}, err
-	}
-	// A rule decided by a declared operator needs the implementation this
-	// Workspace selected. Passing an empty Operators here would refuse every
-	// operator rule as "not declared", so the read would answer fewer rules
-	// than the Application names.
-	operators, err := destinationOperators(resolver, selectedOperators)
 	if err != nil {
 		return destinationRead{}, err
 	}
