@@ -96,15 +96,31 @@ func TestRowScopedDecisionTable(t *testing.T) {
 // A decided answer reported together with a reason inside the rows is a
 // contradiction: the implementation would have decided around a value that was
 // absent or was never read.
-func TestRowScopedDecisionRefusesADecidedAnswerWithARowReason(t *testing.T) {
+// A reason inside the rows is settled for TriNo but not for TriYes: a
+// counterexample that was seen decides the rule whatever else is unknown
+// (section 6), while "it holds everywhere" cannot be claimed over a row that
+// holds no value or was not read.
+func TestRowScopedDecisionRowReasonWithADecidedAnswer(t *testing.T) {
 	reason := &validationeval.Undecided{
 		Reason: validationeval.UndecidedValueNull, Relation: rowScopedRule.Relation, Attribute: rowScopedRule.Attribute,
 	}
-	for _, answer := range []validationeval.Tri{validationeval.TriYes, validationeval.TriNo} {
-		decision, err := validationeval.DecideRowScoped(rowScopedRule, validationeval.CoverageComplete, true, answer, reason)
-		if err == nil {
-			t.Fatalf("answer %d with a row reason was accepted: %+v", int(answer), decision)
-		}
+	// TriNo: the counterexample stands, so an absent row elsewhere does not
+	// turn it into an error or into undecided.
+	decision, err := validationeval.DecideRowScoped(rowScopedRule, validationeval.CoverageComplete, true, validationeval.TriNo, reason)
+	if err != nil {
+		t.Fatalf("a witnessed counterexample with an absent row was refused: %v", err)
+	}
+	if decision.Result != validationeval.ResultNotSatisfied {
+		t.Fatalf("decision=%+v, want not-satisfied", decision)
+	}
+	// TriYes: the absent row might break the rule, so the answer is undecided
+	// with that row's reason rather than satisfied.
+	decision, err = validationeval.DecideRowScoped(rowScopedRule, validationeval.CoverageComplete, true, validationeval.TriYes, reason)
+	if err != nil {
+		t.Fatalf("answer TriYes with a row reason returned an error: %v", err)
+	}
+	if decision.Result != "" || decision.Undecided == nil || decision.Undecided.Reason != validationeval.UndecidedValueNull {
+		t.Fatalf("decision=%+v, want undecided value-null", decision)
 	}
 }
 
