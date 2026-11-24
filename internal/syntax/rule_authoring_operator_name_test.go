@@ -41,6 +41,50 @@ func TestRuleAuthoringReadsANamedOperatorInput(t *testing.T) {
 	}
 }
 
+// The hint that tells an author what to write must not name a word this
+// surface refuses. Before this, leaving the type out said "accepted types are
+// number, date, text, truth, any, presence", and writing `date` next answered
+// `unknown operator input "date"; accepted inputs are number, presence`. An
+// author who follows the hint lands on a second error.
+//
+// plan/NOW.md road item 5 names date, text, truth and any as type words that
+// have no reader yet, so they are refused. They must therefore not be offered.
+func TestRuleAuthoringNeverOffersATypeWordItRefuses(t *testing.T) {
+	for _, word := range []string{"date", "text", "truth", "any"} {
+		_, err := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: takes start: " + word + "\n")
+		var parseErr *syntax.ParseError
+		if !errors.As(err, &parseErr) {
+			t.Fatalf("%s was accepted although it has no reader: %v", word, err)
+		}
+		if !strings.Contains(parseErr.Msg, `unknown operator input "`+word+`"`) {
+			t.Fatalf("%s was refused for some other reason: %q", word, parseErr.Msg)
+		}
+	}
+
+	// Without a type the hint must list only words that are accepted. The
+	// words it may offer are checked by writing each of them.
+	_, missing := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: takes start:\n")
+	var parseErr *syntax.ParseError
+	if !errors.As(missing, &parseErr) {
+		t.Fatalf("a missing type was accepted: %v", missing)
+	}
+	if !strings.Contains(parseErr.Msg, "accepted types are number, presence") {
+		// One list feeds both the hint and the check, so a word cannot be
+		// offered here and refused above.
+		t.Fatalf("the hint does not list the accepted words: %q", parseErr.Msg)
+	}
+	for _, offered := range []string{"date", "text", "truth", "any"} {
+		if strings.Contains(parseErr.Msg, offered) {
+			t.Fatalf("the hint offers %q, which this surface refuses: %q", offered, parseErr.Msg)
+		}
+	}
+	for _, accepted := range []string{"number", "presence"} {
+		if _, err := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: takes start: " + accepted + "\n"); err != nil {
+			t.Fatalf("the hint offers %q but it is refused: %v", accepted, err)
+		}
+	}
+}
+
 // A name without a type, a type outside the closed list, and a second input are
 // all refused. An operator with an unreadable signature would answer rules
 // against a contract nobody can check.

@@ -472,8 +472,11 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 			if typeTok.Kind == TokenEOF {
 				at = inputTok
 			}
+			// Only the words a reader exists for are offered. Listing a
+			// word this surface then refuses would send an author down a
+			// path that ends in a second error.
 			return OperatorInput{}, p.errAt(at, fmt.Sprintf(
-				"expected the type of input %q after \":\"; accepted types are number, date, text, truth, any, presence", name))
+				"expected the type of input %q after \":\"; accepted types are %s", name, acceptedOperatorInputWordsList()))
 		}
 		inputTok = typeTok
 		nt, err = p.peek()
@@ -573,11 +576,33 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 	}, nil
 }
 
+// acceptedOperatorInputWords is the closed list of type words this surface
+// reads. The words with no reader yet (date, text, truth, any) are not in it.
+//
+// It is one list, not two: the hint that tells an author what to write and the
+// check that decides what is accepted both read it, so a word cannot be offered
+// and then refused, and a word cannot be accepted and then omitted from the
+// hint.
+var acceptedOperatorInputWords = []OperatorInputWord{
+	OperatorInputNumberWord,
+	OperatorInputPresenceWord,
+}
+
+// acceptedOperatorInputWordsList is the hint's rendering of that list.
+func acceptedOperatorInputWordsList() string {
+	words := make([]string, 0, len(acceptedOperatorInputWords))
+	for _, word := range acceptedOperatorInputWords {
+		words = append(words, string(word))
+	}
+	return strings.Join(words, ", ")
+}
+
 // knownOperatorInputWord reports whether text is an accepted input type word.
 func knownOperatorInputWord(text string) bool {
-	switch OperatorInputWord(text) {
-	case OperatorInputNumberWord, OperatorInputPresenceWord:
-		return true
+	for _, word := range acceptedOperatorInputWords {
+		if string(word) == text {
+			return true
+		}
 	}
 	return false
 }
