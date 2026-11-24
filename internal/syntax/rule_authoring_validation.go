@@ -227,16 +227,27 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 // rule check reads; the contract continues to carry only what the author wrote,
 // so a reader that needs a name for the single input still applies "value".
 // declaredOperatorMappings indexes the value-absent mapping each declaration
-// gives, keyed by operator id. An operator with no entry is either undeclared in
-// this source or declares no mapping; the caller only checks operators it knows.
-func declaredOperatorMappings(operators []OperatorAuthoring) map[core.CanonicalID][]string {
-	mappings := make(map[core.CanonicalID][]string, len(operators))
+// gives, keyed by operator id and then by the input the mapping belongs to. An
+// operator with no entry is either undeclared in this source or declares no
+// mapping; the caller only checks operators it knows.
+//
+// The mapping belongs to ONE input. `takes value: number absent as open` states
+// how an absent value of `value` is read; it says nothing about an absent
+// `low`. Checking only "the operator declares some mapping named open" let a
+// rule read `low`'s absence as `open`, which the operator never stated (#4359).
+func declaredOperatorMappings(operators []OperatorAuthoring) map[core.CanonicalID]map[string][]string {
+	mappings := make(map[core.CanonicalID]map[string][]string, len(operators))
 	for _, operator := range operators {
-		entry := mappings[operator.ID]
+		entry := make(map[string][]string, len(operator.Inputs))
 		for _, input := range operator.Inputs {
-			if input.AbsentAs != "" {
-				entry = append(entry, input.AbsentAs)
+			if input.AbsentAs == "" {
+				continue
 			}
+			name := input.Name
+			if name == "" {
+				name = "value"
+			}
+			entry[name] = append(entry[name], input.AbsentAs)
 		}
 		mappings[operator.ID] = entry
 	}
@@ -269,7 +280,7 @@ func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.Canonica
 func ruleToValidationWithInputs(
 	rule RuleAuthoring,
 	declaredInputs map[core.CanonicalID][]string,
-	declaredMappings map[core.CanonicalID][]string,
+	declaredMappings map[core.CanonicalID]map[string][]string,
 ) (semantic.Validation, *RuleConversionIssue) {
 	if rule.Operator == nil || len(rule.Inputs) == 0 {
 		return ruleToValidation(rule)
@@ -294,12 +305,12 @@ func ruleToValidationWithInputs(
 		}
 		if assignment.AbsentAs != "" {
 			if mappings, known := declaredMappings[core.CanonicalID(rule.Operator.Text)]; known {
-				if !inputNameDeclared(mappings, assignment.AbsentAs) {
+				if !inputNameDeclared(mappings[assignment.Name], assignment.AbsentAs) {
 					return semantic.Validation{}, &RuleConversionIssue{
 						RuleID: rule.ID, Span: assignment.AbsentAsSpan,
 						Msg: fmt.Sprintf(
-							"operator %s declares no value-absent mapping named %q; a rule cannot read an absent value a way the operator never stated",
-							rule.Operator.Text, assignment.AbsentAs),
+							"operator %s declares no value-absent mapping named %q for input %q; a rule cannot read an absent value a way the operator never stated for that input",
+							rule.Operator.Text, assignment.AbsentAs, assignment.Name),
 					}
 				}
 			}
