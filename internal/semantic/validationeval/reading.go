@@ -236,7 +236,7 @@ func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclarat
 // (with rule context), not turned into an Undecided, so the caller can
 // distinguish "no data" from "the reader failed". A missing or unreadable
 // assignment is neither: the caller refuses an unassigned input before asking.
-func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, values map[string]*big.Rat, source StatefulSource) (*Undecided, error) {
+func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, values map[string]*big.Rat, source StatefulSource, absent func(string) (*big.Rat, bool)) (*Undecided, error) {
 	assignment := findInputAssignment(rule, input.Name)
 	if assignment == nil {
 		return &Undecided{Reason: UndecidedValueNotFetched, Attribute: core.CanonicalID(input.Name)}, nil
@@ -252,6 +252,17 @@ func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDec
 			return nil, err
 		}
 		if stopped != nil {
+			// The input held no value. If the rule named a mapping and this
+			// implementation can read the absence that way, it is read as
+			// that value; otherwise the absence keeps its own reason. An
+			// implementation that cannot read the mapping must not be given
+			// zero, and the absence must not become a satisfied input.
+			if assignment.AbsentAs != "" && absent != nil {
+				if mapped, ok := absent(assignment.AbsentAs); ok {
+					values[input.Name] = new(big.Rat).Set(mapped)
+					return nil, nil
+				}
+			}
 			return stopped, nil
 		}
 		values[input.Name] = new(big.Rat).Set(value)
@@ -435,7 +446,7 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			} else {
 				origins = append(origins, constantOrigin(input.Name))
 			}
-			got, rerr := readAssignedInput(rule, input, values, source)
+			got, rerr := readAssignedInput(rule, input, values, source, implementation.Absent)
 			if rerr != nil {
 				return Decision{}, rerr
 			}
