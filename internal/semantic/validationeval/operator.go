@@ -115,21 +115,62 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 		return none, fmt.Errorf("operator %s is declared to take %s, but its implementation takes %s", rule.Operator, contract.Input, implementation.Input)
 	}
 
-	// Reject an implementation that does not match the arity of the contract.
+	// Reject an implementation that does not match the shape of the declaration.
+	// A declaration that reads a column of the rows is decided over those rows;
+	// any other declaration is decided from the values of one record, whether it
+	// names one input or several.
+	inputs := contractInputs(contract)
+	rowScoped := false
+	for _, input := range inputs {
+		if input.OfEachRow {
+			rowScoped = true
+			break
+		}
+	}
+	hasRows := implementation.NumberRows != nil
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
-	if !hasMulti && !hasSingle {
+	shapes := 0
+	for _, present := range []bool{hasRows, hasMulti, hasSingle} {
+		if present {
+			shapes++
+		}
+	}
+	if shapes == 0 {
 		return none, fmt.Errorf("the implementation of operator %s has no decision function", rule.Operator)
 	}
-	if hasMulti && hasSingle {
-		return none, fmt.Errorf("the implementation of operator %s provides both single and multi-input functions", rule.Operator)
+	if shapes > 1 {
+		return none, fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", rule.Operator)
 	}
-	multiInput := len(contract.Inputs) > 1
-	if multiInput && !hasMulti {
-		return none, fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", rule.Operator, len(contract.Inputs))
+	if rowScoped && !hasRows {
+		return none, fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", rule.Operator)
 	}
-	if !multiInput && hasMulti {
-		return none, fmt.Errorf("operator %s declares one input but its implementation takes multiple values", rule.Operator)
+	if !rowScoped && hasRows {
+		return none, fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", rule.Operator)
+	}
+	if !rowScoped {
+		multiInput := len(inputs) > 1
+		if multiInput && !hasMulti {
+			return none, fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", rule.Operator, len(inputs))
+		}
+		if !multiInput && hasMulti {
+			return none, fmt.Errorf("operator %s declares one input but its implementation takes multiple values", rule.Operator)
+		}
+	}
+
+	// The contract's own examples come first. An implementation that
+	// answers one of them differently is not an implementation of this
+	// operator, so it is not asked about real data.
+	//
+	// An example states the values of one record. A row-scoped operator's
+	// meaning is stated by the table of rows (section 8), which is not read
+	// yet, so the examples of such a contract are refused rather than checked
+	// against an implementation that would be asked a different question.
+	if rowScoped {
+		if len(contract.Cases) > 0 {
+			return none, fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its meaning is stated by a table of rows; a one-record example is not checked against it", rule.Operator)
+		}
+		return implementation, nil
 	}
 
 	// The contract's own examples come first. An implementation that

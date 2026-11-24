@@ -436,6 +436,15 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		}
 		contract := declared[0]
 		inputs := contractInputs(contract)
+		// A rule whose operator declares an input read over every row of a
+		// relation is asked of those rows, not of one record (decision section
+		// 15.1). Every such input of this rule is read in one call, so one
+		// answer never mixes two reads (section 14.2 B-10).
+		for _, input := range inputs {
+			if input.OfEachRow {
+				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
+			}
+		}
 		// The rule subject supplies the first input, and only it. A rule that
 		// also assigns that input by name binds it twice, so the instruction
 		// is refused instead of read.
@@ -510,6 +519,128 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 	default:
 		return Decision{}, fmt.Errorf("kind %q of semantic validation %s has no corresponding Evaluator", rule.Kind, rule.ID)
 	}
+}
+
+// decideRowScopedOperator asks a row-scoped operator's implementation about the
+// states of every row of one relation and composes that answer with the read
+// Coverage and the operator's refutation statement in the one place that decides
+// it (decideRowScoped, row_scope.go).
+//
+// The first input's column is the rule's subject attribute. Every other input
+// must be assigned a name, and that assignment must be an attribute: a constant
+// states one value and cannot stand for a column of the rows.
+func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, implementation OperatorImplementation, source StatefulSource) (Decision, error) {
+	if rule.Relation == "" {
+		return Decision{}, fmt.Errorf(
+			"semantic validation %s uses operator %s, which reads every row, but the rule names no relation; write \"per <relation>\"",
+			rule.ID, rule.Operator)
+	}
+	reader, ok := source.(StatefulRowNumberSource)
+	if !ok {
+		return Decision{}, fmt.Errorf(
+			"semantic validation %s reads every row of relation %s, but this reader cannot read the rows of a relation",
+			rule.ID, rule.Relation)
+	}
+	if implementation.NumberRows == nil {
+		return Decision{}, fmt.Errorf(
+			"operator %s reads every row of a relation, but its selected implementation does not decide over rows",
+			rule.Operator)
+	}
+
+	rows := make(map[string][]NumberReading, len(inputs))
+	var coverage Coverage
+	var reason *Undecided
+	for index, input := range inputs {
+		attribute := rule.Attribute
+		var mapping string
+		if index > 0 {
+			assignment := findInputAssignment(rule, input.Name)
+			if assignment == nil {
+				return Decision{}, fmt.Errorf(
+					"semantic validation %s does not assign operator %s input %q; every input after the first must be assigned",
+					rule.ID, rule.Operator, input.Name)
+			}
+			if !isAttributeReference(assignment.Value) {
+				return Decision{}, fmt.Errorf(
+					"semantic validation %s assigns operator %s input %q the constant %q; a row-scoped input reads a column of the rows, not one value",
+					rule.ID, rule.Operator, input.Name, assignment.Value)
+			}
+			named, err := core.ParseCanonicalID(assignment.Value)
+			if err != nil {
+				return Decision{}, fmt.Errorf(
+					"semantic validation %s assigns operator %s input %q an unreadable attribute %q",
+					rule.ID, rule.Operator, input.Name, assignment.Value)
+			}
+			attribute = named
+			mapping = assignment.AbsentAs
+		}
+		reading, err := reader.ReadRelationNumbers(rule.Relation, attribute)
+		if err != nil {
+			return Decision{}, fmt.Errorf(
+				"semantic validation %s cannot read attribute %s over relation %s: %w",
+				rule.ID, attribute, rule.Relation, err)
+		}
+		// Every input of this one rule is read from this one relation, so all of
+		// them report the same coverage. Two coverages would mean two reads, and
+		// one answer must not mix them.
+		if coverage != "" && reading.Coverage != coverage {
+			return Decision{}, fmt.Errorf(
+				"semantic validation %s read relation %s with two coverages (%q and %q); one answer cannot mix two reads",
+				rule.ID, rule.Relation, coverage, reading.Coverage)
+		}
+		coverage = reading.Coverage
+		rows[input.Name] = withAbsentMapping(reading.Rows, attribute, mapping, implementation.Absent)
+		// A row that holds no value, or was not read, keeps its own reason. The
+		// first such row in read order is reported; the implementation is still
+		// asked, so a counterexample found in another row is not thrown away.
+		if reason == nil {
+			reason = firstRowReason(attribute, rows[input.Name])
+		}
+	}
+
+	answer, err := implementation.NumberRows(rows)
+	if err != nil {
+		return Decision{}, fmt.Errorf("operator %s could not decide semantic validation %s: %w", rule.Operator, rule.ID, err)
+	}
+	return decideRowScoped(rule, coverage, contract.RefutesOnSomeRows, answer, reason)
+}
+
+// withAbsentMapping rewrites the rows that hold no value under the mapping the
+// rule named, when the implementation can read that mapping. A row whose value
+// is replaced becomes present with the mapped value; a mapping this
+// implementation cannot read leaves the row as it was, so the absence keeps its
+// own reason instead of being read as zero.
+func withAbsentMapping(rows []NumberReading, attribute core.CanonicalID, mapping string, absent func(string) (*big.Rat, bool)) []NumberReading {
+	_ = attribute
+	if mapping == "" || absent == nil {
+		return rows
+	}
+	out := make([]NumberReading, len(rows))
+	copy(out, rows)
+	for i, row := range out {
+		if row.State == ValuePresent {
+			continue
+		}
+		if mapped, ok := absent(mapping); ok {
+			out[i] = NumberReading{State: ValuePresent, Value: new(big.Rat).Set(mapped)}
+		}
+	}
+	return out
+}
+
+// firstRowReason reports the first row that holds no value or was not read, in
+// read order. It is the reason a row-scoped answer may be undecided; a decided
+// answer must not be reported together with it (decideRowScoped checks that).
+func firstRowReason(attribute core.CanonicalID, rows []NumberReading) *Undecided {
+	for _, row := range rows {
+		switch row.State {
+		case ValueNull:
+			return &Undecided{Reason: UndecidedValueNull, Attribute: attribute}
+		case ValueNotFetched:
+			return &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}
+		}
+	}
+	return nil
 }
 
 // decideRelationUnique decides "no two rows share a key".
