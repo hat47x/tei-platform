@@ -379,6 +379,90 @@ func TestModelSearchHelpListsItsOwnGrammar(t *testing.T) {
 	}
 }
 
+// The -kind help must not read as "you can search these" for a kind that
+// returns no hits. The response already names unsearchable kinds in
+// `notSearchableKinds` (#5228); the help said nothing, so a reader who picked
+// `-kind migration` learned why only from the answer. The help and the response
+// now name the same two groups, read from the same list.
+func TestModelSearchHelpSeparatesSearchableKindsFromAcceptedOnes(t *testing.T) {
+	var out bytes.Buffer
+	code, err := runModelCommand([]string{"search", "-h"}, &out)
+	if err != nil || code != 0 {
+		t.Fatalf("exit=%d err=%v out=%q", code, err, out.String())
+	}
+	found := operations.NotSearchableKinds()
+	if len(found) == 0 {
+		t.Fatal("the search reports no unsearchable kind, so the help has nothing to separate")
+	}
+
+	// Read the -kind sentence, split at the marker, and parse each side's list by
+	// its separator. Comparing tokens instead of substrings keeps `application`
+	// from matching inside `application-release`.
+	sentence := kindHelpSentence(t, out.String())
+	const marker = "accepted but not searchable"
+	index := strings.Index(sentence, marker)
+	if index < 0 {
+		t.Fatalf("the help does not say which accepted kinds return no hits: %q", sentence)
+	}
+	// Each side is sliced before its label is applied: cutting the whole sentence
+	// would let the searchable list run past the marker and swallow the
+	// unsearchable group's text into its last token.
+	searchable := kindTokensAfter(t, sentence[:index], "one subject kind:")
+	unsearchable := kindTokensAfter(t, sentence[index:], "return no hits):")
+
+	for _, kind := range found {
+		if !unsearchable[kind] {
+			t.Errorf("the help's unsearchable group omits %q: %q", kind, sentence[index:])
+		}
+		if searchable[kind] {
+			t.Errorf("the help lists unsearchable kind %q among the searchable ones: %q", kind, sentence[:index])
+		}
+	}
+	// Every accepted kind has to be named, in exactly one of the two groups.
+	// Without this, dropping a searchable kind from the help would still pass.
+	for _, kind := range operations.InspectionSubjectKinds {
+		if searchable[kind] == unsearchable[kind] {
+			t.Errorf("kind %q must appear in exactly one of the two groups (searchable=%t unsearchable=%t)",
+				kind, searchable[kind], unsearchable[kind])
+		}
+	}
+}
+
+// kindHelpSentence returns the -kind line of the model search help.
+func kindHelpSentence(t *testing.T, help string) string {
+	t.Helper()
+	for _, line := range strings.Split(help, "\n") {
+		if strings.Contains(line, "restrict the search to one subject kind") {
+			return line
+		}
+	}
+	t.Fatalf("the help has no -kind sentence: %q", help)
+	return ""
+}
+
+// kindTokensAfter returns the `a|b|c` list that follows one label inside a
+// fragment. Reading the label explicitly keeps the sentence's other colon (the
+// one before the unsearchable group) from being taken as this list's start.
+func kindTokensAfter(t *testing.T, fragment, label string) map[string]bool {
+	t.Helper()
+	_, after, found := strings.Cut(fragment, label)
+	if !found {
+		t.Fatalf("the fragment has no %q label: %q", label, fragment)
+	}
+	out := map[string]bool{}
+	for _, token := range strings.Split(after, "|") {
+		// The last token of a group may carry the separator that ends it
+		// (`...|query; accepted but ...`), so trailing punctuation is not part
+		// of the kind name.
+		trimmed := strings.TrimSpace(strings.TrimRight(strings.TrimSpace(token), ";,"))
+		if trimmed == "" || strings.ContainsAny(trimmed, " \t()") {
+			break
+		}
+		out[trimmed] = true
+	}
+	return out
+}
+
 // What `tei commands` advertises for this command is exactly the grammar its
 // own FlagSet accepts: a caller planning an invocation from the discovery
 // document must not be told about a flag the parser refuses, or miss one it
