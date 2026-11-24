@@ -61,4 +61,45 @@ func TestDiscloseUnknownSectionIsInvalidArgument(t *testing.T) {
 			t.Fatalf("published section %q was refused as an argument error: %s", section, sectionOut.String())
 		}
 	}
+
+	// (c) A value that selects no section is an argument mistake too. It used
+	// to pass this check and fail deeper with KNOWLEDGE_BUILD_FAILED, which
+	// names a build problem for a flag value that selected nothing.
+	for _, selection := range []string{" , ", ",", " "} {
+		t.Run("empty selection "+selection, func(t *testing.T) {
+			var emptyOut bytes.Buffer
+			code, err := knowledgeContextJSON(&emptyOut, reference, "semantic-data", "sales.order", selection, "", "", 0)
+			if err != nil {
+				t.Fatalf("empty selection %q returned an emitter error: %v", selection, err)
+			}
+			if code != 2 {
+				t.Fatalf("empty selection %q: exit=%d, want 2 (body=%s)", selection, code, emptyOut.String())
+			}
+			var body struct {
+				Error *struct {
+					Code    string `json:"code"`
+					Message string `json:"message"`
+				} `json:"error"`
+			}
+			if err := json.Unmarshal(emptyOut.Bytes(), &body); err != nil {
+				t.Fatalf("empty selection %q: not one envelope: %v (%s)", selection, err, emptyOut.String())
+			}
+			if body.Error == nil || body.Error.Code != "INVALID_ARGUMENT" {
+				t.Fatalf("empty selection %q: error.code=%v, want INVALID_ARGUMENT (body=%s)",
+					selection, body.Error, emptyOut.String())
+			}
+			if !strings.Contains(body.Error.Message, "at least one") {
+				t.Fatalf("empty selection %q: message does not say a section is required: %q",
+					selection, body.Error.Message)
+			}
+			// The message still names every section, so a caller learns what to
+			// select without reading the source.
+			for _, section := range knowledgecontext.SelectableDisclosureSections {
+				if !strings.Contains(body.Error.Message, section) {
+					t.Fatalf("empty selection %q: message omits published section %q: %q",
+						selection, section, body.Error.Message)
+				}
+			}
+		})
+	}
 }

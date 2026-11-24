@@ -427,11 +427,17 @@ func requireKnowledgeSubject(out io.Writer, command, subjectKind, subjectID stri
 // (#3242). It mirrors normalizeDisclosureSections: every comma-separated part
 // is trimmed and checked, so a comma-joined value is validated part by part
 // against knowledgecontext.SelectableDisclosureSections.
+//
+// A value that selects nothing (`" , "`, `","`, `" "`) is refused here too.
+// The lower layer already refuses it, but it answers KNOWLEDGE_BUILD_FAILED,
+// which names a build problem: the caller typed a flag value that selects no
+// section, and that is the same failure class as an unknown section (#3242).
 func validateKnowledgeDisclosureSelection(disclosure string) error {
 	known := make(map[string]struct{}, len(knowledgecontext.SelectableDisclosureSections))
 	for _, section := range knowledgecontext.SelectableDisclosureSections {
 		known[section] = struct{}{}
 	}
+	selected := 0
 	for _, raw := range strings.Split(disclosure, ",") {
 		section := strings.TrimSpace(raw)
 		if section == "" {
@@ -444,6 +450,13 @@ func validateKnowledgeDisclosureSelection(disclosure string) error {
 				strings.Join(knowledgecontext.SelectableDisclosureSections, ", "),
 			)
 		}
+		selected++
+	}
+	if selected == 0 {
+		return fmt.Errorf(
+			"-disclose requires at least one selected section; supported sections: %s",
+			strings.Join(knowledgecontext.SelectableDisclosureSections, ", "),
+		)
 	}
 	return nil
 }
