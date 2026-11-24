@@ -30,6 +30,7 @@ on:
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'cmd/tei/declaration_checked_pg_test.go'
+      - 'cmd/tei/row_scoped_operator_pg_test.go'
       - 'cmd/tei/within_operator_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -68,6 +69,7 @@ on:
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'cmd/tei/declaration_checked_pg_test.go'
+      - 'cmd/tei/row_scoped_operator_pg_test.go'
       - 'cmd/tei/within_operator_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
@@ -256,7 +258,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$|^TestRowScopedOperatorDecidesRealPostgresRows$' ./cmd/tei | tee -a "$log"
           # plan/NOW.md road item 5: a rule decided by the multi-input operator
           # must be answered for rows that actually came from PostgreSQL.
           go test -count=1 -v -timeout 10m -run '^TestMultipleInputOperatorDecidesRealPostgresRows$|^TestMultipleInputOperatorDataRangeIsAnEvaluationError$|^TestMultipleInputOperatorWithoutASelectionIsRefused$' ./cmd/tei | tee -a "$log"
@@ -332,6 +334,7 @@ jobs:
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
             'TestEnvironmentReportsWhetherTheDeclarationWasChecked'
+            'TestRowScopedOperatorDecidesRealPostgresRows'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
             'TestShippedWebPageShowsRealPostgresRowAnswers'
             'TestFirstChangeWalkthroughWebUsesEditedWorkspace'
