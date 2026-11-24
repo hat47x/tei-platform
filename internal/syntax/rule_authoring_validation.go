@@ -78,6 +78,13 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 		}
 		out.Validations = append(out.Validations, validation)
 	}
+	// An operator this conversion refuses contributes no contract. A rule that
+	// names it would then be a rule whose operator nobody declared: the answer
+	// cannot be sought from an implementation, and nothing downstream would
+	// notice, because the operator declaration was reported in a separate
+	// issue. Report the rule instead of the dangling reference, and drop it, so
+	// a source where only the operator failed cannot hand a rule to the
+	// validator as plausible meaning (#4359).
 	for _, operator := range file.Operators {
 		// A range or a refutation statement has no place in the meaning yet.
 		// Converting would produce an operator that silently ignores what the
@@ -150,7 +157,47 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			Inputs:    declarations,
 		})
 	}
+	// A rule that names an operator this conversion refused has no operator
+	// contract to be answered by. Keeping it would hand the validator a rule
+	// whose operator nobody declares; the author already sees the operator
+	// issue, so name the rule that depends on it and drop the rule.
+	refused := make(map[core.CanonicalID]bool, len(file.Operators))
+	for _, operator := range file.Operators {
+		if !reportedOperator(out.Operators, operator.ID) {
+			refused[operator.ID] = true
+		}
+	}
+	if len(refused) != 0 {
+		for _, rule := range file.Rules {
+			if rule.Operator == nil || !refused[core.CanonicalID(rule.Operator.Text)] {
+				continue
+			}
+			issues = append(issues, RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.Operator.Anchor,
+				Msg: fmt.Sprintf("rule %s uses operator %s, which this source declared but could not convert; "+
+					"a rule cannot be answered by an operator that produced no contract", rule.ID, rule.Operator.Text),
+			})
+		}
+		kept := out.Validations[:0]
+		for _, validation := range out.Validations {
+			if !refused[validation.Operator] {
+				kept = append(kept, validation)
+			}
+		}
+		out.Validations = kept
+	}
 	return out, issues
+}
+
+// reportedOperator reports whether the conversion produced this operator's
+// contract, so a rule that names it has something to be answered by.
+func reportedOperator(operators []semantic.Operator, id core.CanonicalID) bool {
+	for _, operator := range operators {
+		if operator.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // OperatorInputFor maps one input word onto the existing operator input. The
