@@ -1,9 +1,12 @@
 package validationeval_test
 
 import (
+	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 
+	"tei/internal/core"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationeval"
 )
@@ -96,15 +99,31 @@ func TestRowScopedDecisionTable(t *testing.T) {
 // A decided answer reported together with a reason inside the rows is a
 // contradiction: the implementation would have decided around a value that was
 // absent or was never read.
-func TestRowScopedDecisionRefusesADecidedAnswerWithARowReason(t *testing.T) {
+// A reason inside the rows is settled for TriNo but not for TriYes: a
+// counterexample that was seen decides the rule whatever else is unknown
+// (section 6), while "it holds everywhere" cannot be claimed over a row that
+// holds no value or was not read.
+func TestRowScopedDecisionRowReasonWithADecidedAnswer(t *testing.T) {
 	reason := &validationeval.Undecided{
 		Reason: validationeval.UndecidedValueNull, Relation: rowScopedRule.Relation, Attribute: rowScopedRule.Attribute,
 	}
-	for _, answer := range []validationeval.Tri{validationeval.TriYes, validationeval.TriNo} {
-		decision, err := validationeval.DecideRowScoped(rowScopedRule, validationeval.CoverageComplete, true, answer, reason)
-		if err == nil {
-			t.Fatalf("answer %d with a row reason was accepted: %+v", int(answer), decision)
-		}
+	// TriNo: the counterexample stands, so an absent row elsewhere does not
+	// turn it into an error or into undecided.
+	decision, err := validationeval.DecideRowScoped(rowScopedRule, validationeval.CoverageComplete, true, validationeval.TriNo, reason)
+	if err != nil {
+		t.Fatalf("a witnessed counterexample with an absent row was refused: %v", err)
+	}
+	if decision.Result != validationeval.ResultNotSatisfied {
+		t.Fatalf("decision=%+v, want not-satisfied", decision)
+	}
+	// TriYes: the absent row might break the rule, so the answer is undecided
+	// with that row's reason rather than satisfied.
+	decision, err = validationeval.DecideRowScoped(rowScopedRule, validationeval.CoverageComplete, true, validationeval.TriYes, reason)
+	if err != nil {
+		t.Fatalf("answer TriYes with a row reason returned an error: %v", err)
+	}
+	if decision.Result != "" || decision.Undecided == nil || decision.Undecided.Reason != validationeval.UndecidedValueNull {
+		t.Fatalf("decision=%+v, want undecided value-null", decision)
 	}
 }
 
@@ -175,6 +194,198 @@ func TestRowScopedImplementationIsResolvedAndCalled(t *testing.T) {
 	}
 	if len(calls) != 1 || calls[0].Implementation != "example.rows" {
 		t.Fatalf("calls=%+v, want one call to example.rows", calls)
+	}
+}
+
+// rowsSource answers for the rows of one relation and refuses the single-record
+// question, so a rule answered from one row is caught instead of passing.
+type rowsSource struct {
+	coverage validationeval.Coverage
+	columns  map[core.CanonicalID][]validationeval.NumberReading
+	// reads records which attributes were asked for, so a test can show that
+	// each input is read once and not once per row.
+	reads []core.CanonicalID
+}
+
+func (s *rowsSource) ReadNumber(core.CanonicalID) (validationeval.NumberReading, error) {
+	return validationeval.NumberReading{}, fmt.Errorf("this reader answers for the rows of a relation, not for one record")
+}
+
+func (s *rowsSource) ReadRelationKeys(core.CanonicalID, core.CanonicalID) (validationeval.RelationReading, error) {
+	return validationeval.RelationReading{}, fmt.Errorf("this reader reads numbers, not keys")
+}
+
+func (s *rowsSource) ReadRelationNumbers(relation, attribute core.CanonicalID) (validationeval.NumberRowsReading, error) {
+	s.reads = append(s.reads, attribute)
+	rows, ok := s.columns[attribute]
+	if !ok {
+		return validationeval.NumberRowsReading{}, fmt.Errorf("attribute %s was not read", attribute)
+	}
+	return validationeval.NumberRowsReading{Coverage: s.coverage, Rows: rows}, nil
+}
+
+// oneRecordSource answers only the single-record question. It stands for every
+// reader the rule path already had before row-scoped inputs existed.
+type oneRecordSource struct{}
+
+func (oneRecordSource) ReadNumber(core.CanonicalID) (validationeval.NumberReading, error) {
+	return validationeval.NumberReading{}, fmt.Errorf("one record only")
+}
+
+func (oneRecordSource) ReadRelationKeys(core.CanonicalID, core.CanonicalID) (validationeval.RelationReading, error) {
+	return validationeval.RelationReading{}, fmt.Errorf("one record only")
+}
+
+// The expected answers below are written by hand from decision section 15.2's
+// table and from the rule: sales.below_limit holds when every row's value is
+// below 100, and it declares `refutes on some rows`.
+var rowOperatorRule = semantic.Validation{
+	ID:        "sales.order.lines.amount_below_limit",
+	Symbol:    "amount_below_limit",
+	Kind:      semantic.ValidationOperator,
+	Attribute: "sales.order_line.amount",
+	Relation:  "sales.order.lines",
+	Operator:  "sales.below_limit",
+}
+
+func belowLimitContract(refutes bool) semantic.Operator {
+	return semantic.Operator{
+		ID:     "sales.below_limit",
+		Symbol: "below_limit",
+		Input:  semantic.OperatorInputNumber,
+		Inputs: []semantic.OperatorInputDeclaration{
+			{Name: "value", Type: semantic.OperatorInputNumber, OfEachRow: true},
+		},
+		RefutesOnSomeRows: refutes,
+	}
+}
+
+func belowLimitImplementation() validationeval.OperatorImplementation {
+	// The plain reading of the contract, written here so a wrong evaluator is
+	// caught even when the shipped implementation is wrong too.
+	return validationeval.OperatorImplementation{
+		Operator: "sales.below_limit",
+		Input:    semantic.OperatorInputNumber,
+		NumberRows: func(rows map[string][]validationeval.NumberReading) (validationeval.Tri, error) {
+			values, ok := rows["value"]
+			if !ok {
+				return validationeval.TriMaybe, fmt.Errorf("no value column")
+			}
+			for _, row := range values {
+				switch row.State {
+				case validationeval.ValueNotFetched:
+					return validationeval.TriMaybe, nil
+				case validationeval.ValueNull:
+					return validationeval.TriMaybe, nil
+				case validationeval.ValuePresent:
+					if row.Value.Cmp(big.NewRat(100, 1)) >= 0 {
+						return validationeval.TriNo, nil
+					}
+				}
+			}
+			return validationeval.TriYes, nil
+		},
+	}
+}
+
+func present(value int64) validationeval.NumberReading {
+	return validationeval.NumberReading{State: validationeval.ValuePresent, Value: big.NewRat(value, 1)}
+}
+
+func decideRowOperator(t *testing.T, source *rowsSource, refutes bool) validationeval.Decision {
+	t.Helper()
+	decision, err := validationeval.Decide(rowOperatorRule, source, validationeval.Operators{
+		Declared:        []semantic.Operator{belowLimitContract(refutes)},
+		Implementations: []validationeval.OperatorImplementation{belowLimitImplementation()},
+	})
+	if err != nil {
+		t.Fatalf("refutes=%v: err=%v", refutes, err)
+	}
+	return decision
+}
+
+// A counterexample that was read is a decision when the operator states that one
+// witnessed counterexample is enough, whatever the coverage.
+func TestRowOperatorCounterexampleWithRefutationIsNotSatisfied(t *testing.T) {
+	source := &rowsSource{
+		coverage: validationeval.CoveragePartial,
+		columns: map[core.CanonicalID][]validationeval.NumberReading{
+			"sales.order_line.amount": {present(10), present(200)},
+		},
+	}
+	decision := decideRowOperator(t, source, true)
+	if decision.Result != validationeval.ResultNotSatisfied || decision.Undecided != nil {
+		t.Fatalf("decision=%+v, want not-satisfied with no reason", decision)
+	}
+	// One input is read once, not once per row.
+	if len(source.reads) != 1 {
+		t.Fatalf("reads=%v, want one read of the one input", source.reads)
+	}
+}
+
+// The same counterexample without that statement is not enough: unread rows
+// might hold anything, so the answer is undecided, not not-satisfied.
+func TestRowOperatorCounterexampleWithoutRefutationIsUndecided(t *testing.T) {
+	source := &rowsSource{
+		coverage: validationeval.CoveragePartial,
+		columns: map[core.CanonicalID][]validationeval.NumberReading{
+			"sales.order_line.amount": {present(10), present(200)},
+		},
+	}
+	decision := decideRowOperator(t, source, false)
+	if decision.Result != "" || decision.Undecided == nil ||
+		decision.Undecided.Reason != validationeval.UndecidedRelationPartiallyRead {
+		t.Fatalf("decision=%+v, want undecided relation-partially-read", decision)
+	}
+}
+
+// With every row read, the statement makes no difference: a counterexample is a
+// counterexample, and its absence is an answer.
+func TestRowOperatorCompleteReadAnswersBothWays(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		rows []validationeval.NumberReading
+		want validationeval.Result
+	}{
+		{"counterexample", []validationeval.NumberReading{present(10), present(200)}, validationeval.ResultNotSatisfied},
+		{"all below", []validationeval.NumberReading{present(10), present(20)}, validationeval.ResultSatisfied},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source := &rowsSource{
+				coverage: validationeval.CoverageComplete,
+				columns:  map[core.CanonicalID][]validationeval.NumberReading{"sales.order_line.amount": tc.rows},
+			}
+			decision := decideRowOperator(t, source, true)
+			if decision.Result != tc.want || decision.Undecided != nil {
+				t.Fatalf("decision=%+v, want %q", decision, tc.want)
+			}
+		})
+	}
+}
+
+// A rule whose operator reads every row but names no relation cannot be asked:
+// which rows, and how many, would be unknown.
+func TestRowOperatorWithoutRelationIsRefused(t *testing.T) {
+	rule := rowOperatorRule
+	rule.Relation = ""
+	_, err := validationeval.Decide(rule, &rowsSource{coverage: validationeval.CoverageComplete}, validationeval.Operators{
+		Declared:        []semantic.Operator{belowLimitContract(true)},
+		Implementations: []validationeval.OperatorImplementation{belowLimitImplementation()},
+	})
+	if err == nil || !strings.Contains(err.Error(), "names no relation") {
+		t.Fatalf("err=%v, want a refusal naming the missing relation", err)
+	}
+}
+
+// A reader that cannot read the rows of a relation is refused, not asked row by
+// row: a rule about all the rows cannot be answered from one row.
+func TestRowOperatorNeedsARowReadingReader(t *testing.T) {
+	_, err := validationeval.Decide(rowOperatorRule, oneRecordSource{}, validationeval.Operators{
+		Declared:        []semantic.Operator{belowLimitContract(true)},
+		Implementations: []validationeval.OperatorImplementation{belowLimitImplementation()},
+	})
+	if err == nil || !strings.Contains(err.Error(), "cannot read the rows of a relation") {
+		t.Fatalf("err=%v, want a refusal naming the reader", err)
 	}
 }
 
