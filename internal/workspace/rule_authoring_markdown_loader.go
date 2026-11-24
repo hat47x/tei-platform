@@ -3,6 +3,7 @@ package workspace
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"tei/internal/core"
 	"tei/internal/semantic"
@@ -136,7 +137,28 @@ func attachOperatorCases(r *Result) error {
 				if r.World.Semantics[i].Operators[j].ID != table.Operator {
 					continue
 				}
+				// An example carries one value. An operator that declares more
+				// than one input cannot be stated by such a table: the other
+				// inputs would go unstated, and the example would say something
+				// the author never wrote. The reader refuses that shape when it
+				// decides a rule, but a Workspace nobody reads would then pass
+				// validate and fail only at read time. Refuse it here, at the
+				// table, so one statement has one diagnosis.
+				// The operator is declared here, so "no source declares it" is
+				// not a second finding: one statement gets one diagnosis.
 				found = true
+				if operator := r.World.Semantics[i].Operators[j]; len(operator.Inputs) > 1 && len(table.Cases) > 0 {
+					names := make([]string, 0, len(operator.Inputs))
+					for _, input := range operator.Inputs {
+						names = append(names, input.Name)
+					}
+					if err := fail(fmt.Sprintf(
+						"TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares %d inputs (%s), but its examples carry one value; an example can state a single-input operator only",
+						operator.ID, len(operator.Inputs), strings.Join(names, ", "))); err != nil {
+						return err
+					}
+					continue
+				}
 				for _, example := range table.Cases {
 					r.World.Semantics[i].Operators[j].Cases = append(r.World.Semantics[i].Operators[j].Cases, example.Value)
 				}
