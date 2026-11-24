@@ -15,8 +15,54 @@ import (
 	"tei/internal/ir"
 	"tei/internal/realization"
 	"tei/internal/semantic"
+	"tei/internal/semantic/validationeval"
 	"tei/internal/workspace"
 )
+
+// A Workspace that selects an implementation this binary does not carry must
+// stop the read before PostgreSQL is consulted. The view path answers every
+// rule with the Workspace's own choice; it does not fall back to another
+// implementation or to a missing one.
+func TestEnvironmentRejectsUnavailableOperatorImplementationBeforeConnection(t *testing.T) {
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TEI_VIEW_PG_DSN", "")
+	selections := []validationeval.ImplementationSelection{
+		{Operator: "sales.non_negative", Implementation: "tei.number.absent_from_this_binary"},
+	}
+	_, err = readEnvironmentRows(loaded.World, "order_entry", "order_entry.order_lines",
+		"development", map[string]string{"order_id": "1001"}, selections)
+	if err == nil || !strings.Contains(err.Error(), "TEI_OPERATOR_IMPLEMENTATION_UNAVAILABLE") {
+		t.Fatalf("an unavailable implementation was not refused: %v", err)
+	}
+	if strings.Contains(err.Error(), "TEI_VIEW_PG_DSN") {
+		t.Fatalf("the database connection was considered before refusing the selection: %v", err)
+	}
+}
+
+// Two selections for one operator are ambiguous and must be refused before the
+// read, not resolved by taking one of them.
+func TestEnvironmentRejectsAmbiguousOperatorImplementationBeforeConnection(t *testing.T) {
+	loaded, err := workspace.Load(filepath.Join("..", "..", "reference", "workspace"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TEI_VIEW_PG_DSN", "")
+	selections := []validationeval.ImplementationSelection{
+		{Operator: "sales.non_negative", Implementation: "tei.number.non-negative"},
+		{Operator: "sales.non_negative", Implementation: "tei.number.non-zero"},
+	}
+	_, err = readEnvironmentRows(loaded.World, "order_entry", "order_entry.order_lines",
+		"development", map[string]string{"order_id": "1001"}, selections)
+	if err == nil || !strings.Contains(err.Error(), "TEI_OPERATOR_IMPLEMENTATION_AMBIGUOUS") {
+		t.Fatalf("an ambiguous selection was not refused: %v", err)
+	}
+	if strings.Contains(err.Error(), "TEI_VIEW_PG_DSN") {
+		t.Fatalf("the database connection was considered before refusing the ambiguity: %v", err)
+	}
+}
 
 // The new runtime path is opt-in: an ordinary view keeps its projection
 // contract, and an explicit database view cannot quietly discard the input.
@@ -206,7 +252,8 @@ func TestEnvironmentRejectsInvalidBindingBeforeConnection(t *testing.T) {
 	}
 	t.Setenv("TEI_VIEW_PG_DSN", "")
 	_, err = readEnvironmentRows(world, "order_entry", "order_entry.order_lines",
-		"development", map[string]string{"order_id": "1001"})
+		"development", map[string]string{"order_id": "1001"},
+		scenarioImplementationSelections(loaded.OperatorImplementations))
 	if err == nil || !strings.Contains(err.Error(), "sales.order.nonexistent_id") {
 		t.Fatalf("invalid source binding was not rejected before the connection: %v", err)
 	}
@@ -239,7 +286,8 @@ func TestEnvironmentRejectsContradictoryCoverageBeforeConnection(t *testing.T) {
 	}
 	t.Setenv("TEI_VIEW_PG_DSN", "")
 	_, err = readEnvironmentRows(world, "order_entry", "order_entry.order_lines",
-		"development", map[string]string{"order_id": "1001"})
+		"development", map[string]string{"order_id": "1001"},
+		scenarioImplementationSelections(loaded.OperatorImplementations))
 	if err == nil || !strings.Contains(err.Error(), "states both") {
 		t.Fatalf("contradictory coverage was not rejected: %v", err)
 	}

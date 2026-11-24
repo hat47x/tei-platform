@@ -172,10 +172,17 @@ func destinationDecision(d validationeval.Decision) (answer, reason string) {
 // the Application uses. It reuses the Workspace's Pattern, Environment,
 // Contract Query, selected executor and Application rules. It does not
 // publish a general-purpose database connection from the CLI.
+//
+// selections are the Workspace's operator implementation choices. They are
+// resolved here, before any row is read, so a rule decided by a declared
+// operator is asked of exactly the implementation the Workspace selected and
+// never of another one. A rule that names an operator while nothing is
+// selected for it is refused rather than answered.
 func readEnvironmentRows(
 	world ir.World,
 	appID, patternID, envID core.CanonicalID,
 	inputs map[string]string,
+	selections []validationeval.ImplementationSelection,
 ) (destinationRead, error) {
 	resolver := driver.NewResolver(world)
 	prepared, err := resolver.ResolveHeaderDetailContractQuery(appID, patternID)
@@ -228,6 +235,24 @@ func readEnvironmentRows(
 	instance, ok := selected.InstanceByID(instanceID)
 	if !ok || instance.Provider != environment.ProviderPostgres || instance.Definition != prepared.Binding.Target.Database {
 		return destinationRead{}, fmt.Errorf("the selected database is not an explicitly bound PostgreSQL instance")
+	}
+	// The implementation of a rule decided by a declared operator comes from
+	// the Workspace's own selection, resolved to what this binary carries
+	// before any row is read. A selection that names an unavailable
+	// implementation, or two selections for one operator, stops the read here
+	// instead of falling back to another implementation. This runs before the
+	// connection is opened: a choice that cannot be honoured is not external
+	// I/O worth doing.
+	available := validationeval.BuiltinImplementations()
+	implementations, err := validationeval.ResolveImplementations(
+		selections, available, nil,
+	)
+	if err != nil {
+		return destinationRead{}, err
+	}
+	operators := validationeval.Operators{
+		Declared:        resolver.Operators(),
+		Implementations: implementations,
 	}
 	dsn := os.Getenv("TEI_VIEW_PG_DSN")
 	if dsn == "" {
@@ -359,7 +384,7 @@ func readEnvironmentRows(
 		result.Rows = append(result.Rows, item)
 	}
 	for _, rule := range rules {
-		decisions, err := detail.Decide(rule, validationeval.Operators{})
+		decisions, err := detail.Decide(rule, operators)
 		if err != nil {
 			return destinationRead{}, fmt.Errorf("cannot decide rule %s: %w", rule.ID, err)
 		}
