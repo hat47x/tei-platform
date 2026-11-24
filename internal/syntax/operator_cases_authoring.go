@@ -43,6 +43,10 @@ type OperatorCasesAuthoring struct {
 	Operator     core.CanonicalID
 	OperatorSpan Anchor
 	Cases        []OperatorCaseAuthoring
+	// InputHeaderSpans holds the header cell of each input column, keyed by the
+	// name the header gave. A column that names no declared input is a mistake
+	// in the header, so the diagnostic points there rather than at a body cell.
+	InputHeaderSpans map[string]Anchor
 }
 
 // ParseOperatorCasesTable reads a marked table as the examples of an operator.
@@ -76,6 +80,7 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 	}
 	valueIndex, singleValue := columnIndex(header, "value")
 	columns := map[string]int{}
+	out.InputHeaderSpans = map[string]Anchor{}
 	seenHeader := map[string]bool{}
 	for i, cell := range header {
 		if cell.Text == "" {
@@ -90,6 +95,7 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 			continue
 		}
 		columns[cell.Text] = i
+		out.InputHeaderSpans[cell.Text] = cell.Anchor
 	}
 	if singleValue && len(columns) > 0 {
 		// The first input of a multi-input operator may itself be named "value"

@@ -201,6 +201,26 @@ func TestTEIMDOperatorCasesNegatives(t *testing.T) {
 		sourceErrorAt(t, root, second, "sales.non_negative ", "already has a case table at "+teiMDOperatorCases)
 	})
 
+	// A column that names no declared input used to be refused only when some
+	// rule using that operator was evaluated, so a World could carry an example
+	// nobody would ever check. The declaration is in hand at load time, so the
+	// names are checked there.
+	t.Run("an example column that names no declared input", func(t *testing.T) {
+		root := teiMDOperatorCasesWorkspace(t)
+		writeTEIMDTestFile(t, root, "semantic/sales/b-two-inputs.tei.md",
+			"```tei\nnamespace sales\n\n"+
+				"operator sales.within:\n"+
+				"  takes value: number\n"+
+				"  takes low: number\n"+
+				"  takes high: number\n```\n")
+		writeTEIMDTestFile(t, root, "semantic/sales/c-bad-column.tei.md",
+			"<!-- tei: cases of sales.within -->\n"+
+				"| value | low | hihg | expect |\n"+
+				"| --- | --- | --- | --- |\n"+
+				"| 3 | 0 | 5 | satisfied |\n")
+		sourceErrorAt(t, root, "semantic/sales/c-bad-column.tei.md", "hihg", "declares no input named \"hihg\"")
+	})
+
 	t.Run("mark this language does not know", func(t *testing.T) {
 		root := teiMDOperatorCasesWorkspace(t)
 		rewriteTEIMDTestFile(t, root, teiMDOperatorCases, "cases of sales.non_negative", "examples of sales.non_negative")
