@@ -119,7 +119,7 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 	// Answer every rule the Application declares for each line that was read.
 	// The rows and the rules come from the same Workspace the read used, so the
 	// page cannot show an answer this read did not produce.
-	lineAnswers, relationAnswers, err := ruleAnswers(r.resolver, r.semantics, r.applicationID, lines.Execution)
+	lineAnswers, relationAnswers, coverage, err := ruleAnswers(r.resolver, r.semantics, r.applicationID, lines.Execution)
 	if err != nil {
 		return readScenarioResult{}, err
 	}
@@ -152,6 +152,7 @@ func (r *referenceReadScenarioRunner) Run(ctx context.Context, input readScenari
 		OrderLineRows:    orderLineRows,
 		RowAnswers:       lineAnswers,
 		RelationAnswers:  relationAnswers,
+		Coverage:         coverage,
 		ReadIdentity:     identity,
 		RuntimeBindings: []runtimeBindingProjection{
 			{

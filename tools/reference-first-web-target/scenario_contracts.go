@@ -29,6 +29,11 @@ type readScenarioResult struct {
 	// `tei view -environment` reports, not a new judgement.
 	RowAnswers      []rowAnswerProjection `json:"rowAnswers"`
 	RelationAnswers []string              `json:"relationAnswers"`
+	// Coverage is the verdict the relation-wide answers rest on, with the
+	// ground of it. Without it the page shows a relation-wide answer and no
+	// statement of whether every row was confirmed, so a reader cannot tell a
+	// confirmed 'satisfied' from one that only looked satisfied.
+	Coverage readCoverage `json:"coverage"`
 	// ReadIdentity names the read this page shows: the selected order, the
 	// header-detail Contract Query target, and the inputs that Query was
 	// executed with. The answers are bound to it, so a list produced by a

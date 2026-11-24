@@ -69,15 +69,21 @@ func (e readOnlyTxExecutor) ExecuteContractQuery(
 		qualification := driver.NewResolver(e.world).QualifyHeaderDetailCoverage(
 			e.coverageResolution, environment.ProviderPostgres,
 		)
+		// A qualification that did not complete carries the first condition it
+		// stopped at. Reporting it is what lets the page say why a relation-wide
+		// answer is undecided instead of leaving the reader to guess.
+		proof := webRelationCoverageProof{Target: target, Reason: qualification.Reason}
 		if qualification.Complete {
-			if ok, _ := driver.PostgresPhysicalReadAllowsComplete(ctx, tx, e.world, e.coverageResolution); ok {
-				result.Payload = webRelationCoverageProof{
-					Target:           target,
-					Complete:         true,
-					ProviderEvidence: result.Payload,
-				}
+			ok, reason := driver.PostgresPhysicalReadAllowsComplete(ctx, tx, e.world, e.coverageResolution)
+			proof.Basis = qualification.Basis
+			proof.Reason = reason
+			proof.Complete = ok
+			if !ok {
+				proof.Basis = ""
 			}
 		}
+		proof.ProviderEvidence = result.Payload
+		result.Payload = proof
 	}
 	return result, nil
 }

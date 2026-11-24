@@ -14,10 +14,48 @@ import (
 // webRelationCoverageProof is minted only by the PostgreSQL executor while the
 // actual Contract Query's read-only transaction is open. The Target ties the
 // claim to that execution; synthetic or unrelated reads receive no proof.
+//
+// Basis and Reason are carried so the page can say what the verdict rests on.
+// Without them the page shows a relation-wide answer with no statement of
+// whether every row was confirmed, and a reader cannot tell a confirmed
+// 'satisfied' from one that only looked satisfied.
 type webRelationCoverageProof struct {
 	Target           realization.ContractQueryTarget
 	Complete         bool
+	Basis            string
+	Reason           string
 	ProviderEvidence any // original non-secret SQL runner evidence, not replaced by coverage
+}
+
+// readCoverage is the coverage verdict this page reports, with the ground of it.
+// It is the same statement `tei view -environment` makes about the same read:
+// complete only when the selected executor confirmed the Query, the relation's
+// persistence mapping and the physical table inside the read's transaction.
+type readCoverage struct {
+	Verdict string `json:"verdict"`
+	Reason  string `json:"reason,omitempty"`
+	Basis   string `json:"basis,omitempty"`
+}
+
+// relationCoverage decides the verdict these relation-wide answers rest on, and
+// the ground of it. A proof counts only for the target it was minted for: an
+// unrelated read's proof, a covers declaration or a matching value is not
+// evidence. When the proof did not complete, the reason it stopped at is
+// reported so the page can print it instead of leaving the verdict unexplained.
+func relationCoverage(execution driver.HeaderDetailContractQueryExecution) (validationeval.Coverage, readCoverage) {
+	partial := readCoverage{Verdict: string(validationeval.CoveragePartial)}
+	proof, ok := execution.Result.Payload.(webRelationCoverageProof)
+	if !ok || proof.Target != execution.Resolution.Binding.Target {
+		return validationeval.CoveragePartial, partial
+	}
+	if proof.Complete {
+		return validationeval.CoverageComplete, readCoverage{
+			Verdict: string(validationeval.CoverageComplete),
+			Basis:   proof.Basis,
+		}
+	}
+	partial.Reason = proof.Reason
+	return validationeval.CoveragePartial, partial
 }
 
 // rowAnswerProjection is one row of the read surface with the answer of every
@@ -55,19 +93,15 @@ func ruleAnswers(
 	semantics []semantic.Namespace,
 	applicationID core.CanonicalID,
 	execution driver.HeaderDetailContractQueryExecution,
-) ([]rowAnswerProjection, []string, error) {
+) ([]rowAnswerProjection, []string, readCoverage, error) {
 	rules, err := resolver.ResolveApplicationValidations(applicationID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, readCoverage{}, err
 	}
-	coverage := validationeval.CoveragePartial
-	if proof, ok := execution.Result.Payload.(webRelationCoverageProof); ok &&
-		proof.Complete && proof.Target == execution.Resolution.Binding.Target {
-		coverage = validationeval.CoverageComplete
-	}
+	coverage, reported := relationCoverage(execution)
 	detail, err := validationread.FromHeaderDetail(semantics, execution, coverage)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, readCoverage{}, err
 	}
 	// The CLI passes an empty operator set for the same read; a rule of kind
 	// operator is then refused rather than answered. Passing declarations
@@ -83,7 +117,7 @@ func ruleAnswers(
 	for _, rule := range rules {
 		decisions, err := detail.Decide(rule, operators)
 		if err != nil {
-			return nil, nil, fmt.Errorf("cannot decide rule %s: %w", rule.ID, err)
+			return nil, nil, readCoverage{}, fmt.Errorf("cannot decide rule %s: %w", rule.ID, err)
 		}
 		if decisions.Relation != nil {
 			answer, reason := answerOf(*decisions.Relation)
@@ -95,7 +129,7 @@ func ruleAnswers(
 			continue
 		}
 		if len(decisions.Rows) != detail.Len() {
-			return nil, nil, fmt.Errorf("rule %s did not return one answer for each observed row", rule.ID)
+			return nil, nil, readCoverage{}, fmt.Errorf("rule %s did not return one answer for each observed row", rule.ID)
 		}
 		for index, decision := range decisions.Rows {
 			answer, reason := answerOf(decision)
@@ -106,7 +140,7 @@ func ruleAnswers(
 			})
 		}
 	}
-	return rows, relationAnswers, nil
+	return rows, relationAnswers, reported, nil
 }
 
 // requireReadRowAnswerAlignment is the boundary for the first Web template's
