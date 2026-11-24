@@ -118,17 +118,41 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 	// Reject an implementation that does not match the arity of the contract.
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
-	if !hasMulti && !hasSingle {
+	hasRows := implementation.NumberRows != nil
+	provided := 0
+	for _, present := range []bool{hasMulti, hasSingle, hasRows} {
+		if present {
+			provided++
+		}
+	}
+	if provided == 0 {
 		return none, fmt.Errorf("the implementation of operator %s has no decision function", rule.Operator)
 	}
-	if hasMulti && hasSingle {
-		return none, fmt.Errorf("the implementation of operator %s provides both single and multi-input functions", rule.Operator)
+	if provided > 1 {
+		return none, fmt.Errorf("the implementation of operator %s provides %d decision functions; exactly one of a single value, a value per input, and the rows of a relation must be provided", rule.Operator, provided)
 	}
-	multiInput := len(contract.Inputs) > 1
-	if multiInput && !hasMulti {
+	// A contract that reads every row of a relation is answered by the row
+	// function and by nothing else: a value-per-input function cannot see that
+	// more than one row exists (#4359, decision section 15.1).
+	readsRows := false
+	for _, input := range contractInputs(contract) {
+		if input.OfEachRow {
+			readsRows = true
+		}
+	}
+	switch {
+	case readsRows && !hasRows:
+		return none, fmt.Errorf("operator %s reads the rows of a relation but its selected implementation decides from values of one record", rule.Operator)
+	case !readsRows && hasRows:
+		return none, fmt.Errorf("operator %s reads no rows of a relation but its selected implementation decides from the rows of one", rule.Operator)
+	}
+	multiInput := len(contractInputs(contract)) > 1
+	if readsRows {
+		// The arity of a row-scoped contract is the number of inputs, not the
+		// shape of the value function.
+	} else if multiInput && !hasMulti {
 		return none, fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", rule.Operator, len(contract.Inputs))
-	}
-	if !multiInput && hasMulti {
+	} else if !multiInput && hasMulti {
 		return none, fmt.Errorf("operator %s declares one input but its implementation takes multiple values", rule.Operator)
 	}
 

@@ -435,6 +435,15 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			return Decision{}, fmt.Errorf("semantic validation %s uses operator %s, which is declared %d times", rule.ID, rule.Operator, len(declared))
 		}
 		contract := declared[0]
+		// An operator that reads every row of a relation is decided from the
+		// rows, not from one record: a value-per-input function cannot see that
+		// more than one row exists, so it is never asked here (#4359,
+		// decision section 15.1).
+		for _, input := range contractInputs(contract) {
+			if input.OfEachRow {
+				return decideRowScopedOperator(rule, contract, implementation, source)
+			}
+		}
 		inputs := contractInputs(contract)
 		// The rule subject supplies the first input, and only it. A rule that
 		// also assigns that input by name binds it twice, so the instruction
