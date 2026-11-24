@@ -33,6 +33,9 @@ type NamedImplementation struct {
 	// Numbers decides for a multi-input operator. Exactly one of Number and
 	// Numbers is non-nil.
 	Numbers func(values map[string]*big.Rat) (bool, error)
+	// NumberRows decides for an operator whose input reads every row of a
+	// relation. At most one of Number, Numbers and NumberRows is non-nil.
+	NumberRows func(rows map[string][]NumberReading) (Tri, error)
 }
 
 // ImplementationSelection is one choice of a composition: this operator is
@@ -152,6 +155,16 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 					called(call)
 				}
 				return decide(values)
+			}
+		}
+		if match.NumberRows != nil {
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.NumberRows
+			implementation.NumberRows = func(rows map[string][]NumberReading) (Tri, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(rows)
 			}
 		}
 		out = append(out, implementation)

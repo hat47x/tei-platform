@@ -282,6 +282,11 @@ type Operator struct {
 	// order. The first input is also represented by Input/InputName/AbsentAs
 	// for backward compatibility.
 	Inputs []OperatorInputDeclaration `json:"inputs,omitempty"`
+	// RefutesOnSomeRows states that a witnessed counterexample among the rows
+	// read is enough to say the rule does not hold, written
+	// `refutes on some rows`. Without it, a relation that was only partly read
+	// cannot be answered not-satisfied.
+	RefutesOnSomeRows bool `json:"refutesOnSomeRows,omitempty"`
 	// Cases are the examples the contract states.
 	Cases []OperatorCase `json:"cases,omitempty"`
 }

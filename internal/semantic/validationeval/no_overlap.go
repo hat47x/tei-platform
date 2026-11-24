@@ -53,25 +53,6 @@ func checkDateReading(rule semantic.Validation, attribute core.CanonicalID, read
 	return nil
 }
 
-// tri is an answer that may depend on something that was not read.
-type tri int
-
-const (
-	triNo tri = iota
-	triYes
-	triMaybe
-)
-
-func triAnd(a, b tri) tri {
-	switch {
-	case a == triNo || b == triNo:
-		return triNo
-	case a == triYes && b == triYes:
-		return triYes
-	}
-	return triMaybe
-}
-
 // decideNoOverlap decides the rule from what was read.
 //
 // Two rows that certainly state a period, are certainly in the same group
@@ -148,20 +129,20 @@ func decideNoOverlap(rule semantic.Validation, source StatefulSource) (Decision,
 
 	// startsByEnd: does a start on or before the last day of b? A period
 	// without a last day is reached by every first day.
-	startsByEnd := func(a, b PeriodRow) tri {
+	startsByEnd := func(a, b PeriodRow) Tri {
 		switch {
 		case b.End.State == ValueNull:
-			return triYes
+			return TriYes
 		case b.End.State == ValueNotFetched:
 			note(&dateNotFetched, rule.Compared)
-			return triMaybe
+			return TriMaybe
 		case a.Start.State == ValueNotFetched:
 			note(&dateNotFetched, rule.Attribute)
-			return triMaybe
+			return TriMaybe
 		case a.Start.Value.Compare(b.End.Value) <= 0:
-			return triYes
+			return TriYes
 		}
-		return triNo
+		return TriNo
 	}
 	overlapSeen, dateMaybe, groupNotFetched, groupNull := false, false, false, false
 	for i := range reading.Rows {
@@ -172,43 +153,43 @@ func decideNoOverlap(rule semantic.Validation, source StatefulSource) (Decision,
 			a, b := reading.Rows[i], reading.Rows[j]
 			// Whether the rows are in one group. A row with a value and a
 			// row without one are not.
-			sameGroup, unstated := triYes, false
+			sameGroup, unstated := TriYes, false
 			if rule.GroupBy != "" {
 				switch {
 				case a.Group.State == ValueNotFetched || b.Group.State == ValueNotFetched:
-					sameGroup = triMaybe
+					sameGroup = TriMaybe
 				case a.Group.State == ValueNull && b.Group.State == ValueNull:
 					// Whether two rows without a value are one group is not
 					// stated by the rule.
-					sameGroup, unstated = triMaybe, true
+					sameGroup, unstated = TriMaybe, true
 				case a.Group.State == ValueNull || b.Group.State == ValueNull || a.Group.Key != b.Group.Key:
-					sameGroup = triNo
+					sameGroup = TriNo
 				}
 			}
-			if sameGroup == triNo {
+			if sameGroup == TriNo {
 				continue
 			}
-			var shareADay tri
+			var shareADay Tri
 			// The first clause decides alone when it is no; its notes about
 			// unread dates then do not matter, so they are taken afterwards.
 			noted := dateNotFetched
 			first := startsByEnd(a, b)
 			second := startsByEnd(b, a)
-			shareADay = triAnd(first, second)
-			if shareADay != triMaybe {
+			shareADay = TriAnd(first, second)
+			if shareADay != TriMaybe {
 				dateNotFetched = noted
 			}
 			switch {
-			case shareADay == triNo:
-			case shareADay == triYes && sameGroup == triYes && !unsure[i] && !unsure[j]:
+			case shareADay == TriNo:
+			case shareADay == TriYes && sameGroup == TriYes && !unsure[i] && !unsure[j]:
 				overlapSeen = true
 			case unstated:
 				groupNull = true
-			case sameGroup == triMaybe:
+			case sameGroup == TriMaybe:
 				groupNotFetched = true
-				dateMaybe = dateMaybe || shareADay == triMaybe
+				dateMaybe = dateMaybe || shareADay == TriMaybe
 			default:
-				dateMaybe = dateMaybe || shareADay == triMaybe
+				dateMaybe = dateMaybe || shareADay == TriMaybe
 			}
 		}
 	}
