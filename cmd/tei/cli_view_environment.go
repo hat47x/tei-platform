@@ -45,12 +45,16 @@ type destinationRow struct {
 // destinationDeclaration is what the Workspace's header-detail Contract Query
 // binding states about how many rows its Query returns.
 //
-// It is the author's statement, not an observation. This entry reads it and
-// reports it, and does not verify it: the parent scope, the executed Query and
-// the rows actually fetched are not cross-checked, so the declaration is never
-// used as evidence for a rule. Reporting it is what makes "declared" and
-// "checked" distinguishable; without the field a reader cannot tell whether
-// coverage was measured or merely promised.
+// It is the author's statement, not an observation: this entry reports what the
+// binding said, and Checked reports whether that statement was confirmed
+// against the Query that actually ran.
+//
+// Checked is set only when the qualification matched the declaration to the
+// executed SQL, the relation's persistence mapping and the physical table on
+// the same read's transaction. It is not a row count and not a promise: measured
+// before this field was derived, one answer said coverage was complete and the
+// declaration was unchecked at the same time, so a reader could not tell that
+// the declaration had in fact been confirmed.
 type destinationDeclaration struct {
 	// CoversRelation is the Relation the binding says the Query returns every
 	// row of, for the header record whose values were handed over as inputs.
@@ -58,9 +62,9 @@ type destinationDeclaration struct {
 	// CoversSome is true when the binding says the Query may return only some
 	// rows (a search, a page).
 	CoversSome bool `json:"coversSome,omitempty"`
-	// Checked is false: this entry did not confirm the declaration. It is
-	// present and always false so a reader is never left to infer a check that
-	// did not happen.
+	// Checked says the declaration was confirmed against the Query that ran,
+	// its persistence mapping and the physical table. False means this read did
+	// not confirm it; it never means the declaration is false.
 	Checked bool `json:"checked"`
 }
 
@@ -74,8 +78,8 @@ type destinationDeclaration struct {
 // absence of duplicates establishes it only when coverage is complete.
 //
 // The binding's own `covers` statement is reported separately in Declaration.
-// It is not evidence on its own: Declaration.Checked is always false, and the
-// qualification above is what decides Coverage.
+// It is not evidence on its own: Declaration.Checked says whether this read
+// confirmed it, and the qualification above is what decides Coverage.
 type destinationRead struct {
 	Application          core.CanonicalID             `json:"application"`
 	Pattern              core.CanonicalID             `json:"pattern"`
@@ -291,6 +295,18 @@ func readEnvironmentRows(
 	coverage := validationeval.CoveragePartial
 	if qualification.Complete {
 		coverage = validationeval.CoverageComplete
+	}
+	// The declaration was reported before the Query ran, because a
+	// self-contradictory or wrong-Relation statement must stop the read before
+	// it touches the database. Whether it was confirmed can only be known after
+	// the qualification, so Checked is decided here rather than at construction.
+	//
+	// A complete qualification is exactly "the executed SQL, the relation's
+	// persistence mapping and the physical table matched what the binding
+	// declared", so that is the only case where the declaration is checked. Any
+	// other outcome leaves it unchecked: unconfirmed is not the same as false.
+	if declaration != nil {
+		declaration.Checked = qualification.Complete
 	}
 	detail, err := validationread.FromHeaderDetail(world.Semantics, execution.Execution, coverage)
 	if err != nil {
