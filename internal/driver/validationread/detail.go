@@ -20,8 +20,7 @@ package validationread
 import (
 	"fmt"
 	"math/big"
-	"strconv"
-	"strings"
+	"sync/atomic"
 	"time"
 
 	"tei/internal/core"
@@ -116,7 +115,7 @@ func NewDetail(semantics []semantic.Namespace, relation semantic.Relation, targe
 		coverage: coverage,
 		rows:     rows,
 		kinds:    kinds,
-		attempt:  readAttemptIdentity(rows),
+		attempt:  readAttemptIdentity(),
 	}, nil
 }
 
@@ -381,35 +380,22 @@ func (r Row) ReadRelationKeys(relation, attribute core.CanonicalID) (validatione
 	return validationeval.RelationReading{}, fmt.Errorf("relation %s was asked of one row; a rule about all the rows reads the Detail", relation)
 }
 
-// readAttemptIdentity names one read of these rows. It is built from the rows
-// themselves, so one Detail never reports two different attempts and two
-// Details never report the same one. The value is opaque and is compared for
-// equality only.
-func readAttemptIdentity(rows []driver.ContractQueryRow) string {
-	if len(rows) == 0 {
-		return "rows:0"
-	}
-	var builder strings.Builder
-	builder.WriteString("rows:")
-	builder.WriteString(strconv.Itoa(len(rows)))
-	for _, row := range rows {
-		for attribute := range row.Attributes {
-			builder.WriteString("\x00")
-			builder.WriteString(string(attribute))
-		}
-	}
-	return fmt.Sprintf("read:%x", fnv64(builder.String()))
+// readAttemptIdentity names one read of these rows. The value is opaque and is
+// compared for equality only.
+//
+// It is derived from the read itself, not from the rows. Hashing the rows made
+// the identity depend on Go map iteration order: twelve construction calls over
+// the SAME rows produced three distinct identities, because range over
+// row.Attributes is not ordered. An identity that changes between two views of
+// one read cannot answer the question it exists for, "did these two values come
+// from the same read?" (#4359, decision section 14.2 B-10).
+//
+// The attempt is therefore numbered per Detail from a process-wide counter. Two
+// Details never share a number, so a value taken from another read is a stated
+// mismatch rather than a coincidence; and one Detail keeps its number, so
+// comparing two inputs of one decision is stable.
+func readAttemptIdentity() string {
+	return fmt.Sprintf("read:%d", atomic.AddUint64(&readAttemptCounter, 1))
 }
 
-func fnv64(text string) uint64 {
-	const (
-		offset = 14695981039346656037
-		prime  = 1099511628211
-	)
-	var hash uint64 = offset
-	for i := 0; i < len(text); i++ {
-		hash ^= uint64(text[i])
-		hash *= prime
-	}
-	return hash
-}
+var readAttemptCounter uint64
