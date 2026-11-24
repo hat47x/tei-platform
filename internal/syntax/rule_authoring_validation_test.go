@@ -280,3 +280,43 @@ rule sales.order_line.quantity_positive:
 		t.Fatalf("good rule was dropped with the bad one: %#v", ns.Validations)
 	}
 }
+
+// A rule whose operator declares an input over every row is asked of a relation,
+// so it writes a scope. The declaration decides that: the same scope on a rule
+// whose operator reads one record's values is refused.
+func TestRowScopedOperatorRuleCarriesItsRelation(t *testing.T) {
+	const rowOperator = "namespace sales\n" +
+		"operator sales.at_most:\n" +
+		"  takes value: number of each row\n"
+	src := rowOperator +
+		"rule sales.order.lines.at_most:\n" +
+		"  sales.order_line.line_number is sales.at_most per sales.order.lines\n"
+	file, err := syntax.ParseRuleAuthoringFile(src)
+	if err != nil {
+		t.Fatalf("a row-scoped operator rule with a scope was refused: %v", err)
+	}
+	namespace, issues := syntax.RuleNamespace(file)
+	if len(issues) != 0 {
+		t.Fatalf("conversion refused the rule: %+v", issues)
+	}
+	if len(namespace.Validations) != 1 {
+		t.Fatalf("validations=%d, want 1", len(namespace.Validations))
+	}
+	rule := namespace.Validations[0]
+	if rule.Relation != "sales.order.lines" {
+		t.Fatalf("relation=%q, want sales.order.lines", rule.Relation)
+	}
+
+	// The same rule without a scope cannot say which rows it is about.
+	withoutScope := rowOperator +
+		"rule sales.order.lines.at_most:\n" +
+		"  sales.order_line.line_number is sales.at_most\n"
+	file2, err := syntax.ParseRuleAuthoringFile(withoutScope)
+	if err != nil {
+		t.Fatalf("the parser refused a rule that writes no scope: %v", err)
+	}
+	_, issues2 := syntax.RuleNamespace(file2)
+	if len(issues2) == 0 || !strings.Contains(issues2[0].Msg, "requires a scope") {
+		t.Fatalf("issues=%+v, want a refusal naming the missing scope", issues2)
+	}
+}

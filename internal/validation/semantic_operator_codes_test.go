@@ -28,12 +28,19 @@ func TestSemanticOperatorCodesAreProduced(t *testing.T) {
 					}},
 					Operators: []semantic.Operator{
 						{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber},
+						{ID: "sales.all_positive", Symbol: "all_positive", Input: semantic.OperatorInputNumber,
+							Inputs: []semantic.OperatorInputDeclaration{
+								{Name: "value", Type: semantic.OperatorInputNumber, OfEachRow: true},
+							}},
 					},
 					Validations: []semantic.Validation{
 						{ID: "sales.order_line.discount_non_negative", Symbol: "discount_non_negative",
 							Kind: semantic.ValidationOperator, Attribute: "sales.order_line.discount", Operator: "sales.non_negative"},
 						{ID: "sales.order_line.discount_positive", Symbol: "discount_positive",
 							Kind: semantic.ValidationPositive, Attribute: "sales.order_line.discount"},
+						{ID: "sales.order_line.parts_all_positive", Symbol: "parts_all_positive",
+							Kind: semantic.ValidationOperator, Attribute: "sales.order_line.discount",
+							Operator: "sales.all_positive", Relation: "sales.order_line.parts"},
 					},
 				},
 				{ID: "std", Types: []semantic.Type{
@@ -68,6 +75,12 @@ func TestSemanticOperatorCodesAreProduced(t *testing.T) {
 		{"operator rule with a relation", func(w *ir.World) {
 			w.Semantics[0].Validations[0].Relation = "sales.order_line.parts"
 		}, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "sales.order_line.discount_non_negative"},
+		// The same relation, on a rule whose operator reads every row, is
+		// required rather than refused: the declaration decides how the rule
+		// is asked, not the kind (decision section 15.4).
+		{"row-scoped operator rule without a relation", func(w *ir.World) {
+			w.Semantics[0].Validations[2].Relation = ""
+		}, "SEMANTIC_VALIDATION_OPERATOR_RELATION_REQUIRED", "sales.order_line.parts_all_positive"},
 		{"built-in kind carrying an operator", func(w *ir.World) {
 			w.Semantics[0].Validations[1].Operator = "sales.non_negative"
 		}, "SEMANTIC_VALIDATION_OPERATOR_NOT_ALLOWED", "sales.order_line.discount_positive"},

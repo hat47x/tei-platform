@@ -105,8 +105,10 @@ func TestRuleAuthoringOperatorRefusals(t *testing.T) {
 			"namespace sales\noperator sales.op: takes number\noperator sales.op: takes number\n", "sales.op: takes number\n\x00", "declared more than once"},
 		{"operator outside the namespace",
 			"namespace sales\noperator purchase.op: takes number\n", "purchase.op", "must belong to the declared namespace"},
-		{"declared operator with a scope",
-			"namespace sales\nrule sales.r: sales.a.b is sales.op per sales.a.lines\n", "sales.a.lines", "accepts no scope"},
+		// A scope on an operator rule is not refused by the parser: whether it is
+		// required or forbidden is decided by the operator's declaration at
+		// conversion (decision section 15.4). The kind-closing tests below keep
+		// that decision honest.
 		{"clauses in the other order",
 			"namespace sales\nrule sales.r: positive is sales.a.b\n", "positive", "is a predicate, not an attribute"},
 		{"unknown bare predicate is not an operator",

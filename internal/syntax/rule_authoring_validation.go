@@ -286,8 +286,13 @@ func ruleToValidationWithInputs(
 	declaredMappings map[core.CanonicalID]map[string][]string,
 	declaredRowScoped map[core.CanonicalID]bool,
 ) (semantic.Validation, *RuleConversionIssue) {
-	if rule.Operator == nil || len(rule.Inputs) == 0 {
+	if rule.Operator == nil {
 		return ruleToValidation(rule)
+	}
+	if len(rule.Inputs) == 0 {
+		// No input is assigned, but the operator may still read every row:
+		// the scope requirement is the declaration's, not the assignment's.
+		return ruleToValidationScoped(rule, declaredRowScoped[core.CanonicalID(rule.Operator.Text)])
 	}
 	declared, known := declaredInputs[core.CanonicalID(rule.Operator.Text)]
 	if !known {
