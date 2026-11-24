@@ -233,9 +233,36 @@ type OperatorInput string
 const (
 	// OperatorInputNumber is one numeric value of the constrained attribute.
 	OperatorInputNumber OperatorInput = "number"
+	// OperatorInputPresence is whether an attribute holds a value, not the
+	// value itself.
+	OperatorInputPresence OperatorInput = "presence"
 )
 
-func (i OperatorInput) Valid() bool { return i == OperatorInputNumber }
+// Valid reports whether this is a known operator input kind. Only the kinds
+// something in this program actually reads are valid: a word accepted at
+// authoring time that no reader handles would build a contract nothing can
+// decide. date, text, truth, and any are stated by the design but have no
+// reader here yet, so they stay out of this list until one exists.
+func (i OperatorInput) Valid() bool {
+	switch i {
+	case OperatorInputNumber, OperatorInputPresence:
+		return true
+	}
+	return false
+}
+
+// OperatorInputDeclaration is one input of an operator signature: its name,
+// type, whether it reads every row, and how an absent value is read.
+type OperatorInputDeclaration struct {
+	// Name is how a rule assigns a value to this input.
+	Name string `json:"name"`
+	// Type is the kind of value this input reads.
+	Type OperatorInput `json:"type"`
+	// OfEachRow is true when the input reads every row of the relation.
+	OfEachRow bool `json:"ofEachRow,omitempty"`
+	// AbsentAs is the name an absent value is read as. Empty means no mapping.
+	AbsentAs string `json:"absentAs,omitempty"`
+}
 
 // Operator is a declared operator contract. A rule refers to it by ID. The
 // result is a truth value: the rule is satisfied or not satisfied. The
@@ -243,18 +270,29 @@ func (i OperatorInput) Valid() bool { return i == OperatorInputNumber }
 type Operator struct {
 	ID     core.CanonicalID `json:"id"`
 	Symbol string           `json:"symbol"`
-	Input  OperatorInput    `json:"input"`
-	// InputName is the name the author gave the input, as in `takes low: number`.
-	// The single-input form `takes number` names it "value", which is what the
-	// rule surface already assumes when a rule writes no name.
+	// Input is the first input's type, kept for backward compatibility with
+	// single-input operators. The full signature is in Inputs.
+	Input OperatorInput `json:"input"`
+	// InputName is the name the author gave the first input, as in `takes low: number`.
+	// The single-input form `takes number` names it "value".
 	InputName string `json:"inputName,omitempty"`
-	// AbsentAs is the name the input's absent value is read as, declared with
-	// `absent as <name>`. A rule may name only a mapping declared here; an
-	// undeclared mapping would state a reading the operator never fixed.
+	// AbsentAs is the name the first input's absent value is read as.
 	AbsentAs string `json:"absentAs,omitempty"`
-	// Cases are the examples the contract states. An implementation that
-	// answers any of them differently does not implement this operator.
+	// Inputs is the full list of inputs the operator declares, in signature
+	// order. The first input is also represented by Input/InputName/AbsentAs
+	// for backward compatibility.
+	Inputs []OperatorInputDeclaration `json:"inputs,omitempty"`
+	// Cases are the examples the contract states.
 	Cases []OperatorCase `json:"cases,omitempty"`
+}
+
+// ValidationInputAssignment is one resolved input assignment of a rule: the
+// input name, the value assigned (a canonical attribute id or a constant), and
+// the absent-value mapping if the rule stated one.
+type ValidationInputAssignment struct {
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	AbsentAs string `json:"absentAs,omitempty"`
 }
 
 // Validationは、Semantic上の業務ruleを機械可読な形で保持する。
@@ -287,6 +325,9 @@ type Validation struct {
 	// without a Compared date is a period with no last day. Without it, such
 	// a row is not decided.
 	OpenEnded bool `json:"openEnded,omitempty"`
+	// Inputs is set only for ValidationOperator. It carries the input
+	// assignments the rule stated, in the operator's signature order.
+	Inputs []ValidationInputAssignment `json:"inputs,omitempty"`
 }
 
 type Parameter struct {

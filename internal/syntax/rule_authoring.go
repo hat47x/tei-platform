@@ -79,6 +79,22 @@ type OperatorInputWord string
 // OperatorInputNumberWord declares that the operator reads one numeric value.
 const OperatorInputNumberWord OperatorInputWord = "number"
 
+// OperatorInputPresenceWord declares that the operator reads whether an
+// attribute holds a value, not the value itself.
+const OperatorInputPresenceWord OperatorInputWord = "presence"
+
+// OperatorInput is one parsed `takes` line of an operator declaration.
+type OperatorInput struct {
+	Word          OperatorInputWord
+	Name          string
+	NameSpan      Anchor
+	OfEachRow     bool
+	OfEachRowSpan Anchor
+	AbsentAs      string
+	AbsentAsSpan  Anchor
+	Span          Anchor
+}
+
 // OperatorAuthoring is one parsed `operator` declaration:
 //
 //	operator sales.non_negative: takes number
@@ -89,6 +105,7 @@ type OperatorAuthoring struct {
 	Namespace core.CanonicalID
 	ID        core.CanonicalID
 	Symbol    string
+	Inputs    []OperatorInput
 	Input     OperatorInputWord
 	// InputName is the name written before the type, as in
 	// `takes low: number`. It is empty for the single-input form
@@ -281,9 +298,9 @@ func ParseRuleAuthoringFile(src string) (RuleAuthoringFile, error) {
 	return out, nil
 }
 
-// parseOperatorAuthoring reads `operator <id>: takes <input>`. The input word
-// is a closed list: it decides what a rule using the operator reads, so an
-// unknown word is refused instead of being treated as "reads nothing".
+// parseOperatorAuthoring reads `operator <id>:` followed by one or more `takes
+// <input>` lines. Each input may carry a name, a type, `of each row`, and
+// `absent as <name>`. After the inputs, `refutes on some rows` may appear.
 func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAuthoring, error) {
 	keyword, err := p.next() // operator
 	if err != nil {
@@ -300,209 +317,77 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 	if _, err := p.expect(TokenColon); err != nil {
 		return OperatorAuthoring{}, p.errAt(nameTok, "expected \":\" after the operator name")
 	}
-	takes, err := p.next()
-	if err != nil {
-		return OperatorAuthoring{}, err
-	}
-	if takes.Kind != TokenIdent || takes.Text != "takes" {
-		at := takes
-		if takes.Kind == TokenEOF {
-			at = nameTok
-		}
-		return OperatorAuthoring{}, p.errAt(at, "expected \"takes\" after the operator name; write what the operator reads, for example \"takes number\"")
-	}
-	inputTok, err := p.next()
-	if err != nil {
-		return OperatorAuthoring{}, err
-	}
-	if inputTok.Kind != TokenIdent {
-		at := inputTok
-		if inputTok.Kind == TokenEOF {
-			at = takes
-		}
-		return OperatorAuthoring{}, p.errAt(at, "expected what the operator takes; accepted inputs are number")
-	}
-	// `takes low: number` names the input; `takes number` does not, and keeps
-	// reading as the one input named "value". The design's lexical rule puts
-	// the name before the ':' and the type word after it, so a name is
-	// recognised by the colon that follows it.
-	var inputName string
-	var inputNameSpan Anchor
-	nt, err := p.peek()
-	if err != nil {
-		return OperatorAuthoring{}, err
-	}
-	if nt.Kind == TokenColon {
-		inputName = inputTok.Text
-		inputNameSpan = tokenAnchor(inputTok)
-		// The name is how a rule assigns this input. A text the rule surface
-		// could never write would leave a declaration that looks usable but
-		// cannot be referred to, so it is refused here rather than stored.
-		if _, err := core.ParseLocalName(inputName); err != nil {
-			return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
-				"%q is not a usable input name: %v", inputName, err))
-		}
-		if _, err := p.next(); err != nil {
-			return OperatorAuthoring{}, err
-		}
-		typeTok, err := p.next()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-		if typeTok.Kind != TokenIdent {
-			at := typeTok
-			if typeTok.Kind == TokenEOF {
-				at = inputTok
-			}
-			return OperatorAuthoring{}, p.errAt(at, "expected the type of input %q after \":\"; accepted types are number")
-		}
-		inputTok = typeTok
-		nt, err = p.peek()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-	}
-	if OperatorInputWord(inputTok.Text) != OperatorInputNumberWord {
-		return OperatorAuthoring{}, p.errAt(inputTok, fmt.Sprintf(
-			"unknown operator input %q; accepted inputs are number", inputTok.Text))
-	}
-	// `of each row` makes the input read every row of the relation.
-	var ofEachRow bool
-	var ofEachRowSpan Anchor
-	if nt.Kind == TokenIdent && nt.Text == "of" {
-		if _, err := p.next(); err != nil {
-			return OperatorAuthoring{}, err
-		}
-		eachTok, err := p.next()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-		if eachTok.Kind != TokenIdent || eachTok.Text != "each" {
-			at := eachTok
-			if eachTok.Kind == TokenEOF {
-				at = nt
-			}
-			return OperatorAuthoring{}, p.errAt(at, "expected \"each\" after \"of\"; the range is written \"of each row\"")
-		}
-		rowTok, err := p.next()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-		if rowTok.Kind != TokenIdent || rowTok.Text != "row" {
-			at := rowTok
-			if rowTok.Kind == TokenEOF {
-				at = eachTok
-			}
-			return OperatorAuthoring{}, p.errAt(at, "expected \"row\" after \"of each\"; the range is written \"of each row\"")
-		}
-		ofEachRow = true
-		ofEachRowSpan = Anchor{Start: nt.Start, End: rowTok.End}
-		nt, err = p.peek()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-	}
-
-	// `absent as <name>` declares how the input reads when it holds no value.
-	var absentAs string
-	var absentAsSpan Anchor
-	if nt.Kind == TokenIdent && nt.Text == "absent" {
-		if _, err := p.next(); err != nil {
-			return OperatorAuthoring{}, err
-		}
-		asTok, err := p.next()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-		if asTok.Kind != TokenIdent || asTok.Text != "as" {
-			at := asTok
-			if asTok.Kind == TokenEOF {
-				at = nt
-			}
-			return OperatorAuthoring{}, p.errAt(at, "expected \"as\" after \"absent\"; the mapping is written \"absent as <name>\"")
-		}
-		nameTok, err := p.next()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-		if nameTok.Kind != TokenIdent || ruleAuthoringDeclarationEnds(nameTok) {
-			at := nameTok
-			if nameTok.Kind != TokenIdent {
-				at = asTok
-			}
-			return OperatorAuthoring{}, p.errAt(at, "expected the name the absent value is read as after \"absent as\"")
-		}
-		if _, err := core.ParseLocalName(nameTok.Text); err != nil {
-			return OperatorAuthoring{}, p.errAt(nameTok, fmt.Sprintf(
-				"%q is not a usable mapping name: %v", nameTok.Text, err))
-		}
-		absentAs = nameTok.Text
-		absentAsSpan = tokenAnchor(nameTok)
-		nt, err = p.peek()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-	}
-	// `refutes on some rows` states that a witnessed counterexample is enough.
+	var inputs []OperatorInput
 	var refutes bool
 	var refutesSpan Anchor
-	if nt.Kind == TokenIdent && nt.Text == "refutes" {
-		if _, err := p.next(); err != nil {
-			return OperatorAuthoring{}, err
-		}
-		onTok, err := p.next()
+	for {
+		nt, err := p.peek()
 		if err != nil {
 			return OperatorAuthoring{}, err
 		}
-		if onTok.Kind != TokenIdent || onTok.Text != "on" {
-			at := onTok
-			if onTok.Kind == TokenEOF {
-				at = nt
+		if nt.Kind == TokenIdent && nt.Text == "takes" {
+			input, err := p.parseOperatorInput()
+			if err != nil {
+				return OperatorAuthoring{}, err
 			}
-			return OperatorAuthoring{}, p.errAt(at, "expected \"on\" after \"refutes\"; write \"refutes on some rows\"")
-		}
-		someTok, err := p.next()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-		if someTok.Kind != TokenIdent || someTok.Text != "some" {
-			at := someTok
-			if someTok.Kind == TokenEOF {
-				at = onTok
+			inputs = append(inputs, input)
+		} else if nt.Kind == TokenIdent && nt.Text == "refutes" {
+			if _, err := p.next(); err != nil {
+				return OperatorAuthoring{}, err
 			}
-			return OperatorAuthoring{}, p.errAt(at, "expected \"some\" after \"refutes on\"; write \"refutes on some rows\"")
-		}
-		rowsTok, err := p.next()
-		if err != nil {
-			return OperatorAuthoring{}, err
-		}
-		if rowsTok.Kind != TokenIdent || rowsTok.Text != "rows" {
-			at := rowsTok
-			if rowsTok.Kind == TokenEOF {
-				at = someTok
+			onTok, err := p.next()
+			if err != nil {
+				return OperatorAuthoring{}, err
 			}
-			return OperatorAuthoring{}, p.errAt(at, "expected \"rows\" after \"refutes on some\"; write \"refutes on some rows\"")
-		}
-		refutes = true
-		refutesSpan = Anchor{Start: nt.Start, End: rowsTok.End}
-		nt, err = p.peek()
-		if err != nil {
-			return OperatorAuthoring{}, err
+			if onTok.Kind != TokenIdent || onTok.Text != "on" {
+				at := onTok
+				if onTok.Kind == TokenEOF {
+					at = nt
+				}
+				return OperatorAuthoring{}, p.errAt(at, "expected \"on\" after \"refutes\"; write \"refutes on some rows\"")
+			}
+			someTok, err := p.next()
+			if err != nil {
+				return OperatorAuthoring{}, err
+			}
+			if someTok.Kind != TokenIdent || someTok.Text != "some" {
+				at := someTok
+				if someTok.Kind == TokenEOF {
+					at = onTok
+				}
+				return OperatorAuthoring{}, p.errAt(at, "expected \"some\" after \"refutes on\"; write \"refutes on some rows\"")
+			}
+			rowsTok, err := p.next()
+			if err != nil {
+				return OperatorAuthoring{}, err
+			}
+			if rowsTok.Kind != TokenIdent || rowsTok.Text != "rows" {
+				at := rowsTok
+				if rowsTok.Kind == TokenEOF {
+					at = someTok
+				}
+				return OperatorAuthoring{}, p.errAt(at, "expected \"rows\" after \"refutes on some\"; write \"refutes on some rows\"")
+			}
+			refutes = true
+			refutesSpan = Anchor{Start: nt.Start, End: rowsTok.End}
+		} else if ruleAuthoringDeclarationEnds(nt) {
+			break
+		} else {
+			return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
+				"unexpected %q after the operator name; write \"takes <name>: <type>\" for each input",
+				nt.Text))
 		}
 	}
-	if !ruleAuthoringDeclarationEnds(nt) {
-		return OperatorAuthoring{}, p.errAt(nt, fmt.Sprintf(
-			"unexpected %q after the operator declaration; an operator takes exactly one input", nt.Text))
+	if len(inputs) == 0 {
+		return OperatorAuthoring{}, p.errAtSpan(tokenAnchor(nameTok), "expected at least one \"takes\" input after the operator name")
 	}
-	// The declaration covers every authored modifier, not just the input
-	// type. Otherwise Source Index and local edits would miss the trailing
-	// part of the declaration.
-	declarationEnd := inputTok.End
-	if ofEachRow {
-		declarationEnd = ofEachRowSpan.End
+	first := inputs[0]
+	declarationEnd := first.Span.End
+	if first.OfEachRow {
+		declarationEnd = first.OfEachRowSpan.End
 	}
-	if absentAs != "" {
-		declarationEnd = absentAsSpan.End
+	if first.AbsentAs != "" {
+		declarationEnd = first.AbsentAsSpan.End
 	}
 	if refutes {
 		declarationEnd = refutesSpan.End
@@ -511,19 +396,174 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 		Namespace:             namespace,
 		ID:                    id,
 		Symbol:                symbol,
-		Input:                 OperatorInputWord(inputTok.Text),
-		InputName:             inputName,
-		AbsentAs:              absentAs,
+		Inputs:                inputs,
+		Input:                 first.Word,
+		InputName:             first.Name,
+		AbsentAs:              first.AbsentAs,
 		DeclarationSpan:       Anchor{Start: keyword.Start, End: declarationEnd},
 		IDSpan:                tokenAnchor(nameTok),
-		InputSpan:             tokenAnchor(inputTok),
-		InputNameSpan:         inputNameSpan,
-		AbsentAsSpan:          absentAsSpan,
-		OfEachRow:             ofEachRow,
-		OfEachRowSpan:         ofEachRowSpan,
+		InputSpan:             first.Span,
+		InputNameSpan:         first.NameSpan,
+		AbsentAsSpan:          first.AbsentAsSpan,
+		OfEachRow:             first.OfEachRow,
+		OfEachRowSpan:         first.OfEachRowSpan,
 		RefutesOnSomeRows:     refutes,
 		RefutesOnSomeRowsSpan: refutesSpan,
 	}, nil
+}
+
+// parseOperatorInput reads one `takes <input>` line: the input type, an
+// optional name, optional `of each row`, and optional `absent as <name>`.
+func (p *Parser) parseOperatorInput() (OperatorInput, error) {
+	takes, err := p.next() // "takes"
+	if err != nil {
+		return OperatorInput{}, err
+	}
+	inputTok, err := p.next()
+	if err != nil {
+		return OperatorInput{}, err
+	}
+	if inputTok.Kind != TokenIdent {
+		at := inputTok
+		if inputTok.Kind == TokenEOF {
+			at = takes
+		}
+		return OperatorInput{}, p.errAt(at, "expected what the operator takes; accepted inputs are number, date, text, truth, any, presence")
+	}
+	// `takes low: number` names the input; `takes number` does not.
+	var name string
+	var nameSpan Anchor
+	nt, err := p.peek()
+	if err != nil {
+		return OperatorInput{}, err
+	}
+	if nt.Kind == TokenColon {
+		name = inputTok.Text
+		nameSpan = tokenAnchor(inputTok)
+		if _, err := core.ParseLocalName(name); err != nil {
+			return OperatorInput{}, p.errAt(inputTok, fmt.Sprintf(
+				"%q is not a usable input name: %v", name, err))
+		}
+		if _, err := p.next(); err != nil { // the colon
+			return OperatorInput{}, err
+		}
+		typeTok, err := p.next()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+		if typeTok.Kind != TokenIdent {
+			at := typeTok
+			if typeTok.Kind == TokenEOF {
+				at = inputTok
+			}
+			return OperatorInput{}, p.errAt(at, fmt.Sprintf(
+				"expected the type of input %q after \":\"; accepted types are number, date, text, truth, any, presence", name))
+		}
+		inputTok = typeTok
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+	}
+	if !knownOperatorInputWord(inputTok.Text) {
+		return OperatorInput{}, p.errAt(inputTok, fmt.Sprintf(
+			"unknown operator input %q; accepted inputs are number, presence", inputTok.Text))
+	}
+	// `of each row` makes the input read every row of the relation.
+	var ofEachRow bool
+	var ofEachRowSpan Anchor
+	if nt.Kind == TokenIdent && nt.Text == "of" {
+		if _, err := p.next(); err != nil {
+			return OperatorInput{}, err
+		}
+		eachTok, err := p.next()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+		if eachTok.Kind != TokenIdent || eachTok.Text != "each" {
+			at := eachTok
+			if eachTok.Kind == TokenEOF {
+				at = nt
+			}
+			return OperatorInput{}, p.errAt(at, "expected \"each\" after \"of\"; the range is written \"of each row\"")
+		}
+		rowTok, err := p.next()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+		if rowTok.Kind != TokenIdent || rowTok.Text != "row" {
+			at := rowTok
+			if rowTok.Kind == TokenEOF {
+				at = eachTok
+			}
+			return OperatorInput{}, p.errAt(at, "expected \"row\" after \"of each\"; the range is written \"of each row\"")
+		}
+		ofEachRow = true
+		ofEachRowSpan = Anchor{Start: nt.Start, End: rowTok.End}
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+	}
+	// `absent as <name>` declares how the input reads when it holds no value.
+	var absentAs string
+	var absentAsSpan Anchor
+	if nt.Kind == TokenIdent && nt.Text == "absent" {
+		if _, err := p.next(); err != nil {
+			return OperatorInput{}, err
+		}
+		asTok, err := p.next()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+		if asTok.Kind != TokenIdent || asTok.Text != "as" {
+			at := asTok
+			if asTok.Kind == TokenEOF {
+				at = nt
+			}
+			return OperatorInput{}, p.errAt(at, "expected \"as\" after \"absent\"; the mapping is written \"absent as <name>\"")
+		}
+		nameTok, err := p.next()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+		if nameTok.Kind != TokenIdent || ruleAuthoringDeclarationEnds(nameTok) {
+			at := nameTok
+			if nameTok.Kind != TokenIdent {
+				at = asTok
+			}
+			return OperatorInput{}, p.errAt(at, "expected the name the absent value is read as after \"absent as\"")
+		}
+		if _, err := core.ParseLocalName(nameTok.Text); err != nil {
+			return OperatorInput{}, p.errAt(nameTok, fmt.Sprintf(
+				"%q is not a usable mapping name: %v", nameTok.Text, err))
+		}
+		absentAs = nameTok.Text
+		absentAsSpan = tokenAnchor(nameTok)
+		nt, err = p.peek()
+		if err != nil {
+			return OperatorInput{}, err
+		}
+	}
+	return OperatorInput{
+		Word:          OperatorInputWord(inputTok.Text),
+		Name:          name,
+		NameSpan:      nameSpan,
+		OfEachRow:     ofEachRow,
+		OfEachRowSpan: ofEachRowSpan,
+		AbsentAs:      absentAs,
+		AbsentAsSpan:  absentAsSpan,
+		Span:          tokenAnchor(inputTok),
+	}, nil
+}
+
+// knownOperatorInputWord reports whether text is an accepted input type word.
+func knownOperatorInputWord(text string) bool {
+	switch OperatorInputWord(text) {
+	case OperatorInputNumberWord, OperatorInputPresenceWord:
+		return true
+	}
+	return false
 }
 
 // ruleAuthoringDeclarationEnds reports whether t may follow a complete

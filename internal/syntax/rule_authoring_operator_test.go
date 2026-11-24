@@ -34,7 +34,8 @@ func TestRuleAuthoringReadsAnOperatorDeclarationAndItsUse(t *testing.T) {
 	// `takes number` is the unnamed single-input form, so the parsed contract
 	// carries no name. The surface keeps reading it as the input named "value",
 	// but nothing is declared, so nothing is stored.
-	wantOperators := []semantic.Operator{{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber}}
+	wantOperators := []semantic.Operator{{ID: "sales.non_negative", Symbol: "non_negative", Input: semantic.OperatorInputNumber,
+		Inputs: []semantic.OperatorInputDeclaration{{Name: "", Type: semantic.OperatorInputNumber}}}}
 	if len(anchored.Value.Operators) != 1 || !reflect.DeepEqual(anchored.Value.Operators[0], wantOperators[0]) {
 		t.Fatalf("operators=%+v, want %+v", anchored.Value.Operators, wantOperators)
 	}
@@ -95,11 +96,11 @@ func TestRuleAuthoringOperatorRefusals(t *testing.T) {
 		{"input word nobody defines",
 			"namespace sales\noperator sales.op: takes keys\n", "keys", "unknown operator input"},
 		{"missing takes",
-			"namespace sales\noperator sales.op: number\n", "number", "expected \"takes\""},
+			"namespace sales\noperator sales.op: number\n", "number", `unexpected "number" after the operator name`},
 		{"missing input",
 			"namespace sales\noperator sales.op: takes\n", "takes", "expected what the operator takes"},
 		{"second input",
-			"namespace sales\noperator sales.op: takes number number2\n", "number2", "exactly one input"},
+			"namespace sales\noperator sales.op: takes number number2\n", "number2", `unexpected "number2" after the operator name`},
 		{"operator declared twice",
 			"namespace sales\noperator sales.op: takes number\noperator sales.op: takes number\n", "sales.op: takes number\n\x00", "declared more than once"},
 		{"operator outside the namespace",

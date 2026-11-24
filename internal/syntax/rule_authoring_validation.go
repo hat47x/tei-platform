@@ -106,6 +106,26 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			})
 			continue
 		}
+		declarations := make([]semantic.OperatorInputDeclaration, 0, len(operator.Inputs))
+		for _, inp := range operator.Inputs {
+			inputType, ok := OperatorInputFor(inp.Word)
+			if !ok {
+				issues = append(issues, RuleConversionIssue{
+					RuleID: operator.ID, Span: inp.Span,
+					Msg: fmt.Sprintf("operator input %q has no existing operator input", inp.Word),
+				})
+				continue
+			}
+			declarations = append(declarations, semantic.OperatorInputDeclaration{
+				Name:      inp.Name,
+				Type:      inputType,
+				OfEachRow: inp.OfEachRow,
+				AbsentAs:  inp.AbsentAs,
+			})
+		}
+		if len(declarations) != len(operator.Inputs) {
+			continue
+		}
 		// InputName is what the author wrote, and nothing more. Leaving it empty
 		// for the unnamed form keeps an undeclared name out of the contract; a
 		// reader that needs a name for the single input applies "value", which
@@ -114,6 +134,7 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			ID: operator.ID, Symbol: operator.Symbol, Input: input,
 			InputName: operator.InputName,
 			AbsentAs:  operator.AbsentAs,
+			Inputs:    declarations,
 		})
 	}
 	return out, issues
@@ -122,8 +143,11 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 // OperatorInputFor maps one input word onto the existing operator input. The
 // second return value is false for a word this surface does not define.
 func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
-	if word == OperatorInputNumberWord {
+	switch word {
+	case OperatorInputNumberWord:
 		return semantic.OperatorInputNumber, true
+	case OperatorInputPresenceWord:
+		return semantic.OperatorInputPresence, true
 	}
 	return "", false
 }
@@ -149,10 +173,12 @@ func declaredOperatorMappings(operators []OperatorAuthoring) map[core.CanonicalI
 	mappings := make(map[core.CanonicalID][]string, len(operators))
 	for _, operator := range operators {
 		entry := mappings[operator.ID]
-		mappings[operator.ID] = entry
-		if operator.AbsentAs != "" {
-			mappings[operator.ID] = append(entry, operator.AbsentAs)
+		for _, input := range operator.Inputs {
+			if input.AbsentAs != "" {
+				entry = append(entry, input.AbsentAs)
+			}
 		}
+		mappings[operator.ID] = entry
 	}
 	return mappings
 }
@@ -161,14 +187,14 @@ func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.Canonica
 	names := make(map[core.CanonicalID][]string, len(operators))
 	for _, operator := range operators {
 		entry := names[operator.ID]
-		names[operator.ID] = entry
-		name := operator.InputName
-		if name == "" {
-			// The unnamed form is the single input the surface already calls
-			// "value", so a rule may address it by that name.
-			name = "value"
+		for _, input := range operator.Inputs {
+			name := input.Name
+			if name == "" {
+				name = "value"
+			}
+			entry = append(entry, name)
 		}
-		names[operator.ID] = append(entry, name)
+		names[operator.ID] = entry
 	}
 	return names
 }
@@ -234,9 +260,35 @@ func ruleToValidationWithInputs(
 			}
 		}
 	}
-	// Other assigned inputs still have no home in the semantic model.
-	// Refuse them rather than silently losing their values.
-	return refuseAssignedInputs(rule)
+	// Every declared input except the first must be assigned in the rule.
+	assigned := make(map[string]bool, len(rule.Inputs))
+	for _, assignment := range rule.Inputs {
+		assigned[assignment.Name] = true
+	}
+	for i := 1; i < len(declared); i++ {
+		if !assigned[declared[i]] {
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.Operator.Anchor,
+				Msg: fmt.Sprintf("operator %s declares input %q but the rule does not assign it; every input except the first must be assigned",
+					rule.Operator.Text, declared[i]),
+			}
+		}
+	}
+	// Other assigned inputs are carried into the semantic validation. The
+	// evaluator decides what to do with them.
+	validation, issue := ruleToValidation(rule)
+	if issue != nil {
+		return validation, issue
+	}
+	validation.Inputs = make([]semantic.ValidationInputAssignment, len(rule.Inputs))
+	for i, assignment := range rule.Inputs {
+		validation.Inputs[i] = semantic.ValidationInputAssignment{
+			Name:     assignment.Name,
+			Value:    assignment.Value,
+			AbsentAs: assignment.AbsentAs,
+		}
+	}
+	return validation, nil
 }
 
 // refuseAssignedInputs refuses a rule that assigns an operator input. The

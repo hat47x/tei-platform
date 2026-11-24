@@ -106,7 +106,7 @@ func TestRequiredIfChangesNothingItWasGiven(t *testing.T) {
 	if _, err := validationeval.Decide(rule, source, operators); err != nil {
 		t.Fatal(err)
 	}
-	if rule != before {
+	if !reflect.DeepEqual(rule, before) {
 		t.Fatalf("the rule changed: %+v -> %+v", before, rule)
 	}
 	if !reflect.DeepEqual(source.presence, presenceBefore) {

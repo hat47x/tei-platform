@@ -48,6 +48,7 @@ func TestNamedUnaryOperatorPreservesSubjectMeaningAndSourceRevision(t *testing.T
 	want := semantic.Operator{
 		ID: operatorID, Symbol: "non_negative",
 		Input: semantic.OperatorInputNumber, InputName: "amount",
+		Inputs: []semantic.OperatorInputDeclaration{{Name: "amount", Type: semantic.OperatorInputNumber}},
 	}
 	if len(operators) != 1 || !reflect.DeepEqual(operators[0], want) {
 		t.Fatalf("named input lost at semantic boundary: got %+v, want %+v", operators, want)

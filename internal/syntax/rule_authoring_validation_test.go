@@ -48,7 +48,7 @@ func TestRuleNamespaceMatchesExistingValidationValues(t *testing.T) {
 		Kind:      semantic.ValidationPositive,
 		Attribute: core.MustCanonicalID("sales.order_line.quantity"),
 	}
-	if positive != wantPositive {
+	if !sameValidation(positive, wantPositive) {
 		t.Fatalf("positive=%#v want %#v", positive, wantPositive)
 	}
 
@@ -60,7 +60,7 @@ func TestRuleNamespaceMatchesExistingValidationValues(t *testing.T) {
 		Attribute: core.MustCanonicalID("sales.order_line.line_number"),
 		Relation:  core.MustCanonicalID("sales.order.lines"),
 	}
-	if unique != wantUnique {
+	if !sameValidation(unique, wantUnique) {
 		t.Fatalf("unique=%#v want %#v", unique, wantUnique)
 	}
 }
@@ -85,7 +85,7 @@ validation sales.order.lines.line_number_unique relation-unique {
 		t.Fatalf("counts differ: %d vs %d", len(ns.Validations), len(converted.Validations))
 	}
 	for i := range ns.Validations {
-		if ns.Validations[i] != converted.Validations[i] {
+		if !sameValidation(ns.Validations[i], converted.Validations[i]) {
 			t.Fatalf("validation %d differs:\nexisting %#v\nrule     %#v", i, ns.Validations[i], converted.Validations[i])
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"tei/internal/core"
 	"tei/internal/semantic"
@@ -191,6 +192,125 @@ func satisfiedResult(satisfied bool) Result {
 	return ResultNotSatisfied
 }
 
+// contractInputs returns the inputs of an operator signature in order. A
+// contract that states no signature is the single-input operator the surface
+// has always had: its one input is named "value" and takes the type the
+// contract states. This keeps one reading of a contract instead of two
+// parallel fields.
+func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclaration {
+	if len(contract.Inputs) == 0 {
+		return []semantic.OperatorInputDeclaration{{Name: "value", Type: contract.Input}}
+	}
+	inputs := make([]semantic.OperatorInputDeclaration, 0, len(contract.Inputs))
+	for _, input := range contract.Inputs {
+		if input.Name == "" {
+			input.Name = "value"
+		}
+		inputs = append(inputs, input)
+	}
+	return inputs
+}
+
+// readAssignedInput reads one input value that was assigned by name in the rule.
+// For an attribute reference it reads from the source; for a constant it parses
+// the decimal text. The input's absent-as mapping is not yet carried in the
+// validation, so absent values are treated as undecided.
+//
+// It returns (*Undecided, error). A reader error is returned as the error
+// (with rule context), not turned into an Undecided, so the caller can
+// distinguish "no data" from "the reader failed". A missing or unreadable
+// assignment is neither: the caller refuses an unassigned input before asking.
+func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, values map[string]*big.Rat, source StatefulSource) (*Undecided, error) {
+	assignment := findInputAssignment(rule, input.Name)
+	if assignment == nil {
+		return &Undecided{Reason: UndecidedValueNotFetched, Attribute: core.CanonicalID(input.Name)}, nil
+	}
+	if isAttributeReference(assignment.Value) {
+		attr, err := core.ParseCanonicalID(assignment.Value)
+		if err != nil {
+			// Malformed reference: treat as not fetched.
+			return &Undecided{Reason: UndecidedValueNotFetched, Attribute: core.CanonicalID(input.Name)}, nil
+		}
+		value, stopped, err := readNumberForAttribute(rule, attr, source)
+		if err != nil {
+			return nil, err
+		}
+		if stopped != nil {
+			return stopped, nil
+		}
+		values[input.Name] = new(big.Rat).Set(value)
+		return nil, nil
+	}
+	// Constant value.
+	value, err := parseConstant(assignment.Value)
+	if err != nil {
+		return &Undecided{Reason: UndecidedValueNotFetched, Attribute: core.CanonicalID(input.Name)}, nil
+	}
+	values[input.Name] = value
+	return nil, nil
+}
+
+// findInputAssignment returns the named input assignment from the rule, or nil.
+func findInputAssignment(rule semantic.Validation, name string) *semantic.ValidationInputAssignment {
+	for i := range rule.Inputs {
+		if rule.Inputs[i].Name == name {
+			return &rule.Inputs[i]
+		}
+	}
+	return nil
+}
+
+// isAttributeReference reports whether text looks like a canonical attribute
+// reference (contains a dot and parses as a canonical id).
+func isAttributeReference(text string) bool {
+	if !strings.Contains(text, ".") {
+		return false
+	}
+	_, err := core.ParseCanonicalID(text)
+	return err == nil
+}
+
+// parseConstant reads a decimal constant from text.
+func parseConstant(text string) (*big.Rat, error) {
+	if text == "" {
+		return nil, fmt.Errorf("empty constant")
+	}
+	value, ok := new(big.Rat).SetString(text)
+	if !ok {
+		return nil, fmt.Errorf("%q is not a valid decimal constant", text)
+	}
+	return value, nil
+}
+
+// readNumberForAttribute reads one number for the given attribute of a rule.
+func readNumberForAttribute(rule semantic.Validation, attribute core.CanonicalID, source StatefulSource) (*big.Rat, *Undecided, error) {
+	reading, err := source.ReadNumber(attribute)
+	if errors.Is(err, errLegacyNoNumber) {
+		return nil, &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}, nil
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, attribute, err)
+	}
+	switch reading.State {
+	case ValuePresent:
+		if reading.Value == nil {
+			return nil, nil, fmt.Errorf("semantic validation %s: the reader reports attribute %s as present without a value", rule.ID, attribute)
+		}
+		return reading.Value, nil, nil
+	case ValueNull, ValueNotFetched:
+		if reading.Value != nil {
+			return nil, nil, fmt.Errorf("semantic validation %s: the reader reports attribute %s as %s together with a value", rule.ID, attribute, reading.State)
+		}
+		reason := UndecidedValueNull
+		if reading.State == ValueNotFetched {
+			reason = UndecidedValueNotFetched
+		}
+		return nil, &Undecided{Reason: reason, Attribute: attribute}, nil
+	default:
+		return nil, nil, fmt.Errorf("semantic validation %s: the reader reports attribute %s in the unknown state %q", rule.ID, attribute, reading.State)
+	}
+}
+
 // readNumber returns the value of a present reading, or the reason there is
 // none. Exactly one of the first two results is set when err is nil.
 func readNumber(rule semantic.Validation, source StatefulSource) (*big.Rat, *Undecided, error) {
@@ -250,15 +370,59 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		if err != nil {
 			return Decision{}, err
 		}
-		value, stopped, err := readNumber(rule, source)
+		// Find the declared operator to learn how many inputs to read and
+		// where each one comes from.
+		var declared []semantic.Operator
+		for _, op := range operators.Declared {
+			if op.ID == rule.Operator {
+				declared = append(declared, op)
+			}
+		}
+		if len(declared) != 1 {
+			return Decision{}, fmt.Errorf("semantic validation %s uses operator %s, which is declared %d times", rule.ID, rule.Operator, len(declared))
+		}
+		contract := declared[0]
+		inputs := contractInputs(contract)
+		// The rule subject supplies the first input, and only it. A rule that
+		// also assigns that input by name binds it twice, so the instruction
+		// is refused instead of read.
+		for _, assignment := range rule.Inputs {
+			if assignment.Name == inputs[0].Name {
+				return Decision{}, fmt.Errorf("semantic validation %s assigns operator %s input %q, which the rule subject already supplies", rule.ID, rule.Operator, assignment.Name)
+			}
+		}
+		values := make(map[string]*big.Rat, len(inputs))
+		// The first input comes from the attribute the rule constrains.
+		value, undecided, err := readNumber(rule, source)
 		if err != nil {
 			return Decision{}, err
 		}
-		if stopped != nil {
-			// No value is not zero. The implementation is not asked.
-			return Decision{Undecided: stopped}, nil
+		if undecided != nil {
+			return Decision{Undecided: undecided}, nil
 		}
-		satisfied, err := implementation.Number(new(big.Rat).Set(value))
+		values[inputs[0].Name] = new(big.Rat).Set(value)
+		for _, input := range inputs[1:] {
+			// Every input after the first must be assigned by name; one that
+			// is not is not silently read as the subject's value or as zero.
+			if findInputAssignment(rule, input.Name) == nil {
+				return Decision{}, fmt.Errorf("semantic validation %s does not assign operator %s input %q; every input after the first must be assigned", rule.ID, rule.Operator, input.Name)
+			}
+			got, rerr := readAssignedInput(rule, input, values, source)
+			if rerr != nil {
+				return Decision{}, rerr
+			}
+			if got != nil {
+				return Decision{Undecided: got}, nil
+			}
+		}
+		var satisfied bool
+		if implementation.Numbers != nil {
+			satisfied, err = implementation.Numbers(values)
+		} else {
+			// A single-input implementation receives the first input's value,
+			// which may be stored under the input's declared name.
+			satisfied, err = implementation.Number(new(big.Rat).Set(values[inputs[0].Name]))
+		}
 		if err != nil {
 			return Decision{}, fmt.Errorf("operator %s could not decide semantic validation %s: %w", rule.Operator, rule.ID, err)
 		}
