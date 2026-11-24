@@ -197,6 +197,7 @@ go run ./tools/reference-first-web-target \
 - 受注1001の3行では、`sales.order_line.quantity_positive`は**数量0の明細（主キー2）だけ**が`not-satisfied`となる。手順3で追加した`sales.order_line.unit_price_positive`は、**単価0の明細（主キー3）だけ**が`not-satisfied`となる。
 - `sales.order.lines.line_number_unique`は、受注1001の明細番号2が重複しているので**`not-satisfied`**となる。取得範囲が確定していなくても、実際に観測した重複は一意性を否定できる。受注1002を確かめるには、同じフォームの`Selected row`を`1`にして送信する。CLIと第一Webはそれぞれ自分が実行したQueryについて、同じ読取トランザクション内で保存定義との対応と物理表のRLS・継承・種類を確認する。確認できた場合、画面にも**`satisfied`**が出る（[#5571](https://github.com/hat47x/tei-platform/pull/5571)）。確認できなければ`undecided`と理由を表示する。画面に二行見えるというだけでは全件取得の根拠にならない。
 - 画面は選択した受注・実行したContract Query・行数をReadの情報として示す。行数や表示位置が回答と合わなければ描画を拒否するが、**表示したIDだけで、別のReadからの混入がすべて排除されたとは言えない**。
+- **`Selected row` を `2`（受注1003、明細0行）にして送信すると、`No order-line rows.` と `line_number_unique satisfied` が表示され、同時にHTTP 422とExecution Errorが出る。** 明細が1行も無いので行ごとの正の規則（`quantity_positive`・`unit_price_positive`）は評価できず、画面は `cannot evaluate positive validation ... over an empty order-line collection` と表示する。**空の集合を「全て満たされた」と読ませない判断**であり、`internal/driver/application_validations.go` の宣言についての方針と同じ向きである。Relation全体の一意が `satisfied` と出るのは、重複が無いことの確認ではなく、**対象が空であること**による。両方を同時に読むことで、空の受注が「合格」でも「不合格」でもないことが分かる。
 
 `-serve-read-from-db` を付けたのに `TEI_WEB_READ_PG_DSN` が無い場合は、
 起動が `WEB_READ_DATABASE_UNCONFIGURED` で止まる（合成の行へ黙って落ちない）。
