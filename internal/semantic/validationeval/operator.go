@@ -31,6 +31,11 @@ type OperatorImplementation struct {
 	// Numbers decides a rule for a multi-input operator. It receives the input
 	// name to value map. Values are non-nil only for inputs that are present.
 	Numbers func(values map[string]*big.Rat) (bool, error)
+	// NumberRows decides a rule whose operator reads every row of a relation.
+	// It receives, per input name, the states of the rows that were read in
+	// the order they were read, and answers TriYes, TriNo or TriMaybe. It sees
+	// no Source, so what a rule reads stays decided by the declaration.
+	NumberRows func(rows map[string][]NumberReading) (Tri, error)
 	// Absent reads an absent value under the mapping the rule named. A rule may
 	// write `or <name>` after an input, and the declaration may state
 	// `absent as <name>`; the mapping says how an absent value is to be read.
