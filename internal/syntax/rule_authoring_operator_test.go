@@ -153,3 +153,42 @@ func TestFormatRuleAuthoringRefusesOperatorsInsteadOfDroppingThem(t *testing.T) 
 		}
 	}
 }
+
+// The parser reads `per <relation>` after an operator rule without judging it:
+// whether the scope is required or forbidden is the declaration's question, and
+// the conversion answers it. The parser's own refusal must not come back, or a
+// row-scoped rule could never be written.
+func TestRuleParserReadsAnOperatorRulesScope(t *testing.T) {
+	src := "namespace sales\n" +
+		"operator sales.op: takes number\n" +
+		"rule sales.r: sales.a.b is sales.op per sales.a.lines\n"
+	file, err := syntax.ParseRuleAuthoringFile(src)
+	if err != nil {
+		t.Fatalf("the parser refused a scope on an operator rule: %v", err)
+	}
+	if len(file.Rules) != 1 {
+		t.Fatalf("rules=%d, want 1", len(file.Rules))
+	}
+	rule := file.Rules[0]
+	if rule.Scope == nil || rule.Scope.Text != "sales.a.lines" {
+		t.Fatalf("scope=%+v, want the authored relation", rule.Scope)
+	}
+}
+
+// A scope on an operator that reads one record's values is refused at
+// conversion: that operator is asked of one row, and a relation would ask a
+// question its declaration cannot answer.
+func TestPerRowOperatorScopeIsRefusedAtConversion(t *testing.T) {
+	src := "namespace sales\n" +
+		"operator sales.op: takes number\n" +
+		"rule sales.r:\n" +
+		"  sales.a.b is sales.op per sales.a.lines\n"
+	file, err := syntax.ParseRuleAuthoringFile(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, issues := syntax.RuleNamespace(file)
+	if len(issues) != 1 || !strings.Contains(issues[0].Msg, "accepts no scope") {
+		t.Fatalf("issues=%+v, want one refusal naming the scope", issues)
+	}
+}
