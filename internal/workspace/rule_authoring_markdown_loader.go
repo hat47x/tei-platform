@@ -137,6 +137,15 @@ func attachOperatorCases(r *Result) error {
 					continue
 				}
 				found = true
+				// The parser reads every column that is not expect/note/value
+				// as an input name and leaves the signature check here, so this
+				// is where a table that names an input the operator does not
+				// declare, or leaves a declared input unstated, has to stop.
+				// Without it the table looks valid to `tei validate` and is
+				// refused only when a read decides the rule.
+				if err := requireCaseColumnsMatchSignature(r, pending, r.World.Semantics[i].Operators[j]); err != nil {
+					return err
+				}
 				for _, example := range table.Cases {
 					r.World.Semantics[i].Operators[j].Cases = append(r.World.Semantics[i].Operators[j].Cases, example.Value)
 				}
@@ -151,6 +160,93 @@ func attachOperatorCases(r *Result) error {
 		attached[table.Operator] = pending
 	}
 	r.pendingOperatorCases = nil
+	return nil
+}
+
+// requireCaseColumnsMatchSignature matches each example's input names to the
+// inputs the operator declares. A column that names an input the operator does
+// not take, and a declared input that an example leaves unstated, are both
+// refused at the table's own position: an example the implementation could not
+// be asked about is not an example of that operator.
+//
+// The first input is the rule subject and is named `value` in the single-value
+// form, so a single-value example states no input names of its own and has
+// nothing to match.
+func requireCaseColumnsMatchSignature(
+	r *Result,
+	pending pendingOperatorCases,
+	operator semantic.Operator,
+) error {
+	declared := operator.Inputs
+	if len(declared) == 0 {
+		return nil
+	}
+	names := make(map[string]bool, len(declared))
+	for _, input := range declared {
+		names[input.Name] = true
+	}
+	reject := func(span syntax.Anchor, message string) error {
+		return r.collectSourceError(pending.filename, &syntax.ParseError{
+			Pos: span.Start, End: span.End, Msg: message})
+	}
+	for _, example := range pending.table.Cases {
+		for name, span := range example.InputSpans {
+			if names[name] {
+				continue
+			}
+			if err := reject(span, fmt.Sprintf(
+				"operator %s declares no input named %q; a case column names one of the operator's inputs",
+				operator.ID, name)); err != nil {
+				return err
+			}
+		}
+		// An example of a multi-input operator names one column per input after
+		// the first. A table that states only the `value` column leaves every
+		// other input unstated, which is the same refusal: the subject alone is
+		// not an example of a three-input operator.
+		stated := example.Value.Inputs
+		if len(stated) == 0 && len(declared) > 1 {
+			span := example.ValueSpan
+			if len(example.InputSpans) == 0 && span == (syntax.Anchor{}) {
+				span = example.ExpectSpan
+			}
+			if err := reject(span, fmt.Sprintf(
+				"operator %s declares %d inputs, but this example states one value only; a case names one column per input",
+				operator.ID, len(declared))); err != nil {
+				return err
+			}
+			continue
+		}
+		for _, input := range declared {
+			if input.Name == declared[0].Name {
+				// The subject's value is the `value` column; a table may name it
+				// too, and it is already stated when the map holds it.
+				continue
+			}
+			if _, ok := stated[input.Name]; ok {
+				continue
+			}
+			// A multi-input example has no single value to quote, so the
+			// message says which example by its position rather than by
+			// naming a value it does not have.
+			message := fmt.Sprintf(
+				"operator %s declares input %q, but this example states no value for it",
+				operator.ID, input.Name)
+			span := example.ValueSpan
+			if example.Value.Value != "" {
+				message = fmt.Sprintf(
+					"operator %s declares input %q, but the example for %s states no value for it",
+					operator.ID, input.Name, example.Value.Value)
+			} else if span == (syntax.Anchor{}) {
+				// A multi-input example has no single value cell, so its
+				// position comes from the expect cell that is always present.
+				span = example.ExpectSpan
+			}
+			if err := reject(span, message); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
