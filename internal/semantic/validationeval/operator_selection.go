@@ -30,6 +30,9 @@ type NamedImplementation struct {
 	ID     string
 	Input  semantic.OperatorInput
 	Number func(value *big.Rat) (bool, error)
+	// Numbers decides for a multi-input operator. Exactly one of Number and
+	// Numbers is non-nil.
+	Numbers func(values map[string]*big.Rat) (bool, error)
 }
 
 // ImplementationSelection is one choice of a composition: this operator is
@@ -62,6 +65,35 @@ func BuiltinImplementations() []NamedImplementation {
 			Input: semantic.OperatorInputNumber,
 			Number: func(value *big.Rat) (bool, error) {
 				return value.Sign() != 0, nil
+			},
+		},
+		{
+			// tei.number.within decides "low <= value <= high" by input name.
+			// It reads inputs named value, low, and high; a declaration that
+			// names them otherwise is not this operator and is reported.
+			ID:    "tei.number.within",
+			Input: semantic.OperatorInputNumber,
+			Numbers: func(values map[string]*big.Rat) (bool, error) {
+				v, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("within reads an input named \"value\"; the rule supplied no value input")
+				}
+				low, ok := values["low"]
+				if !ok {
+					return false, fmt.Errorf("within reads an input named \"low\"; the rule supplied no low input")
+				}
+				high, ok := values["high"]
+				if !ok {
+					return false, fmt.Errorf("within reads an input named \"high\"; the rule supplied no high input")
+				}
+				// A range whose lower bound is above its upper bound is a
+				// wrong range specification, not an out-of-range value. It is
+				// reported and never answered as not-satisfied; low and high
+				// are not swapped to make it look decidable.
+				if low.Cmp(high) > 0 {
+					return false, fmt.Errorf("within: low (%s) is greater than high (%s); the range specification is wrong", low.RatString(), high.RatString())
+				}
+				return v.Cmp(low) >= 0 && v.Cmp(high) <= 0, nil
 			},
 		},
 	}
@@ -110,6 +142,16 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 					called(call)
 				}
 				return decide(value)
+			}
+		}
+		if match.Numbers != nil {
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.Numbers
+			implementation.Numbers = func(values map[string]*big.Rat) (bool, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(values)
 			}
 		}
 		out = append(out, implementation)

@@ -55,7 +55,7 @@ func TestRequiredIfParsesAndConvertsToTheExistingKind(t *testing.T) {
 		Attribute: "sales.order_line.discount_reason",
 		Compared:  "sales.order_line.discount",
 	}
-	if got != want {
+	if !sameValidation(got, want) {
 		t.Fatalf("got=%+v want=%+v", got, want)
 	}
 	if !got.Kind.Valid() {
