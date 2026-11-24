@@ -147,10 +147,13 @@ func TestDiscoveryArgumentValuesMatchImplementation(t *testing.T) {
 			t.Fatalf("knowledge-context -disclose %s: exit=%d", section, code)
 		}
 	}
+	// A section outside the closed set is an argument mistake, not a build
+	// failure: INVALID_ARGUMENT with exit 2, like the other out-of-set flags
+	// above (#3242).
 	code, body, _ = run("knowledge-context", "-workspace", reference,
 		"-subject-kind", "semantic-data", "-subject-id", "sales.order", "-disclose", "not-a-section")
-	if _, failure := envelopeCode(t, body); failure != "KNOWLEDGE_BUILD_FAILED" || code != 2 {
-		t.Fatalf("knowledge-context accepted a section outside the set: exit=%d body=%s", code, body)
+	if _, failure := envelopeCode(t, body); failure != "INVALID_ARGUMENT" || code != 2 {
+		t.Fatalf("knowledge-context accepted a section outside the set as a valid argument: exit=%d body=%s", code, body)
 	}
 
 	// knowledge-data-design-candidate-review -data-design-candidate-kind is
