@@ -31,6 +31,101 @@ func teiMDOperatorCasesWorkspace(t *testing.T) string {
 	return root
 }
 
+// An example carries one value. An operator that declares more than one input
+// cannot be stated by such a table, and the Load refuses the shape rather than
+// attaching examples the reader would later refuse.
+//
+// Before this, a Workspace nobody read in that session passed validate and
+// failed only when a rule was decided:
+//
+//	$ tei validate ...                          -> ok
+//	$ tei view -environment ...                 -> cannot decide rule ...:
+//	    TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH
+//
+// One statement must get one diagnosis, at the table, not a clean validate and
+// a later read failure.
+func TestTEIMDRefusesOneValueExamplesForAMultiInputOperator(t *testing.T) {
+	root := copyTEIMDRuleWorkspace(t)
+	rewriteTEIMDTestFile(t, root, "tei.workspace.yaml", "tei.rule-authoring/v0", "tei.authoring/v1")
+	rewriteTEIMDTestFile(t, root, "semantic/sales/order.tei",
+		"    attribute itemName type std.text\n",
+		"    attribute itemName type std.text\n    attribute discount type std.decimal\n")
+	// A three-input operator, declared with no rule: the shape of the table is
+	// the only thing wrong here, so the finding cannot be about a used rule.
+	writeTEIMDTestFile(t, root, "semantic/sales/zz-operators.tei.md",
+		"# 範囲の演算子\n\n```tei\nnamespace sales\n\noperator sales.within:\n"+
+			"  takes value: number\n  takes low: number\n  takes high: number\n```\n")
+	writeTEIMDTestFile(t, root, "semantic/sales/a-cases.tei.md",
+		"# 範囲の例\n\n<!-- tei: cases of sales.within -->\n"+
+			"| value | expect |\n| --- | --- |\n| 5 | satisfied |\n")
+
+	_, err := Load(root)
+	if err == nil {
+		t.Fatal("a one-value example table was attached to a three-input operator")
+	}
+	if !strings.Contains(err.Error(), "TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH") {
+		t.Fatalf("the refusal did not carry its own code: %v", err)
+	}
+	// The message must name what the operator declares, so a reader can tell
+	// this apart from a malformed table or a missing operator.
+	for _, want := range []string{"sales.within", "3 inputs", "value, low, high"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("the refusal does not say %q: %v", want, err)
+		}
+	}
+	// The table names an operator that IS declared here, so the missing-operator
+	// finding must not also appear: one statement, one diagnosis.
+	if strings.Contains(err.Error(), "no source declares that operator") {
+		t.Fatalf("one bad table produced two findings: %v", err)
+	}
+}
+
+// The boundary of the guard is "more than one input", and two is the smallest
+// such operator. A table for a two-input operator must be refused for the same
+// reason as the three-input one: the second input would go unstated.
+func TestTEIMDRefusesOneValueExamplesForATwoInputOperator(t *testing.T) {
+	root := copyTEIMDRuleWorkspace(t)
+	rewriteTEIMDTestFile(t, root, "tei.workspace.yaml", "tei.rule-authoring/v0", "tei.authoring/v1")
+	rewriteTEIMDTestFile(t, root, "semantic/sales/order.tei",
+		"    attribute itemName type std.text\n",
+		"    attribute itemName type std.text\n    attribute discount type std.decimal\n")
+	writeTEIMDTestFile(t, root, "semantic/sales/zz-operators.tei.md",
+		"# 下限の演算子\n\n```tei\nnamespace sales\n\noperator sales.at_least:\n"+
+			"  takes value: number\n  takes low: number\n```\n")
+	writeTEIMDTestFile(t, root, "semantic/sales/a-cases.tei.md",
+		"# 下限の例\n\n<!-- tei: cases of sales.at_least -->\n"+
+			"| value | expect |\n| --- | --- |\n| 5 | satisfied |\n")
+
+	_, err := Load(root)
+	if err == nil {
+		t.Fatal("a one-value example table was attached to a two-input operator")
+	}
+	if !strings.Contains(err.Error(), "TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH") {
+		t.Fatalf("the refusal did not carry its own code: %v", err)
+	}
+	if !strings.Contains(err.Error(), "2 inputs") || !strings.Contains(err.Error(), "value, low") {
+		t.Fatalf("the refusal does not say what the two-input operator declares: %v", err)
+	}
+}
+
+func TestTEIMDKeepsOneValueExamplesForASingleInputOperator(t *testing.T) {
+	root := teiMDOperatorCasesWorkspace(t)
+	loaded, err := Load(root)
+	if err != nil {
+		t.Fatalf("a single-input example table was refused: %v", err)
+	}
+	for _, operator := range operatorsOf(loaded) {
+		if operator.ID != "sales.non_negative" {
+			continue
+		}
+		if len(operator.Cases) != 3 {
+			t.Fatalf("grepping the kept examples: got %d, want the three written", len(operator.Cases))
+		}
+		return
+	}
+	t.Fatal("the single-input operator is missing from the loaded World")
+}
+
 func TestTEIMDOperatorCasesAreAttachedToTheDeclaredOperator(t *testing.T) {
 	root := teiMDOperatorCasesWorkspace(t)
 	loaded, err := Load(root)
