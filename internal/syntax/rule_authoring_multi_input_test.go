@@ -1,7 +1,9 @@
 package syntax_test
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"tei/internal/semantic"
@@ -200,4 +202,123 @@ func contains(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// Two unnamed inputs both resolve to "value", so the second can never be
+// assigned. Before this refusal the declaration validated with an input nobody
+// could name, which is worse than refusing it.
+func TestRuleAuthoringRefusesTwoUnnamedInputs(t *testing.T) {
+	src := `namespace sales
+operator sales.two_unnamed:
+  takes number
+  takes number
+`
+	_, err := syntax.ParseRuleAuthoringFile(src)
+	var parseErr *syntax.ParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("two unnamed inputs were accepted or unlocated: %v", err)
+	}
+	if !strings.Contains(parseErr.Msg, "must name them all") {
+		t.Fatalf("message=%q, want it to require names", parseErr.Msg)
+	}
+	if !strings.Contains(parseErr.Msg, "input 1") {
+		t.Fatalf("message=%q, want it to name the first input that has no name", parseErr.Msg)
+	}
+}
+
+// A named first input and an unnamed second is the same problem: the second is
+// unreachable, so the whole declaration is refused rather than half-read.
+func TestRuleAuthoringRefusesAnUnnamedSecondInput(t *testing.T) {
+	src := `namespace sales
+operator sales.mixed:
+  takes low: number
+  takes number
+`
+	_, err := syntax.ParseRuleAuthoringFile(src)
+	var parseErr *syntax.ParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("an unnamed second input was accepted or unlocated: %v", err)
+	}
+	if !strings.Contains(parseErr.Msg, "must name them all") {
+		t.Fatalf("message=%q, want it to require names", parseErr.Msg)
+	}
+}
+
+// The declaration must cover the second input's modifiers, or a source edit on
+// that line falls outside the declaration it belongs to.
+func TestTwoInputDeclarationSpanCoversTheSecondInput(t *testing.T) {
+	src := `namespace sales
+operator sales.within:
+  takes value: number
+  takes low: number absent as missing
+`
+	file, err := syntax.ParseRuleAuthoringFile(src)
+	if err != nil {
+		t.Fatalf("two-input declaration was refused: %v", err)
+	}
+	end := file.Operators[0].DeclarationSpan.End.Offset
+	want := strings.Index(src, "missing") + len("missing")
+	if end != want {
+		t.Fatalf("declaration end=%d, want %d (the second input's mapping name)", end, want)
+	}
+}
+
+// The diagnostic must point at the input that has no name, so the author can
+// remove exactly that line. A message without a position would send them
+// looking through the whole declaration.
+func TestUnnamedInputDiagnosticPointsAtThatInput(t *testing.T) {
+	src := `namespace sales
+operator sales.mixed:
+  takes low: number
+  takes number
+`
+	_, err := syntax.ParseRuleAuthoringFile(src)
+	var parseErr *syntax.ParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("an unnamed second input was accepted or unlocated: %v", err)
+	}
+	// The second `takes number` is the unnamed one; its type word is where the
+	// diagnostic must land.
+	want := strings.LastIndex(src, "number")
+	if parseErr.Pos.Offset != want {
+		t.Fatalf("diagnostic offset=%d, want %d (the unnamed input's type word)", parseErr.Pos.Offset, want)
+	}
+}
+
+// The second input's own modifier must extend the span: `of each row` on the
+// last input is the last thing the declaration says.
+func TestTwoInputDeclarationSpanCoversTheSecondInputRangeClause(t *testing.T) {
+	src := `namespace sales
+operator sales.within:
+  takes value: number
+  takes low: number of each row
+`
+	file, err := syntax.ParseRuleAuthoringFile(src)
+	if err != nil {
+		t.Fatalf("two-input declaration was refused: %v", err)
+	}
+	end := file.Operators[0].DeclarationSpan.End.Offset
+	want := strings.LastIndex(src, "row") + len("row")
+	if end != want {
+		t.Fatalf("declaration end=%d, want %d (the second input's range clause)", end, want)
+	}
+}
+
+// A modifier on the FIRST input must not stretch the span past the last input:
+// the span ends where the last authored line ends, not at the widest clause.
+func TestTwoInputDeclarationSpanEndsAtTheLastInput(t *testing.T) {
+	src := `namespace sales
+operator sales.within:
+  takes value: number absent as missing
+  takes low: number
+`
+	file, err := syntax.ParseRuleAuthoringFile(src)
+	if err != nil {
+		t.Fatalf("two-input declaration was refused: %v", err)
+	}
+	end := file.Operators[0].DeclarationSpan.End.Offset
+	want := strings.LastIndex(src, "number") + len("number")
+	if end != want {
+		t.Fatalf("declaration end=%d, want %d (the last input's own end)", end, want)
+	}
 }

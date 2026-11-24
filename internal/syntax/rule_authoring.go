@@ -381,13 +381,29 @@ func (p *Parser) parseOperatorAuthoring(namespace core.CanonicalID) (OperatorAut
 	if len(inputs) == 0 {
 		return OperatorAuthoring{}, p.errAtSpan(tokenAnchor(nameTok), "expected at least one \"takes\" input after the operator name")
 	}
-	first := inputs[0]
-	declarationEnd := first.Span.End
-	if first.OfEachRow {
-		declarationEnd = first.OfEachRowSpan.End
+	// An unnamed input is addressed as "value". Two unnamed inputs would both
+	// answer to that name, so the second could never be assigned and the
+	// declaration would look usable while being unreachable.
+	if len(inputs) > 1 {
+		for i, input := range inputs {
+			if input.Name == "" {
+				return OperatorAuthoring{}, p.errAtSpan(input.Span, fmt.Sprintf(
+					"input %d of operator %s has no name; an operator with more than one input must name them all, because an unnamed input is addressed as \"value\"",
+					i+1, id))
+			}
+		}
 	}
-	if first.AbsentAs != "" {
-		declarationEnd = first.AbsentAsSpan.End
+	first := inputs[0]
+	// The declaration covers every authored line, including the last input's
+	// modifiers: otherwise an edit on the second `takes` line would be reported
+	// outside the declaration it belongs to.
+	last := inputs[len(inputs)-1]
+	declarationEnd := last.Span.End
+	if last.OfEachRow {
+		declarationEnd = last.OfEachRowSpan.End
+	}
+	if last.AbsentAs != "" {
+		declarationEnd = last.AbsentAsSpan.End
 	}
 	if refutes {
 		declarationEnd = refutesSpan.End
