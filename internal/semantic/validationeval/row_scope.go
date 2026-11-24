@@ -79,26 +79,30 @@ func DecideRowScoped(rule semantic.Validation, coverage Coverage, refutesOnSomeR
 // A counterexample that was seen is a decision whatever the coverage, but only
 // when the operator says that a counterexample among the rows read is enough;
 // otherwise a partially read relation is undecided.
+//
+// A witnessed counterexample is also a decision when another row holds no
+// value: section 6 says a counterexample that was seen settles the rule
+// "whatever else is unknown", and nothing an absent row could add would undo
+// it. Only an answer that claims the rule holds has to account for every row,
+// so a reason inside the rows is dropped for TriYes and reported for the rest.
 func decideRowScoped(rule semantic.Validation, coverage Coverage, refutesOnSomeRows bool, answer Tri, rowReason *Undecided) (Decision, error) {
 	if coverage != CoverageComplete && coverage != CoveragePartial {
 		return Decision{}, fmt.Errorf("semantic validation %s: the reader reports relation %s with the unknown coverage %q", rule.ID, rule.Relation, coverage)
 	}
-	// A reason inside the rows is reported before the coverage, because
-	// reading more rows cannot settle a value that is absent or was not read
-	// in a row that was read. It is meaningful only when the operator could
-	// not decide; an implementation that answers certainly while a row holds
-	// no value would have decided around a value it never saw.
 	switch answer {
 	case TriMaybe:
 		if rowReason != nil {
 			return Decision{Undecided: rowReason}, nil
 		}
 		return undecided(UndecidedValueNotFetched, rule.Relation, rule.Attribute)
-	case TriNo, TriYes:
+	case TriYes:
+		// Holding everywhere cannot be claimed while a row that was read
+		// holds no value or was not read: that row might break the rule.
 		if rowReason != nil {
-			return Decision{}, fmt.Errorf("semantic validation %s: the operator answered %d while a row holds %s; a decided answer cannot be reported together with a reason inside the rows",
-				rule.ID, int(answer), rowReason.Reason)
+			return Decision{Undecided: rowReason}, nil
 		}
+	case TriNo:
+		// A counterexample that was seen is settled by itself.
 	default:
 		return Decision{}, fmt.Errorf("semantic validation %s: the operator answered %d, which is not a row-scoped answer", rule.ID, int(answer))
 	}
