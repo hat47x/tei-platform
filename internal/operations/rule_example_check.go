@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"strings"
+
 	"tei/internal/core"
+	"tei/internal/ir"
 	"tei/internal/semantic"
 	"tei/internal/semantic/validationeval"
 	"tei/internal/sourceindex"
@@ -24,6 +27,12 @@ const (
 	// instance because no implementation is selected for its operator. An
 	// example that was not checked is not reported as agreeing.
 	RuleExampleNotCheckedCode = "RULE_EXAMPLE_NOT_CHECKED"
+	// OperatorSelectionUnresolvedCode: the manifest selects an implementation
+	// this running tei cannot honour, or one that does not match the operator
+	// it is selected for. The selection is refused whether or not a rule
+	// happens to be read in this session: a Workspace whose manifest cannot be
+	// honoured is not a Workspace this binary can run.
+	OperatorSelectionUnresolvedCode = "OPERATOR_SELECTION_UNRESOLVED"
 )
 
 // exampleSource reads one example the way a rule reads records.
@@ -197,6 +206,97 @@ func exampleKey(item workspace.RuleExampleItem, text string) (string, error) {
 // decided by a declared operator is asked through the implementation the
 // Workspace selected among available. The result is empty when every example
 // was checked and agrees.
+// CheckOperatorSelection reports a manifest implementation selection that this
+// running tei cannot honour: a name it does not carry, two entries for one
+// operator, or an implementation that does not match the operator it is
+// selected for.
+//
+// It is separate from CheckRuleExamples because a Workspace with no examples
+// still states a selection. Before this, a selection that could not be resolved
+// was reported only while checking an example, so a Workspace with no example
+// tables passed validate and then failed at the first read:
+//
+//	$ tei validate                    -> ok
+//	$ tei view -environment ...       -> TEI_OPERATOR_IMPLEMENTATION_UNAVAILABLE
+//
+// One manifest statement must get one diagnosis at validate, whether or not a
+// rule is read in this session. The reported place is the operator's
+// declaration, which is where the selection attaches.
+func CheckOperatorSelection(loaded workspace.Result, index sourceindex.Index, available []validationeval.NamedImplementation) []workspace.ProjectedDiagnostic {
+	if len(loaded.OperatorImplementations) == 0 {
+		return nil
+	}
+	selections := make([]validationeval.ImplementationSelection, 0, len(loaded.OperatorImplementations))
+	for _, selection := range loaded.OperatorImplementations {
+		selections = append(selections, validationeval.ImplementationSelection{
+			Operator: core.CanonicalID(selection.Operator), Implementation: selection.Implementation,
+		})
+	}
+	implementations, err := validationeval.ResolveImplementations(selections, available, nil)
+	if err != nil {
+		// The error names the operator and the implementation it could not
+		// resolve. The subject is derived from the entry that failed, not from
+		// the message: a first selection may resolve while a later one does not.
+		for _, selection := range loaded.OperatorImplementations {
+			if !strings.Contains(err.Error(), selection.Implementation) {
+				continue
+			}
+			return []workspace.ProjectedDiagnostic{operatorSelectionFinding(index, core.CanonicalID(selection.Operator), err.Error())}
+		}
+		// No entry could be attributed to the message. Report it against the
+		// first one rather than dropping it: a selection this binary cannot
+		// honour must never be silently accepted.
+		first := core.CanonicalID(loaded.OperatorImplementations[0].Operator)
+		return []workspace.ProjectedDiagnostic{operatorSelectionFinding(index, first, err.Error())}
+	}
+	// Resolving is not the whole check: an implementation that resolves by
+	// name can still disagree with the operator it is selected for, and the
+	// evaluator refuses that when it is asked. Ask the same function the
+	// evaluator asks, for every selected operator, so validate and a read
+	// cannot disagree about what "matches" means.
+	for _, implementation := range implementations {
+		operator, declared := operatorByID(loaded.World, implementation.Operator)
+		if !declared {
+			continue
+		}
+		if err := validationeval.CheckImplementationMatchesContract(operator, implementation); err != nil {
+			return []workspace.ProjectedDiagnostic{operatorSelectionFinding(index, implementation.Operator, err.Error())}
+		}
+	}
+	return nil
+}
+
+// operatorByID finds the declared operator a selection attaches to.
+func operatorByID(world ir.World, id core.CanonicalID) (semantic.Operator, bool) {
+	for _, namespace := range world.Semantics {
+		for _, operator := range namespace.Operators {
+			if operator.ID == id {
+				return operator, true
+			}
+		}
+	}
+	return semantic.Operator{}, false
+}
+
+// operatorSelectionFinding projects one selection failure onto the operator's
+// declaration. A finding with no resolvable source is still reported; the
+// message names what failed either way.
+func operatorSelectionFinding(index sourceindex.Index, operator core.CanonicalID, message string) workspace.ProjectedDiagnostic {
+	opSubject := subject.Subject{Kind: "semantic-operator", ID: string(operator)}
+	finding := workspace.ProjectedDiagnostic{
+		Diagnostic: validation.Diagnostic{
+			Code: OperatorSelectionUnresolvedCode, Severity: validation.Error,
+			Message: message, Subject: &opSubject,
+		},
+	}
+	for _, ref := range index.ReferencesFor(opSubject) {
+		if ref.Role == sourceindex.RoleDefinition {
+			finding.Sources = append(finding.Sources, ref)
+		}
+	}
+	return finding
+}
+
 func CheckRuleExamples(loaded workspace.Result, available []validationeval.NamedImplementation) []workspace.ProjectedDiagnostic {
 	if len(loaded.RuleExamples) == 0 {
 		return nil

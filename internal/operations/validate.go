@@ -129,6 +129,11 @@ func ValidateWorkspace(root string) (WorkspaceValidation, error) {
 	for _, diagnostic := range diagnostics {
 		definitionsAccepted = definitionsAccepted && diagnostic.Diagnostic.Severity != validation.Error
 	}
+	// The manifest's selection is checked even when no example is written:
+	// a selection this binary cannot honour is not a Workspace it can run,
+	// and waiting for a read would report it as ok here and as a failure
+	// there.
+	diagnostics = append(diagnostics, CheckOperatorSelection(loaded, index, validationeval.BuiltinImplementations())...)
 	if definitionsAccepted {
 		diagnostics = append(diagnostics, CheckRuleExamples(loaded, validationeval.BuiltinImplementations())...)
 	}
