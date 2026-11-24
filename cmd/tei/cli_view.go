@@ -486,6 +486,9 @@ func runViewCommand(args []string, out io.Writer) (int, error) {
 		result, err := readEnvironmentRows(
 			loaded.World, core.CanonicalID(*applicationID), core.CanonicalID(*patternID),
 			core.CanonicalID(*environmentID), values,
+			// The Workspace's choice is carried unchanged; the read resolves it
+			// to what this binary carries before any row is read.
+			scenarioImplementationSelections(loaded.OperatorImplementations),
 		)
 		if errors.Is(err, errViewEnvironmentInput) {
 			return fail("INVALID_ARGUMENT", err.Error(), 2)
