@@ -421,6 +421,33 @@ func requireKnowledgeSubject(out io.Writer, command, subjectKind, subjectID stri
 	return 0, nil, false
 }
 
+// validateKnowledgeDisclosureSelection checks -disclose against the closed set
+// the catalogue advertises before any Workspace is read, so an unknown section
+// is an argument mistake (INVALID_ARGUMENT, exit 2) rather than a build failure
+// (#3242). It mirrors normalizeDisclosureSections: every comma-separated part
+// is trimmed and checked, so a comma-joined value is validated part by part
+// against knowledgecontext.SelectableDisclosureSections.
+func validateKnowledgeDisclosureSelection(disclosure string) error {
+	known := make(map[string]struct{}, len(knowledgecontext.SelectableDisclosureSections))
+	for _, section := range knowledgecontext.SelectableDisclosureSections {
+		known[section] = struct{}{}
+	}
+	for _, raw := range strings.Split(disclosure, ",") {
+		section := strings.TrimSpace(raw)
+		if section == "" {
+			continue
+		}
+		if _, ok := known[section]; !ok {
+			return fmt.Errorf(
+				"unknown knowledge disclosure section %q; supported sections: %s",
+				section,
+				strings.Join(knowledgecontext.SelectableDisclosureSections, ", "),
+			)
+		}
+	}
+	return nil
+}
+
 // knowledgeContextJSON wraps knowledge-context in the command envelope. The
 // pre-envelope output had two shapes: the whole Context, or (with -disclose) a
 // DisclosureProjection. `mode` distinguishes them: context | disclosure.
@@ -438,6 +465,11 @@ func knowledgeContextJSON(out io.Writer, workspacePath, subjectKind, subjectID, 
 	}
 	if disclosure == "" && expectedDisclosureFingerprint != "" {
 		return resultInvalidArgument(out, "knowledge-context", "-expected-disclosure-fingerprint requires -disclose")
+	}
+	if disclosure != "" {
+		if err := validateKnowledgeDisclosureSelection(disclosure); err != nil {
+			return resultInvalidArgument(out, "knowledge-context", err.Error())
+		}
 	}
 	context, identity, err := buildKnowledgeContextWithIdentity(workspacePath, subjectKind, subjectID)
 	if err != nil {
