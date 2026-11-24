@@ -30,6 +30,15 @@ type OperatorImplementation struct {
 	// Numbers decides a rule for a multi-input operator. It receives the input
 	// name to value map. Values are non-nil only for inputs that are present.
 	Numbers func(values map[string]*big.Rat) (bool, error)
+	// Absent reads an absent value under the mapping the rule named. A rule may
+	// write `or <name>` after an input, and the declaration may state
+	// `absent as <name>`; the mapping says how an absent value is to be read.
+	//
+	// It is asked only when the input held no value and the rule named a
+	// mapping. A nil Absent, or ok=false for that mapping, means this
+	// implementation cannot read the absence that way, and the decision stays
+	// undecided instead of reading the absence as zero or as present.
+	Absent func(mapping string) (*big.Rat, bool)
 }
 
 // Operators is what an evaluation knows about declared operators: the
