@@ -1,4 +1,4 @@
-//go:build !tei_repair_only
+//go:build !tei_repair_only && !tei_api_only
 
 package main
 
