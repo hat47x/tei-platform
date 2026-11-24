@@ -965,10 +965,6 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"not after\" compares two dates of one record and accepts no scope")
 	}
-	if predicate == RulePredicateOperator && rule.Scope != nil {
-		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
-			"a declared operator takes one value and accepts no scope")
-	}
 	if predicate == RulePredicateRequiredIf && rule.Scope != nil {
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"required if\" is about one record and accepts no scope")

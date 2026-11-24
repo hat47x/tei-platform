@@ -291,6 +291,20 @@ type Operator struct {
 	Cases []OperatorCase `json:"cases,omitempty"`
 }
 
+// ReadsEveryRow reports whether this operator declares an input that reads
+// every row of a relation, written `of each row`. A rule that uses such an
+// operator is asked once for the whole relation instead of once per row, so a
+// reader that can only answer for one row must refuse it rather than answer it
+// row by row.
+func (o Operator) ReadsEveryRow() bool {
+	for _, input := range o.Inputs {
+		if input.OfEachRow {
+			return true
+		}
+	}
+	return false
+}
+
 // ValidationInputAssignment is one resolved input assignment of a rule: the
 // input name, the value assigned (a canonical attribute id or a constant), and
 // the absent-value mapping if the rule stated one.

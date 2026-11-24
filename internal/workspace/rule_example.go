@@ -98,6 +98,12 @@ func resolveRuleExamples(r *Result) error {
 			rules[rule.ID] = rule
 		}
 	}
+	operators := map[core.CanonicalID]semantic.Operator{}
+	for _, namespace := range r.World.Semantics {
+		for _, declared := range namespace.Operators {
+			operators[declared.ID] = declared
+		}
+	}
 
 	for _, pending := range r.pendingRuleExamples {
 		table := pending.table
@@ -178,7 +184,13 @@ func resolveRuleExamples(r *Result) error {
 				}
 				continue
 			}
-			aboutAllRows := rule.Kind == semantic.ValidationRelationUnique || rule.Kind == semantic.ValidationNoOverlap
+			// A rule that reads every row of a relation has one answer for all
+			// the records together, so it is written in the mark after
+			// expecting rather than as a column. That is true of a rule whose
+			// operator reads every row exactly as it is of a relation rule.
+			aboutAllRows := rule.Kind == semantic.ValidationRelationUnique ||
+				rule.Kind == semantic.ValidationNoOverlap ||
+				(rule.Kind == semantic.ValidationOperator && operators[rule.Operator].ReadsEveryRow())
 			switch {
 			case aboutAllRows && expectation.Row >= 0:
 				if err := reject(expectation.RuleSpan, fmt.Sprintf("rule %s is about all the rows together; write it in the mark after expecting, not as a column", rule.ID)); err != nil {

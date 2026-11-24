@@ -37,16 +37,29 @@ func TestRuleAuthoringSignatureDiagnosticsReachLoad(t *testing.T) {
 			ruleID: "sales.item.probe",
 		},
 		{
+			// The row reader reads numbers. An input of another type that
+			// states `of each row` is carried as a range the product path
+			// cannot read, so it stays refused at conversion.
 			name:   "input read over all rows",
-			body:   "namespace sales\noperator sales.op:\n  takes start: number of each row\n",
-			want:   "no place for an input read over all rows",
+			body:   "namespace sales\noperator sales.op:\n  takes start: presence of each row\n",
+			want:   "a row reader reads numbers over all rows",
 			ruleID: "sales.op",
 		},
 		{
-			name:   "refutation statement",
-			body:   "namespace sales\noperator sales.op:\n  takes start: number\n  refutes on some rows\n",
-			want:   "no place for a refutation statement",
+			// An operator that reads every row of a relation is asked once for
+			// the whole relation, so an input of it that is read once has no
+			// row to be read from.
+			name:   "input read once beside an input read over all rows",
+			body:   "namespace sales\noperator sales.op:\n  takes start: number\n  takes end: number of each row\n",
+			want:   "is not read over all rows, but another input is",
 			ruleID: "sales.op",
+		},
+		{
+			name: "row-scoped operator rule without a scope",
+			body: "namespace sales\noperator sales.op:\n  takes value: number of each row\n" +
+				"rule sales.item.probe:\n  sales.item.amount is sales.op\n",
+			want:   "reads every row of a relation, so this rule requires a scope",
+			ruleID: "sales.item.probe",
 		},
 		{
 			name: "undeclared value-absent mapping",

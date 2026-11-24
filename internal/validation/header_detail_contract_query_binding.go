@@ -128,12 +128,25 @@ func validateHeaderDetailBindingCoverage(
 	for _, id := range resolved.Application.Validations {
 		used[id] = true
 	}
+	declaredOperators := map[core.CanonicalID]semantic.Operator{}
+	for _, namespace := range w.Semantics {
+		for _, operator := range namespace.Operators {
+			declaredOperators[operator.ID] = operator
+		}
+	}
 	for _, namespace := range w.Semantics {
 		for _, rule := range namespace.Validations {
 			if !used[rule.ID] || rule.Relation != resolved.Relation.ID {
 				continue
 			}
-			if rule.Kind != semantic.ValidationRelationUnique && rule.Kind != semantic.ValidationNoOverlap {
+			// A rule about all the rows is a relation rule, or an operator
+			// rule whose operator reads every row of the relation. Both are
+			// refuted by a row the read returned and satisfied only when the
+			// read returned every row.
+			aboutAllRows := rule.Kind == semantic.ValidationRelationUnique ||
+				rule.Kind == semantic.ValidationNoOverlap ||
+				(rule.Kind == semantic.ValidationOperator && declaredOperators[rule.Operator].ReadsEveryRow())
+			if !aboutAllRows {
 				continue
 			}
 			out = append(out, Diagnostic{

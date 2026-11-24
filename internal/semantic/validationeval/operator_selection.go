@@ -62,6 +62,38 @@ func BuiltinImplementations() []NamedImplementation {
 			Number: func(value *big.Rat) (bool, error) {
 				return value.Sign() >= 0, nil
 			},
+			// The same check for an operator that reads every row of a
+			// relation: one column, and a negative value in any row of it is a
+			// counterexample. It is added here rather than as a second
+			// implementation because the selection names one implementation
+			// per operator, and which of the two functions decides is the
+			// declaration's `of each row`, not a second choice a Workspace
+			// makes.
+			NumberRows: func(rows map[string][]NumberReading) (Tri, error) {
+				if len(rows) != 1 {
+					return TriMaybe, fmt.Errorf("non-negative over all rows reads one input; %d were supplied", len(rows))
+				}
+				for _, column := range rows {
+					for _, row := range column {
+						switch row.State {
+						case ValuePresent:
+							if row.Value == nil {
+								return TriMaybe, fmt.Errorf("a row was reported as present without a value")
+							}
+							if row.Value.Sign() < 0 {
+								return TriNo, nil
+							}
+						case ValueNull, ValueNotFetched:
+							// A row that holds no value, or was not read, keeps
+							// the answer from being certain.
+							return TriMaybe, nil
+						default:
+							return TriMaybe, fmt.Errorf("a row was reported in the unknown state %q", row.State)
+						}
+					}
+				}
+				return TriYes, nil
+			},
 		},
 		{
 			ID:    "tei.number.non-zero",

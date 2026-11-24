@@ -297,10 +297,20 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 
 			switch rule.Kind {
 			case semantic.ValidationOperator:
-				if rule.Relation != "" {
-					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "operator semantic validation %s does not accept a relation", rule.ID))
-				}
 				operator, declared := operators[rule.Operator]
+				// An operator that reads every row of a relation is asked once
+				// for that relation, so the rule names it with `per <relation>`,
+				// in the same field the relation rules already use. An operator
+				// that reads one record has no relation to name.
+				if declared {
+					readsEveryRow := operator.ReadsEveryRow()
+					if rule.Relation != "" && !readsEveryRow {
+						out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "operator semantic validation %s does not accept a relation", rule.ID))
+					}
+					if rule.Relation == "" && readsEveryRow {
+						out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_REQUIRED", "operator semantic validation %s reads every row of a relation, so it requires one", rule.ID))
+					}
+				}
 				if !declared {
 					out = append(out, errFor(
 						ruleSubject,

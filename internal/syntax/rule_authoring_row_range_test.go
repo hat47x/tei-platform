@@ -33,37 +33,36 @@ operator sales.op:
 	}
 }
 
-// Neither statement has a place in the meaning yet, so a declaration that states
-// one is refused by name rather than converted with the statement dropped. One
-// problem must not be reported as the other.
-func TestRuleAuthoringRefusesUnsupportedRangeAndRefutationByTheirOwnNames(t *testing.T) {
+// The range and the refutation statement are carried into the meaning now, so a
+// declaration that states them is converted. What is still refused is a
+// combination the product path cannot evaluate, and each is refused by its own
+// name, at its own span: one problem must not be reported as another.
+func TestRuleAuthoringRefusesWhatCannotBeEvaluatedByTheirOwnNames(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, want string
 	}{
 		{
-			name: "range",
-			body: "operator sales.op:\n  takes start: number of each row\n",
-			want: `no place for an input read over all rows`,
+			// The row reader reads numbers. An input of another type would be
+			// carried as a range nothing can read.
+			name: "range on an input with no row reader",
+			body: "operator sales.op:\n  takes start: presence of each row\n",
+			want: `a row reader reads numbers over all rows`,
 		},
 		{
-			name: "refutation",
-			body: "operator sales.op:\n  takes start: number\n  refutes on some rows\n",
-			want: "no place for a refutation statement",
-		},
-		{
-			// The same statement on a later input. Before this it was carried
-			// into the declaration and the rule was answered row by row while
-			// the Source said it should be asked once per scope key.
-			name: "range on a later input",
+			// An operator that reads every row of a relation is asked once for
+			// the whole relation. An input read once has no row to be read
+			// from, and reading it from the first row would answer the whole
+			// relation from one record.
+			name: "range on one input only",
 			body: "operator sales.op:\n  takes start: number\n  takes end: number of each row\n",
-			want: `no place for an input read over all rows`,
+			want: `is not read over all rows, but another input is`,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := "namespace sales\n" + tc.body
 			_, issues := syntax.RuleNamespace(mustParseRangeFile(t, src))
 			if len(issues) != 1 {
-				t.Fatalf("issues=%+v, want the unsupported-statement one", issues)
+				t.Fatalf("issues=%+v, want the un-evaluable one", issues)
 			}
 			if !strings.Contains(issues[0].Msg, tc.want) {
 				t.Fatalf("message=%q, want it to mention %q", issues[0].Msg, tc.want)
@@ -72,6 +71,35 @@ func TestRuleAuthoringRefusesUnsupportedRangeAndRefutationByTheirOwnNames(t *tes
 				t.Fatal("the issue carries no span")
 			}
 		})
+	}
+}
+
+// The range and the refutation statement reach the meaning. `of each row`
+// lands on the input declaration it was written on, and `refutes on some rows`
+// on the operator, because that is what each of them states about.
+func TestRuleAuthoringCarriesTheRangeAndTheRefutationIntoTheMeaning(t *testing.T) {
+	src := `namespace sales
+
+operator sales.below_limit:
+  takes value: number of each row
+  refutes on some rows
+`
+	value, issues := syntax.RuleNamespace(mustParseRangeFile(t, src))
+	if len(issues) != 0 {
+		t.Fatalf("issues=%+v, want none", issues)
+	}
+	if len(value.Operators) != 1 {
+		t.Fatalf("operators=%+v", value.Operators)
+	}
+	operator := value.Operators[0]
+	if len(operator.Inputs) != 1 || !operator.Inputs[0].OfEachRow {
+		t.Fatalf("inputs=%+v, want the one input read over all rows", operator.Inputs)
+	}
+	if !operator.RefutesOnSomeRows {
+		t.Fatal("the refutation statement was not carried")
+	}
+	if !operator.ReadsEveryRow() {
+		t.Fatal("the contract does not report that it reads every row")
 	}
 }
 

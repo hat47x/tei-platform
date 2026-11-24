@@ -70,8 +70,9 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 	// needs the declarations.
 	declaredInputs := declaredOperatorInputNames(file.Operators)
 	declaredMappings := declaredOperatorMappings(file.Operators)
+	declaredRowScoped := declaredOperatorsReadingEveryRow(file.Operators)
 	for _, rule := range file.Rules {
-		validation, issue := ruleToValidationWithInputs(rule, declaredInputs, declaredMappings)
+		validation, issue := ruleToValidationWithInputs(rule, declaredInputs, declaredMappings, declaredRowScoped)
 		if issue != nil {
 			issues = append(issues, *issue)
 			continue
@@ -86,25 +87,6 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 	// a source where only the operator failed cannot hand a rule to the
 	// validator as plausible meaning (#4359).
 	for _, operator := range file.Operators {
-		// A range or a refutation statement has no place in the meaning yet.
-		// Converting would produce an operator that silently ignores what the
-		// declaration says about how it is asked.
-		if operator.OfEachRow {
-			issues = append(issues, RuleConversionIssue{
-				RuleID: operator.ID, Span: operator.OfEachRowSpan,
-				Msg: "the meaning has no place for an input read over all rows yet; " +
-					"an operator that states \"of each row\" cannot be converted until the normalization carries it",
-			})
-			continue
-		}
-		if operator.RefutesOnSomeRows {
-			issues = append(issues, RuleConversionIssue{
-				RuleID: operator.ID, Span: operator.RefutesOnSomeRowsSpan,
-				Msg: "the meaning has no place for a refutation statement yet; " +
-					"an operator that states \"refutes on some rows\" cannot be converted until the normalization carries it",
-			})
-			continue
-		}
 		input, ok := OperatorInputFor(operator.Input)
 		if !ok {
 			issues = append(issues, RuleConversionIssue{
@@ -114,6 +96,7 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			continue
 		}
 		declarations := make([]semantic.OperatorInputDeclaration, 0, len(operator.Inputs))
+		refused := false
 		for _, inp := range operator.Inputs {
 			inputType, ok := OperatorInputFor(inp.Word)
 			if !ok {
@@ -121,19 +104,20 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 					RuleID: operator.ID, Span: inp.Span,
 					Msg: fmt.Sprintf("operator input %q has no existing operator input", inp.Word),
 				})
+				refused = true
 				continue
 			}
-			// The same statement on a later input is refused for the same
-			// reason: it says the rule is asked once per scope key rather than
-			// once per row, and the meaning has no place for that yet. Carrying
-			// it into a declaration the evaluator ignores would answer the rule
-			// row by row while the Source says otherwise.
-			if inp.OfEachRow {
+			// The row reader reads numbers. An input of another type that
+			// states `of each row` would be carried as a range the product
+			// path cannot read, and the rule would be accepted and then
+			// answered from nothing.
+			if inp.OfEachRow && inputType != semantic.OperatorInputNumber {
 				issues = append(issues, RuleConversionIssue{
 					RuleID: operator.ID, Span: inp.OfEachRowSpan,
-					Msg: "the meaning has no place for an input read over all rows yet; " +
-						"an operator that states \"of each row\" cannot be converted until the normalization carries it",
+					Msg: fmt.Sprintf("input %q is read over all rows, but a row reader reads numbers over all rows; an input of type %q cannot be evaluated yet",
+						operatorInputName(inp), inp.Word),
 				})
+				refused = true
 				continue
 			}
 			declarations = append(declarations, semantic.OperatorInputDeclaration{
@@ -143,7 +127,20 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 				AbsentAs:  inp.AbsentAs,
 			})
 		}
-		if len(declarations) != len(operator.Inputs) {
+		if refused {
+			continue
+		}
+		// An operator that reads over the rows is asked once for the whole
+		// relation. An input of the same operator that is not read over the
+		// rows would have to be read from one of those rows, and nothing says
+		// which one: reading it from the first would answer the whole relation
+		// from one record. Such a declaration is refused instead.
+		if index, mixed, ok := firstInputNotOverRows(operator); ok {
+			issues = append(issues, RuleConversionIssue{
+				RuleID: operator.ID, Span: mixed.Span,
+				Msg: fmt.Sprintf("input %d (%s) of operator %s is not read over all rows, but another input is; an operator that reads every row of a relation reads every one of its inputs that way, because an input read once has no row to be read from",
+					index+1, operatorInputName(mixed), operator.ID),
+			})
 			continue
 		}
 		// InputName is what the author wrote, and nothing more. Leaving it empty
@@ -152,9 +149,10 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 		// is the same reading the surface already had.
 		out.Operators = append(out.Operators, semantic.Operator{
 			ID: operator.ID, Symbol: operator.Symbol, Input: input,
-			InputName: operator.InputName,
-			AbsentAs:  operator.AbsentAs,
-			Inputs:    declarations,
+			InputName:         operator.InputName,
+			AbsentAs:          operator.AbsentAs,
+			Inputs:            declarations,
+			RefutesOnSomeRows: operator.RefutesOnSomeRows,
 		})
 	}
 	// A rule that names an operator this conversion refused has no operator
@@ -270,6 +268,53 @@ func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.Canonica
 	return names
 }
 
+// declaredOperatorsReadingEveryRow indexes, per declared operator, whether the
+// declaration states `of each row` on one of its inputs. Every declared
+// operator gets an entry, so "declared and reads one record" is
+// distinguishable from "not declared in this source at all".
+func declaredOperatorsReadingEveryRow(operators []OperatorAuthoring) map[core.CanonicalID]bool {
+	out := make(map[core.CanonicalID]bool, len(operators))
+	for _, operator := range operators {
+		out[operator.ID] = operatorReadsEveryRow(operator)
+	}
+	return out
+}
+
+// operatorReadsEveryRow reports whether the declaration states `of each row` on
+// any of its inputs.
+func operatorReadsEveryRow(operator OperatorAuthoring) bool {
+	for _, input := range operator.Inputs {
+		if input.OfEachRow {
+			return true
+		}
+	}
+	return false
+}
+
+// firstInputNotOverRows names the first input of an operator that reads over
+// the rows but is itself not read over the rows. The second result is false
+// when the operator reads one record, so a caller never reports a mixture that
+// was not authored.
+func firstInputNotOverRows(operator OperatorAuthoring) (int, OperatorInput, bool) {
+	if !operatorReadsEveryRow(operator) {
+		return 0, OperatorInput{}, false
+	}
+	for index, input := range operator.Inputs {
+		if !input.OfEachRow {
+			return index, input, true
+		}
+	}
+	return 0, OperatorInput{}, false
+}
+
+// operatorInputName is how an input is addressed when it declares no name.
+func operatorInputName(input OperatorInput) string {
+	if input.Name == "" {
+		return "value"
+	}
+	return input.Name
+}
+
 // ruleToValidationWithInputs refuses an assignment that names an input the
 // referenced operator does not declare.
 //
@@ -281,15 +326,16 @@ func ruleToValidationWithInputs(
 	rule RuleAuthoring,
 	declaredInputs map[core.CanonicalID][]string,
 	declaredMappings map[core.CanonicalID]map[string][]string,
+	declaredRowScoped map[core.CanonicalID]bool,
 ) (semantic.Validation, *RuleConversionIssue) {
 	if rule.Operator == nil || len(rule.Inputs) == 0 {
-		return ruleToValidation(rule)
+		return ruleToValidation(rule, declaredRowScoped)
 	}
 	declared, known := declaredInputs[core.CanonicalID(rule.Operator.Text)]
 	if !known {
 		// The operator is not declared in this source, so its input names are
 		// unknown here; only the value check applies.
-		return refuseAssignedInputs(rule)
+		return refuseAssignedInputs(rule, declaredRowScoped)
 	}
 	for _, assignment := range rule.Inputs {
 		if !inputNameDeclared(declared, assignment.Name) {
@@ -347,7 +393,7 @@ func ruleToValidationWithInputs(
 	}
 	// Other assigned inputs are carried into the semantic validation. The
 	// evaluator decides what to do with them.
-	validation, issue := ruleToValidation(rule)
+	validation, issue := ruleToValidation(rule, declaredRowScoped)
 	if issue != nil {
 		return validation, issue
 	}
@@ -364,9 +410,9 @@ func ruleToValidationWithInputs(
 
 // refuseAssignedInputs refuses a rule that assigns an operator input. The
 // meaning has no field for the value yet, so converting would drop it.
-func refuseAssignedInputs(rule RuleAuthoring) (semantic.Validation, *RuleConversionIssue) {
+func refuseAssignedInputs(rule RuleAuthoring, declaredRowScoped map[core.CanonicalID]bool) (semantic.Validation, *RuleConversionIssue) {
 	if len(rule.Inputs) == 0 {
-		return ruleToValidation(rule)
+		return ruleToValidation(rule, declaredRowScoped)
 	}
 	return semantic.Validation{}, &RuleConversionIssue{
 		RuleID: rule.ID, Span: rule.Inputs[0].NameSpan,
@@ -453,7 +499,7 @@ func inputNameDeclared(names []string, name string) bool {
 	return false
 }
 
-func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionIssue) {
+func ruleToValidation(rule RuleAuthoring, declaredRowScoped map[core.CanonicalID]bool) (semantic.Validation, *RuleConversionIssue) {
 	kind, ok := RuleValidationKind(rule.Predicate)
 	if !ok {
 		return semantic.Validation{}, &RuleConversionIssue{
@@ -561,6 +607,37 @@ func ruleToValidation(rule RuleAuthoring) (semantic.Validation, *RuleConversionI
 			return semantic.Validation{}, issue
 		}
 		validation.Relation = relation
+	} else if kind == semantic.ValidationOperator {
+		// An operator that reads every row of a relation is asked once for that
+		// relation, so the rule has to say which relation. The scope is the
+		// same `per <relation>` the relation rules already write, carried in the
+		// same Validation.Relation field.
+		readsRows, declared := declaredRowScoped[core.CanonicalID(rule.Operator.Text)]
+		switch {
+		case rule.Scope == nil:
+			if readsRows && declared {
+				return semantic.Validation{}, &RuleConversionIssue{
+					RuleID: rule.ID, Span: rule.PredicateSpan,
+					Msg: fmt.Sprintf("operator %s reads every row of a relation, so this rule requires a scope; write `per <relation>`",
+						rule.Operator.Text),
+				}
+			}
+		case declared && !readsRows:
+			return semantic.Validation{}, &RuleConversionIssue{
+				RuleID: rule.ID, Span: rule.ScopeSpan,
+				Msg: fmt.Sprintf("operator %s reads one record, so this rule accepts no scope, but %q was authored",
+					rule.Operator.Text, rule.Scope.Text),
+			}
+		default:
+			// The operator is declared in another source, so whether it reads
+			// every row is not known here. The scope is carried and the
+			// Workspace validator, which sees every declaration, decides.
+			relation, issue := ruleCanonicalReference(rule, *rule.Scope, "scope")
+			if issue != nil {
+				return semantic.Validation{}, issue
+			}
+			validation.Relation = relation
+		}
 	} else if rule.Scope != nil {
 		return semantic.Validation{}, &RuleConversionIssue{
 			RuleID: rule.ID, Span: rule.ScopeSpan,

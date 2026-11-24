@@ -115,6 +115,28 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 		return none, fmt.Errorf("operator %s is declared to take %s, but its implementation takes %s", rule.Operator, contract.Input, implementation.Input)
 	}
 
+	// An operator that reads every row of a relation is decided by a row
+	// function, and an operator that reads one record is decided by a value
+	// function. The one that does not apply is not asked for: a
+	// single-value implementation cannot answer a rule about all the rows, and
+	// a row function has no value to be handed.
+	if contract.ReadsEveryRow() {
+		if implementation.NumberRows == nil {
+			return none, fmt.Errorf("the implementation of operator %s cannot decide a rule that reads every row of a relation", rule.Operator)
+		}
+		// An example states one value, so it can state the meaning of a
+		// single-input operator only. A contract that reads every row has no
+		// example this shape can state, and the row function is not asked
+		// about one it never saw.
+		if len(contract.Cases) > 0 {
+			return none, fmt.Errorf("operator %s reads every row of a relation and states %d examples; an example states one value, so it cannot state a rule that is decided from the rows together", rule.Operator, len(contract.Cases))
+		}
+		return implementation, nil
+	}
+	if implementation.NumberRows != nil && implementation.Number == nil && implementation.Numbers == nil {
+		return none, fmt.Errorf("the implementation of operator %s decides a rule that reads every row of a relation, but the operator reads one record", rule.Operator)
+	}
+
 	// Reject an implementation that does not match the arity of the contract.
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil

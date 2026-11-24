@@ -436,6 +436,14 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		}
 		contract := declared[0]
 		inputs := contractInputs(contract)
+		// An operator that reads every row of the relation is asked once for
+		// the whole relation: every input is a column of the rows that were
+		// read, the implementation answers a three-valued answer about them,
+		// and the coverage and the operator's own refutation statement decide
+		// what that answer means. It is the same Decide path, not a second one.
+		if contract.ReadsEveryRow() {
+			return decideOperatorRows(rule, contract, source, implementation)
+		}
 		// The rule subject supplies the first input, and only it. A rule that
 		// also assigns that input by name binds it twice, so the instruction
 		// is refused instead of read.
