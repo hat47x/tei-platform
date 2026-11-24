@@ -50,6 +50,14 @@ func TestRuleAuthoringRefusesUnsupportedRangeAndRefutationByTheirOwnNames(t *tes
 			body: "operator sales.op:\n  takes start: number\n  refutes on some rows\n",
 			want: "no place for a refutation statement",
 		},
+		{
+			// The same statement on a later input. Before this it was carried
+			// into the declaration and the rule was answered row by row while
+			// the Source said it should be asked once per scope key.
+			name: "range on a later input",
+			body: "operator sales.op:\n  takes start: number\n  takes end: number of each row\n",
+			want: `no place for an input read over all rows`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := "namespace sales\n" + tc.body

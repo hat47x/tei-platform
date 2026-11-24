@@ -116,6 +116,19 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 				})
 				continue
 			}
+			// The same statement on a later input is refused for the same
+			// reason: it says the rule is asked once per scope key rather than
+			// once per row, and the meaning has no place for that yet. Carrying
+			// it into a declaration the evaluator ignores would answer the rule
+			// row by row while the Source says otherwise.
+			if inp.OfEachRow {
+				issues = append(issues, RuleConversionIssue{
+					RuleID: operator.ID, Span: inp.OfEachRowSpan,
+					Msg: "the meaning has no place for an input read over all rows yet; " +
+						"an operator that states \"of each row\" cannot be converted until the normalization carries it",
+				})
+				continue
+			}
 			declarations = append(declarations, semantic.OperatorInputDeclaration{
 				Name:      inp.Name,
 				Type:      inputType,
