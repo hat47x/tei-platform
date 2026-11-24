@@ -121,7 +121,7 @@ func inspectSubject(root string, subject sourceindex.Subject) (SubjectInspection
 	}
 	if !SupportedInspectionKind(subject.Kind) {
 		return SubjectInspection{}, &InspectionError{
-			Code: InspectionUnsupportedKind, Message: fmt.Sprintf("inspect does not support subject kind %q", subject.Kind),
+			Code: InspectionUnsupportedKind, Message: unsupportedInspectionKindMessage(subject.Kind),
 		}
 	}
 	loaded, err := workspace.Load(root)
@@ -179,6 +179,19 @@ func SupportedInspectionKind(kind string) bool {
 		}
 	}
 	return false
+}
+
+// unsupportedInspectionKindMessage names the kind the caller used and the
+// kinds this surface resolves. `inspect`, `model search` and `trace` all accept
+// closed kind sets that the catalogue publishes; answering "does not support
+// subject kind X" without the list tells the caller the value is wrong and
+// nothing about what to write instead (#3242).
+//
+// The list is read from InspectionSubjectKinds, so it cannot drift from what
+// SupportedInspectionKind accepts.
+func unsupportedInspectionKindMessage(kind string) string {
+	return fmt.Sprintf("inspect does not support subject kind %q; supported kinds: %s",
+		kind, strings.Join(InspectionSubjectKinds, ", "))
 }
 
 // applicationReleaseSet is the Canonical object for an application-release
@@ -368,7 +381,7 @@ func inspectCanonical(world ir.World, subject sourceindex.Subject) (json.RawMess
 		}
 	default:
 		return nil, &InspectionError{
-			Code: InspectionUnsupportedKind, Message: fmt.Sprintf("inspect does not support subject kind %q", subject.Kind),
+			Code: InspectionUnsupportedKind, Message: unsupportedInspectionKindMessage(subject.Kind),
 		}
 	}
 	if len(matches) == 0 {

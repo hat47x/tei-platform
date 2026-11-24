@@ -111,6 +111,11 @@ const (
 	UndecidedRelationKeyNotFetched UndecidedReason = "relation-key-not-fetched"
 	UndecidedRelationPartiallyRead UndecidedReason = "relation-partially-read"
 	UndecidedRelationKeyNull       UndecidedReason = "relation-key-null"
+	// UndecidedReadAttemptUnknown is reported when a rule reads more than one
+	// attribute and the reader cannot say that they came from the same Read
+	// Attempt. Having the values is not the same as knowing they are one
+	// snapshot (decision section 14.2 B-10), so the rule stays undecided.
+	UndecidedReadAttemptUnknown UndecidedReason = "read-attempt-unknown"
 )
 
 // Undecided is the reason and the place a decision stopped at.
@@ -155,6 +160,17 @@ var errLegacyNoNumber = errors.New("legacy source returned no number")
 // returns is present and complete; a nil number has no known reason and stays
 // the error it always was.
 type legacySource struct{ source Source }
+
+// legacyAttempt names the single read the legacy Source interface describes.
+// That interface answers for one record ("the value of this attribute of this
+// record"), so every attribute it returns belongs to that one record's read.
+// A reader that can report several attempts implements AttributedSource and
+// its own attempt is used instead.
+const legacyAttempt = "legacy-single-record"
+
+func (l legacySource) ReadAttempt(core.CanonicalID) (string, bool) {
+	return legacyAttempt, true
+}
 
 func (l legacySource) ReadNumber(attribute core.CanonicalID) (NumberReading, error) {
 	value, err := l.source.Number(attribute)
@@ -401,11 +417,23 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			return Decision{Undecided: undecided}, nil
 		}
 		values[inputs[0].Name] = new(big.Rat).Set(value)
+		// The subject and every attribute-assigned input must belong to one
+		// Read Attempt. Having all three values is not the same as knowing they
+		// are one snapshot (section 14.2 B-10), so the origin of each input is
+		// collected while the values are, and compared before the operator is
+		// asked.
+		origins := []inputOrigin{dataOrigin(inputs[0].Name, string(rule.Attribute), source)}
 		for _, input := range inputs[1:] {
 			// Every input after the first must be assigned by name; one that
 			// is not is not silently read as the subject's value or as zero.
-			if findInputAssignment(rule, input.Name) == nil {
+			assignment := findInputAssignment(rule, input.Name)
+			if assignment == nil {
 				return Decision{}, fmt.Errorf("semantic validation %s does not assign operator %s input %q; every input after the first must be assigned", rule.ID, rule.Operator, input.Name)
+			}
+			if isAttributeReference(assignment.Value) {
+				origins = append(origins, dataOrigin(input.Name, assignment.Value, source))
+			} else {
+				origins = append(origins, constantOrigin(input.Name))
 			}
 			got, rerr := readAssignedInput(rule, input, values, source)
 			if rerr != nil {
@@ -414,6 +442,13 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			if got != nil {
 				return Decision{Undecided: got}, nil
 			}
+		}
+		unknown, aerr := requireSameAttempt(rule, origins)
+		if aerr != nil {
+			return Decision{}, aerr
+		}
+		if unknown != nil {
+			return Decision{Undecided: unknown}, nil
 		}
 		var satisfied bool
 		if implementation.Numbers != nil {

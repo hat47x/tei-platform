@@ -20,6 +20,8 @@ package validationread
 import (
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 	"time"
 
 	"tei/internal/core"
@@ -44,6 +46,11 @@ type Detail struct {
 	coverage validationeval.Coverage
 	rows     []driver.ContractQueryRow
 	kinds    map[core.CanonicalID]valueKind
+	// attempt identifies the read these rows came from. Every attribute of
+	// every row was read in this one attempt, so a rule that reads two
+	// attributes of one row reads them from this same attempt. It is opaque:
+	// callers compare it for equality only (decision section 14.2 B-10).
+	attempt string
 }
 
 // FromHeaderDetail reads the detail rows of one header-detail execution: the
@@ -67,6 +74,10 @@ func FromHeaderDetail(semantics []semantic.Namespace, execution driver.HeaderDet
 }
 
 // NewDetail reads rows as the rows of relation, whose records are target.
+//
+// The rows are one read attempt: they were returned by one execution of one
+// Contract Query. The attempt is recorded so a rule that reads more than one
+// attribute can be refused when those attributes did not come from one read.
 func NewDetail(semantics []semantic.Namespace, relation semantic.Relation, target semantic.Data, rows []driver.ContractQueryRow, coverage validationeval.Coverage) (*Detail, error) {
 	switch coverage {
 	case "", validationeval.CoverageComplete, validationeval.CoveragePartial:
@@ -100,7 +111,13 @@ func NewDetail(semantics []semantic.Namespace, relation semantic.Relation, targe
 			}
 		}
 	}
-	return &Detail{relation: relation, coverage: coverage, rows: rows, kinds: kinds}, nil
+	return &Detail{
+		relation: relation,
+		coverage: coverage,
+		rows:     rows,
+		kinds:    kinds,
+		attempt:  readAttemptIdentity(rows),
+	}, nil
 }
 
 // Len is the number of rows.
@@ -289,6 +306,15 @@ func (d *Detail) ReadDate(attribute core.CanonicalID) (validationeval.DateReadin
 }
 
 // ReadRelationKeys reads the value of attribute in every row.
+// ReadAttempt reports the read these rows came from. Every attribute of every
+// row was read in this one execution, so two attributes of one row share it.
+func (d *Detail) ReadAttempt(core.CanonicalID) (string, bool) {
+	if d.attempt == "" {
+		return "", false
+	}
+	return d.attempt, true
+}
+
 func (d *Detail) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
 	if err := d.checkRelation(relation); err != nil {
 		return validationeval.RelationReading{}, err
@@ -336,6 +362,12 @@ type Row struct {
 	index  int
 }
 
+// ReadAttempt reports the attempt the row was read in. One row of a Detail is
+// one row of the same read, so every attribute of it shares that attempt.
+func (r Row) ReadAttempt(attribute core.CanonicalID) (string, bool) {
+	return validationeval.AttributedSource(r.detail).ReadAttempt(attribute)
+}
+
 func (r Row) ReadNumber(attribute core.CanonicalID) (validationeval.NumberReading, error) {
 	return r.detail.readNumber(r.index, attribute)
 }
@@ -347,4 +379,37 @@ func (r Row) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, e
 // ReadRelationKeys refuses: one row is not the rows of a relation.
 func (r Row) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
 	return validationeval.RelationReading{}, fmt.Errorf("relation %s was asked of one row; a rule about all the rows reads the Detail", relation)
+}
+
+// readAttemptIdentity names one read of these rows. It is built from the rows
+// themselves, so one Detail never reports two different attempts and two
+// Details never report the same one. The value is opaque and is compared for
+// equality only.
+func readAttemptIdentity(rows []driver.ContractQueryRow) string {
+	if len(rows) == 0 {
+		return "rows:0"
+	}
+	var builder strings.Builder
+	builder.WriteString("rows:")
+	builder.WriteString(strconv.Itoa(len(rows)))
+	for _, row := range rows {
+		for attribute := range row.Attributes {
+			builder.WriteString("\x00")
+			builder.WriteString(string(attribute))
+		}
+	}
+	return fmt.Sprintf("read:%x", fnv64(builder.String()))
+}
+
+func fnv64(text string) uint64 {
+	const (
+		offset = 14695981039346656037
+		prime  = 1099511628211
+	)
+	var hash uint64 = offset
+	for i := 0; i < len(text); i++ {
+		hash ^= uint64(text[i])
+		hash *= prime
+	}
+	return hash
 }
