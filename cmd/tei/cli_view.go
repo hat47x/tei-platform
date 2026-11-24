@@ -608,10 +608,27 @@ func writeDestinationReadText(out io.Writer, read destinationRead) (int, error) 
 	if _, err := fmt.Fprintf(out, "coverage %s\n", read.Coverage); err != nil {
 		return 2, err
 	}
+	// Coverage is a verdict, and a reader of the text form has no JSON to look
+	// in for the ground of it. Measured before this was printed: `coverage
+	// partial` appeared alone, while the same read's JSON carried the reason
+	// the qualification stopped at, so a reader could not tell an undeclared
+	// binding from a Query the read could not confirm. A reason is printed when
+	// there is one, and the basis when coverage was confirmed.
+	if read.CoverageReason != "" {
+		if _, err := fmt.Fprintf(out, "coverageReason %s\n", read.CoverageReason); err != nil {
+			return 2, err
+		}
+	}
+	if read.CoverageBasis != "" {
+		if _, err := fmt.Fprintf(out, "coverageBasis %s\n", read.CoverageBasis); err != nil {
+			return 2, err
+		}
+	}
 	// The declaration is the binding's statement, not an observation. It is
-	// printed as stated and unchecked so a reader of the text form cannot
-	// mistake it for measured coverage. An undeclared binding prints nothing,
-	// which stays distinguishable from "declared but unchecked".
+	// printed as stated, with whether this read confirmed it, so a reader of the
+	// text form cannot mistake the statement for measured coverage. An
+	// undeclared binding prints nothing, which stays distinguishable from
+	// "declared but unconfirmed".
 	if read.Declaration != nil {
 		// A binding that states both "every row" and "only some rows" is
 		// self-contradictory. The static validator rejects it, but the view path
