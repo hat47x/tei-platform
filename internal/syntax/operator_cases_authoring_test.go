@@ -64,7 +64,11 @@ func TestOperatorCasesTableIsReadAsWritten(t *testing.T) {
 
 func TestOperatorCasesTableRefusals(t *testing.T) {
 	table := func(mark, header, rows string) string {
-		return mark + "\n" + header + "\n| --- | --- |\n" + rows + "\n"
+		// The delimiter row must have one cell per header cell, and tables now
+		// stand either one value column or one column per declared input.
+		cells := strings.Count(header, "|") - 1
+		delimiter := "|" + strings.Repeat(" --- |", cells)
+		return mark + "\n" + header + "\n" + delimiter + "\n" + rows + "\n"
 	}
 	const mark = "<!-- tei: cases of sales.op -->"
 	const header = "| value | expect |"
@@ -73,9 +77,8 @@ func TestOperatorCasesTableRefusals(t *testing.T) {
 	}{
 		{"mark in another form", table("<!-- tei: cases for sales.op -->", header, "| 1 | satisfied |"), "<!-- tei:", "unknown tei mark"},
 		{"operator without a namespace", table("<!-- tei: cases of op -->", header, "| 1 | satisfied |"), "op -->", "not a qualified canonical id"},
-		{"unknown column", table(mark, "| value | result |", "| 1 | satisfied |"), "result", "unknown column"},
 		{"no expect column", table(mark, "| value | note |", "| 1 | x |"), "<!-- tei:", "needs the column \"expect\""},
-		{"column written twice", table(mark, "| value | value |", "| 1 | 1 |"), "value |\n", "more than once"},
+		{"column written twice", table(mark, "| value | value | expect |", "| 1 | 1 | satisfied |"), "value | value |", "more than once"},
 		{"empty value", table(mark, header, "|  | satisfied |"), "|  | satisfied", "value cell is empty"},
 		{"empty expectation", table(mark, header, "| 1 |  |"), "| 1 |  |", "no expected result"},
 		{"expectation in other words", table(mark, header, "| 1 | ok |"), "ok |", "satisfied or not-satisfied"},
@@ -110,5 +113,90 @@ func TestOperatorCasesTableRefusals(t *testing.T) {
 				t.Fatalf("error offset=%d, want within %q at %d", parseErr.Pos.Offset, tc.at, want)
 			}
 		})
+	}
+}
+
+// A multi-input operator states its example as one column per declared input.
+// The design's within(value, low, high) names its first input "value", so that
+// column is an input name here, not the single-value form.
+func TestOperatorCasesTableReadsOneColumnPerInput(t *testing.T) {
+	src := "<!-- tei: cases of sales.within -->\n" +
+		"| value | low | high | expect |\n" +
+		"| --- | --- | --- | --- |\n" +
+		"| 3 | 0 | 5 | satisfied |\n" +
+		"| 6 | 0 | 5 | not-satisfied |\n"
+	document, err := syntax.ScanTEIMarkdownDocument(src)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	parsed, err := syntax.ParseOperatorCasesTable(document.Tables[0])
+	if err != nil {
+		t.Fatalf("per-input example table was refused: %v", err)
+	}
+	if len(parsed.Cases) != 2 {
+		t.Fatalf("cases=%d, want 2", len(parsed.Cases))
+	}
+	first := parsed.Cases[0].Value
+	if first.Inputs == nil {
+		t.Fatal("the example carries no per-input values")
+	}
+	if len(first.Inputs) != 3 || first.Inputs["value"] != "3" ||
+		first.Inputs["low"] != "0" || first.Inputs["high"] != "5" {
+		t.Fatalf("inputs=%v, want value/low/high", first.Inputs)
+	}
+	if !first.Satisfied {
+		t.Fatal("the first example should be satisfied")
+	}
+	if parsed.Cases[1].Value.Satisfied {
+		t.Fatal("the second example should be not-satisfied")
+	}
+	// The cell spans point at each input's own cell, so a diagnostic can name it.
+	for name := range first.Inputs {
+		span, ok := parsed.Cases[0].InputSpans[name]
+		if !ok || span.End.Offset <= span.Start.Offset {
+			t.Fatalf("input %q has no usable span: %+v", name, span)
+		}
+	}
+}
+
+// Two examples that state the same values are the same example, however they are
+// written.
+func TestOperatorCasesTableRefusesTheSamePerInputExampleTwice(t *testing.T) {
+	src := "<!-- tei: cases of sales.within -->\n" +
+		"| value | low | high | expect |\n" +
+		"| --- | --- | --- | --- |\n" +
+		"| 3 | 0 | 5 | satisfied |\n" +
+		"| 3.0 | 0 | 5 | not-satisfied |\n"
+	document, err := syntax.ScanTEIMarkdownDocument(src)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	_, err = syntax.ParseOperatorCasesTable(document.Tables[0])
+	var parseErr *syntax.ParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("a repeated per-input example was accepted or unlocated: %v", err)
+	}
+	if !strings.Contains(parseErr.Msg, "more than once") {
+		t.Fatalf("message=%q, want the duplicate refusal", parseErr.Msg)
+	}
+}
+
+// A blank cell states nothing. It must not be read as zero.
+func TestOperatorCasesTableRefusesABlankInputCell(t *testing.T) {
+	src := "<!-- tei: cases of sales.within -->\n" +
+		"| value | low | high | expect |\n" +
+		"| --- | --- | --- | --- |\n" +
+		"| 3 |  | 5 | satisfied |\n"
+	document, err := syntax.ScanTEIMarkdownDocument(src)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	_, err = syntax.ParseOperatorCasesTable(document.Tables[0])
+	var parseErr *syntax.ParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("a blank input cell was accepted or unlocated: %v", err)
+	}
+	if !strings.Contains(parseErr.Msg, "is empty") {
+		t.Fatalf("message=%q, want the empty-cell refusal", parseErr.Msg)
 	}
 }

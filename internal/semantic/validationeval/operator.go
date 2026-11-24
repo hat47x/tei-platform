@@ -3,6 +3,7 @@ package validationeval
 import (
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 
 	"tei/internal/core"
@@ -143,30 +144,113 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 // read as if its one value bound the first input: the remaining inputs would
 // go unstated and the example would say something the author never wrote.
 func checkOperatorCases(contract semantic.Operator, implementation OperatorImplementation) error {
-	if len(contract.Cases) > 0 && len(contract.Inputs) > 1 {
-		return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares %d inputs (%s), but its examples carry one value; an example can state a single-input operator only",
-			contract.ID, len(contract.Inputs), operatorInputNames(contract.Inputs))
-	}
+	inputs := contractInputs(contract)
+	multi := len(inputs) > 1
 	for _, example := range contract.Cases {
-		value, err := semantic.ParseOperatorCaseValue(example.Value)
-		if err != nil {
-			return fmt.Errorf("operator %s has an unreadable example: %w", contract.ID, err)
+		// An example states either one value or one value per declared input.
+		// Which form it uses must match the signature: a multi-input example
+		// read as a single value would leave the other inputs unstated, and a
+		// single-input operator given per-input columns would be read as
+		// something the author never wrote.
+		if example.Inputs != nil {
+			if !multi {
+				// The design says the table's columns are the operator's input
+				// names, so a single-input operator may write `| <name> | expect |`.
+				// That is the single-value form with the input named by its own
+				// name, not a multi-input example.
+				if len(example.Inputs) == 1 {
+					if value, ok := example.Inputs[inputs[0].Name]; ok {
+						example = semantic.OperatorCase{Value: value, Satisfied: example.Satisfied}
+					} else {
+						return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares the input %q, but an example states %s",
+							contract.ID, inputs[0].Name, operatorExampleNames(example.Inputs))
+					}
+				} else {
+					return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares one input, but an example states the inputs %s",
+						contract.ID, operatorExampleNames(example.Inputs))
+				}
+			} else {
+				for _, input := range inputs {
+					if _, stated := example.Inputs[input.Name]; !stated {
+						return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s example states %s, but input %q is not stated; an example that leaves an input unread cannot be checked",
+							contract.ID, operatorExampleNames(example.Inputs), input.Name)
+					}
+				}
+				for name := range example.Inputs {
+					known := false
+					for _, input := range inputs {
+						if input.Name == name {
+							known = true
+						}
+					}
+					if !known {
+						return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s example states %q, which is not one of its inputs (%s)",
+							contract.ID, name, operatorInputNames(inputs))
+					}
+				}
+			}
+		} else if multi {
+			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares %d inputs (%s), but its example carries one value; a multi-input example states one column per input",
+				contract.ID, len(inputs), operatorInputNames(inputs))
 		}
-		var got bool
-		if implementation.Number != nil {
-			got, err = implementation.Number(value)
+
+		values := map[string]*big.Rat{}
+		if example.Inputs != nil {
+			for name, text := range example.Inputs {
+				value, err := semantic.ParseOperatorCaseValue(text)
+				if err != nil {
+					return fmt.Errorf("operator %s has an unreadable example (%s): %w", contract.ID, name, err)
+				}
+				values[name] = value
+			}
 		} else {
-			got, err = implementation.Numbers(map[string]*big.Rat{"value": value})
+			value, err := semantic.ParseOperatorCaseValue(example.Value)
+			if err != nil {
+				return fmt.Errorf("operator %s has an unreadable example: %w", contract.ID, err)
+			}
+			// A single-input operator may name its input (`takes amount: number`).
+			// The example's one value belongs to that input, whatever it is
+			// called, so the implementation is never handed a nil value.
+			values[inputs[0].Name] = value
+		}
+
+		var (
+			got bool
+			err error
+		)
+		if implementation.Numbers != nil {
+			got, err = implementation.Numbers(values)
+		} else {
+			got, err = implementation.Number(values[inputs[0].Name])
 		}
 		if err != nil {
-			return fmt.Errorf("the implementation of operator %s could not decide the contract's example %s: %w", contract.ID, example.Value, err)
+			return fmt.Errorf("the implementation of operator %s could not decide the contract's example %s: %w", contract.ID, operatorExampleText(example), err)
 		}
 		if got != example.Satisfied {
 			return fmt.Errorf("TEI_OPERATOR_IMPLEMENTATION_MISMATCH: the contract of operator %s states that %s is %s, but the selected implementation answers %s",
-				contract.ID, example.Value, operatorCaseWord(example.Satisfied), operatorCaseWord(got))
+				contract.ID, operatorExampleText(example), operatorCaseWord(example.Satisfied), operatorCaseWord(got))
 		}
 	}
 	return nil
+}
+
+// operatorExampleNames lists the inputs an example states, in declaration
+// order when the contract names them, for a stable diagnostic.
+func operatorExampleNames(stated map[string]string) string {
+	names := make([]string, 0, len(stated))
+	for name := range stated {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
+}
+
+// operatorExampleText renders one example for a diagnostic.
+func operatorExampleText(example semantic.OperatorCase) string {
+	if example.Inputs == nil {
+		return example.Value
+	}
+	return "(" + operatorExampleNames(example.Inputs) + ")"
 }
 
 func operatorCaseWord(satisfied bool) Result {
