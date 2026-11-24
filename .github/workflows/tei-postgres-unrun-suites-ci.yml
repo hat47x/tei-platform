@@ -251,7 +251,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$' ./cmd/tei | tee -a "$log"
           go test -count=1 -v -timeout 10m -run 'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned' \
             ./tools/reference-first-web-target | tee -a "$log"
           # Road item 2's remaining half: the page a browser opens must carry
@@ -315,6 +315,9 @@ jobs:
             'TestOrgC1AbstractUnitReadPathUsesStableSemanticIDs'
             'TestDestinationOrderChangeReadViaCLIFromPostgres'
             'TestIndependentWarehouseDataFormThroughProductView'
+            'TestWithinOperatorDecidesRealPostgresRows'
+            'TestWithinOperatorDecidesRealPostgresRows/order_1001'
+            'TestWithinOperatorDecidesRealPostgresRows/order_1002'
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
             'TestEnvironmentReportsWhetherTheDeclarationWasChecked'
