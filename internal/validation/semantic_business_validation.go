@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"sort"
 	"strings"
 
 	"tei/internal/core"
@@ -129,7 +130,30 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				))
 			}
 			for i, example := range operator.Cases {
-				if _, err := semantic.ParseOperatorCaseValue(example.Value); err != nil {
+				// An example states either one value or one value per declared
+				// input. Each stated value is checked the same way: it must be a
+				// decimal number, and no two examples may state the same values.
+				stated := []string{example.Value}
+				if example.Inputs != nil {
+					stated = stated[:0]
+					for name, value := range example.Inputs {
+						if _, err := semantic.ParseOperatorCaseValue(value); err != nil {
+							out = append(out, errFor(
+								operatorSubject,
+								"INVALID_SEMANTIC_OPERATOR_CASE",
+								"semantic operator %s has an example whose value for input %q, %q, is not a decimal number",
+								operator.ID, name, value,
+							))
+							stated = nil
+							break
+						}
+						stated = append(stated, value)
+					}
+					if stated == nil {
+						continue
+					}
+					sort.Strings(stated)
+				} else if _, err := semantic.ParseOperatorCaseValue(example.Value); err != nil {
 					out = append(out, errFor(
 						operatorSubject,
 						"INVALID_SEMANTIC_OPERATOR_CASE",
@@ -140,13 +164,13 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 					continue
 				}
 				for _, prior := range operator.Cases[:i] {
-					if semantic.SameOperatorCaseValue(prior.Value, example.Value) {
+					if semantic.SameOperatorCaseStates(prior, example) {
 						out = append(out, errFor(
 							operatorSubject,
 							"DUPLICATE_SEMANTIC_OPERATOR_CASE",
-							"semantic operator %s states the example value %s more than once",
+							"semantic operator %s states the same example more than once (%s)",
 							operator.ID,
-							example.Value,
+							strings.Join(stated, ", "),
 						))
 						break
 					}

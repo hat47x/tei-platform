@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -383,4 +384,104 @@ func mustParseRat(t *testing.T, text string) *big.Rat {
 		t.Fatalf("invalid rational: %s", text)
 	}
 	return value
+}
+
+// A per-input example states one value per declared input, and the values reach
+// the implementation under the names the declaration gave them. Swapping the
+// numbers would answer differently, so a wrong mapping cannot pass.
+func TestMultiInputOperatorChecksPerInputExamples(t *testing.T) {
+	contract := withinContract
+	contract.Cases = []semantic.OperatorCase{
+		{Inputs: map[string]string{"value": "3", "low": "0", "high": "5"}, Satisfied: true},
+		{Inputs: map[string]string{"value": "6", "low": "0", "high": "5"}, Satisfied: false},
+		// The subject is the first input, so its name is "value" here.
+	}
+	rule := discountInRange
+	rule.Operator = contract.ID
+	rule.Inputs = []semantic.ValidationInputAssignment{
+		{Name: "low", Value: "0"},
+		{Name: "high", Value: "5"},
+	}
+	_, err := validationeval.EvaluateWithOperators(rule, &operatorSource{value: mustParseRat(t, "3")}, validationeval.Operators{
+		Declared:        []semantic.Operator{contract},
+		Implementations: []validationeval.OperatorImplementation{withinImplementation},
+	})
+	if err != nil {
+		t.Fatalf("an implementation that agrees with every example was refused: %v", err)
+	}
+
+	// An example that states the wrong values is refused before any row is read.
+	contract.Cases = []semantic.OperatorCase{
+		{Inputs: map[string]string{"value": "3", "low": "5", "high": "0"}, Satisfied: true},
+	}
+	_, err = validationeval.EvaluateWithOperators(rule, &operatorSource{value: mustParseRat(t, "3")}, validationeval.Operators{
+		Declared:        []semantic.Operator{contract},
+		Implementations: []validationeval.OperatorImplementation{withinImplementation},
+	})
+	if err == nil {
+		t.Fatal("an example the implementation answers differently was accepted")
+	}
+}
+
+// An example that leaves one declared input unstated is refused: it would
+// otherwise be checked as if the missing input held something nobody wrote.
+func TestMultiInputOperatorRefusesAnExampleThatOmitsAnInput(t *testing.T) {
+	contract := withinContract
+	contract.Cases = []semantic.OperatorCase{
+		{Inputs: map[string]string{"value": "3", "low": "0"}, Satisfied: true},
+	}
+	rule := discountInRange
+	rule.Operator = contract.ID
+	rule.Inputs = []semantic.ValidationInputAssignment{
+		{Name: "low", Value: "0"},
+		{Name: "high", Value: "5"},
+	}
+	_, err := validationeval.EvaluateWithOperators(rule, &operatorSource{value: mustParseRat(t, "3")}, validationeval.Operators{
+		Declared:        []semantic.Operator{contract},
+		Implementations: []validationeval.OperatorImplementation{withinImplementation},
+	})
+	if err == nil {
+		t.Fatal("an example that omits an input was accepted")
+	}
+	if !strings.Contains(err.Error(), "is not stated") {
+		t.Fatalf("error=%v, want it to name the missing input", err)
+	}
+}
+
+// A single-input operator may name its one input, and its example then uses that
+// name as the column. The value must reach the implementation, not nil.
+func TestNamedSingleInputExampleReachesTheImplementation(t *testing.T) {
+	contract := semantic.Operator{
+		ID:        "sales.non_negative",
+		Symbol:    "non_negative",
+		Input:     semantic.OperatorInputNumber,
+		InputName: "amount",
+		Inputs: []semantic.OperatorInputDeclaration{
+			{Name: "amount", Type: semantic.OperatorInputNumber},
+		},
+		Cases: []semantic.OperatorCase{
+			{Inputs: map[string]string{"amount": "-1"}, Satisfied: false},
+			{Inputs: map[string]string{"amount": "0"}, Satisfied: true},
+		},
+	}
+	implementation := validationeval.OperatorImplementation{
+		Operator: "sales.non_negative",
+		Input:    semantic.OperatorInputNumber,
+		Number: func(value *big.Rat) (bool, error) {
+			return value.Sign() >= 0, nil
+		},
+	}
+	rule := semantic.Validation{
+		ID:        "sales.order_line.amount_non_negative",
+		Symbol:    "amount_non_negative",
+		Kind:      semantic.ValidationOperator,
+		Attribute: "sales.order_line.quantity",
+		Operator:  "sales.non_negative",
+	}
+	if _, err := validationeval.EvaluateWithOperators(rule, &operatorSource{value: mustParseRat(t, "2")}, validationeval.Operators{
+		Declared:        []semantic.Operator{contract},
+		Implementations: []validationeval.OperatorImplementation{implementation},
+	}); err != nil {
+		t.Fatalf("a named single input example was refused: %v", err)
+	}
 }
