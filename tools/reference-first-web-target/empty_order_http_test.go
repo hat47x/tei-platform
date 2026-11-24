@@ -82,6 +82,10 @@ func TestShippedFormRendersAnEmptyOrderAsAnExecutionError(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// RowIndex 0 above is only how the base result was produced; the form is
+	// submitted with row 2, which is the selection the guide's reader makes for
+	// order 1003. The two numbers describe different things and must not be
+	// confused: one picks a read to imitate, the other picks an order on the page.
 	recorder := postCustomSubmit(t, server.Handler(), url.Values{
 		"loginId":    {"legacy-order-editor"},
 		"credential": {"editor-secret"},
