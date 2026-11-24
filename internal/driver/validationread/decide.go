@@ -32,13 +32,17 @@ type Decisions struct {
 // otherwise be answered row by row, and that answer would look decided.
 func (d *Detail) Decide(rule semantic.Validation, operators validationeval.Operators) (Decisions, error) {
 	decisions := Decisions{Rule: rule.ID}
+	// A rule whose operator declares an input read over all rows is asked of
+	// the rows as a collection (decision section 15.4). Answering it row by row
+	// would look decided while the declaration says otherwise.
+	rowScoped, operatorKnown := false, true
+	if rule.Kind == semantic.ValidationOperator && rule.Operator != "" {
+		rowScoped, operatorKnown = declaresRowScopedOperator(rule, operators)
+	}
 	switch {
 	case rule.Kind == semantic.ValidationRelationUnique,
 		rule.Kind == semantic.ValidationNoOverlap,
-		// A rule whose operator declares an input read over all rows is asked
-		// of the rows as a collection (decision section 15.4). Answering it
-		// row by row would look decided while the declaration says otherwise.
-		rule.Kind == semantic.ValidationOperator && declaresRowScopedOperator(rule, operators):
+		rule.Kind == semantic.ValidationOperator && rowScoped:
 		decision, err := validationeval.Decide(rule, d, operators)
 		if err != nil {
 			return Decisions{}, err
@@ -47,7 +51,6 @@ func (d *Detail) Decide(rule semantic.Validation, operators validationeval.Opera
 		return decisions, nil
 
 	case rule.Kind == semantic.ValidationPositive,
-		rule.Kind == semantic.ValidationOperator,
 		rule.Kind == semantic.ValidationNotAfter,
 		rule.Kind == semantic.ValidationRequiredIf:
 		decisions.Rows = make([]validationeval.Decision, 0, len(d.rows))
@@ -55,6 +58,23 @@ func (d *Detail) Decide(rule semantic.Validation, operators validationeval.Opera
 			decision, err := validationeval.Decide(rule, Row{detail: d, index: index}, operators)
 			if err != nil {
 				// A value that cannot be read names its row itself.
+				return Decisions{}, err
+			}
+			decisions.Rows = append(decisions.Rows, decision)
+		}
+		return decisions, nil
+
+	case rule.Kind == semantic.ValidationOperator && !operatorKnown:
+		// The rule names an operator this reader was not given a declaration
+		// for, so how it is asked is unknown. Refusing says that; answering the
+		// rows one by one would report an unrelated reader complaint instead.
+		return Decisions{}, fmt.Errorf("semantic validation %s uses operator %s, which has no loaded declaration; this reader cannot tell whether the rule is asked of one row or of all the rows", rule.ID, rule.Operator)
+
+	case rule.Kind == semantic.ValidationOperator:
+		decisions.Rows = make([]validationeval.Decision, 0, len(d.rows))
+		for index := range d.rows {
+			decision, err := validationeval.Decide(rule, Row{detail: d, index: index}, operators)
+			if err != nil {
 				return Decisions{}, err
 			}
 			decisions.Rows = append(decisions.Rows, decision)
@@ -88,16 +108,23 @@ func (r Row) ReadPresence(attribute core.CanonicalID) (validationeval.PresenceRe
 
 // declaresRowScopedOperator reports whether the operator this rule names
 // declares an input read over all rows of a relation.
-func declaresRowScopedOperator(rule semantic.Validation, operators validationeval.Operators) bool {
+//
+// The second result is false when the named operator is not among the loaded
+// declarations. That is a different fact from "the operator reads one record":
+// the rule cannot be asked row by row either, because its signature is unknown,
+// so the caller reports the missing declaration instead of falling through to
+// the row path and letting the reader blame itself.
+func declaresRowScopedOperator(rule semantic.Validation, operators validationeval.Operators) (bool, bool) {
 	for _, contract := range operators.Declared {
 		if contract.ID != rule.Operator {
 			continue
 		}
 		for _, input := range contract.Inputs {
 			if input.OfEachRow {
-				return true
+				return true, true
 			}
 		}
+		return false, true
 	}
-	return false
+	return false, false
 }

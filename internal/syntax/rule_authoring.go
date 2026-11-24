@@ -279,7 +279,7 @@ func ParseRuleAuthoringFile(src string) (RuleAuthoringFile, error) {
 			}
 			return out, p.errAt(t, "expected rule")
 		}
-		rule, err := p.parseRuleAuthoring(ns)
+		rule, err := p.parseRuleAuthoring(ns, out.Operators)
 		if err != nil {
 			return out, err
 		}
@@ -613,7 +613,7 @@ func ruleAuthoringDeclarationEnds(t Token) bool {
 	return t.Kind == TokenEOF || t.Kind == TokenIdent && (t.Text == "rule" || t.Text == "operator")
 }
 
-func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, error) {
+func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID, declaredOperators []OperatorAuthoring) (RuleAuthoring, error) {
 	keyword, err := p.next() // rule
 	if err != nil {
 		return RuleAuthoring{}, err
@@ -965,9 +965,14 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"not after\" compares two dates of one record and accepts no scope")
 	}
-	if predicate == RulePredicateOperator && rule.Scope != nil {
-		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
-			"a declared operator takes one value and accepts no scope")
+	// A rule whose operator reads every row of a relation is asked of that
+	// relation's rows, so it may name the relation with `per <relation>`, the
+	// same word `unique` and `not overlapping` use. The scope is accepted only
+	// for an operator this source declares with such an input: accepting it for
+	// any other operator would let a rule choose how it is asked without a
+	// declaration to support it.
+	if predicate == RulePredicateOperator && rule.Scope != nil && !scopeIsForARowScopedOperator(declaredOperators, rule) {
+		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan, operatorScopeDiagnosticText)
 	}
 	if predicate == RulePredicateRequiredIf && rule.Scope != nil {
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,

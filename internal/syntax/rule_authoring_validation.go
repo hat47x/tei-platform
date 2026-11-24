@@ -145,13 +145,7 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 			})
 			continue
 		}
-		// A rule whose operator reads every row has to say which rows. The
-		// scope is the relation the rule is written against, and a rule that
-		// names none cannot be answered from any set of rows.
-		if anyInputReadsEachRow(declarations) && operator.ID != "" {
-			// The scope check is made where the rule is converted, so a rule
-			// without `per <relation>` is refused there rather than here.
-		}
+
 		out.Operators = append(out.Operators, semantic.Operator{
 			ID: operator.ID, Symbol: operator.Symbol, Input: input,
 			InputName:         operator.InputName,
@@ -287,6 +281,13 @@ func ruleToValidationWithInputs(
 	declaredRowScoped map[core.CanonicalID]bool,
 ) (semantic.Validation, *RuleConversionIssue) {
 	if rule.Operator == nil || len(rule.Inputs) == 0 {
+		// A row-scoped operator rule assigns no named input: the one input it
+		// reads over all rows comes from the subject. It still has to name the
+		// relation, so it goes through the scoped conversion instead of the
+		// one that refuses every scope.
+		if rule.Operator != nil && declaredRowScoped[core.CanonicalID(rule.Operator.Text)] {
+			return ruleToValidationScoped(rule, true)
+		}
 		return ruleToValidation(rule)
 	}
 	declared, known := declaredInputs[core.CanonicalID(rule.Operator.Text)]
@@ -560,8 +561,14 @@ func ruleToValidationScoped(rule RuleAuthoring, needsScopeForOperator bool) (sem
 			Msg: fmt.Sprintf("%s accepts no period and no grouping", kind),
 		}
 	}
-	if kind == semantic.ValidationRelationUnique || kind == semantic.ValidationNoOverlap || needsScopeForOperator {
+	if kind == semantic.ValidationRelationUnique || kind == semantic.ValidationNoOverlap || (needsScopeForOperator && kind == semantic.ValidationOperator) {
 		if rule.Scope == nil {
+			if needsScopeForOperator {
+				return semantic.Validation{}, &RuleConversionIssue{
+					RuleID: rule.ID, Span: rowScopedOperatorDiagnosticSpan(rule),
+					Msg: rowScopedOperatorScopeDiagnosticText,
+				}
+			}
 			return semantic.Validation{}, &RuleConversionIssue{
 				RuleID: rule.ID, Span: rule.PredicateSpan,
 				Msg: fmt.Sprintf("%s requires a scope; none was authored", kind),
@@ -572,7 +579,7 @@ func ruleToValidationScoped(rule RuleAuthoring, needsScopeForOperator bool) (sem
 			return semantic.Validation{}, issue
 		}
 		validation.Relation = relation
-	} else if rule.Scope != nil {
+	} else if rule.Scope != nil && !(kind == semantic.ValidationOperator && needsScopeForOperator) {
 		return semantic.Validation{}, &RuleConversionIssue{
 			RuleID: rule.ID, Span: rule.ScopeSpan,
 			Msg: fmt.Sprintf("%s accepts no scope, but %q was authored", kind, rule.Scope.Text),
