@@ -236,6 +236,32 @@ func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclarat
 // (with rule context), not turned into an Undecided, so the caller can
 // distinguish "no data" from "the reader failed". A missing or unreadable
 // assignment is neither: the caller refuses an unassigned input before asking.
+// readSubjectInput reads the first input, which the rule subject supplies from
+// the attribute the rule constrains. It exists so the subject goes through the
+// same absent-mapping handling as every later input: the value is the attribute
+// the rule names, and if that attribute certainly holds no value the
+// declaration's `absent as <name>` decides how the absence reads.
+//
+// A subject attribute that was not read stays undecided, and in the legacy
+// reader a nil number stays the error it has always been: a reader that did not
+// ask, or cannot say, knows nothing about the value, so no mapping applies. The
+// mapping is only for "the record holds no value", which the reader states.
+func readSubjectInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, source StatefulSource, absent func(string) (*big.Rat, bool)) (*big.Rat, *Undecided, error) {
+	value, stopped, err := readNumber(rule, source)
+	if err != nil {
+		return nil, nil, err
+	}
+	if stopped == nil {
+		return value, nil, nil
+	}
+	if stopped.Reason == UndecidedValueNull && input.AbsentAs != "" && absent != nil {
+		if mapped, ok := absent(input.AbsentAs); ok {
+			return new(big.Rat).Set(mapped), nil, nil
+		}
+	}
+	return nil, stopped, nil
+}
+
 func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, values map[string]*big.Rat, source StatefulSource, absent func(string) (*big.Rat, bool)) (*Undecided, error) {
 	assignment := findInputAssignment(rule, input.Name)
 	if assignment == nil {
@@ -429,7 +455,14 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		}
 		values := make(map[string]*big.Rat, len(inputs))
 		// The first input comes from the attribute the rule constrains.
-		value, undecided, err := readNumber(rule, source)
+		//
+		// It is read through the same path as every later input, so the mapping
+		// its declaration states is applied. Before this, the subject was read
+		// without consulting the declaration: `takes value: number absent as
+		// open` was accepted at authoring time and then never used for the subject,
+		// so an absent subject stayed undecided while the contract said how to
+		// read it (#4359).
+		value, undecided, err := readSubjectInput(rule, inputs[0], source, implementation.Absent)
 		if err != nil {
 			return Decision{}, err
 		}
