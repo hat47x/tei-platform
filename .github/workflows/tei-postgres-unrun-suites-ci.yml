@@ -28,6 +28,7 @@ on:
       - 'tools/reference-first-web-target/first_change_sql_setup_test.go'
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
+      - 'cmd/tei/declaration_checked_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
@@ -63,6 +64,7 @@ on:
       - 'tools/reference-first-web-target/first_change_sql_setup_test.go'
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
+      - 'cmd/tei/declaration_checked_pg_test.go'
       - 'testdata/destination-order-change/**'
       - 'tools/reference-expected-state-update/**'
       - 'reference/web-api-contract/**'
@@ -249,7 +251,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$' ./cmd/tei | tee -a "$log"
           go test -count=1 -v -timeout 10m -run 'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned' \
             ./tools/reference-first-web-target | tee -a "$log"
           # Road item 2's remaining half: the page a browser opens must carry
@@ -315,6 +317,7 @@ jobs:
             'TestIndependentWarehouseDataFormThroughProductView'
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
+            'TestEnvironmentReportsWhetherTheDeclarationWasChecked'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
             'TestShippedWebPageShowsRealPostgresRowAnswers'
             'TestFirstChangeWalkthroughWebUsesEditedWorkspace'
