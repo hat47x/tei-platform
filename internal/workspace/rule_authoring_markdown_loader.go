@@ -187,6 +187,26 @@ func attachOperatorCases(r *Result) error {
 							})
 						}
 					}
+					// A declared input the example does not state leaves that
+					// input unread, so the example is not one the implementation
+					// can be asked about. The reader refuses that shape when it
+					// decides a rule; refusing it here means a Workspace nobody
+					// reads cannot pass validate with an example that would then
+					// fail only at read time.
+					for _, input := range operatorInputNamesInOrder(*operator) {
+						if _, stated := example.Value.Inputs[input]; stated {
+							continue
+						}
+						if input == "value" && len(operator.Inputs) <= 1 {
+							// The unnamed single-input form states its value in
+							// the value cell, not in Inputs.
+							continue
+						}
+						return r.collectSourceError(pending.filename, &syntax.ParseError{
+							Pos: example.ExpectSpan.Start, End: example.ExpectSpan.End,
+							Msg: fmt.Sprintf("operator %s declares input %q, but this example states no value for it", operator.ID, input),
+						})
+					}
 					operator.Cases = append(operator.Cases, example.Value)
 				}
 			}
@@ -360,6 +380,23 @@ func operatorInputNames(operator semantic.Operator) map[string]bool {
 			name = "value"
 		}
 		names[name] = true
+	}
+	return names
+}
+
+// operatorInputNamesInOrder is the declared input names in signature order.
+// The unnamed single-input form answers to "value".
+func operatorInputNamesInOrder(operator semantic.Operator) []string {
+	if len(operator.Inputs) == 0 {
+		return []string{"value"}
+	}
+	names := make([]string, 0, len(operator.Inputs))
+	for _, input := range operator.Inputs {
+		name := input.Name
+		if name == "" {
+			name = "value"
+		}
+		names = append(names, name)
 	}
 	return names
 }
