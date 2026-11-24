@@ -46,6 +46,8 @@ tr.answer-satisfied td:first-child{font-weight:600}
 <span>relation: {{.Read.Relation}}</span>
 <span>environment: {{.Read.Environment}}</span>
 <span>coverage: {{.Read.Coverage}}</span>
+{{if .Read.CoverageReason}}<span>coverage reason: {{.Read.CoverageReason}}</span>{{end}}
+{{if .Read.CoverageBasis}}<span>coverage basis: {{.Read.CoverageBasis}}</span>{{end}}
 <span>rows: {{len .Read.Rows}}</span>
 </div>
 {{if .Declaration}}<p><strong>declaration:</strong> {{.Declaration}}</p>{{end}}
