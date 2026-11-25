@@ -236,6 +236,16 @@ const (
 	// OperatorInputPresence is whether an attribute holds a value, not the
 	// value itself.
 	OperatorInputPresence OperatorInput = "presence"
+	// OperatorInputDate is one calendar day, read and written as YYYY-MM-DD.
+	OperatorInputDate OperatorInput = "date"
+	// OperatorInputText is one string. An empty string is a value; a cell the
+	// author left empty states that the row holds no value.
+	OperatorInputText OperatorInput = "text"
+	// OperatorInputTruth is one of the two truth values, written true/false.
+	OperatorInputTruth OperatorInput = "truth"
+	// OperatorInputAny is a value of any of the kinds above. Which kind was
+	// read travels with the value, so "100" and 100 stay two values.
+	OperatorInputAny OperatorInput = "any"
 )
 
 // Valid reports whether this is a known operator input kind. Only the kinds
@@ -245,7 +255,8 @@ const (
 // reader here yet, so they stay out of this list until one exists.
 func (i OperatorInput) Valid() bool {
 	switch i {
-	case OperatorInputNumber, OperatorInputPresence:
+	case OperatorInputNumber, OperatorInputPresence, OperatorInputDate,
+		OperatorInputText, OperatorInputTruth, OperatorInputAny:
 		return true
 	}
 	return false
