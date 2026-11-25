@@ -372,7 +372,19 @@ func readTruthSubject(rule semantic.Validation, source StatefulSource) (semantic
 	}
 }
 
-func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, values map[string]*big.Rat, source StatefulSource, absent func(string) (*big.Rat, bool)) (*Undecided, error) {
+// readAssignedInput reads one input value that was assigned by name in the
+// rule. For an attribute reference it reads from the source; for a constant it
+// reads the text in the type the declaration gives the input, so a text
+// constant is written with quotes and a truth constant is the word true or
+// false (section 8.3). A constant of another type is carried in `constants`,
+// which the Values field reads, because a number this path would have invented
+// is not a value the author wrote (section 8.4).
+//
+// It returns (*Undecided, error). A reader error is returned as the error
+// (with rule context), not turned into an Undecided, so the caller can
+// distinguish "no data" from "the reader failed". A missing or unreadable
+// assignment is neither: the caller refuses an unassigned input before asking.
+func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, values map[string]*big.Rat, constants map[string]semantic.OperatorValue, source StatefulSource, absent func(string) (*big.Rat, bool)) (*Undecided, error) {
 	assignment := findInputAssignment(rule, input.Name)
 	if assignment == nil {
 		return &Undecided{Reason: UndecidedValueNotFetched, Attribute: core.CanonicalID(input.Name)}, nil
@@ -415,7 +427,20 @@ func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDec
 		values[input.Name] = new(big.Rat).Set(value)
 		return nil, nil
 	}
-	// Constant value.
+	// Constant value. It is read in the type the declaration gives the input,
+	// so a text constant is written with quotes and a truth constant is the
+	// word true or false (section 8.3). A constant of another type is carried
+	// where the Values field looks for it, so an implementation that decides
+	// values receives the type the author wrote rather than a number this
+	// path would have invented (section 8.4).
+	if input.Type != semantic.OperatorInputNumber {
+		value, err := semantic.ParseOperatorInputValue(input.Type, assignment.Value)
+		if err != nil {
+			return &Undecided{Reason: UndecidedValueNotFetched, Attribute: core.CanonicalID(input.Name)}, nil
+		}
+		constants[input.Name] = value
+		return nil, nil
+	}
 	value, err := parseConstant(assignment.Value)
 	if err != nil {
 		return &Undecided{Reason: UndecidedValueNotFetched, Attribute: core.CanonicalID(input.Name)}, nil
@@ -639,6 +664,7 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		// type is carried in `typed`, which the Values field receives, and it
 		// has no number here to put in this map.
 		values := make(map[string]*big.Rat, len(inputs))
+		constants := make(map[string]semantic.OperatorValue, len(inputs))
 		if typedSubject.Number != nil {
 			values[inputs[0].Name] = new(big.Rat).Set(typedSubject.Number)
 		}
@@ -660,7 +686,7 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			} else {
 				origins = append(origins, constantOrigin(input.Name))
 			}
-			got, rerr := readAssignedInput(rule, input, values, source, implementation.Absent)
+			got, rerr := readAssignedInput(rule, input, values, constants, source, implementation.Absent)
 			if rerr != nil {
 				return Decision{}, rerr
 			}
@@ -691,6 +717,16 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 				// from a number it was never read as (section 8.4).
 				if index == 0 {
 					typed[input.Name] = typedSubject
+					continue
+				}
+				// A constant was read in the type the declaration gives the input,
+				// so a text constant is written with quotes and a truth constant is
+				// the word true or false (section 8.3). An assigned attribute is
+				// read as a number on this path, and an input of another type that
+				// names one is refused by name rather than answered from a number
+				// it was never read as (section 8.4).
+				if constant, stated := constants[input.Name]; stated {
+					typed[input.Name] = constant
 					continue
 				}
 				if input.Type != semantic.OperatorInputNumber {

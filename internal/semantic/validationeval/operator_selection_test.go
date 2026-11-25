@@ -10,6 +10,9 @@ import (
 	"tei/internal/semantic/validationeval"
 )
 
+func textValue(text string) *string { return &text }
+func truthValue(truth bool) *bool   { return &truth }
+
 func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 	// Expected values are the definitions written out for five numbers.
 	singleInputWant := map[string]map[string]bool{
@@ -102,6 +105,27 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "before the deadline", values: dayValues("2026-03-31", "2026-04-01"), want: false},
 			{name: "no value input", values: dayValues("", "2026-04-01"), wantErr: true},
 			{name: "no deadline input", values: dayValues("2026-04-01", ""), wantErr: true},
+		},
+		"tei.text.same-as": {
+			{name: "the same text", values: map[string]semantic.OperatorValue{"value": {Text: textValue("A-100")}, "other": {Text: textValue("A-100")}}, want: true},
+			{name: "a different text", values: map[string]semantic.OperatorValue{"value": {Text: textValue("A-100")}, "other": {Text: textValue("B-200")}}, want: false},
+			// The empty text is a value of length zero, so two of them are the
+			// same text.
+			{name: "the empty text", values: map[string]semantic.OperatorValue{"value": {Text: textValue("")}, "other": {Text: textValue("")}}, want: true},
+			{name: "a text against an empty one", values: map[string]semantic.OperatorValue{"value": {Text: textValue("A-100")}, "other": {Text: textValue("")}}, want: false},
+			{name: "no value input", values: map[string]semantic.OperatorValue{"other": {Text: textValue("A-100")}}, wantErr: true},
+			{name: "no other input", values: map[string]semantic.OperatorValue{"value": {Text: textValue("A-100")}}, wantErr: true},
+			// A value that was not read as a text is not one, and this
+			// implementation says so rather than reading it as the nearest text.
+			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(7, 1)}, "other": {Text: textValue("7")}}, wantErr: true},
+		},
+		"tei.truth.is-true": {
+			{name: "true", values: map[string]semantic.OperatorValue{"value": {Truth: truthValue(true)}}, want: true},
+			{name: "false", values: map[string]semantic.OperatorValue{"value": {Truth: truthValue(false)}}, want: false},
+			{name: "no value input", values: map[string]semantic.OperatorValue{}, wantErr: true},
+			// A value read as a number is not a truth, and this implementation
+			// says so rather than reading 1 as true.
+			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(1, 1)}}, wantErr: true},
 		},
 	}
 	seen := map[string]bool{}
