@@ -81,6 +81,12 @@ func TestSemanticOperatorCodesAreProduced(t *testing.T) {
 		{"row-scoped operator rule without a relation", func(w *ir.World) {
 			w.Semantics[0].Validations[2].Relation = ""
 		}, "SEMANTIC_VALIDATION_OPERATOR_RELATION_REQUIRED", "sales.order_line.parts_all_positive"},
+		// A relation the rule names must be one a Data declares. Before this
+		// the read refused it and validate did not, so a mistyped relation was
+		// found only when a screen happened to be opened.
+		{"row-scoped operator rule naming a relation no Data declares", func(w *ir.World) {
+			w.Semantics[0].Validations[2].Relation = "sales.order_line.parts_typo"
+		}, "SEMANTIC_VALIDATION_OPERATOR_RELATION_UNKNOWN", "sales.order_line.parts_all_positive"},
 		{"built-in kind carrying an operator", func(w *ir.World) {
 			w.Semantics[0].Validations[1].Operator = "sales.non_negative"
 		}, "SEMANTIC_VALIDATION_OPERATOR_NOT_ALLOWED", "sales.order_line.discount_positive"},
