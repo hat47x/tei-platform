@@ -38,3 +38,19 @@ reference Workspaceとfixtureでは、生成したcandidateがShared Acceptance�
 - 複数candidateの選択・優先順位。
 - Shared Acceptance preview/reviewの自動実行と結果の保存。
 - accept後の適用・ロールバック。
+
+## 束縛と現在性
+
+提案が `binding`（対象・revision・判断基準）を持つ場合、変換後の変更candidateへそのまま引き継ぐ。`binding` を持たない旧来の提案は candidate にも束縛を書かない。
+
+`RequireCurrentAtHandoff(candidate, current)` は、candidate を現在の選択へ出してよいかを判定する。`current` / `unbound` / `stale-revision` / `stale-basis` / `foreign-subject` を区別し、`current` でも `acceptable` と `grantsAuthority` は false である。
+
+判定順は対象→revision→判断基準。別対象を「古い版」と報告すると retry 先を誤らせるため、対象を先に決める。
+
+`unbound` は「履歴としてなら見せてよいが、現在の選択の候補にはできない」を意味する。束縛が無いことを現在とみなさない。
+
+### この判定の限界
+
+- revision が同一値へ戻る A→B→A は検出しない。呼出側が再変換すること。
+- candidate の意味受理・権限・適用は行わない。Shared Acceptance の `preview` / `review` / `accept` へ渡すのは利用者の操作である。
+- 本判定は参照実装であり、Studio の実際の選択や生成アプリの実DB更新へは接続していない（#5808 / #5809 のConsumer接続は別）。
