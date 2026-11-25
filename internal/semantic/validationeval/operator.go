@@ -111,8 +111,25 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 		return none, fmt.Errorf("semantic validation %s uses operator %s, which has %d implementations; exactly one must be selected", rule.ID, rule.Operator, len(implementations))
 	}
 	implementation := implementations[0]
+	if err := CheckImplementationMatchesContract(contract, implementation); err != nil {
+		return none, err
+	}
+	return implementation, nil
+}
+
+// CheckImplementationMatchesContract reports whether one selected
+// implementation can be the implementation of one declared operator: the same
+// kind of input, one decision function of the shape the declaration asks for,
+// and examples it does not contradict.
+//
+// It is exported because validate must refuse a Workspace whose selection this
+// binary cannot honour before any rule is read, and the evaluator must refuse
+// it when a rule is read. Both ask the same question, so both call this one
+// function: a change to what "matches" means cannot make validate accept a
+// Workspace the evaluator would refuse, or the other way round.
+func CheckImplementationMatchesContract(contract semantic.Operator, implementation OperatorImplementation) error {
 	if implementation.Input != contract.Input {
-		return none, fmt.Errorf("operator %s is declared to take %s, but its implementation takes %s", rule.Operator, contract.Input, implementation.Input)
+		return fmt.Errorf("operator %s is declared to take %s, but its implementation takes %s", contract.ID, contract.Input, implementation.Input)
 	}
 
 	// Reject an implementation that does not match the shape of the declaration.
@@ -137,24 +154,24 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 		}
 	}
 	if shapes == 0 {
-		return none, fmt.Errorf("the implementation of operator %s has no decision function", rule.Operator)
+		return fmt.Errorf("the implementation of operator %s has no decision function", contract.ID)
 	}
 	if shapes > 1 {
-		return none, fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", rule.Operator)
+		return fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", contract.ID)
 	}
 	if rowScoped && !hasRows {
-		return none, fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", rule.Operator)
+		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
 	if !rowScoped && hasRows {
-		return none, fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", rule.Operator)
+		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
 	}
 	if !rowScoped {
 		multiInput := len(inputs) > 1
 		if multiInput && !hasMulti {
-			return none, fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", rule.Operator, len(inputs))
+			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))
 		}
 		if !multiInput && hasMulti {
-			return none, fmt.Errorf("operator %s declares one input but its implementation takes multiple values", rule.Operator)
+			return fmt.Errorf("operator %s declares one input but its implementation takes multiple values", contract.ID)
 		}
 	}
 
@@ -168,18 +185,18 @@ func selectOperatorImplementation(rule semantic.Validation, operators Operators)
 	// against an implementation that would be asked a different question.
 	if rowScoped {
 		if len(contract.Cases) > 0 {
-			return none, fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its meaning is stated by a table of rows; a one-record example is not checked against it", rule.Operator)
+			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its meaning is stated by a table of rows; a one-record example is not checked against it", contract.ID)
 		}
-		return implementation, nil
+		return nil
 	}
 
 	// The contract's own examples come first. An implementation that
 	// answers one of them differently is not an implementation of this
 	// operator, so it is not asked about real data.
 	if err := checkOperatorCases(contract, implementation); err != nil {
-		return none, err
+		return err
 	}
-	return implementation, nil
+	return nil
 }
 
 // checkOperatorCases asks the implementation about every example the contract
