@@ -83,6 +83,19 @@ const OperatorInputNumberWord OperatorInputWord = "number"
 // attribute holds a value, not the value itself.
 const OperatorInputPresenceWord OperatorInputWord = "presence"
 
+// OperatorInputDateWord declares that the operator reads one calendar date.
+const OperatorInputDateWord OperatorInputWord = "date"
+
+// OperatorInputTextWord declares that the operator reads one text value.
+const OperatorInputTextWord OperatorInputWord = "text"
+
+// OperatorInputTruthWord declares that the operator reads one truth value.
+const OperatorInputTruthWord OperatorInputWord = "truth"
+
+// OperatorInputAnyWord declares that the operator takes a value of any type,
+// keeping the type it was read as.
+const OperatorInputAnyWord OperatorInputWord = "any"
+
 // OperatorInput is one parsed `takes` line of an operator declaration.
 type OperatorInput struct {
 	Word          OperatorInputWord
@@ -486,7 +499,7 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 	}
 	if !knownOperatorInputWord(inputTok.Text) {
 		return OperatorInput{}, p.errAt(inputTok, fmt.Sprintf(
-			"unknown operator input %q; accepted inputs are number, presence", inputTok.Text))
+			"unknown operator input %q; accepted inputs are %s", inputTok.Text, acceptedOperatorInputWordsList()))
 	}
 	// `of each row` makes the input read every row of the relation.
 	var ofEachRow bool
@@ -586,6 +599,10 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 var acceptedOperatorInputWords = []OperatorInputWord{
 	OperatorInputNumberWord,
 	OperatorInputPresenceWord,
+	OperatorInputDateWord,
+	OperatorInputTextWord,
+	OperatorInputTruthWord,
+	OperatorInputAnyWord,
 }
 
 // acceptedOperatorInputWordsList is the hint's rendering of that list.

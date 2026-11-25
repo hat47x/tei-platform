@@ -36,6 +36,20 @@ type OperatorImplementation struct {
 	// the order they were read, and answers TriYes, TriNo or TriMaybe. It sees
 	// no Source, so what a rule reads stays decided by the declaration.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
+	// Values decides a rule whose inputs are of any type. It receives the
+	// input name to value map, and each value carries the type its
+	// declaration stated (section 8.4). An input nobody read carries no
+	// value, and answering from it must stay undecided.
+	//
+	// An implementation provides either the number fields above or this one,
+	// never both: which value a rule is answered from must not depend on
+	// which field the composition happens to fill.
+	Values func(values map[string]OperatorValue) (bool, error)
+	// ValueRows decides a rule whose operator reads every row of a relation
+	// and whose inputs are of any type. It receives, per input name, the
+	// values of the rows that were read in the order they were read, with the
+	// row state carried separately (section 8.4).
+	ValueRows func(rows map[string][]RowValue) (Tri, error)
 	// Absent reads an absent value under the mapping the rule named. A rule may
 	// write `or <name>` after an input, and the declaration may state
 	// `absent as <name>`; the mapping says how an absent value is to be read.
@@ -45,6 +59,17 @@ type OperatorImplementation struct {
 	// implementation cannot read the absence that way, and the decision stays
 	// undecided instead of reading the absence as zero or as present.
 	Absent func(mapping string) (*big.Rat, bool)
+}
+
+// RowValue is one row of one input of a row-scoped operator. The state is
+// carried next to the value, not inside it, so "nobody read this row" is
+// distinguishable from "this row holds no value" without the value having to
+// mean both (section 8.4).
+type RowValue struct {
+	// State is what the reader knows about this row.
+	State ValueState
+	// Value is the value of the row, set only when State is ValuePresent.
+	Value OperatorValue
 }
 
 // Operators is what an evaluation knows about declared operators: the
@@ -147,8 +172,10 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasRows := implementation.NumberRows != nil
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
+	hasValues := implementation.Values != nil
+	hasValueRows := implementation.ValueRows != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasValues, hasValueRows} {
 		if present {
 			shapes++
 		}
@@ -159,11 +186,14 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	if shapes > 1 {
 		return fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", contract.ID)
 	}
-	if rowScoped && !hasRows {
+	if rowScoped && !hasRows && !hasValueRows {
 		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
 	if !rowScoped && hasRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
+	}
+	if rowScoped && hasValues {
+		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
 	if !rowScoped {
 		multiInput := len(inputs) > 1

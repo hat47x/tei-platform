@@ -236,16 +236,27 @@ const (
 	// OperatorInputPresence is whether an attribute holds a value, not the
 	// value itself.
 	OperatorInputPresence OperatorInput = "presence"
+	// OperatorInputDate is one calendar date. Its value reaches an
+	// implementation as a date, never as a number (section 8.4).
+	OperatorInputDate OperatorInput = "date"
+	// OperatorInputText is one text value. It reaches an implementation as
+	// text, so the text "100" stays a different value from the number 100.
+	OperatorInputText OperatorInput = "text"
+	// OperatorInputTruth is one truth value.
+	OperatorInputTruth OperatorInput = "truth"
+	// OperatorInputAny takes a value of any of the other types and keeps the
+	// type it was read as.
+	OperatorInputAny OperatorInput = "any"
 )
 
-// Valid reports whether this is a known operator input kind. Only the kinds
-// something in this program actually reads are valid: a word accepted at
-// authoring time that no reader handles would build a contract nothing can
-// decide. date, text, truth, and any are stated by the design but have no
-// reader here yet, so they stay out of this list until one exists.
+// Valid reports whether this is a known operator input kind. Section 8.4 adds
+// date, text, truth and any: each has a value shape, so a declaration that
+// states one builds a contract this program can decide. A word with no value
+// shape stays out of this list.
 func (i OperatorInput) Valid() bool {
 	switch i {
-	case OperatorInputNumber, OperatorInputPresence:
+	case OperatorInputNumber, OperatorInputPresence,
+		OperatorInputDate, OperatorInputText, OperatorInputTruth, OperatorInputAny:
 		return true
 	}
 	return false

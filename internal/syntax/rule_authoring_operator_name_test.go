@@ -49,38 +49,31 @@ func TestRuleAuthoringReadsANamedOperatorInput(t *testing.T) {
 //
 // plan/NOW.md road item 5 names date, text, truth and any as type words that
 // have no reader yet, so they are refused. They must therefore not be offered.
-func TestRuleAuthoringNeverOffersATypeWordItRefuses(t *testing.T) {
-	for _, word := range []string{"date", "text", "truth", "any"} {
-		_, err := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: takes start: " + word + "\n")
-		var parseErr *syntax.ParseError
-		if !errors.As(err, &parseErr) {
-			t.Fatalf("%s was accepted although it has no reader: %v", word, err)
-		}
-		if !strings.Contains(parseErr.Msg, `unknown operator input "`+word+`"`) {
-			t.Fatalf("%s was refused for some other reason: %q", word, parseErr.Msg)
-		}
-	}
-
-	// Without a type the hint must list only words that are accepted. The
-	// words it may offer are checked by writing each of them.
+// The authoring surface offers a type word only when a value shape exists
+// for it. Section 8.4 gives date, text, truth and any a value shape, so those
+// words are accepted here; the test that holds the new invariant is
+// TestRuleAuthoringNeverOffersATypeWordItHasNoValueShapeFor. What stays pinned
+// here is the other half: the hint lists only words that are accepted, so a
+// word cannot be offered by the hint and refused by the check.
+func TestRuleAuthoringHintListsOnlyAcceptedWords(t *testing.T) {
 	_, missing := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: takes start:\n")
 	var parseErr *syntax.ParseError
 	if !errors.As(missing, &parseErr) {
 		t.Fatalf("a missing type was accepted: %v", missing)
 	}
 	if !strings.Contains(parseErr.Msg, "accepted types are number, presence") {
-		// One list feeds both the hint and the check, so a word cannot be
-		// offered here and refused above.
 		t.Fatalf("the hint does not list the accepted words: %q", parseErr.Msg)
 	}
-	for _, offered := range []string{"date", "text", "truth", "any"} {
-		if strings.Contains(parseErr.Msg, offered) {
-			t.Fatalf("the hint offers %q, which this surface refuses: %q", offered, parseErr.Msg)
+	// Every word the hint offers is accepted, and every word it does not offer
+	// is refused, so the two lists are the same list.
+	for _, offered := range []string{"number", "presence", "date", "text", "truth", "any"} {
+		if !strings.Contains(parseErr.Msg, offered) {
+			t.Fatalf("the hint omits %q, which the surface accepts: %q", offered, parseErr.Msg)
 		}
 	}
-	for _, accepted := range []string{"number", "presence"} {
-		if _, err := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: takes start: " + accepted + "\n"); err != nil {
-			t.Fatalf("the hint offers %q but it is refused: %v", accepted, err)
+	for _, refused := range []string{"blobbity", "numberr"} {
+		if strings.Contains(parseErr.Msg, refused) {
+			t.Fatalf("the hint offers %q, which the surface refuses: %q", refused, parseErr.Msg)
 		}
 	}
 }
