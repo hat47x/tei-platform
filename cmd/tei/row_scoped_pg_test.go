@@ -163,6 +163,7 @@ func TestRowScopedRuleDecidedFromPostgresRows(t *testing.T) {
 			}
 		})
 	}
+
 	// Keep the covers declaration but narrow the SQL. A visible counterexample
 	// may settle only the operator that explicitly declares refutation on some
 	// rows; an invisible counterexample cannot settle either rule.
@@ -225,7 +226,6 @@ func TestRowScopedRuleDecidedFromPostgresRows(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 // installRowScopedRules adds two row-scoped operators and their rules to the
