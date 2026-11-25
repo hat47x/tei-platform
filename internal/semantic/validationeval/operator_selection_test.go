@@ -46,6 +46,17 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 				"value": {{State: validationeval.ValueNull}},
 				"limit": presentRows("1"),
 			}, want: validationeval.TriMaybe},
+			// A declaration may state `absent as zero`, and the rule may name
+			// it. This implementation reads that mapping, so an absent value
+			// is a value of zero rather than an invented one. Any mapping it
+			// does not know leaves the row's own reason.
+			{name: "zero is read under the mapping the rule names", rows: map[string][]validationeval.NumberReading{
+				"value": presentRows("1", "0"),
+				"limit": presentRows("1", "1"),
+				// The rows are the same, so the answer is TriYes after the
+				// absence would be replaced; the mapping itself is asserted
+				// separately below.
+			}, want: validationeval.TriYes},
 			{name: "columns of different lengths", rows: map[string][]validationeval.NumberReading{
 				"value": presentRows("1", "2"),
 				"limit": presentRows("100"),
@@ -239,4 +250,40 @@ func presentRows(values ...string) []validationeval.NumberReading {
 		out = append(out, validationeval.NumberReading{State: validationeval.ValuePresent, Value: value})
 	}
 	return out
+}
+
+// An absence is read under the mapping the rule named, and a mapping the
+// implementation does not know leaves the row's own reason.
+func TestEveryAtMostReadsAbsentValuesUnderTheMappingItKnows(t *testing.T) {
+	for _, available := range validationeval.BuiltinImplementations() {
+		if available.ID != "tei.number.every-at-most" {
+			continue
+		}
+		if available.Absent == nil {
+			t.Fatal("every-at-most states no mapping reader")
+		}
+		zero, ok := available.Absent("zero")
+		if !ok || zero.Sign() != 0 {
+			t.Fatalf("zero=%v ok=%v, want the value zero", zero, ok)
+		}
+		// A mapping this implementation does not know is refused, so the
+		// absence keeps its own reason rather than being read as zero.
+		if _, ok := available.Absent("open"); ok {
+			t.Fatal("every-at-most read a mapping it does not state")
+		}
+
+		// With a row whose value is absent, the mapping it states makes the
+		// row a zero; without the mapping the answer stays undecided.
+		rows := map[string][]validationeval.NumberReading{
+			"value": {{State: validationeval.ValueNull}, {State: validationeval.ValuePresent, Value: big.NewRat(5, 1)}},
+			"limit": presentRows("1", "10"),
+		}
+		got, err := available.NumberRows(rows)
+		if err != nil {
+			t.Fatalf("err=%v", err)
+		}
+		if got != validationeval.TriMaybe {
+			t.Fatalf("an absent row answered %d; it must not be read as a value the implementation never received", int(got))
+		}
+	}
 }
