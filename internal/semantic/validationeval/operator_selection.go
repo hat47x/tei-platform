@@ -36,6 +36,15 @@ type NamedImplementation struct {
 	// NumberRows decides for an operator whose input reads every row of a
 	// relation. At most one of Number, Numbers and NumberRows is non-nil.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
+	// Absent reads an absent value under the mapping a rule names. A rule may
+	// write `or <name>` after an input and the declaration may state
+	// `absent as <name>`; this function says which mapping names the
+	// implementation understands, and what value each of them means.
+	//
+	// A nil Absent, or ok=false for a mapping, means this implementation
+	// cannot read the absence that way, so the decision stays undecided
+	// instead of reading the absence as zero or as present.
+	Absent func(mapping string) (*big.Rat, bool)
 }
 
 // ImplementationSelection is one choice of a composition: this operator is
@@ -180,6 +189,10 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 		}
 		match := matches[0]
 		implementation := OperatorImplementation{Operator: selection.Operator, Input: match.Input}
+		// The mapping an operator can read travels with the implementation,
+		// or a Workspace that declares `absent as <name>` would select an
+		// implementation that silently cannot read the absence.
+		implementation.Absent = match.Absent
 		if match.Number != nil {
 			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
 			decide := match.Number
