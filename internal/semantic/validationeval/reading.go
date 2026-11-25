@@ -253,13 +253,19 @@ func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclarat
 // word `presence` and carries it in the contract, and the evaluator's one
 // operator path has no presence reader yet. A rule that needs it is refused
 // rather than answered from a number.
+//
+// A value of any type is read as that type (section 8.4), so the four typed
+// words are no longer refused: the value the reader hands the implementation
+// carries the type, and the reader decides which one from the declaration.
+// Only presence, which asks whether a value is there rather than what it is,
+// stays refused on this path.
 func refuseNonNumberInputs(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration) error {
 	for _, input := range inputs {
-		if input.Type == semantic.OperatorInputNumber {
+		if input.Type != semantic.OperatorInputPresence {
 			continue
 		}
-		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as numbers only; the %s input has no reader on this path yet",
-			rule.ID, rule.Operator, input.Name, input.Type, input.Type)
+		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as values; the presence input has no reader on this path yet",
+			rule.ID, rule.Operator, input.Name, input.Type)
 	}
 	return nil
 }
@@ -545,7 +551,28 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			return Decision{Undecided: unknown}, nil
 		}
 		var satisfied bool
-		if implementation.Numbers != nil {
+		if implementation.Values != nil {
+			// An implementation that reads values of any type is asked about
+			// the values as the declaration says they are read (section 8.4).
+			// A value it does not receive is one the reader did not read, which
+			// the mapping above already turned into an undecided reason, so the
+			// values in hand are all present ones.
+			typed := make(map[string]semantic.OperatorValue, len(inputs))
+			for _, input := range inputs {
+				// A value the reader read as a number is carried as one. A
+				// value of any other type is read by the reader that
+				// understands it, which this path does not call yet, so an
+				// input of such a type has no value here and the rule is
+				// refused rather than answered from a number it was never
+				// read as (section 8.4).
+				if input.Type != semantic.OperatorInputNumber {
+					return Decision{}, fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this reader reads an attribute as a number; the %s input has no reader on this path yet",
+						rule.ID, rule.Operator, input.Name, input.Type, input.Type)
+				}
+				typed[input.Name] = semantic.OperatorValue{Number: new(big.Rat).Set(values[input.Name])}
+			}
+			satisfied, err = implementation.Values(typed)
+		} else if implementation.Numbers != nil {
 			satisfied, err = implementation.Numbers(values)
 		} else {
 			// A single-input implementation receives the first input's value,

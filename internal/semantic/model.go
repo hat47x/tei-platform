@@ -233,6 +233,19 @@ type OperatorInput string
 const (
 	// OperatorInputNumber is one numeric value of the constrained attribute.
 	OperatorInputNumber OperatorInput = "number"
+	// OperatorInputDate is one calendar date. Section 7 fixes what a reader
+	// accepts as a date; a value that is not one is refused, not read as a
+	// nearby date.
+	OperatorInputDate OperatorInput = "date"
+	// OperatorInputText is one text value. A text is written with quotes in
+	// an example table so it is never read as a number (section 8.3).
+	OperatorInputText OperatorInput = "text"
+	// OperatorInputTruth is one truth value, written `true` or `false`.
+	OperatorInputTruth OperatorInput = "truth"
+	// OperatorInputAny is one value of any type. The value keeps the type it
+	// was read as, so a number and a quoted text are different values
+	// (section 8.3 and 8.4).
+	OperatorInputAny OperatorInput = "any"
 	// OperatorInputPresence is whether an attribute holds a value, not the
 	// value itself.
 	OperatorInputPresence OperatorInput = "presence"
@@ -241,14 +254,25 @@ const (
 // Valid reports whether this is a known operator input kind. Only the kinds
 // something in this program actually reads are valid: a word accepted at
 // authoring time that no reader handles would build a contract nothing can
-// decide. date, text, truth, and any are stated by the design but have no
-// reader here yet, so they stay out of this list until one exists.
+// decide.
 func (i OperatorInput) Valid() bool {
 	switch i {
-	case OperatorInputNumber, OperatorInputPresence:
+	case OperatorInputNumber, OperatorInputDate, OperatorInputText,
+		OperatorInputTruth, OperatorInputAny, OperatorInputPresence:
 		return true
 	}
 	return false
+}
+
+// ReadsValue reports whether this input reads a value of some type, as opposed
+// to whether an attribute holds one. Presence reads the latter, so an
+// implementation that receives values is never asked about it.
+func (i OperatorInput) ReadsValue() bool {
+	switch i {
+	case OperatorInputPresence:
+		return false
+	}
+	return i.Valid()
 }
 
 // OperatorInputDeclaration is one input of an operator signature: its name,

@@ -79,6 +79,22 @@ type OperatorInputWord string
 // OperatorInputNumberWord declares that the operator reads one numeric value.
 const OperatorInputNumberWord OperatorInputWord = "number"
 
+// OperatorInputDateWord declares that the operator reads one calendar date.
+const OperatorInputDateWord OperatorInputWord = "date"
+
+// OperatorInputTextWord declares that the operator reads one text value. A
+// text is written with quotes in an example table, so it is never read as a
+// number (section 8.3).
+const OperatorInputTextWord OperatorInputWord = "text"
+
+// OperatorInputTruthWord declares that the operator reads one truth value,
+// written `true` or `false`.
+const OperatorInputTruthWord OperatorInputWord = "truth"
+
+// OperatorInputAnyWord declares that the operator reads one value of any type.
+// The value keeps the type it was read as (section 8.4).
+const OperatorInputAnyWord OperatorInputWord = "any"
+
 // OperatorInputPresenceWord declares that the operator reads whether an
 // attribute holds a value, not the value itself.
 const OperatorInputPresenceWord OperatorInputWord = "presence"
@@ -577,7 +593,7 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 }
 
 // acceptedOperatorInputWords is the closed list of type words this surface
-// reads. The words with no reader yet (date, text, truth, any) are not in it.
+// reads. The words with no reader are not in it.
 //
 // It is one list, not two: the hint that tells an author what to write and the
 // check that decides what is accepted both read it, so a word cannot be offered
@@ -585,6 +601,10 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 // hint.
 var acceptedOperatorInputWords = []OperatorInputWord{
 	OperatorInputNumberWord,
+	OperatorInputDateWord,
+	OperatorInputTextWord,
+	OperatorInputTruthWord,
+	OperatorInputAnyWord,
 	OperatorInputPresenceWord,
 }
 
