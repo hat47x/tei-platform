@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 
 	cognitionport "tei/tools/reference-cognition-port"
 )
@@ -16,11 +17,26 @@ func main() {
 	requestPath := flag.String("request", "", "cognition request JSON")
 	providerPath := flag.String("provider", "", "cognition provider JSON")
 	command := flag.String("command", "", "trusted command for an external provider; write JSON to $TEI_COGNITION_OUTPUT")
+	plugin := flag.String("plugin", "", "statically composed provider: local-choice")
 	flag.Parse()
 	if *requestPath == "" || *providerPath == "" {
 		fail(fmt.Errorf("-request and -provider are required"))
 	}
-	receipt, err := cognitionport.Propose(context.Background(), *requestPath, *providerPath, *command)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+	var receipt cognitionport.Receipt
+	var err error
+	switch *plugin {
+	case "":
+		receipt, err = cognitionport.Propose(ctx, *requestPath, *providerPath, *command)
+	case "local-choice":
+		if *command != "" {
+			fail(fmt.Errorf("-plugin and -command cannot be combined"))
+		}
+		receipt, err = cognitionport.ProposeWithProvider(ctx, *requestPath, *providerPath, selectedChoice)
+	default:
+		fail(fmt.Errorf("unknown statically composed plugin"))
+	}
 	if err != nil {
 		fail(err)
 	}

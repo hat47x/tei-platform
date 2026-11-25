@@ -236,6 +236,22 @@ func contains(values []string, want string) bool {
 // proposal state are returned as distinct states; they are not collapsed into
 // an empty proposal or a success.
 func Propose(ctx context.Context, requestPath, providerPath, command string) (Receipt, error) {
+	return propose(ctx, requestPath, providerPath, command, nil)
+}
+
+// ProviderInvocation is the statically selected implementation of the existing
+// proposal contract. Selection and authority belong to the caller, not the
+// request or provider. The reference port retains validation and receipts.
+type ProviderInvocation func(context.Context, Request, Provider) (*Proposal, error)
+
+func ProposeWithProvider(ctx context.Context, requestPath, providerPath string, invoke ProviderInvocation) (Receipt, error) {
+	if ctx == nil || invoke == nil {
+		return Receipt{}, fmt.Errorf("context and selected provider invocation are required")
+	}
+	return propose(ctx, requestPath, providerPath, "", invoke)
+}
+
+func propose(ctx context.Context, requestPath, providerPath, command string, invoke ProviderInvocation) (Receipt, error) {
 	var request Request
 	requestRaw, err := readJSON(requestPath, &request)
 	if err != nil {
@@ -293,13 +309,31 @@ func Propose(ctx context.Context, requestPath, providerPath, command string) (Re
 		return receipt, nil
 	}
 	var proposal *Proposal
-	switch provider.Execution {
-	case ExecutionLocal:
-		proposal, err = proposeLocal(request, provider)
-	case ExecutionExternal:
-		proposal, err = proposeExternal(ctx, request, provider, command, contextRaw)
-	default:
-		err = fmt.Errorf("unsupported execution %q", provider.Execution)
+	if invoke != nil {
+		if int64(provider.Limits.TimeoutSeconds) > int64((1<<63-1)/time.Second) {
+			err = fmt.Errorf("provider timeout exceeds duration range")
+		} else {
+			bounded, cancel := context.WithTimeout(ctx, time.Duration(provider.Limits.TimeoutSeconds)*time.Second)
+			defer cancel()
+			if err = bounded.Err(); err == nil {
+				proposal, err = invoke(bounded, request, provider)
+			}
+			if err == nil {
+				err = bounded.Err()
+			}
+		}
+	} else {
+		switch provider.Execution {
+		case ExecutionLocal:
+			proposal, err = proposeLocal(request, provider)
+		case ExecutionExternal:
+			proposal, err = proposeExternal(ctx, request, provider, command, contextRaw)
+		default:
+			err = fmt.Errorf("unsupported execution %q", provider.Execution)
+		}
+	}
+	if err == nil && proposal == nil {
+		err = fmt.Errorf("provider returned no proposal")
 	}
 	if err != nil {
 		receipt.State = StateFailed
@@ -314,6 +348,11 @@ func Propose(ctx context.Context, requestPath, providerPath, command string) (Re
 	proposalRaw, err := json.Marshal(proposal)
 	if err != nil {
 		return Receipt{}, err
+	}
+	if invoke != nil && len(proposalRaw) > provider.Limits.MaxOutputBytes {
+		receipt.State = StateFailed
+		receipt.Diagnostics = []string{"proposal exceeds provider output limit"}
+		return receipt, nil
 	}
 	receipt.Proposal = proposal
 	receipt.OutputDigest = digest(proposalRaw)

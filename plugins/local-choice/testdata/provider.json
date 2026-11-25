@@ -1,0 +1,19 @@
+{
+  "schema": "tei.reference.cognition-provider/v0",
+  "id": "local-choice",
+  "model": "local-model",
+  "version": "operator-declared-v1",
+  "execution": "external",
+  "network": "required",
+  "capabilities": [
+    "choice"
+  ],
+  "limits": {
+    "maxContextBytes": 8192,
+    "maxOutputBytes": 4096,
+    "timeoutSeconds": 60
+  },
+  "settings": {
+    "endpoint": "http://127.0.0.1:8080/v1/chat/completions"
+  }
+}

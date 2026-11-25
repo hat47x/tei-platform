@@ -1,0 +1,33 @@
+{
+  "schema": "tei.reference.cognition-request/v0",
+  "id": "inquiry-001-classify",
+  "kind": "choice",
+  "profile": "connected",
+  "context": {
+    "workspaceRevision": "sample-inquiry-v1",
+    "acceptedReferences": [],
+    "observations": [
+      {
+        "id": "input",
+        "statement": "先月分の請求金額が契約時に説明された金額と異なっています。確認をお願いします。",
+        "reference": "inquiry-001"
+      },
+      {
+        "id": "option.billing",
+        "statement": "請求金額、支払い、請求書の問い合わせ"
+      },
+      {
+        "id": "option.technical",
+        "statement": "技術的な質問、不具合、操作上の問題"
+      },
+      {
+        "id": "option.contract",
+        "statement": "契約条件、契約期間、変更手続き"
+      },
+      {
+        "id": "option.request",
+        "statement": "機能追加、改善の要望"
+      }
+    ]
+  }
+}
