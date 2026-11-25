@@ -166,6 +166,12 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				}
 				inputTypes[name] = input.Type
 			}
+			if _, named := inputTypes["value"]; !named {
+				// An operator that declares no input names its one input by the
+				// fixed column name, so the single-value form's cell is read as
+				// that input's type.
+				inputTypes["value"] = operator.Input
+			}
 			for i, example := range operator.Cases {
 				// An example states either one value or one value per declared
 				// input. Each stated value is checked the same way: it must be a
@@ -210,6 +216,25 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 						continue
 					}
 					sort.Strings(stated)
+				} else if example.Value == "" && example.Inputs != nil {
+					// The single-value form carries a presence cell under the
+					// input's own name, so the cell was checked by the input's
+					// type above and nothing is left to read here.
+					continue
+				} else if inputTypes["value"] == semantic.OperatorInputPresence {
+					// The operator's one input reads whether the attribute holds
+					// a value, so its cell states one of two words. A decimal is
+					// refused the way a word is in a number cell.
+					if !semantic.IsOperatorCasePresenceWord(example.Value) {
+						out = append(out, errFor(
+							operatorSubject,
+							"INVALID_SEMANTIC_OPERATOR_CASE",
+							"semantic operator %s has an example whose value for the presence input %q, %q, is neither %s nor %s",
+							operator.ID, "value", example.Value,
+							semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent,
+						))
+						continue
+					}
 				} else if _, err := semantic.ParseOperatorCaseValue(example.Value); err != nil {
 					out = append(out, errFor(
 						operatorSubject,
