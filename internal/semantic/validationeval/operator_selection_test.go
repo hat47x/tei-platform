@@ -16,6 +16,36 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 		"tei.number.non-negative": {"-3": false, "-1/100": false, "0": true, "1/100": true, "3": true},
 		"tei.number.non-zero":     {"-3": true, "-1/100": true, "0": false, "1/100": true, "3": true},
 	}
+	// The row-scoped implementation is checked over rows, with the expected
+	// three-valued answer read from its definition: every row at most the
+	// limit, a row above it, and a row whose value was not read.
+	rowInputWant := map[string][]struct {
+		name    string
+		rows    map[string][]validationeval.NumberReading
+		want    validationeval.Tri
+		wantErr bool
+	}{
+		"tei.number.every-at-most": {
+			{name: "every row at most", rows: map[string][]validationeval.NumberReading{
+				"value": presentRows("1", "0.5", "0"),
+				"limit": presentRows("1", "1", "1"),
+			}, want: validationeval.TriYes},
+			{name: "one row above", rows: map[string][]validationeval.NumberReading{
+				"value": presentRows("1", "2"),
+				"limit": presentRows("1", "1"),
+			}, want: validationeval.TriNo},
+			{name: "a row with no value", rows: map[string][]validationeval.NumberReading{
+				"value": {{State: validationeval.ValueNull}},
+				"limit": presentRows("1"),
+			}, want: validationeval.TriMaybe},
+			{name: "no value input", rows: map[string][]validationeval.NumberReading{
+				"limit": presentRows("1"),
+			}, wantErr: true},
+			{name: "no limit input", rows: map[string][]validationeval.NumberReading{
+				"value": presentRows("1"),
+			}, wantErr: true},
+		},
+	}
 	multiInputWant := map[string][]struct {
 		name    string
 		values  map[string]*big.Rat
@@ -74,11 +104,31 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
 				}
 			}
+		} else if implementation.NumberRows != nil {
+			cases, known := rowInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.NumberRows(tc.rows)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%d err=nil, want an error", implementation.ID, tc.name, int(got))
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%d err=%v, want %d", implementation.ID, tc.name, int(got), err, int(tc.want))
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
+				}
+			}
 		} else {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant) {
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant) {
 		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant))
 	}
 }
@@ -164,4 +214,17 @@ func TestResolveImplementationsRefusals(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "tei.number.non-negative, tei.number.non-zero") {
 		t.Fatalf("message does not list the available implementations: %v", err)
 	}
+}
+
+// presentRows builds the readings of one column whose rows all hold a value.
+func presentRows(values ...string) []validationeval.NumberReading {
+	out := make([]validationeval.NumberReading, 0, len(values))
+	for _, text := range values {
+		value, ok := new(big.Rat).SetString(text)
+		if !ok {
+			panic("not a number: " + text)
+		}
+		out = append(out, validationeval.NumberReading{State: validationeval.ValuePresent, Value: value})
+	}
+	return out
 }

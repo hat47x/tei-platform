@@ -99,6 +99,59 @@ func BuiltinImplementations() []NamedImplementation {
 				return v.Cmp(low) >= 0 && v.Cmp(high) <= 0, nil
 			},
 		},
+		{
+			// tei.number.every reads one column of the rows of a relation and
+			// decides "every row is at most the limit". It is the shipped
+			// implementation of the row-scoped shape, so a Workspace can
+			// select it for an operator whose input states `of each row` and
+			// have the rule decided from real rows (decision section 15.3).
+			//
+			// It reads inputs named value and limit. A row that holds no value
+			// is not read as zero: the answer is TriMaybe and the evaluator
+			// reports the row's own reason.
+			ID:    "tei.number.every-at-most",
+			Input: semantic.OperatorInputNumber,
+			NumberRows: func(rows map[string][]NumberReading) (Tri, error) {
+				values, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-at-most reads an input named \"value\"; the rule supplied no value input")
+				}
+				limits, ok := rows["limit"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-at-most reads an input named \"limit\"; the rule supplied no limit input")
+				}
+				// The limit is one value for the whole relation. The reader
+				// returns it once per row like any other input, so every one
+				// of those rows must agree; a column whose rows differ is not
+				// one limit, and comparing row 1's value with row 1's limit
+				// would call that every row.
+				var limit *big.Rat
+				for index, row := range limits {
+					if row.State != ValuePresent || row.Value == nil {
+						return TriMaybe, nil
+					}
+					if index == 0 {
+						limit = row.Value
+						continue
+					}
+					if row.Value.Cmp(limit) != 0 {
+						return TriMaybe, fmt.Errorf("every-at-most reads one limit for the whole relation; the limit column holds different values")
+					}
+				}
+				if limit == nil {
+					return TriMaybe, nil
+				}
+				for _, row := range values {
+					if row.State != ValuePresent {
+						return TriMaybe, nil
+					}
+					if row.Value.Cmp(limit) > 0 {
+						return TriNo, nil
+					}
+				}
+				return TriYes, nil
+			},
+		},
 	}
 }
 
