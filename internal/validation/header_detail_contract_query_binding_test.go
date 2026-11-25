@@ -1,9 +1,11 @@
 package validation
 
 import (
+	"strings"
 	"testing"
 
 	"tei/internal/application"
+	"tei/internal/core"
 	"tei/internal/database"
 	"tei/internal/ir"
 	"tei/internal/realization"
@@ -98,6 +100,76 @@ func headerDetailContractQueryBindingWorld() ir.World {
 				},
 			},
 		},
+	}
+}
+
+// A rule whose operator reads a column of every row is asked of the rows of
+// the relation, so a binding that does not state it returns every row leaves
+// the rule answerable only as undecided or not-satisfied. The warning has to
+// name that rule, as it already names the built-in kinds about all the rows.
+func TestValidateHeaderDetailContractQueryBindingsWarnsAboutARowScopedOperatorRule(t *testing.T) {
+	world := headerDetailContractQueryBindingWorld()
+	world.Semantics[0].Data[1].Attributes = append(world.Semantics[0].Data[1].Attributes,
+		semantic.Attribute{ID: "sales.order_line.quantity", Symbol: "quantity", TypeRef: "std.decimal"})
+	world.Semantics[0].Operators = append(world.Semantics[0].Operators, semantic.Operator{
+		ID: "sales.every_at_most", Symbol: "every_at_most", Input: semantic.OperatorInputNumber,
+		Inputs: []semantic.OperatorInputDeclaration{
+			{Name: "value", Type: semantic.OperatorInputNumber, OfEachRow: true},
+			{Name: "limit", Type: semantic.OperatorInputNumber, OfEachRow: true},
+		},
+		// A refutation is about the rows a rule reads, so the declaration
+		// states it is about rows at all.
+		RefutesOnSomeRows: true,
+	})
+	world.Semantics[0].Validations = append(world.Semantics[0].Validations, semantic.Validation{
+		ID: "sales.order_line.quantity_at_most", Symbol: "quantity_at_most",
+		Kind: semantic.ValidationOperator, Attribute: "sales.order_line.quantity",
+		Operator: "sales.every_at_most", Relation: "sales.order.lines",
+	})
+	world.Semantics[1].Types = append(world.Semantics[1].Types,
+		semantic.Type{ID: "std.decimal", Symbol: "Decimal", Kind: semantic.TypePrimitive})
+	world.Applications[0].Validations = []core.CanonicalID{"sales.order_line.quantity_at_most"}
+
+	var named []string
+	for _, diagnostic := range Validate(world) {
+		if diagnostic.Code != "HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED" {
+			continue
+		}
+		named = append(named, diagnostic.Message)
+	}
+	if len(named) != 1 {
+		t.Fatalf("coverage warnings=%d, want one for the row-scoped rule: %v", len(named), named)
+	}
+	if !strings.Contains(named[0], "sales.order_line.quantity_at_most") {
+		t.Fatalf("the warning does not name the row-scoped rule: %q", named[0])
+	}
+}
+
+// A rule decided by an operator that reads one record's values is about every
+// record, not about the rows of a relation, so it needs no covers statement.
+func TestValidateHeaderDetailContractQueryBindingsLeavesARecordRuleAlone(t *testing.T) {
+	world := headerDetailContractQueryBindingWorld()
+	world.Semantics[0].Data[1].Attributes = append(world.Semantics[0].Data[1].Attributes,
+		semantic.Attribute{ID: "sales.order_line.quantity", Symbol: "quantity", TypeRef: "std.decimal"})
+	world.Semantics[0].Operators = append(world.Semantics[0].Operators, semantic.Operator{
+		ID: "sales.every_at_most", Symbol: "every_at_most", Input: semantic.OperatorInputNumber,
+		Inputs: []semantic.OperatorInputDeclaration{
+			{Name: "value", Type: semantic.OperatorInputNumber},
+		},
+	})
+	world.Semantics[0].Validations = append(world.Semantics[0].Validations, semantic.Validation{
+		ID: "sales.order_line.quantity_at_most", Symbol: "quantity_at_most",
+		Kind: semantic.ValidationOperator, Attribute: "sales.order_line.quantity",
+		Operator: "sales.every_at_most",
+	})
+	world.Semantics[1].Types = append(world.Semantics[1].Types,
+		semantic.Type{ID: "std.decimal", Symbol: "Decimal", Kind: semantic.TypePrimitive})
+	world.Applications[0].Validations = []core.CanonicalID{"sales.order_line.quantity_at_most"}
+
+	for _, diagnostic := range Validate(world) {
+		if diagnostic.Code == "HEADER_DETAIL_BINDING_COVERAGE_UNDECLARED" {
+			t.Fatalf("a record rule was told to declare covers: %s", diagnostic.Message)
+		}
 	}
 }
 

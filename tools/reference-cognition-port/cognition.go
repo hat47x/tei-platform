@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -60,11 +61,23 @@ type Observation struct {
 	Reference string `json:"reference,omitempty"`
 }
 
+type ChoiceOption struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+}
+
+// ChoiceQuestion limits a proposal to one declared option or explicit abstention.
+type ChoiceQuestion struct {
+	ObservationID string         `json:"observationId"`
+	Options       []ChoiceOption `json:"options"`
+}
+
 type Context struct {
-	WorkspaceRevision  string        `json:"workspaceRevision"`
-	AcceptedReferences []string      `json:"acceptedReferences"`
-	Observations       []Observation `json:"observations"`
-	Constraints        []string      `json:"constraints,omitempty"`
+	WorkspaceRevision  string          `json:"workspaceRevision"`
+	AcceptedReferences []string        `json:"acceptedReferences"`
+	Observations       []Observation   `json:"observations"`
+	Constraints        []string        `json:"constraints,omitempty"`
+	Choice             *ChoiceQuestion `json:"choice,omitempty"`
 }
 
 type Request struct {
@@ -122,15 +135,24 @@ type Receipt struct {
 	ProviderDigest   string           `json:"providerDigest"`
 	SettingsDigest   string           `json:"settingsDigest"`
 	InputFingerprint string           `json:"inputFingerprint"`
-	State            string           `json:"state"`
-	Proposal         *Proposal        `json:"proposal,omitempty"`
-	OutputDigest     string           `json:"outputDigest,omitempty"`
-	Diagnostics      []string         `json:"diagnostics,omitempty"`
-	Limits           Limits           `json:"limits"`
-	GrantsAuthority  bool             `json:"grantsAuthority"`
-	Accepted         bool             `json:"accepted"`
-	Applied          bool             `json:"applied"`
-	Notes            []string         `json:"notes"`
+
+	// Binding records what the proposal is bound to: the subject, its revision,
+	// and the judgement basis in force when it was produced. #5808 and #5809
+	// both need a candidate produced from an older revision or an older
+	// criteria set to be discarded rather than shown against the current
+	// selection, so the binding travels with the receipt instead of being
+	// re-derived by a consumer from whatever request happens to be current.
+	Binding Binding `json:"binding"`
+
+	State           string    `json:"state"`
+	Proposal        *Proposal `json:"proposal,omitempty"`
+	OutputDigest    string    `json:"outputDigest,omitempty"`
+	Diagnostics     []string  `json:"diagnostics,omitempty"`
+	Limits          Limits    `json:"limits"`
+	GrantsAuthority bool      `json:"grantsAuthority"`
+	Accepted        bool      `json:"accepted"`
+	Applied         bool      `json:"applied"`
+	Notes           []string  `json:"notes"`
 }
 
 func digest(content []byte) string {
@@ -190,6 +212,22 @@ func validateRequest(request Request) error {
 		}
 		seenObs[observation.ID] = true
 	}
+	if request.Kind == "choice" {
+		q := request.Context.Choice
+		if q == nil || !seenObs[q.ObservationID] || len(q.Options) < 2 || len(q.Options) > 16 {
+			return fmt.Errorf("choice requires an observed subject and 2 to 16 options")
+		}
+		optionPattern := regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
+		ids := map[string]bool{}
+		for _, option := range q.Options {
+			if !optionPattern.MatchString(option.ID) || option.ID == "unknown" || ids[option.ID] || strings.TrimSpace(option.Description) == "" {
+				return fmt.Errorf("invalid or duplicate choice option %q", option.ID)
+			}
+			ids[option.ID] = true
+		}
+	} else if request.Context.Choice != nil {
+		return fmt.Errorf("choice question requires kind choice")
+	}
 	return nil
 }
 
@@ -236,6 +274,17 @@ func contains(values []string, want string) bool {
 // proposal state are returned as distinct states; they are not collapsed into
 // an empty proposal or a success.
 func Propose(ctx context.Context, requestPath, providerPath, command string) (Receipt, error) {
+	return ProposeWithInvoker(ctx, requestPath, providerPath, command, nil)
+}
+
+// ExternalInvoker is a reference composition seam, not a new runtime or ABI.
+// The caller binds a trusted implementation to the selected Provider.
+type ExternalInvoker func(context.Context, Provider, []byte) ([]byte, error)
+
+func ProposeWithInvoker(ctx context.Context, requestPath, providerPath, command string, invoke ExternalInvoker) (Receipt, error) {
+	if invoke != nil && strings.TrimSpace(command) != "" {
+		return Receipt{}, fmt.Errorf("select either command or bound invoker")
+	}
 	var request Request
 	requestRaw, err := readJSON(requestPath, &request)
 	if err != nil {
@@ -252,7 +301,14 @@ func Propose(ctx context.Context, requestPath, providerPath, command string) (Re
 	if err := validateProvider(provider); err != nil {
 		return Receipt{}, err
 	}
+	if invoke != nil && provider.Execution != ExecutionExternal {
+		return Receipt{}, fmt.Errorf("bound invoker requires external provider")
+	}
 	contextRaw, err := json.Marshal(request.Context)
+	if err != nil {
+		return Receipt{}, err
+	}
+	basisDigest, err := BasisDigest(request)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -269,6 +325,7 @@ func Propose(ctx context.Context, requestPath, providerPath, command string) (Re
 		RequestDigest: digest(requestRaw), ContextDigest: digest(contextRaw),
 		ProviderDigest: digest(providerRaw), SettingsDigest: digest(settingsRaw),
 		InputFingerprint: digest(append(append([]byte(request.Kind+"\x00"), contextRaw...), 0)),
+		Binding:          BindingOf(request, basisDigest),
 		Limits:           provider.Limits,
 		GrantsAuthority:  false, Accepted: false, Applied: false,
 		Notes: []string{
@@ -297,7 +354,11 @@ func Propose(ctx context.Context, requestPath, providerPath, command string) (Re
 	case ExecutionLocal:
 		proposal, err = proposeLocal(request, provider)
 	case ExecutionExternal:
-		proposal, err = proposeExternal(ctx, request, provider, command, contextRaw)
+		if invoke == nil {
+			proposal, err = proposeExternal(ctx, request, provider, command, contextRaw)
+		} else {
+			proposal, err = proposeBound(ctx, provider, contextRaw, invoke)
+		}
 	default:
 		err = fmt.Errorf("unsupported execution %q", provider.Execution)
 	}
@@ -320,6 +381,32 @@ func Propose(ctx context.Context, requestPath, providerPath, command string) (Re
 	receipt.State = proposal.State
 	receipt.Diagnostics = proposal.Diagnostics
 	return receipt, nil
+}
+
+func proposeBound(ctx context.Context, provider Provider, contextRaw []byte, invoke ExternalInvoker) (*Proposal, error) {
+	runCtx, cancel := context.WithTimeout(ctx, time.Duration(provider.Limits.TimeoutSeconds)*time.Second)
+	defer cancel()
+	raw, err := invoke(runCtx, provider, contextRaw)
+	if err != nil {
+		return nil, err
+	}
+	if err := runCtx.Err(); err != nil {
+		return nil, err
+	}
+	if len(raw) > provider.Limits.MaxOutputBytes {
+		return nil, fmt.Errorf("proposal exceeds output limit")
+	}
+	var proposal Proposal
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&proposal); err != nil {
+		return nil, err
+	}
+	var trailing any
+	if decoder.Decode(&trailing) != io.EOF {
+		return nil, fmt.Errorf("trailing proposal JSON")
+	}
+	return &proposal, nil
 }
 
 func proposeLocal(request Request, provider Provider) (*Proposal, error) {
@@ -494,6 +581,23 @@ func validateProposal(proposal Proposal, request Request) error {
 		}
 	default:
 		return fmt.Errorf("unknown proposal state %q", proposal.State)
+	}
+	if request.Kind == "choice" && proposal.State == StateProposed {
+		q := request.Context.Choice
+		if q == nil || len(proposal.Candidates) != 1 {
+			return fmt.Errorf("choice requires exactly one candidate")
+		}
+		c := proposal.Candidates[0]
+		selected, ok := c.Payload["optionId"].(string)
+		allowed := false
+		for _, option := range q.Options {
+			if option.ID == selected {
+				allowed = true
+			}
+		}
+		if !ok || !allowed || len(c.Payload) != 1 || c.Subject != q.ObservationID || !contains(c.Basis, "observation:"+q.ObservationID) {
+			return fmt.Errorf("choice candidate does not match the declared subject and option set")
+		}
 	}
 	basisPattern := regexp.MustCompile(`^(observation|reference|constraint):[A-Za-z0-9._:-]+$`)
 	seen := map[string]bool{}
