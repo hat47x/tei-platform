@@ -29,6 +29,7 @@ func validateApplicationDataAccessContracts(w ir.World) []Diagnostic {
 	out = append(out, ValidateReferenceContractQueryInvocations(w)...)
 	out = append(out, ValidateReferenceContractQueryCrossLayer(w)...)
 	out = append(out, ValidateHeaderDetailContractQueryBindings(w)...)
+	out = append(out, ValidateHeaderDetailPatternBindings(w)...)
 	out = append(out, ValidateContractQuerySQLRealizations(w)...)
 	return out
 }

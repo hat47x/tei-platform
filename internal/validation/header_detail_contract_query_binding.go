@@ -33,6 +33,44 @@ type resolvedHeaderDetailBinding struct {
 // reference Patternとは異なりRelation target keyを要求しない。source Data instanceに存在する
 // 明示Semantic attributeからQuery inputへ値を渡し、Query resultがRelation target Dataのmanyであることを
 // 確認する。物理Foreign KeyやRelationKeyから不足情報を補完しない。
+// ValidateHeaderDetailPatternBindings reports a header-detail Pattern that an
+// Application declares but no binding realizes.
+//
+// The read refuses such a Pattern with "the Contract Query binding is missing",
+// so a Workspace without one passed validate and failed at the first screen.
+// Only a Pattern an Application declares is compared: a Pattern states
+// structure and a binding realizes it, so a Pattern no Application uses yet is
+// not a Workspace this binary has to be able to read.
+//
+// The check belongs beside the binding validator, because a binding is what
+// makes the Pattern readable, and it reports the Pattern, which is where the
+// binding the author has to add belongs.
+func ValidateHeaderDetailPatternBindings(w ir.World) []Diagnostic {
+	var out []Diagnostic
+	for _, app := range w.Applications {
+		for _, pattern := range app.Patterns {
+			if pattern.Kind != application.PatternHeaderDetail {
+				continue
+			}
+			realized := false
+			for _, binding := range w.HeaderDetailContractQueryBindings {
+				if binding.Application == app.ID && binding.Pattern == pattern.ID {
+					realized = true
+					break
+				}
+			}
+			if realized {
+				continue
+			}
+			patternSubject := subject.Subject{Kind: "application-pattern", ID: string(pattern.ID)}
+			out = append(out, errFor(patternSubject, "HEADER_DETAIL_PATTERN_BINDING_REQUIRED",
+				"header-detail Pattern %s is declared by Application %s but no header-detail Contract Query binding realizes it; the read cannot resolve a Query for it, so write the binding",
+				pattern.ID, app.ID))
+		}
+	}
+	return out
+}
+
 func ValidateHeaderDetailContractQueryBindings(w ir.World) []Diagnostic {
 	attributes := headerDetailBindingAttributes(w)
 	seen := map[string]struct{}{}
