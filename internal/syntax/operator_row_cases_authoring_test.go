@@ -57,26 +57,33 @@ func TestRowExampleTableRefusesAnExpectColumn(t *testing.T) {
 	}
 }
 
-// The first change reads only the two definite answers. An undecided answer
-// needs the three-valued form, so it is refused instead of accepted and left
-// uncheckable.
-func TestRowExampleTableRefusesAnUndecidedAnswer(t *testing.T) {
+// The three-valued form is this change: an undecided answer and the three
+// cell states are read, and they are kept apart from each other and from a
+// number (section 8.1).
+func TestRowExampleTableReadsTheThreeCellStates(t *testing.T) {
 	const src = "<!-- tei: cases of sales.every_line expecting undecided -->\n" +
-		"| value | limit |\n| --- | --- |\n| 2 | 10 |\n"
-	_, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
-	if err == nil || !strings.Contains(err.Error(), "satisfied or not-satisfied") {
-		t.Fatalf("an undecided answer was accepted: %v", err)
+		"| value | limit |\n| --- | --- |\n| 2 | 10 |\n|  | 10 |\n| not-fetched | 10 |\n"
+	parsed, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
+	if err != nil {
+		t.Fatalf("the three-valued example was refused: %v", err)
 	}
-}
-
-// An empty cell states that a row holds no value, which belongs to the three-valued
-// change, so it is refused rather than read as zero.
-func TestRowExampleTableRefusesAnEmptyCell(t *testing.T) {
-	const src = "<!-- tei: cases of sales.every_line expecting satisfied -->\n" +
-		"| value | limit |\n| --- | --- |\n|  | 10 |\n"
-	_, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
-	if err == nil || !strings.Contains(err.Error(), "holds no value") {
-		t.Fatalf("an empty cell was accepted: %v", err)
+	if parsed.Case.Answer != semantic.OperatorRowUndecided {
+		t.Fatalf("answer=%q, want undecided", parsed.Case.Answer)
+	}
+	if len(parsed.Case.Rows) != 3 {
+		t.Fatalf("rows=%d, want the three rows", len(parsed.Case.Rows))
+	}
+	// A number, a value the row does not hold, and a value that was not read
+	// are three different things; none is read as zero, and the empty cell is
+	// not used as a stand-in for "not read".
+	if parsed.Case.Rows[0]["value"] != "2" {
+		t.Fatalf("row 0=%v", parsed.Case.Rows[0])
+	}
+	if parsed.Case.Rows[1]["value"] != semantic.OperatorRowNoValue {
+		t.Fatalf("row 1=%v, want the empty cell kept apart", parsed.Case.Rows[1])
+	}
+	if parsed.Case.Rows[2]["value"] != semantic.OperatorRowNotFetched {
+		t.Fatalf("row 2=%v, want the not-fetched word", parsed.Case.Rows[2])
 	}
 }
 
