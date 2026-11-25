@@ -565,17 +565,24 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			// values in hand are all present ones.
 			typed := make(map[string]semantic.OperatorValue, len(inputs))
 			for _, input := range inputs {
-				// A value the reader read as a number is carried as one. A
-				// value of any other type is read by the reader that
-				// understands it, which this path does not call yet, so an
-				// input of such a type has no value here and the rule is
-				// refused rather than answered from a number it was never
-				// read as (section 8.4).
-				if input.Type != semantic.OperatorInputNumber {
-					return Decision{}, fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this reader reads an attribute as a number; the %s input has no reader on this path yet",
-						rule.ID, rule.Operator, input.Name, input.Type, input.Type)
+				// The value is read the way the declaration says this input is
+				// read, and it is carried in the field that type owns: an input
+				// declared `date` is read as a date and carried as one, never as
+				// a number (decision section 8.4). A reader that cannot read the
+				// declared type is an error, and a value the record does not
+				// hold or the reader did not fetch leaves the rule undecided.
+				attribute := rule.Attribute
+				if assignment := findInputAssignment(rule, input.Name); assignment != nil {
+					attribute = core.CanonicalID(assignment.Value)
 				}
-				typed[input.Name] = semantic.OperatorValue{Number: new(big.Rat).Set(values[input.Name])}
+				value, stopped, readErr := readOperatorInputValue(rule, input, source, attribute)
+				if readErr != nil {
+					return Decision{}, readErr
+				}
+				if stopped != nil {
+					return Decision{Undecided: stopped}, nil
+				}
+				typed[input.Name] = *value
 			}
 			satisfied, err = implementation.Values(typed)
 		} else if implementation.Numbers != nil {
