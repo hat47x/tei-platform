@@ -311,7 +311,7 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 							"operator semantic validation %s uses operator %s, which reads every row of a relation, but names no relation; write \"per <relation>\"",
 							rule.ID, rule.Operator,
 						))
-					} else if _, known := relations[rule.Relation]; !known {
+					} else if relation, known := relations[rule.Relation]; !known {
 						// A relation that no Data declares cannot be read, and
 						// the read is the only place this used to be found. A
 						// reader who mistyped it would see "semantic validation
@@ -322,6 +322,20 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 							"SEMANTIC_VALIDATION_OPERATOR_RELATION_UNKNOWN",
 							"operator semantic validation %s names relation %s, which no Data declares",
 							rule.ID, rule.Relation,
+						))
+					} else if attributeExists && attributeOwners[rule.Attribute] != relation.Target {
+						// The rule is read over the rows of one relation, and the
+						// subject attribute has to be a column of those rows. A
+						// relation to another Data gives rows of that Data, so
+						// the read refuses with "these are the rows of relation
+						// ..., not of ..." — but only when someone opens a
+						// screen. Validate refuses it for the same reason
+						// relation-unique already does.
+						out = append(out, errFor(
+							ruleSubject,
+							"SEMANTIC_VALIDATION_OPERATOR_ATTRIBUTE_OUTSIDE_RELATION_TARGET",
+							"operator semantic validation %s reads attribute %s over relation %s, whose rows belong to %s",
+							rule.ID, rule.Attribute, rule.Relation, relation.Target,
 						))
 					}
 				} else if rule.Relation != "" {
