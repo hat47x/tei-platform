@@ -46,6 +46,7 @@ func TestAnAbsentInputIsReadUnderTheNamedMapping(t *testing.T) {
 	// and the value 5 is above it, so the rule does not hold.
 	source := &attemptingSource{
 		values: map[string]*big.Rat{"sales.order_line.discount": mustParseRat(t, "5")},
+		nulls:  map[string]bool{"sales.order_line.unit_price": true},
 		attempts: map[string]string{
 			"sales.order_line.discount":   "read-1",
 			"sales.order_line.unit_price": "read-1",
