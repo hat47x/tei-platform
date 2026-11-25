@@ -51,6 +51,14 @@ func TestManifestImplementationsRefusals(t *testing.T) {
 			"implementations:\n  - operator: sales.non_negative\n    use: tei.number.non-negative\n  - operator: sales.non_negative\n    use: tei.number.non-zero\n", "more than one implementation entry"},
 		{"entry without use",
 			"implementations:\n  - operator: sales.non_negative\n", "needs 'use: <implementation-id>'"},
+		// The implementation name is a canonical word: lower case, digits,
+		// dot, dash and underscore only. An upper-case letter is refused by
+		// this diagnostic rather than by the selection check, so a reader is
+		// told the name is malformed instead of that it is not carried.
+		{"use with an upper-case letter",
+			"implementations:\n  - operator: sales.non_negative\n    use: tei.number.NonNegative\n", "needs 'use: <implementation-id>'"},
+		{"use with a space",
+			"implementations:\n  - operator: sales.non_negative\n    use: tei.number.non negative\n", "needs 'use: <implementation-id>'"},
 		{"use written twice",
 			"implementations:\n  - operator: sales.non_negative\n    use: tei.number.non-negative\n    use: tei.number.non-zero\n", "duplicate implementation use"},
 		{"use before an operator",
