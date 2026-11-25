@@ -141,17 +141,39 @@ func BuiltinImplementations() []NamedImplementation {
 					// long one would compare rows that do not belong together.
 					return TriMaybe, fmt.Errorf("every-at-most reads %d value rows and %d limit rows; both are columns of the same rows", len(values), len(limits))
 				}
+				// A row the reader reports as present without a value is a
+				// contract violation, and a known counterexample must not
+				// hide it (decision section 8.1): every row is checked
+				// before any row is compared.
+				for index := range values {
+					if values[index].State == ValuePresent && values[index].Value == nil {
+						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a value", index)
+					}
+					if limits[index].State == ValuePresent && limits[index].Value == nil {
+						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a limit", index)
+					}
+				}
+				// A counterexample settles the rule "whatever else is unknown"
+				// (decision section 6), so a row that holds no value must not
+				// hide one that was read. Before this, the answer depended on
+				// row order: counterexample then null answered TriNo, null
+				// then counterexample answered TriMaybe.
+				unknown := false
 				for index := range values {
 					value, limit := values[index], limits[index]
 					if value.State != ValuePresent || limit.State != ValuePresent {
-						return TriMaybe, nil
-					}
-					if value.Value == nil || limit.Value == nil {
-						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a value", index)
+						unknown = true
+						continue
 					}
 					if value.Value.Cmp(limit.Value) > 0 {
 						return TriNo, nil
 					}
+				}
+				if unknown {
+					// No counterexample among the rows that were certainly
+					// read, and at least one row that was not: the answer
+					// depends on it.
+					return TriMaybe, nil
 				}
 				return TriYes, nil
 			},
