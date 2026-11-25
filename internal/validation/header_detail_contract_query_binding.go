@@ -128,12 +128,30 @@ func validateHeaderDetailBindingCoverage(
 	for _, id := range resolved.Application.Validations {
 		used[id] = true
 	}
+	// A rule whose operator reads a column of every row is asked of the rows
+	// of the relation, so it is in the same position as the built-in kinds
+	// below: it can be refuted by a seen counterexample but cannot be called
+	// satisfied unless the binding says the Query returns every row. Passing
+	// over it left such a rule answerable only as undecided or not-satisfied,
+	// with no warning naming what to add.
+	rowScopedOperators := map[core.CanonicalID]bool{}
+	for _, namespace := range w.Semantics {
+		for _, operator := range namespace.Operators {
+			if operatorReadsEachRow(operator) {
+				rowScopedOperators[operator.ID] = true
+			}
+		}
+	}
 	for _, namespace := range w.Semantics {
 		for _, rule := range namespace.Validations {
 			if !used[rule.ID] || rule.Relation != resolved.Relation.ID {
 				continue
 			}
-			if rule.Kind != semantic.ValidationRelationUnique && rule.Kind != semantic.ValidationNoOverlap {
+			readsEveryRow := rule.Kind == semantic.ValidationRelationUnique || rule.Kind == semantic.ValidationNoOverlap
+			if rule.Kind == semantic.ValidationOperator && rowScopedOperators[rule.Operator] {
+				readsEveryRow = true
+			}
+			if !readsEveryRow {
 				continue
 			}
 			out = append(out, Diagnostic{
