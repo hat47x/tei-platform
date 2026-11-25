@@ -173,6 +173,42 @@ func TestValidateHeaderDetailContractQueryBindingsLeavesARecordRuleAlone(t *test
 	}
 }
 
+// A rule that is about the rows of a relation cannot be answered from a
+// binding that reads another relation: the read refuses it with "these are the
+// rows of relation ..., not of ...". Validate reports it, so a Workspace does
+// not pass here and fail at the first screen.
+func TestValidateHeaderDetailContractQueryBindingsRefusesARuleOverAnotherRelation(t *testing.T) {
+	world := headerDetailContractQueryBindingWorld()
+	// A second many relation to the same Data, so both relations are valid
+	// declarations and only the identity differs.
+	world.Semantics[0].Data[0].Relations = append(world.Semantics[0].Data[0].Relations, semantic.Relation{
+		ID: "sales.order.lines_copy", Symbol: "linesCopy",
+		Target: "sales.order_line", Cardinality: semantic.CardinalityMany,
+	})
+	world.Semantics[0].Validations = []semantic.Validation{{
+		ID: "sales.order_line.line_number_unique", Symbol: "line_number_unique",
+		Kind:      semantic.ValidationRelationUnique,
+		Attribute: "sales.order_line.order_line_id",
+		Relation:  "sales.order.lines_copy",
+	}}
+	world.Applications[0].Validations = []core.CanonicalID{"sales.order_line.line_number_unique"}
+
+	var found bool
+	for _, diagnostic := range Validate(world) {
+		if diagnostic.Code != "HEADER_DETAIL_BINDING_RULE_OTHER_RELATION" {
+			continue
+		}
+		found = true
+		if !strings.Contains(diagnostic.Message, "sales.order.lines_copy") ||
+			!strings.Contains(diagnostic.Message, "sales.order.lines") {
+			t.Fatalf("the finding does not name both relations: %q", diagnostic.Message)
+		}
+	}
+	if !found {
+		t.Fatal("a rule over another relation was not reported")
+	}
+}
+
 func TestValidateHeaderDetailContractQueryBindingsAcceptsKeylessManyRelation(t *testing.T) {
 	world := headerDetailContractQueryBindingWorld()
 	if len(world.Semantics[0].Data[0].Relations[0].Keys) != 0 {
