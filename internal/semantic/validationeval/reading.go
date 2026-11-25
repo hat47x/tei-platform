@@ -527,8 +527,11 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 // it (decideRowScoped, row_scope.go).
 //
 // The first input's column is the rule's subject attribute. Every other input
-// must be assigned a name, and that assignment must be an attribute: a constant
-// states one value and cannot stand for a column of the rows.
+// must be assigned a name, and that assignment is either an attribute (a column
+// of the rows) or a constant. A constant is one value for the whole relation,
+// which is what the design allows a rule to write for any input; every row of
+// the relation therefore holds that value, and the operator sees one limit
+// rather than a column that changes from row to row.
 func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, implementation OperatorImplementation, source StatefulSource) (Decision, error) {
 	if rule.Relation == "" {
 		return Decision{}, fmt.Errorf(
@@ -550,12 +553,18 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 	rows := make(map[string][]NumberReading, len(inputs))
 	var coverage Coverage
 	var reason *Undecided
+	// A constant states one value for the whole relation. Its column is as long
+	// as the rows that were read, so the value is written into every row once
+	// the row count is known.
+	var constantValues map[string]*big.Rat
+	var width []NumberReading
 	for index, input := range inputs {
 		attribute := rule.Attribute
 		// The subject's own declaration can state `absent as <mapping>` too.
 		// It is carried by the declaration, not by a rule assignment, so it is
 		// read from input rather than from an assignment (#4359).
 		mapping := input.AbsentAs
+
 		if index > 0 {
 			assignment := findInputAssignment(rule, input.Name)
 			if assignment == nil {
@@ -564,10 +573,23 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 					rule.ID, rule.Operator, input.Name)
 			}
 			if !isAttributeReference(assignment.Value) {
-				return Decision{}, fmt.Errorf(
-					"semantic validation %s assigns operator %s input %q the constant %q; a row-scoped input reads a column of the rows, not one value",
-					rule.ID, rule.Operator, input.Name, assignment.Value)
+				value, err := parseConstant(assignment.Value)
+				if err != nil {
+					return Decision{}, fmt.Errorf(
+						"semantic validation %s assigns operator %s input %q the value %q, which is neither an attribute nor a decimal: %w",
+						rule.ID, rule.Operator, input.Name, assignment.Value, err)
+				}
+				if constantValues == nil {
+					constantValues = make(map[string]*big.Rat, len(inputs))
+				}
+				// A mapping says how an absent value is read; a constant is
+				// present in every row, so it cannot be absent and needs none.
+				constantValues[input.Name] = value
+				continue
 			}
+		}
+		if index > 0 {
+			assignment := findInputAssignment(rule, input.Name)
 			named, err := core.ParseCanonicalID(assignment.Value)
 			if err != nil {
 				return Decision{}, fmt.Errorf(
@@ -598,12 +620,18 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 		}
 		coverage = reading.Coverage
 		rows[input.Name] = withAbsentMapping(reading.Rows, attribute, mapping, implementation.Absent)
+		if index == 0 {
+			width = rows[input.Name]
+		}
 		// A row that holds no value, or was not read, keeps its own reason. The
 		// first such row in read order is reported; the implementation is still
 		// asked, so a counterexample found in another row is not thrown away.
 		if reason == nil {
 			reason = firstRowReason(attribute, rows[input.Name])
 		}
+	}
+	for name, value := range constantValues {
+		rows[name] = fillConstant(width, value)
 	}
 
 	answer, err := implementation.NumberRows(rows)
@@ -634,6 +662,17 @@ func withAbsentMapping(rows []NumberReading, attribute core.CanonicalID, mapping
 		}
 	}
 	return out
+}
+
+// fillConstant returns one column of the relation in which every row holds the
+// same value. A constant input states one value for the whole relation, so the
+// operator sees that value once per row.
+func fillConstant(width []NumberReading, value *big.Rat) []NumberReading {
+	rows := make([]NumberReading, len(width))
+	for i := range rows {
+		rows[i] = NumberReading{State: ValuePresent, Value: new(big.Rat).Set(value)}
+	}
+	return rows
 }
 
 // firstRowReason reports the first row that holds no value or was not read, in
