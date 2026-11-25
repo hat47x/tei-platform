@@ -71,6 +71,37 @@ func BuiltinImplementations() []NamedImplementation {
 			},
 		},
 		{
+			// tei.number.rows.non-zero decides that no row of the relation
+			// holds zero. It is the first built-in written for a row-scoped
+			// input (decision section 15.1): it receives every row's state and
+			// answers the three-valued result the evaluator composes with the
+			// coverage.
+			ID:    "tei.number.rows.non-zero",
+			Input: semantic.OperatorInputNumber,
+			NumberRows: func(rows map[string][]NumberReading) (Tri, error) {
+				values, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("rows.non-zero reads an input named \"value\"; the rule supplied no value input")
+				}
+				for _, row := range values {
+					switch row.State {
+					case ValuePresent:
+						if row.Value.Sign() == 0 {
+							// A witnessed counterexample is decisive for the
+							// operator; the evaluator decides what the coverage
+							// and the refutation statement make of it.
+							return TriNo, nil
+						}
+					case ValueNull, ValueNotFetched:
+						return TriMaybe, nil
+					default:
+						return TriMaybe, fmt.Errorf("a row of the relation is in the unknown state %q", row.State)
+					}
+				}
+				return TriYes, nil
+			},
+		},
+		{
 			// tei.number.within decides "low <= value <= high" by input name.
 			// It reads inputs named value, low, and high; a declaration that
 			// names them otherwise is not this operator and is reported.

@@ -33,6 +33,34 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "low-greater-than-high", values: map[string]*big.Rat{"value": big.NewRat(50, 1), "low": big.NewRat(100, 1), "high": big.NewRat(0, 1)}, wantErr: true},
 		},
 	}
+	// tei.number.rows.non-zero reads every row. The expectations are written
+	// from its meaning: no row may hold zero, and a row that holds no value or
+	// was not read keeps the answer undecided instead of being read as zero.
+	rowScopedWant := map[string][]struct {
+		name    string
+		rows    map[string][]validationeval.NumberReading
+		want    validationeval.Tri
+		wantErr bool
+	}{
+		"tei.number.rows.non-zero": {
+			{name: "no zero", rows: map[string][]validationeval.NumberReading{"value": {
+				{State: validationeval.ValuePresent, Value: big.NewRat(3, 1)},
+				{State: validationeval.ValuePresent, Value: big.NewRat(-1, 1)},
+			}}, want: validationeval.TriYes},
+			{name: "a zero", rows: map[string][]validationeval.NumberReading{"value": {
+				{State: validationeval.ValuePresent, Value: big.NewRat(3, 1)},
+				{State: validationeval.ValuePresent, Value: big.NewRat(0, 1)},
+			}}, want: validationeval.TriNo},
+			{name: "a row holds no value", rows: map[string][]validationeval.NumberReading{"value": {
+				{State: validationeval.ValueNull},
+				{State: validationeval.ValuePresent, Value: big.NewRat(3, 1)},
+			}}, want: validationeval.TriMaybe},
+			{name: "a row was not read", rows: map[string][]validationeval.NumberReading{"value": {
+				{State: validationeval.ValueNotFetched},
+			}}, want: validationeval.TriMaybe},
+			{name: "no value input", rows: map[string][]validationeval.NumberReading{}, wantErr: true},
+		},
+	}
 	seen := map[string]bool{}
 	for _, implementation := range validationeval.BuiltinImplementations() {
 		if seen[implementation.ID] {
@@ -74,12 +102,32 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
 				}
 			}
+		} else if implementation.NumberRows != nil {
+			cases, known := rowScopedWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.NumberRows(tc.rows)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%d err=nil, want an error", implementation.ID, tc.name, int(got))
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%d err=%v", implementation.ID, tc.name, int(got), err)
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
+				}
+			}
 		} else {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowScopedWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowScopedWant))
 	}
 }
 
