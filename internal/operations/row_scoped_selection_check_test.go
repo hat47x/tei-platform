@@ -4,6 +4,7 @@ package operations
 
 import (
 	"math/big"
+	"strings"
 	"testing"
 
 	"tei/internal/core"
@@ -41,6 +42,29 @@ func rowsContract(id core.CanonicalID) semantic.Operator {
 		Inputs: []semantic.OperatorInputDeclaration{
 			{Name: "value", Type: semantic.OperatorInputNumber, OfEachRow: true},
 		},
+	}
+}
+
+func TestCheckOperatorSelectionRefusesARowReaderForAnOperatorOfOneRecord(t *testing.T) {
+	// The reverse of the case above: the operator's input does not read every
+	// row, so its answer is about one record. A row-reading implementation
+	// would answer a question about the relation's rows instead.
+	loaded := selectionCheckLoaded(
+		selectionCheckWorld(semantic.Operator{
+			ID: "stock.one_record", Symbol: "one_record", Input: semantic.OperatorInputNumber,
+			Inputs: []semantic.OperatorInputDeclaration{
+				{Name: "value", Type: semantic.OperatorInputNumber},
+			},
+		}),
+		[]workspace.OperatorImplementationSelection{{Operator: "stock.one_record", Implementation: "test.rows"}},
+	)
+	codes := selectionCheckCodes(loaded)
+	if len(codes) != 1 || codes[0] != OperatorSelectionUnresolvedCode {
+		t.Fatalf("codes=%v, want exactly the selection finding", codes)
+	}
+	finding := CheckOperatorSelection(loaded, sourceindex.Index{}, rowScopedSelectionCheckAvailable())[0]
+	if !strings.Contains(finding.Diagnostic.Message, "rows of a relation") {
+		t.Fatalf("the finding does not say the operator reads no rows: %q", finding.Diagnostic.Message)
 	}
 }
 
