@@ -90,3 +90,35 @@ func TestValidateAcceptsAHeaderDetailPatternWithABinding(t *testing.T) {
 		}
 	}
 }
+
+// The two declarations that keep the finding a warning are named here so the
+// boundary is visible: a Pattern an Application declares but no binding
+// realizes is reported, and it does not stop the Workspace.
+//
+// Reading such a Pattern still fails, because the read refuses to resolve a
+// Query for it. That gap is the reason the finding exists; it is a warning
+// because two products in this repository declare a Pattern before its
+// realization (examples/xtea-lowcode and the RQ C1 package fixture), and
+// refusing them would narrow what validate accepts rather than report a
+// disagreement.
+func TestAHeaderDetailPatternWithoutABindingDoesNotStopTheWorkspace(t *testing.T) {
+	world := headerDetailPatternWorld()
+
+	var errors, warnings int
+	for _, diagnostic := range Validate(world) {
+		switch {
+		case diagnostic.Code != "HEADER_DETAIL_PATTERN_BINDING_REQUIRED":
+			continue
+		case diagnostic.Severity == Error:
+			errors++
+		case diagnostic.Severity == Warning:
+			warnings++
+		}
+	}
+	if errors != 0 {
+		t.Fatalf("the finding became an error, which refuses a Pattern declared before its realization")
+	}
+	if warnings != 1 {
+		t.Fatalf("warnings=%d, want the one finding", warnings)
+	}
+}
