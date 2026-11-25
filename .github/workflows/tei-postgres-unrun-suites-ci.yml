@@ -345,6 +345,8 @@ jobs:
             'TestRowScopedRuleDecidedFromPostgresRows'
             'TestRowScopedRuleDecidedFromPostgresRows/1004'
             'TestRowScopedRuleDecidedFromPostgresRows/1005'
+            'TestRowScopedRuleDecidedFromPostgresRows/partial_visible_counterexample'
+            'TestRowScopedRuleDecidedFromPostgresRows/partial_hidden_counterexample'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows/1001'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows/1002'

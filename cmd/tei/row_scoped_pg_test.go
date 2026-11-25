@@ -25,9 +25,8 @@ import (
 //	order 1005: quantity 12 and 3, unit_price 10 for both rows
 //
 // The rule asks `every-at-most` over `sales.order.lines` with `limit:
-// sales.order_line.unit_price`. The shipped implementation requires the limit
-// column to hold one value for the whole relation, which is why both orders'
-// rows share the price 10:
+// sales.order_line.unit_price`. The limit is read from the same row as the quantity;
+// both orders here happen to use the same price 10:
 //
 //	1004 → satisfied     (2 ≤ 10 and 0 ≤ 10)
 //	1005 → not-satisfied (12 > 10 is a counterexample)
@@ -70,7 +69,7 @@ func TestRowScopedRuleDecidedFromPostgresRows(t *testing.T) {
 	t.Cleanup(func() { _, _ = db.Exec("drop table if exists public.order_lines") })
 
 	// The reference seed supplies the ordinary orders; the two below state the
-	// cases this test asks about, with one price for the whole relation.
+	// cases this test asks about, with price 10 on each row.
 	seed, err := os.ReadFile(filepath.Join("..", "..", "testdata", "destination-order-change", "seed.sql"))
 	if err != nil {
 		t.Fatal(err)
@@ -160,6 +159,69 @@ func TestRowScopedRuleDecidedFromPostgresRows(t *testing.T) {
 				if reason, held := report.Result.Undecided[ruleID]; held {
 					t.Fatalf("order=%s: %s is undecided (%q) although every row was read",
 						tc.order, ruleID, reason)
+				}
+			}
+		})
+	}
+
+	// Keep the covers declaration but narrow the SQL. A visible counterexample
+	// may settle only the operator that explicitly declares refutation on some
+	// rows; an invisible counterexample cannot settle either rule.
+	for _, tc := range []struct {
+		name         string
+		excluded     string
+		key          string
+		wantRefuting string
+	}{
+		{name: "partial_visible_counterexample", excluded: "104", key: "103", wantRefuting: "not-satisfied"},
+		{name: "partial_hidden_counterexample", excluded: "103", key: "104", wantRefuting: "undecided"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			limitedRoot := t.TempDir()
+			copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), limitedRoot)
+			installRowScopedRules(t, limitedRoot)
+			sourcePath := filepath.Join(limitedRoot, "databases", "sales-core", "query-realizations", "order-line-find-by-order.sql")
+			source, err := os.ReadFile(sourcePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			const predicate = "WHERE order_id = :order_id"
+			limited := replaceOnce(t, string(source), predicate, predicate+" AND order_line_id <> "+tc.excluded)
+			if err := os.WriteFile(sourcePath, []byte(limited), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if validated := runCLIProcessWithStreams(t, binary, "validate", "-workspace", limitedRoot); validated.code != 0 {
+				t.Fatalf("the limited Workspace did not validate: %s%s", validated.stdout, validated.stderr)
+			}
+			report, got := runRowScopedProductView(t, binary, limitedRoot, "1005")
+			if got.code != 0 || !report.OK || report.Error != nil || report.Result == nil {
+				t.Fatalf("limited CLI failed: code=%d stdout=%s stderr=%s", got.code, got.stdout, got.stderr)
+			}
+			read := report.Result
+			if read.Coverage != "partial" || len(read.Rows) != 1 || read.Rows[0].Key != tc.key {
+				t.Fatalf("want partial read of key %s, got %+v", tc.key, read)
+			}
+			for _, expected := range []struct {
+				rule   string
+				answer string
+			}{
+				{rule: refutingRule, answer: tc.wantRefuting},
+				{rule: plainRule, answer: "undecided"},
+			} {
+				answer, reason := read.PerRelation[expected.rule], read.PerRelationUndecided[expected.rule]
+				if answer != expected.answer {
+					t.Fatalf("%s: answer=%q, want %q", expected.rule, answer, expected.answer)
+				}
+				if expected.answer == "undecided" && !strings.Contains(reason, "relation-partially-read") {
+					t.Fatalf("%s: want partial-read reason, got %q", expected.rule, reason)
+				}
+				if expected.answer == "not-satisfied" && reason != "" {
+					t.Fatalf("%s: witnessed counterexample has undecided reason %q", expected.rule, reason)
+				}
+				for key, answers := range read.PerRow {
+					if _, present := answers[expected.rule]; present {
+						t.Fatalf("%s was answered for row %s", expected.rule, key)
+					}
 				}
 			}
 		})
