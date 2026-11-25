@@ -37,10 +37,14 @@ type resolvedHeaderDetailBinding struct {
 // Application declares but no binding realizes.
 //
 // The read refuses such a Pattern with "the Contract Query binding is missing",
-// so a Workspace without one passed validate and failed at the first screen.
-// Only a Pattern an Application declares is compared: a Pattern states
-// structure and a binding realizes it, so a Pattern no Application uses yet is
-// not a Workspace this binary has to be able to read.
+// so a Workspace without one passed validate silently and failed at the first
+// screen. The finding is a warning rather than an error: a Pattern states
+// structure and a binding realizes it, and two products already declare a
+// header-detail Pattern before any realization exists (examples/xtea-lowcode and
+// the RQ C1 package fixture). Making it an error would refuse those Workspaces,
+// which is a change to what validate accepts rather than a report of a
+// disagreement. The warning names what to write, so the missing binding is no
+// longer silent.
 //
 // The check belongs beside the binding validator, because a binding is what
 // makes the Pattern readable, and it reports the Pattern, which is where the
@@ -63,9 +67,14 @@ func ValidateHeaderDetailPatternBindings(w ir.World) []Diagnostic {
 				continue
 			}
 			patternSubject := subject.Subject{Kind: "application-pattern", ID: string(pattern.ID)}
-			out = append(out, errFor(patternSubject, "HEADER_DETAIL_PATTERN_BINDING_REQUIRED",
-				"header-detail Pattern %s is declared by Application %s but no header-detail Contract Query binding realizes it; the read cannot resolve a Query for it, so write the binding",
-				pattern.ID, app.ID))
+			out = append(out, Diagnostic{
+				Code:     "HEADER_DETAIL_PATTERN_BINDING_REQUIRED",
+				Severity: Warning,
+				Subject:  &patternSubject,
+				Message: fmt.Sprintf(
+					"header-detail Pattern %s is declared by Application %s but no header-detail Contract Query binding realizes it; the read cannot resolve a Query for it, so write the binding",
+					pattern.ID, app.ID),
+			})
 		}
 	}
 	return out

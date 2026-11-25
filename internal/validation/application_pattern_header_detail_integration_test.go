@@ -43,8 +43,9 @@ func TestValidateReportsHeaderDetailCardinalityMismatchOnce(t *testing.T) {
 
 // A header-detail Pattern an Application declares but no binding realizes can
 // never be read: the read refuses it with "the Contract Query binding is
-// missing". Validate reports it, so a Workspace does not pass here and fail at
-// the first screen.
+// missing". Validate reports it as a warning, so the missing binding is not
+// silent while the two products that declare a Pattern before its realization
+// keep their acceptance.
 func TestValidateRefusesAHeaderDetailPatternWithoutABinding(t *testing.T) {
 	world := headerDetailPatternWorld()
 
@@ -63,7 +64,7 @@ func TestValidateRefusesAHeaderDetailPatternWithoutABinding(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatal("a header-detail Pattern with no binding was accepted")
+		t.Fatal("a header-detail Pattern with no binding was reported quietly")
 	}
 }
 
