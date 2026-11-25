@@ -56,6 +56,8 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 	}
 	tables := make([]syntax.DataTableAuthoring, 0, len(document.Tables))
 	var caseTables []syntax.OperatorCasesAuthoring
+	var rowCaseTables []syntax.OperatorRowCasesAuthoring
+	rows := 0
 	var exampleTables []syntax.RuleExampleAuthoring
 	for _, table := range document.Tables {
 		// The first word of the mark says what the table defines.
@@ -67,6 +69,17 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 			}
 			tables = append(tables, parsed)
 		case "cases":
+			// Two forms share the mark. The one-record form has no answer in
+			// the mark; the row form states it there (section 8.1).
+			if len(table.Words) > 3 {
+				parsed, err := syntax.ParseOperatorRowCasesTable(table)
+				if err != nil {
+					return 0, 0, r.collectSourceError(filename, err)
+				}
+				rowCaseTables = append(rowCaseTables, parsed)
+				rows++
+				break
+			}
 			parsed, err := syntax.ParseOperatorCasesTable(table)
 			if err != nil {
 				return 0, 0, r.collectSourceError(filename, err)
@@ -95,6 +108,13 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 			filename: filename, relative: relative, table: table,
 		})
 	}
+	// A row example also waits until every source is read, because it names
+	// an operator the document may not declare.
+	for _, table := range rowCaseTables {
+		r.pendingOperatorRowCases = append(r.pendingOperatorRowCases, pendingOperatorRowCases{
+			filename: filename, relative: relative, table: table,
+		})
+	}
 	// Example records define nothing. They are resolved after every source is
 	// read and kept beside the World.
 	for _, table := range exampleTables {
@@ -102,7 +122,7 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 			filename: filename, relative: relative, table: table,
 		})
 	}
-	return regionCount + len(caseTables) + len(exampleTables), definitions + len(caseTables), nil
+	return regionCount + len(caseTables) + rows + len(exampleTables), definitions + len(caseTables) + rows, nil
 }
 
 // pendingOperatorCases is a case table read during Load and not yet attached
@@ -111,6 +131,14 @@ type pendingOperatorCases struct {
 	filename string
 	relative string
 	table    syntax.OperatorCasesAuthoring
+}
+
+// pendingOperatorRowCases is a row-example table read during Load and not yet
+// attached to the operator it names.
+type pendingOperatorRowCases struct {
+	filename string
+	relative string
+	table    syntax.OperatorRowCasesAuthoring
 }
 
 // attachOperatorCases adds every case table to the operator it names. A table
@@ -220,6 +248,131 @@ func attachOperatorCases(r *Result) error {
 		attached[table.Operator] = pending
 	}
 	r.pendingOperatorCases = nil
+	if err := attachOperatorRowCases(r); err != nil {
+		return err
+	}
+	return nil
+}
+
+// attachOperatorRowCases adds every row-example table to the operator it names.
+// A table for an operator no source declares stops the Load at the table's
+// position. Section 8.1 fixes the rest: one operator may have several row
+// examples, but not two that state the same rows, and not a row example beside
+// the one-record form.
+func attachOperatorRowCases(r *Result) error {
+	seen := map[core.CanonicalID][]pendingOperatorRowCases{}
+	for _, pending := range r.pendingOperatorRowCases {
+		table := pending.table
+		fail := func(span syntax.Anchor, message string) error {
+			return r.collectSourceError(pending.filename, &syntax.ParseError{
+				Pos: span.Start, End: span.End, Msg: message})
+		}
+		found := false
+		for i := range r.World.Semantics {
+			for j := range r.World.Semantics[i].Operators {
+				operator := &r.World.Semantics[i].Operators[j]
+				if operator.ID != table.Operator {
+					continue
+				}
+				found = true
+				if !declaresRowScopedInput(*operator) {
+					if err := fail(table.OperatorSpan, fmt.Sprintf(
+						"operator %s declares no input read over all rows, so its example is marked <!-- tei: cases of %s --> without expecting",
+						operator.ID, operator.ID)); err != nil {
+						return err
+					}
+					continue
+				}
+				if len(operator.Cases) > 0 {
+					// The two forms state different things about one operator;
+					// section 8.1 refuses the mix rather than reading one of
+					// them as the other.
+					if err := fail(table.OperatorSpan, fmt.Sprintf(
+						"operator %s already has a one-record example; a row example and a one-record example cannot state the same operator",
+						operator.ID)); err != nil {
+						return err
+					}
+					continue
+				}
+				for _, prior := range seen[operator.ID] {
+					if !semantic.SameOperatorRowCaseStates(prior.table.Case, table.Case) {
+						continue
+					}
+					if err := fail(table.OperatorSpan, fmt.Sprintf(
+						"operator %s already has this row example at %s:%d:%d; one example is stated once",
+						operator.ID, filepath.ToSlash(prior.relative),
+						prior.table.OperatorSpan.Start.Line, prior.table.OperatorSpan.Start.Column)); err != nil {
+						return err
+					}
+				}
+				if err := requireRowCaseNamesMatchSignature(*operator, table, fail); err != nil {
+					return err
+				}
+				operator.RowCases = append(operator.RowCases, table.Case)
+			}
+		}
+		if !found {
+			if err := fail(table.OperatorSpan, fmt.Sprintf(
+				"the example is for operator %s, but no source declares that operator", table.Operator)); err != nil {
+				return err
+			}
+			continue
+		}
+		seen[table.Operator] = append(seen[table.Operator], pending)
+	}
+	r.pendingOperatorRowCases = nil
+	return nil
+}
+
+// declaresRowScopedInput reports whether some declared input reads every row.
+func declaresRowScopedInput(operator semantic.Operator) bool {
+	for _, input := range operator.Inputs {
+		if input.OfEachRow {
+			return true
+		}
+	}
+	return false
+}
+
+// requireRowCaseNamesMatchSignature matches the table's columns to the inputs
+// the operator declares: a column naming an input it does not take, and a
+// declared input the table does not state, are both refused at the table.
+func requireRowCaseNamesMatchSignature(
+	operator semantic.Operator,
+	table syntax.OperatorRowCasesAuthoring,
+	fail func(syntax.Anchor, string) error,
+) error {
+	declared := make(map[string]bool, len(operator.Inputs))
+	for _, input := range operator.Inputs {
+		if input.Name == "" {
+			declared["value"] = true
+			continue
+		}
+		declared[input.Name] = true
+	}
+	for name, span := range table.InputHeaderSpans {
+		if declared[name] {
+			continue
+		}
+		if err := fail(span, fmt.Sprintf(
+			"operator %s declares no input named %q; a row example column is one of its input names",
+			operator.ID, name)); err != nil {
+			return err
+		}
+	}
+	for _, input := range operator.Inputs {
+		name := input.Name
+		if name == "" {
+			name = "value"
+		}
+		if _, stated := table.InputHeaderSpans[name]; !stated {
+			if err := fail(table.OperatorSpan, fmt.Sprintf(
+				"operator %s declares input %q, but this row example has no column for it",
+				operator.ID, name)); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
