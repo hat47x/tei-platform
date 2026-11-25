@@ -8,6 +8,7 @@ import (
 	"os"
 
 	choice "tei/plugins/reference-cognition-choice"
+	lexical "tei/plugins/reference-cognition-lexical"
 	cognitionport "tei/tools/reference-cognition-port"
 )
 
@@ -18,9 +19,13 @@ func main() {
 	providerPath := flag.String("provider", "", "cognition provider JSON")
 	command := flag.String("command", "", "trusted command for an external provider; write JSON to $TEI_COGNITION_OUTPUT")
 	localChoice := flag.Bool("local-choice", false, "bind the reference local choice plugin (requires matching provider settings)")
+	lexicalBaseline := flag.Bool("lexical-choice", false, "bind the deterministic lexical baseline provider (no model, no network)")
 	flag.Parse()
 	if *requestPath == "" || *providerPath == "" {
 		fail(fmt.Errorf("-request and -provider are required"))
+	}
+	if *localChoice && *lexicalBaseline {
+		fail(fmt.Errorf("-local-choice and -lexical-choice are different providers; select one"))
 	}
 	var invoker cognitionport.ExternalInvoker
 	if *localChoice {
@@ -30,6 +35,17 @@ func main() {
 			}
 			endpoint, _ := provider.Settings["endpoint"].(string)
 			return choice.Invoke(ctx, endpoint, provider.Model, provider.Settings, raw)
+		}
+	}
+	if *lexicalBaseline {
+		invoker = func(ctx context.Context, provider cognitionport.Provider, raw []byte) ([]byte, error) {
+			if provider.Network != cognitionport.NetworkNone {
+				return nil, fmt.Errorf("lexical baseline cannot serve a provider that declares network access")
+			}
+			if provider.Model != lexical.Model {
+				return nil, fmt.Errorf("lexical baseline serves model %q, provider declares %q", lexical.Model, provider.Model)
+			}
+			return lexical.Invoke(ctx, raw)
 		}
 	}
 	receipt, err := cognitionport.ProposeWithInvoker(context.Background(), *requestPath, *providerPath, *command, invoker)
