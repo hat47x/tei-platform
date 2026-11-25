@@ -119,6 +119,24 @@ type StatefulTruthSource interface {
 	ReadTruth(attribute core.CanonicalID) (TruthReading, error)
 }
 
+// AnyReading is one value of any type and its state. Value is set exactly when
+// State is ValuePresent.
+//
+// The value keeps the type the reader read it as, because the declaration says
+// nothing about the type: an input declared `any` may be a number in one record
+// and a text in another, and the value carries which one it was (section 8.4).
+type AnyReading struct {
+	State ValueState
+	Value semantic.AnyValue
+}
+
+// StatefulAnySource is implemented by a reader that can read a value of any
+// type. A rule about `any` is refused by a reader that cannot; it is not decided
+// from a value of another type (section 8.4).
+type StatefulAnySource interface {
+	ReadAny(attribute core.CanonicalID) (AnyReading, error)
+}
+
 // PresenceReading is what a reader knows about whether one attribute of one
 // record holds a value.
 //
@@ -260,6 +278,34 @@ func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclarat
 		inputs = append(inputs, input)
 	}
 	return inputs
+}
+
+// readAnySubject reads the subject attribute as a value of the type the reader
+// read it as (section 8.4). The type travels with the value, so an
+// implementation is never asked to guess which kind it holds.
+//
+// A value two types read equally is refused rather than resolved by picking
+// one: the same ambiguity section 8.3 refuses in an example table, because a
+// reader that resolves it would decide a rule from a type the author did not
+// state.
+func readAnySubject(rule semantic.Validation, source StatefulSource) (semantic.OperatorValue, *Undecided, error) {
+	reader, ok := source.(StatefulAnySource)
+	if !ok {
+		return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s reads attribute %s as any type, but this reader cannot read a value of any type", rule.ID, rule.Attribute)
+	}
+	reading, err := reader.ReadAny(rule.Attribute)
+	if err != nil {
+		return semantic.OperatorValue{}, nil, err
+	}
+	switch reading.State {
+	case ValuePresent:
+		value := reading.Value
+		return semantic.OperatorValue{Any: &value}, nil, nil
+	case ValueNull:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNull, Attribute: rule.Attribute}, nil
+	default:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNotFetched, Attribute: rule.Attribute}, nil
+	}
 }
 
 // readAssignedInput reads one input value that was assigned by name in the rule.
@@ -619,6 +665,15 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			typedSubject = value
 		case semantic.OperatorInputTruth:
 			value, undecided, err := readTruthSubject(rule, source)
+			if err != nil {
+				return Decision{}, err
+			}
+			if undecided != nil {
+				return Decision{Undecided: undecided}, nil
+			}
+			typedSubject = value
+		case semantic.OperatorInputAny:
+			value, undecided, err := readAnySubject(rule, source)
 			if err != nil {
 				return Decision{}, err
 			}

@@ -131,11 +131,44 @@ func TestATypedInputIsRefusedUntilTheReaderReadsIt(t *testing.T) {
 			}
 		})
 	}
-	// A type with no reader on this path is refused by name. It is not answered
-	// from the empty value: a subject nobody read is not the zero of its type.
+	// A reader that reads only numbers is asked for a value of any type and
+	// says which read it lacks, rather than answering from the number.
 	for _, kind := range []semantic.OperatorInput{
 		semantic.OperatorInputAny,
 	} {
+		t.Run(string(kind), func(t *testing.T) {
+			contract := semantic.Operator{
+				ID: "sales.op", Symbol: "op", Input: kind,
+				Inputs: []semantic.OperatorInputDeclaration{{Name: "value", Type: kind}},
+				Cases:  []semantic.OperatorCase{{Value: "7", Satisfied: true}},
+			}
+			implementation := validationeval.OperatorImplementation{
+				Operator: "sales.op",
+				Input:    kind,
+				Values: func(map[string]semantic.OperatorValue) (bool, error) {
+					return true, nil
+				},
+			}
+			rule := semantic.Validation{
+				ID: "sales.order_line.probe", Kind: semantic.ValidationOperator,
+				Attribute: "sales.order_line.quantity", Operator: "sales.op",
+			}
+			_, err := validationeval.Decide(rule, refusingTypeSource{},
+				validationeval.Operators{
+					Declared:        []semantic.Operator{contract},
+					Implementations: []validationeval.OperatorImplementation{implementation},
+				})
+			if err == nil {
+				t.Fatalf("a %s input was decided by a reader that reads numbers", kind)
+			}
+			if !strings.Contains(err.Error(), "cannot read a value of "+string(kind)+" type") {
+				t.Fatalf("the refusal does not name the read it lacks: %v", err)
+			}
+		})
+	}
+	// A type with no reader on this path is refused by name. It is not answered
+	// from the empty value: a subject nobody read is not the zero of its type.
+	for _, kind := range []semantic.OperatorInput{} {
 		t.Run(string(kind), func(t *testing.T) {
 			example := semantic.OperatorCase{Value: "7", Satisfied: true}
 			contract := semantic.Operator{
