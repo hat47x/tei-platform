@@ -79,39 +79,27 @@ type OperatorInputWord string
 // OperatorInputNumberWord declares that the operator reads one numeric value.
 const OperatorInputNumberWord OperatorInputWord = "number"
 
-// OperatorInputDateWord declares that the operator reads one calendar date.
+// OperatorInputDateWord declares that the operator reads one calendar day,
+// written YYYY-MM-DD.
 const OperatorInputDateWord OperatorInputWord = "date"
 
-// OperatorInputTextWord declares that the operator reads one text value. A
-// text is written with quotes in an example table, so it is never read as a
-// number (section 8.3).
+// OperatorInputTextWord declares that the operator reads one string. It is
+// written with quotes in an example table so it is never read as a number
+// (section 8.3).
 const OperatorInputTextWord OperatorInputWord = "text"
 
 // OperatorInputTruthWord declares that the operator reads one truth value,
 // written `true` or `false`.
 const OperatorInputTruthWord OperatorInputWord = "truth"
 
-// OperatorInputAnyWord declares that the operator reads one value of any type.
-// The value keeps the type it was read as (section 8.4).
+// OperatorInputAnyWord declares that the operator reads a value of any of the
+// kinds above. Which kind was read travels with the value, so the text "100"
+// and the number 100 stay two values.
 const OperatorInputAnyWord OperatorInputWord = "any"
 
 // OperatorInputPresenceWord declares that the operator reads whether an
 // attribute holds a value, not the value itself.
 const OperatorInputPresenceWord OperatorInputWord = "presence"
-
-// OperatorInputDateWord declares that the operator reads one calendar day.
-const OperatorInputDateWord OperatorInputWord = "date"
-
-// OperatorInputTextWord declares that the operator reads one string.
-const OperatorInputTextWord OperatorInputWord = "text"
-
-// OperatorInputTruthWord declares that the operator reads one truth value.
-const OperatorInputTruthWord OperatorInputWord = "truth"
-
-// OperatorInputAnyWord declares that the operator reads a value of any of the
-// kinds above. Which kind was read travels with the value, so the text "100"
-// and the number 100 stay two values.
-const OperatorInputAnyWord OperatorInputWord = "any"
 
 // OperatorInput is one parsed `takes` line of an operator declaration.
 type OperatorInput struct {
