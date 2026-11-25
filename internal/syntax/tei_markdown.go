@@ -105,7 +105,9 @@ func ScanTEIMarkdown(src string) ([]MarkdownRegion, error) {
 
 // ScanTEIMarkdownDocument returns the fenced regions and the marked tables of
 // src. A mark must be directly followed by a table with a header row, a
-// delimiter row, and at least one body row.
+// delimiter row, and at least one body row, except that a row-set example's
+// mark carrying `over no rows` states the empty relation and needs no body row
+// (decision section 8.2).
 func ScanTEIMarkdownDocument(src string) (MarkdownDocument, error) {
 	return scanTEIMarkdown(src, true)
 }
