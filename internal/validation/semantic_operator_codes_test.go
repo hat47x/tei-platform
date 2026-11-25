@@ -104,6 +104,20 @@ func TestSemanticOperatorCodesAreProduced(t *testing.T) {
 			})
 			w.Semantics[0].Validations[2].Relation = "sales.order_line.customer"
 		}, "SEMANTIC_VALIDATION_OPERATOR_ATTRIBUTE_OUTSIDE_RELATION_TARGET", "sales.order_line.parts_all_positive"},
+		// An assigned input that names a column of another Data is not a
+		// column of the relation's rows. The read refuses it with "is not an
+		// item of ..."; validate must refuse it first.
+		{"row-scoped operator rule reading an input column of another Data", func(w *ir.World) {
+			w.Semantics[0].Data = append(w.Semantics[0].Data, semantic.Data{
+				ID: "sales.customer",
+				Attributes: []semantic.Attribute{
+					{ID: "sales.customer.credit_limit", Symbol: "creditLimit", TypeRef: "std.decimal"},
+				},
+			})
+			w.Semantics[0].Validations[2].Inputs = []semantic.ValidationInputAssignment{
+				{Name: "limit", Value: "sales.customer.credit_limit"},
+			}
+		}, "SEMANTIC_VALIDATION_OPERATOR_INPUT_OUTSIDE_RELATION_TARGET", "sales.order_line.parts_all_positive"},
 		{"built-in kind carrying an operator", func(w *ir.World) {
 			w.Semantics[0].Validations[1].Operator = "sales.non_negative"
 		}, "SEMANTIC_VALIDATION_OPERATOR_NOT_ALLOWED", "sales.order_line.discount_positive"},
