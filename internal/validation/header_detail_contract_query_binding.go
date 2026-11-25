@@ -99,6 +99,18 @@ func ValidateHeaderDetailContractQueryBindings(w ir.World) []Diagnostic {
 	return out
 }
 
+// ruleReadsRows reports whether a rule is about the rows of a relation rather
+// than about one record: the two built-in kinds that look at all the rows
+// together, and an operator whose declaration reads a column of every row.
+// A rule about one record has no relation, so a relation written for it is
+// reported by the check that owns that rule.
+func ruleReadsRows(rule semantic.Validation, rowScopedOperators map[core.CanonicalID]bool) bool {
+	if rule.Kind == semantic.ValidationRelationUnique || rule.Kind == semantic.ValidationNoOverlap {
+		return true
+	}
+	return rule.Kind == semantic.ValidationOperator && rowScopedOperators[rule.Operator]
+}
+
 // validateHeaderDetailBindingCoverage checks what the binding states about
 // which rows the Contract Query returns. A rule about all the rows of a
 // Relation, used by the Application, can be answered "satisfied" only when
@@ -112,6 +124,36 @@ func validateHeaderDetailBindingCoverage(
 	resolved resolvedHeaderDetailBinding,
 ) []Diagnostic {
 	var out []Diagnostic
+	used := map[core.CanonicalID]bool{}
+	for _, id := range resolved.Application.Validations {
+		used[id] = true
+	}
+	rowScopedOperators := map[core.CanonicalID]bool{}
+	for _, namespace := range w.Semantics {
+		for _, operator := range namespace.Operators {
+			if operatorReadsEachRow(operator) {
+				rowScopedOperators[operator.ID] = true
+			}
+		}
+	}
+	// A rule that is about the rows of another relation can never be answered
+	// from this binding, whether or not the binding states covers: the read
+	// refuses it with "these are the rows of relation ..., not of ...". This is
+	// checked before the covers statement is read, because stating covers does
+	// not make the read possible.
+	for _, namespace := range w.Semantics {
+		for _, rule := range namespace.Validations {
+			if !used[rule.ID] || rule.Relation == "" || rule.Relation == resolved.Relation.ID {
+				continue
+			}
+			if !ruleReadsRows(rule, rowScopedOperators) {
+				continue
+			}
+			out = append(out, errFor(bindingSubject, "HEADER_DETAIL_BINDING_RULE_OTHER_RELATION",
+				"Application %s uses rule %s about the rows of %s, but header-detail Contract Query binding %s reads Relation %s; the rule can never be answered from this binding",
+				resolved.Application.ID, rule.ID, rule.Relation, binding.Identity(), resolved.Relation.ID))
+		}
+	}
 	if binding.CoversRelation != "" && binding.CoversSome {
 		// Reported with the shape of the binding, before it is resolved.
 		return out
@@ -124,27 +166,18 @@ func validateHeaderDetailBindingCoverage(
 	if binding.CoversRelation != "" || binding.CoversSome {
 		return out
 	}
-	used := map[core.CanonicalID]bool{}
-	for _, id := range resolved.Application.Validations {
-		used[id] = true
-	}
 	// A rule whose operator reads a column of every row is asked of the rows
 	// of the relation, so it is in the same position as the built-in kinds
 	// below: it can be refuted by a seen counterexample but cannot be called
 	// satisfied unless the binding says the Query returns every row. Passing
 	// over it left such a rule answerable only as undecided or not-satisfied,
 	// with no warning naming what to add.
-	rowScopedOperators := map[core.CanonicalID]bool{}
-	for _, namespace := range w.Semantics {
-		for _, operator := range namespace.Operators {
-			if operatorReadsEachRow(operator) {
-				rowScopedOperators[operator.ID] = true
-			}
-		}
-	}
 	for _, namespace := range w.Semantics {
 		for _, rule := range namespace.Validations {
-			if !used[rule.ID] || rule.Relation != resolved.Relation.ID {
+			if !used[rule.ID] {
+				continue
+			}
+			if rule.Relation != resolved.Relation.ID {
 				continue
 			}
 			readsEveryRow := rule.Kind == semantic.ValidationRelationUnique || rule.Kind == semantic.ValidationNoOverlap
