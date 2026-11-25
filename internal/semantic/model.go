@@ -287,6 +287,10 @@ type Operator struct {
 	// `refutes on some rows`. Without it, a relation that was only partly read
 	// cannot be answered not-satisfied.
 	RefutesOnSomeRows bool `json:"refutesOnSomeRows,omitempty"`
+	// RowCases are the examples of an operator whose input reads every row of
+	// a relation: one table of rows and the answer the contract states for
+	// them (section 8, 8.1: one table is one example).
+	RowCases []OperatorRowCase `json:"rowCases,omitempty"`
 	// Cases are the examples the contract states.
 	Cases []OperatorCase `json:"cases,omitempty"`
 }
