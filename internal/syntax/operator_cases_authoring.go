@@ -141,6 +141,16 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 				if cell.Text == "" {
 					return out, cellError(cell, fmt.Sprintf("the cell for input %q is empty; every input the table names states a value, and an unread value is not written as blank", name))
 				}
+				// A presence input reads whether the attribute holds a value,
+				// not the value itself, so its cell states one of two words
+				// rather than a decimal. A number input keeps the decimal
+				// spelling, and a word in a number cell is refused at the
+				// Workspace, where the signature is known.
+				if semantic.IsOperatorCasePresenceWord(cell.Text) {
+					example.Inputs[name] = cell.Text
+					inputSpans[name] = cell.Anchor
+					continue
+				}
 				if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
 					return out, cellError(cell, err.Error())
 				}

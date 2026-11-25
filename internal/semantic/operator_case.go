@@ -46,6 +46,30 @@ func SameOperatorCaseStates(left, right OperatorCase) bool {
 	return true
 }
 
+// OperatorCasePresencePresent and OperatorCasePresenceAbsent are the two words
+// a presence input's example cell states. A presence input reads whether the
+// attribute holds a value, not the value itself, so its example states one of
+// these two words rather than a decimal.
+const (
+	OperatorCasePresencePresent = "present"
+	OperatorCasePresenceAbsent  = "absent"
+)
+
+// IsOperatorCasePresenceWord reports whether the text is one of the two words a
+// presence input's example cell may state.
+//
+// It lives here, beside the decimal reader, because the example table's reader
+// reads every cell before the signature is known: a word this function accepts
+// is carried as the cell's text and checked against the input's type at the
+// Workspace, where the declaration is in hand.
+func IsOperatorCasePresenceWord(text string) bool {
+	switch text {
+	case OperatorCasePresencePresent, OperatorCasePresenceAbsent:
+		return true
+	}
+	return false
+}
+
 // ParseOperatorCaseValue reads the decimal text of an example. It accepts an
 // optional minus sign, digits, and an optional fraction, and nothing else: no
 // exponent, no digit grouping, no leading plus, no surrounding space. A text
