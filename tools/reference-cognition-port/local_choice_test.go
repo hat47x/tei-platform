@@ -62,7 +62,7 @@ func TestLocalChoiceComposition(t *testing.T) {
 				t.Fatal(err)
 			}
 			receipt, err := port.ProposeWithInvoker(context.Background(), requestPath, providerPath, "", func(ctx context.Context, p port.Provider, raw []byte) ([]byte, error) {
-				return choice.Invoke(ctx, p.Settings["endpoint"].(string), p.Model, raw)
+				return choice.Invoke(ctx, p.Settings["endpoint"].(string), p.Model, p.Settings, raw)
 			})
 			if err != nil {
 				t.Fatal(err)

@@ -29,7 +29,7 @@ func main() {
 				return nil, fmt.Errorf("local choice requires loopback-chat transport and no external network")
 			}
 			endpoint, _ := provider.Settings["endpoint"].(string)
-			return choice.Invoke(ctx, endpoint, provider.Model, raw)
+			return choice.Invoke(ctx, endpoint, provider.Model, provider.Settings, raw)
 		}
 	}
 	receipt, err := cognitionport.ProposeWithInvoker(context.Background(), *requestPath, *providerPath, *command, invoker)
