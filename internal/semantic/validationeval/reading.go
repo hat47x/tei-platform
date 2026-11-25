@@ -560,10 +560,20 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 	var width []NumberReading
 	for index, input := range inputs {
 		attribute := rule.Attribute
-		// The subject's own declaration can state `absent as <mapping>` too.
-		// It is carried by the declaration, not by a rule assignment, so it is
-		// read from input rather than from an assignment (#4359).
-		mapping := input.AbsentAs
+		// A declaration's `absent as <mapping>` is a name the rule MAY ask for,
+		// not a mapping every rule of that operator reads by default (decision
+		// sections 3-5 and 8.1's table: "or なし（宣言のみ） → 一件では判定不能").
+		// The per-record path already reads only the assignment's mapping for a
+		// named input, so the row-scoped path reads the same thing.
+		//
+		// The subject is the one exception the design keeps for compatibility:
+		// the rule supplies it from the attribute it constrains and never
+		// assigns it by name, so the declaration is where its mapping is
+		// stated (#5905, #5937).
+		mapping := ""
+		if index == 0 {
+			mapping = input.AbsentAs
+		}
 
 		if index > 0 {
 			assignment := findInputAssignment(rule, input.Name)

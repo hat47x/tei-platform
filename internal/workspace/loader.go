@@ -70,6 +70,9 @@ type Result struct {
 	// Case tables read during Load, attached to their operators once every
 	// source is read. Empty in a returned Result.
 	pendingOperatorCases []pendingOperatorCases
+	// pendingOperatorRowCases is the same for the table that states one example
+	// of an operator reading every row (section 8.1).
+	pendingOperatorRowCases []pendingOperatorRowCases
 	// RuleExamples are the example tables of the Workspace, resolved against
 	// the World. They are not part of the World.
 	RuleExamples        []RuleExample
