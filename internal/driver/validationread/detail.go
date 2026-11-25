@@ -194,6 +194,51 @@ func date(value any) (semantic.CalendarDate, error) {
 	return semantic.CalendarDate{}, fmt.Errorf("a %T is not a calendar date", value)
 }
 
+// text reads the value of an attribute as text. A driver may hand back the
+// bytes of a column or its text; both are the same text, so neither spelling is
+// preferred over the other. A value that is not text at all is refused rather
+// than printed, because a rule about text must not be answered from a
+// representation the reader invented (section 8.4).
+func text(value any) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case []byte:
+		return string(v), nil
+	}
+	return "", fmt.Errorf("a %T is not a text value", value)
+}
+
+// truth reads the value of an attribute as a truth. A driver hands back a bool
+// for a boolean column, and a text or its bytes for one that spells the value:
+// the two spellings the reader accepts are `true` and `false`, and anything else
+// is refused rather than read as false, because a rule about truth must not be
+// answered from a representation the reader invented (section 8.4).
+func truth(value any) (bool, error) {
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case string:
+		return parseTruth(v)
+	case []byte:
+		return parseTruth(string(v))
+	}
+	return false, fmt.Errorf("a %T is not a truth value", value)
+}
+
+// parseTruth reads the two spellings of a truth. An empty text is not false: a
+// column that holds no value is a value that is null, which the caller says with
+// the state rather than with a value.
+func parseTruth(text string) (bool, error) {
+	switch text {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	}
+	return false, fmt.Errorf("%q is not written true or false", text)
+}
+
 // key is what two values of one attribute are compared by. Numbers are
 // compared as numbers and dates as dates, so two spellings of one value are
 // one key. Anything else is compared as observed, and its Go type is part of
@@ -272,6 +317,55 @@ func (d *Detail) readDate(index int, attribute core.CanonicalID) (validationeval
 		return validationeval.DateReading{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
 	}
 	return validationeval.DateReading{State: validationeval.ValuePresent, Value: day}, nil
+}
+
+// readText reads the attribute as a text value. The kind check is the one
+// readDate makes: an attribute declared as a calendar date is not read as text,
+// because the two ask different questions of the same column (section 7).
+func (d *Detail) readText(index int, attribute core.CanonicalID) (validationeval.TextReading, error) {
+	kind, err := d.kindOf(attribute)
+	if err != nil {
+		return validationeval.TextReading{}, err
+	}
+	if kind == kindDate {
+		return validationeval.TextReading{}, fmt.Errorf("%s is declared as a calendar date, which is not read as text", attribute)
+	}
+	value, held := d.rows[index].Attributes[attribute]
+	switch {
+	case !held:
+		return validationeval.TextReading{State: validationeval.ValueNotFetched}, nil
+	case value == nil:
+		return validationeval.TextReading{State: validationeval.ValueNull}, nil
+	}
+	spelled, err := text(value)
+	if err != nil {
+		return validationeval.TextReading{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
+	}
+	return validationeval.TextReading{State: validationeval.ValuePresent, Value: spelled}, nil
+}
+
+// readTruth reads the attribute as a truth value. A truth nobody read is not the
+// truth false, so the state is carried next to the value.
+func (d *Detail) readTruth(index int, attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	kind, err := d.kindOf(attribute)
+	if err != nil {
+		return validationeval.TruthReading{}, err
+	}
+	if kind == kindDate {
+		return validationeval.TruthReading{}, fmt.Errorf("%s is declared as a calendar date, which is not read as truth", attribute)
+	}
+	value, held := d.rows[index].Attributes[attribute]
+	switch {
+	case !held:
+		return validationeval.TruthReading{State: validationeval.ValueNotFetched}, nil
+	case value == nil:
+		return validationeval.TruthReading{State: validationeval.ValueNull}, nil
+	}
+	held2, err := truth(value)
+	if err != nil {
+		return validationeval.TruthReading{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
+	}
+	return validationeval.TruthReading{State: validationeval.ValuePresent, Value: held2}, nil
 }
 
 func (d *Detail) readKey(index int, attribute core.CanonicalID) (validationeval.KeyReading, error) {
@@ -405,6 +499,17 @@ func (r Row) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, e
 func (r Row) ReadRelationNumbers(relation, attribute core.CanonicalID) (validationeval.NumberRowsReading, error) {
 	return validationeval.NumberRowsReading{}, fmt.Errorf(
 		"one row is not the rows of relation %s; a row-scoped input needs the reader of the whole relation", relation)
+}
+
+// ReadText and ReadTruth are the reader side of the two typed inputs: a rule
+// whose operator declares a text or a truth input is answered from the value of
+// that type, never from the number of the same column (section 8.4).
+func (r Row) ReadText(attribute core.CanonicalID) (validationeval.TextReading, error) {
+	return r.detail.readText(r.index, attribute)
+}
+
+func (r Row) ReadTruth(attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	return r.detail.readTruth(r.index, attribute)
 }
 
 // ReadRelationKeys refuses: one row is not the rows of a relation.
