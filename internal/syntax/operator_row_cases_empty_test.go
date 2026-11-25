@@ -8,13 +8,14 @@ import (
 	"tei/internal/syntax"
 )
 
-// Section 8.1: the empty relation is one example of a row-scoped operator. It
-// is written as the header and the delimiter of a row-set table with no body
-// row. An ordinary table still needs a body row, so a table an author left
-// unwritten is not read as an empty one.
+// Section 8.2 decided the notation for an empty relation: the row-set example's
+// mark carries the clause `over no rows`, and the table has the header and the
+// delimiter with no body row. A table whose body the author left unwritten has
+// no clause, so it is still reported rather than silently promoted to an
+// example.
 
 func TestRowSetTableStatesTheEmptyRelation(t *testing.T) {
-	const src = "<!-- tei: cases of sales.every_line_at_most expecting satisfied -->\n" +
+	const src = "<!-- tei: cases of sales.every_line_at_most expecting satisfied over no rows -->\n" +
 		"| value | limit |\n| --- | --- |\n"
 	document, err := syntax.ScanTEIMarkdownDocument(src)
 	if err != nil {
@@ -45,34 +46,81 @@ func TestRowSetTableStatesTheEmptyRelation(t *testing.T) {
 	}
 }
 
-// An ordinary table is unchanged: with no body row it is still reported, so a
-// table left unwritten is not silently read as an empty collection.
+// The section 8.2 reason: a table the author left unwritten has no clause, so
+// it is reported and the refusal names the clause that states an empty relation.
 func TestAnOrdinaryTableStillNeedsABodyRow(t *testing.T) {
 	const src = "<!-- tei: cases of sales.non_negative -->\n| value | expect |\n| --- | --- |\n"
 	_, err := syntax.ScanTEIMarkdownDocument(src)
 	if err == nil || !strings.Contains(err.Error(), "at least one row") {
 		t.Fatalf("an ordinary table with no body row was accepted: %v", err)
 	}
+	if !strings.Contains(err.Error(), "over no rows") {
+		t.Fatalf("the refusal does not name the clause that states an empty relation: %v", err)
+	}
 }
 
-// A row-set mark with an unknown answer is still refused before the table is
-// read, so an empty example cannot smuggle in an answer this reader does not
-// know.
-func TestEmptyRowSetTableRefusesAnUnknownAnswer(t *testing.T) {
-	const src = "<!-- tei: cases of sales.every_line_at_most expecting undecided -->\n" +
+// A row-set example without the clause is the same case: the mark does not say
+// the empty collection was meant, so the table keeps needing a body row.
+func TestARowSetExampleWithoutTheClauseStillNeedsABodyRow(t *testing.T) {
+	const src = "<!-- tei: cases of sales.every_line_at_most expecting satisfied -->\n" +
 		"| value | limit |\n| --- | --- |\n"
+	_, err := syntax.ScanTEIMarkdownDocument(src)
+	if err == nil || !strings.Contains(err.Error(), "over no rows") {
+		t.Fatalf("a clause-less empty row-set table was accepted: %v", err)
+	}
+}
+
+// The clause and the body have to agree: rows under `over no rows` would be
+// read as a collection the mark says is empty.
+func TestTheClauseIsRefusedWhenTheTableStatesRows(t *testing.T) {
+	const src = "<!-- tei: cases of sales.every_line_at_most expecting satisfied over no rows -->\n" +
+		"| value | limit |\n| --- | --- |\n| 2 | 10 |\n"
 	document, err := syntax.ScanTEIMarkdownDocument(src)
 	if err != nil {
-		t.Fatalf("scan: %v", err)
+		t.Fatalf("scan refused the table before the clause was read: %v", err)
 	}
-	// `undecided` is a known answer; this case states that the reader accepts
-	// it. The unknown-answer refusal is covered where it belongs, so this
-	// table is read as an example that answers undecided.
-	parsed, err := syntax.ParseOperatorRowCasesTable(document.Tables[0])
-	if err != nil {
-		t.Fatalf("an undecided empty example was refused: %v", err)
+	_, err = syntax.ParseOperatorRowCasesTable(document.Tables[0])
+	if err == nil || !strings.Contains(err.Error(), "the mark says `over no rows`, but the table states rows") {
+		t.Fatalf("rows under `over no rows` were accepted: %v", err)
 	}
-	if parsed.Case.Answer != semantic.OperatorRowUndecided {
-		t.Fatalf("answer=%q, want undecided", parsed.Case.Answer)
+}
+
+// The answer is still read before the table, including in the empty form, so a
+// clause cannot change what answers this reader knows.
+func TestEmptyRowSetTableReadsTheAnswersItKnows(t *testing.T) {
+	for _, tc := range []struct {
+		word string
+		want semantic.OperatorRowExpect
+	}{
+		{"satisfied", semantic.OperatorRowSatisfied},
+		{"not-satisfied", semantic.OperatorRowNotSatisfied},
+		{"undecided", semantic.OperatorRowUndecided},
+	} {
+		t.Run(tc.word, func(t *testing.T) {
+			src := "<!-- tei: cases of sales.every_line_at_most expecting " + tc.word + " over no rows -->\n" +
+				"| value | limit |\n| --- | --- |\n"
+			document, err := syntax.ScanTEIMarkdownDocument(src)
+			if err != nil {
+				t.Fatalf("scan: %v", err)
+			}
+			parsed, err := syntax.ParseOperatorRowCasesTable(document.Tables[0])
+			if err != nil {
+				t.Fatalf("%s was refused: %v", tc.word, err)
+			}
+			if parsed.Case.Answer != tc.want {
+				t.Fatalf("answer=%q, want %q", parsed.Case.Answer, tc.want)
+			}
+		})
 	}
+	t.Run("unknown word", func(t *testing.T) {
+		src := "<!-- tei: cases of sales.every_line_at_most expecting maybe over no rows -->\n" +
+			"| value | limit |\n| --- | --- |\n"
+		document, err := syntax.ScanTEIMarkdownDocument(src)
+		if err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if _, err := syntax.ParseOperatorRowCasesTable(document.Tables[0]); err == nil {
+			t.Fatal("an unknown answer was accepted")
+		}
+	})
 }

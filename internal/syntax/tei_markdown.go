@@ -56,17 +56,9 @@ type MarkdownCell struct {
 	Anchor Anchor
 }
 
-// isOperatorRowSetMark reports whether the words of a mark state one row-set
-// example of an operator: `cases of <operator> expecting <answer>`.
-//
-// The empty relation is written as the header and delimiter of such a table
-// with no body row. Only that form is read with no body row, so an ordinary
-// table that the author left unwritten is still reported.
-func isOperatorRowSetMark(words []MarkdownCell) bool {
-	if len(words) != 5 {
-		return false
-	}
-	return words[0].Text == "cases" && words[1].Text == "of" && words[3].Text == "expecting"
+// saysOverNoRows reports whether the mark states the empty relation explicitly.
+func saysOverNoRows(words []MarkdownCell) bool {
+	return len(words) == 8 && words[5].Text == "over" && words[6].Text == "no" && words[7].Text == "rows"
 }
 
 // MarkdownTable is a marked table. Words are the words of the mark after
@@ -113,7 +105,9 @@ func ScanTEIMarkdown(src string) ([]MarkdownRegion, error) {
 
 // ScanTEIMarkdownDocument returns the fenced regions and the marked tables of
 // src. A mark must be directly followed by a table with a header row, a
-// delimiter row, and at least one body row.
+// delimiter row, and at least one body row, except that a row-set example's
+// mark carrying `over no rows` states the empty relation and needs no body row
+// (decision section 8.2).
 func ScanTEIMarkdownDocument(src string) (MarkdownDocument, error) {
 	return scanTEIMarkdown(src, true)
 }
@@ -135,17 +129,18 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 	commentStart := Position{}
 
 	finishTable := func() error {
-		// Section 8.1: a row-set example states one table of rows, and the
-		// empty relation is one such example. A table with a header and a
-		// delimiter and no body row states it. Only the marker form that
-		// carries an explicit answer is read this way: an ordinary table
-		// (`data`, `example`, `cases of <operator>`) still needs a body row,
-		// so a table left unwritten is not silently read as an empty one.
+		// Section 8.2: the empty relation is written as the header and the
+		// delimiter of a row-set table with no body row, and only when the mark
+		// says `over no rows`. A table whose body was left unwritten is then
+		// still reported: the clause says the empty collection was meant, so a
+		// missing row is not silently promoted to an example. An ordinary
+		// table (`data`, `example`, `cases of <operator>`) never takes that
+		// clause and keeps needing a body row.
 		emptyRowSetExample := table.stage == 2 && len(table.table.Rows) == 0 &&
-			isOperatorRowSetMark(table.table.Words)
+			saysOverNoRows(table.table.Words)
 		if table.stage < 2 || len(table.table.Rows) == 0 && !emptyRowSetExample {
 			return &ParseError{Pos: table.table.Mark.Start, End: table.table.Mark.End,
-				Msg: "a tei mark must be directly followed by a table with a header row, a delimiter row, and at least one row"}
+				Msg: "a tei mark must be directly followed by a table with a header row, a delimiter row, and at least one row; an empty relation is written in a row-set example's mark with `over no rows`"}
 		}
 		document.Tables = append(document.Tables, table.table)
 		table = nil
