@@ -31,6 +31,8 @@ on:
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'cmd/tei/declaration_checked_pg_test.go'
+      - 'cmd/tei/empty_relation_row_scoped_pg_test.go'
+      - 'cmd/tei/absent_mapping_product_path_pg_test.go'
       - 'cmd/tei/row_scoped_pg_test.go'
       - 'cmd/tei/each_row_cli_pg_test.go'
       - 'cmd/tei/within_operator_pg_test.go'
@@ -72,6 +74,8 @@ on:
       - 'docs/first-change.md'
       - 'cmd/tei/desired_schema_applied_pg_test.go'
       - 'cmd/tei/declaration_checked_pg_test.go'
+      - 'cmd/tei/empty_relation_row_scoped_pg_test.go'
+      - 'cmd/tei/absent_mapping_product_path_pg_test.go'
       - 'cmd/tei/row_scoped_pg_test.go'
       - 'cmd/tei/each_row_cli_pg_test.go'
       - 'cmd/tei/within_operator_pg_test.go'
@@ -263,7 +267,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$|^TestRowScopedRuleDecidedFromPostgresRows$|^TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$|^TestRowScopedRuleDecidedFromPostgresRows$|^TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows$|^TestAbsentPriceIsReadAsZeroOnTheProductPath$|^TestARowScopedRuleOverAnEmptyRelationIsSatisfied$' ./cmd/tei | tee -a "$log"
           # plan/NOW.md road item 5: a rule decided by the multi-input operator
           # must be answered for rows that actually came from PostgreSQL.
           go test -count=1 -v -timeout 10m -run '^TestMultipleInputOperatorDecidesRealPostgresRows$|^TestMultipleInputOperatorDataRangeIsAnEvaluationError$|^TestMultipleInputOperatorWithoutASelectionIsRefused$|^TestRowScopedOperatorRuleIsAnsweredPerRelationFromPostgres$' ./cmd/tei | tee -a "$log"
@@ -348,6 +352,8 @@ jobs:
             'TestRowScopedRuleDecidedFromPostgresRows/partial_visible_counterexample'
             'TestRowScopedRuleDecidedFromPostgresRows/partial_hidden_counterexample'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows'
+            'TestAbsentPriceIsReadAsZeroOnTheProductPath'
+            'TestARowScopedRuleOverAnEmptyRelationIsSatisfied'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows/1001'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows/1002'
             'TestPostgresReadRunnerAnswersTheRowsPostgreSQLReturned'
