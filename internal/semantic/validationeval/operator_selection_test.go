@@ -16,9 +16,10 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 		"tei.number.non-negative": {"-3": false, "-1/100": false, "0": true, "1/100": true, "3": true},
 		"tei.number.non-zero":     {"-3": true, "-1/100": true, "0": false, "1/100": true, "3": true},
 	}
-	// The row-scoped implementation is checked over rows, with the expected
-	// three-valued answer read from its definition: every row at most the
-	// limit, a row above it, and a row whose value was not read.
+	// The row-scoped implementation compares two columns of the same rows.
+	// The expected answers are read from its definition: every row at most
+	// its own limit, one row above its own limit, a row whose value was not
+	// read, and columns of different lengths (which are not the same rows).
 	rowInputWant := map[string][]struct {
 		name    string
 		rows    map[string][]validationeval.NumberReading
@@ -26,18 +27,29 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 		wantErr bool
 	}{
 		"tei.number.every-at-most": {
-			{name: "every row at most", rows: map[string][]validationeval.NumberReading{
+			{name: "every value at most its limit", rows: map[string][]validationeval.NumberReading{
 				"value": presentRows("1", "0.5", "0"),
 				"limit": presentRows("1", "1", "1"),
 			}, want: validationeval.TriYes},
-			{name: "one row above", rows: map[string][]validationeval.NumberReading{
+			{name: "one value above its own limit", rows: map[string][]validationeval.NumberReading{
 				"value": presentRows("1", "2"),
 				"limit": presentRows("1", "1"),
+			}, want: validationeval.TriNo},
+			{name: "a later limit hides an earlier one", rows: map[string][]validationeval.NumberReading{
+				// The per-row comparison is what makes this TriNo: comparing
+				// value 2 against the first limit (1) would also say TriNo,
+				// but comparing it against the last limit (100) would not.
+				"value": presentRows("1", "2"),
+				"limit": presentRows("5", "1"),
 			}, want: validationeval.TriNo},
 			{name: "a row with no value", rows: map[string][]validationeval.NumberReading{
 				"value": {{State: validationeval.ValueNull}},
 				"limit": presentRows("1"),
 			}, want: validationeval.TriMaybe},
+			{name: "columns of different lengths", rows: map[string][]validationeval.NumberReading{
+				"value": presentRows("1", "2"),
+				"limit": presentRows("100"),
+			}, wantErr: true},
 			{name: "no value input", rows: map[string][]validationeval.NumberReading{
 				"limit": presentRows("1"),
 			}, wantErr: true},

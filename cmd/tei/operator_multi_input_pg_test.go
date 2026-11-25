@@ -82,6 +82,10 @@ type operatorMultiInputViewResult struct {
 	Rows            []operatorMultiInputViewRow  `json:"rows"`
 	PerRow          map[string]map[string]string `json:"perRow"`
 	PerRowUndecided map[string]map[string]string `json:"perRowUndecided"`
+	// PerRelation is the answer of a rule asked of the rows of the relation
+	// rather than of one row, keyed by rule.
+	PerRelation          map[string]string `json:"perRelation"`
+	PerRelationUndecided map[string]string `json:"perRelationUndecided"`
 }
 
 type operatorMultiInputViewRow struct {
@@ -147,6 +151,17 @@ func operatorMultiInputFixture(t *testing.T) (binary, fixtures string) {
 // operator declaration, the rules that use it, and optionally the
 // implementation selection.
 func operatorMultiInputWorkspace(t *testing.T, document string, selectImplementation bool) string {
+	addition := ""
+	if selectImplementation {
+		addition = "implementations:\n  - operator: sales.within_value\n    use: tei.number.within\n"
+	}
+	return operatorMultiInputWorkspaceWithManifest(t, document, addition)
+}
+
+// operatorMultiInputWorkspaceWithManifest is the same Workspace with the exact
+// manifest addition the caller names, so a test can select another
+// implementation without duplicating this helper.
+func operatorMultiInputWorkspaceWithManifest(t *testing.T, document, addition string) string {
 	t.Helper()
 	root := t.TempDir()
 	copyTreeForDestination(t, filepath.Join("..", "..", "reference", "workspace"), root)
@@ -159,10 +174,7 @@ func operatorMultiInputWorkspace(t *testing.T, document string, selectImplementa
 	if strings.Contains(string(content), "languages:") {
 		t.Fatalf("the reference Workspace already selects a language")
 	}
-	additions := "languages:\n  - tei.authoring/v1\n"
-	if selectImplementation {
-		additions += "implementations:\n  - operator: sales.within_value\n    use: tei.number.within\n"
-	}
+	additions := "languages:\n  - tei.authoring/v1\n" + addition
 	if err := os.WriteFile(manifest, append(content, []byte(additions)...), 0o644); err != nil {
 		t.Fatal(err)
 	}
