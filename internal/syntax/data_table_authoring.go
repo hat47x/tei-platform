@@ -119,6 +119,13 @@ func ParseDataTable(table MarkdownTable) (DataTableAuthoring, error) {
 		return row[index], true
 	}
 
+	// A table with no body row states no attribute. The scanner reads it so a
+	// row-scoped example can state an empty relation; here it would be a Data
+	// item with no attributes, which is refused at the table.
+	if len(table.Rows) == 0 {
+		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
+			Msg: "a Data item table needs at least one attribute row; a table with no row states no attribute"}
+	}
 	seen := map[core.CanonicalID]Anchor{}
 	for _, row := range table.Rows {
 		attributeCell, _ := cell(row, DataTableColumnAttribute)

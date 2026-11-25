@@ -122,7 +122,12 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 	commentStart := Position{}
 
 	finishTable := func() error {
-		if table.stage < 2 || len(table.table.Rows) == 0 {
+		// A table with a header and a delimiter row but no body row is read as
+		// a table of no rows. Its mark still has to be read by the language
+		// that owns it: a row-scoped example states an empty relation this
+		// way, and a table that means nothing else is refused where it is
+		// interpreted, with its own position and its own words.
+		if table.stage < 2 {
 			return &ParseError{Pos: table.table.Mark.Start, End: table.table.Mark.End,
 				Msg: "a tei mark must be directly followed by a table with a header row, a delimiter row, and at least one row"}
 		}

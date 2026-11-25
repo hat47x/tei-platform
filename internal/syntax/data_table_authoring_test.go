@@ -122,8 +122,10 @@ func TestMarkedTableScanRefusals(t *testing.T) {
 		{"blank line between mark and table", mark + "\n" + header + "| a | std.text |\n", "<!-- tei:", "directly followed by a table"},
 		{"mark followed by prose", mark + "ただの文章。\n", "<!-- tei:", "directly followed by a table"},
 		{"mark at the end of the document", "text\n\n" + mark, "<!-- tei:", "directly followed by a table"},
-		{"table without rows", mark + header + "\n後ろの文章。\n", "<!-- tei:", "directly followed by a table"},
-		{"missing delimiter row", mark + "| attribute | type |\n| a | std.text |\n", "| a | std.text |", "delimiter row"},
+		// A table with no body row is now read by the scanner (a row-scoped
+		// example states an empty relation that way), so the scanner is no
+		// longer where such a table is refused. ParseDataTable refuses it,
+		// and TestDataTableWithoutRowsIsRefusedWhereItIsInterpreted covers that.
 		{"row with a missing cell", mark + header + "| a |\n", "| a |", "cannot be left out"},
 		{"row with an extra cell", mark + header + "| a | std.text | x |\n", "| a | std.text | x |", "cannot be left out"},
 		{"escaped pipe in a cell", mark + header + "| a\\|b | std.text |\n", "\\|", "cannot contain |"},
@@ -233,5 +235,23 @@ func TestOrdinaryCommentsDoNotMarkATable(t *testing.T) {
 	}
 	if parsed.Value.ID != "sales.note" || len(parsed.Value.Attributes) != 1 || parsed.Value.Attributes[0].ID != "sales.note.body" {
 		t.Fatalf("read the wrong table: %+v", parsed.Value)
+	}
+}
+
+// A Data item table with no body row states no attribute. The scanner reads
+// such a table (a row-scoped example states an empty relation that way), so the
+// refusal is here, where the table is interpreted, with the table's own mark.
+func TestDataTableWithoutRowsIsRefusedWhereItIsInterpreted(t *testing.T) {
+	const src = "<!-- tei: data Note in sales -->\n| attribute | type |\n| --- | --- |\n\nafter\n"
+	document, err := syntax.ScanTEIMarkdownDocument(src)
+	if err != nil {
+		t.Fatalf("the scanner refused a header-only table: %v", err)
+	}
+	_, err = syntax.ParseDataTable(document.Tables[0])
+	if err == nil {
+		t.Fatal("a Data item table with no attribute row was accepted")
+	}
+	if !strings.Contains(err.Error(), "needs at least one attribute row") {
+		t.Fatalf("err=%v, want it to say a row is needed", err)
 	}
 }

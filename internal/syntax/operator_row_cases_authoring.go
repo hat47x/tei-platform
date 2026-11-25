@@ -97,9 +97,17 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 		columns[cell.Text] = i
 		out.InputHeaderSpans[cell.Text] = cell.Anchor
 	}
+	// A table with no body row states the empty relation as one example. The
+	// rows are then none at all, which is a different example from a table
+	// whose one row holds no value: the first has no row to compare, the
+	// second has a row that could not be read (decision section 8.1 refuses
+	// reading one as the other). The answer says what the operator states
+	// about no rows, and whether that answer is the one the implementation
+	// gives is checked where every other example is.
 	if len(table.Rows) == 0 {
-		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
-			Msg: "a row example needs at least one row; an empty table is not an empty collection"}
+		empty := semantic.OperatorRowCase{Answer: out.Case.Answer, Empty: true}
+		out.Case = empty
+		return out, nil
 	}
 
 	names := make([]string, 0, len(columns))

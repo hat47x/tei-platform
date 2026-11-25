@@ -354,8 +354,13 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 	}
 	inputs := contractInputs(contract)
 	for _, example := range contract.RowCases {
-		if len(example.Rows) == 0 {
-			return fmt.Errorf("operator %s has a row example with no rows", contract.ID)
+		if len(example.Rows) == 0 && !example.Empty {
+			// No rows and no statement that this is the empty relation: the
+			// example does not say what it is about.
+			return fmt.Errorf("operator %s has a row example with no rows; state an empty relation with an empty table, or write the rows", contract.ID)
+		}
+		if example.Empty && len(example.Rows) > 0 {
+			return fmt.Errorf("operator %s has a row example that states the empty relation and rows at once", contract.ID)
 		}
 		rows := make(map[string][]NumberReading, len(inputs))
 		for _, input := range inputs {

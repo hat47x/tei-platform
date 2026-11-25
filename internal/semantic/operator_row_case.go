@@ -26,6 +26,12 @@ type OperatorRowCase struct {
 	// zero value of the field means no answer was stated, and that is refused
 	// rather than read as not-satisfied.
 	Answer OperatorRowExpect `json:"answer"`
+	// Empty states that the example is the relation with no rows at all,
+	// rather than a relation whose rows could not be read. The two are
+	// different examples: no row can break a rule about none, while a row
+	// that was not read might. Rows is then empty, and Empty is what tells
+	// "stated no row" from "stated rows that happen to be empty".
+	Empty bool `json:"empty,omitempty"`
 }
 
 // OperatorRowExpect is the answer a row example states.
@@ -85,6 +91,11 @@ func SameOperatorRowValue(left, right string) bool {
 // refused as a duplicate even when their answers differ; a permuted column
 // order is the same example, and a permuted row order is a different one.
 func SameOperatorRowCaseStates(left, right OperatorRowCase) bool {
+	// An empty relation is the same example as another empty relation, and a
+	// different example from any table that states a row.
+	if left.Empty != right.Empty {
+		return false
+	}
 	if len(left.Rows) != len(right.Rows) {
 		return false
 	}
