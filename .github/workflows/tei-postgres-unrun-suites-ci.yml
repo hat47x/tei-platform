@@ -256,7 +256,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$|^TestRowScopedRuleDecidedFromPostgresRows$' ./cmd/tei | tee -a "$log"
           # plan/NOW.md road item 5: a rule decided by the multi-input operator
           # must be answered for rows that actually came from PostgreSQL.
           go test -count=1 -v -timeout 10m -run '^TestMultipleInputOperatorDecidesRealPostgresRows$|^TestMultipleInputOperatorDataRangeIsAnEvaluationError$|^TestMultipleInputOperatorWithoutASelectionIsRefused$' ./cmd/tei | tee -a "$log"
@@ -329,6 +329,9 @@ jobs:
             'TestWithinOperatorDecidesRealPostgresRows'
             'TestWithinOperatorDecidesRealPostgresRows/order_1001'
             'TestWithinOperatorDecidesRealPostgresRows/order_1002'
+            'TestRowScopedRuleDecidedFromPostgresRows'
+            'TestRowScopedRuleDecidedFromPostgresRows/1004'
+            'TestRowScopedRuleDecidedFromPostgresRows/1005'
             'TestDesiredSchemaSQLCreatesTheTableTheReadNeeds'
             'TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack'
             'TestEnvironmentReportsWhetherTheDeclarationWasChecked'
