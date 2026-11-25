@@ -83,6 +83,13 @@ func TestARefusedInputNamesItsOwnType(t *testing.T) {
 // come first, and the readers follow one at a time. This test pins the boundary
 // the reader has reached, so a later change moves it by changing one guard
 // rather than by finding out what it used to be.
+//
+// A calendar day is read as a day on this path now, so it is not in this list.
+// Neither is presence: an example that states a value for a presence input is
+// refused by the example check, which answers before the reader path is
+// reached, and a presence input without an example is pinned by
+// TestARefusedInputNamesItsOwnType. What stays here are the words that still
+// have no reader on this path.
 func TestATypedInputIsRefusedUntilTheReaderReadsIt(t *testing.T) {
 	// A reader that reads only numbers is asked for a text and a truth and
 	// says which read it lacks, rather than answering from the number.
@@ -127,14 +134,10 @@ func TestATypedInputIsRefusedUntilTheReaderReadsIt(t *testing.T) {
 	// A type with no reader on this path is refused by name. It is not answered
 	// from the empty value: a subject nobody read is not the zero of its type.
 	for _, kind := range []semantic.OperatorInput{
-		semantic.OperatorInputDate,
 		semantic.OperatorInputAny,
 	} {
 		t.Run(string(kind), func(t *testing.T) {
-			example := semantic.OperatorCase{Value: "2026-04-01", Satisfied: true}
-			if kind == semantic.OperatorInputAny {
-				example = semantic.OperatorCase{Value: "7", Satisfied: true}
-			}
+			example := semantic.OperatorCase{Value: "7", Satisfied: true}
 			contract := semantic.Operator{
 				ID: "sales.op", Symbol: "op", Input: kind,
 				Inputs: []semantic.OperatorInputDeclaration{{Name: "value", Type: kind}},
