@@ -8,13 +8,13 @@ import (
 	"tei/internal/syntax"
 )
 
-// Section 8.1: the empty relation is one example of a row-scoped operator. It
-// is written as the header and the delimiter of a row-set table with no body
-// row. An ordinary table still needs a body row, so a table an author left
-// unwritten is not read as an empty one.
+// Section 8.2: the empty relation is one example of a row-scoped operator. It
+// is written as the header and the delimiter of a row-set table whose mark says
+// `over no rows`. A row-set table without that phrase still needs a body row, so
+// a table an author left unwritten is reported rather than read as an empty one.
 
 func TestRowSetTableStatesTheEmptyRelation(t *testing.T) {
-	const src = "<!-- tei: cases of sales.every_line_at_most expecting satisfied -->\n" +
+	const src = "<!-- tei: cases of sales.every_line_at_most expecting satisfied over no rows -->\n" +
 		"| value | limit |\n| --- | --- |\n"
 	document, err := syntax.ScanTEIMarkdownDocument(src)
 	if err != nil {
@@ -55,11 +55,26 @@ func TestAnOrdinaryTableStillNeedsABodyRow(t *testing.T) {
 	}
 }
 
+// Section 8.2: the phrase is what makes an empty body mean the empty relation.
+// Without it, the same table is reported and the report names the phrase, so a
+// row forgotten by the author is not silently promoted to an example.
+func TestAnEmptyRowSetTableWithoutThePhraseIsRefused(t *testing.T) {
+	const src = "<!-- tei: cases of sales.every_line_at_most expecting satisfied -->\n" +
+		"| value | limit |\n| --- | --- |\n"
+	_, err := syntax.ScanTEIMarkdownDocument(src)
+	if err == nil {
+		t.Fatal("an empty row-set table without the phrase was read as the empty relation")
+	}
+	if !strings.Contains(err.Error(), "over no rows") {
+		t.Fatalf("the refusal does not name the phrase: %v", err)
+	}
+}
+
 // A row-set mark with an unknown answer is still refused before the table is
 // read, so an empty example cannot smuggle in an answer this reader does not
 // know.
 func TestEmptyRowSetTableRefusesAnUnknownAnswer(t *testing.T) {
-	const src = "<!-- tei: cases of sales.every_line_at_most expecting undecided -->\n" +
+	const src = "<!-- tei: cases of sales.every_line_at_most expecting undecided over no rows -->\n" +
 		"| value | limit |\n| --- | --- |\n"
 	document, err := syntax.ScanTEIMarkdownDocument(src)
 	if err != nil {

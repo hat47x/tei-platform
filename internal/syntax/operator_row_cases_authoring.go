@@ -51,9 +51,16 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 	var out OperatorRowCasesAuthoring
 	words := table.Words
 	// <!-- tei: cases of <operator> expecting <answer> -->
-	if len(words) != 5 || words[0].Text != "cases" || words[1].Text != "of" || words[3].Text != "expecting" {
+	// <!-- tei: cases of <operator> expecting <answer> over no rows -->
+	//
+	// The longer mark states the empty relation as one example (section 8.2).
+	// It is its own phrase so a table left without a body row is reported
+	// instead of read as an empty collection.
+	emptyRelation := len(words) == 8 &&
+		words[5].Text == "over" && words[6].Text == "no" && words[7].Text == "rows"
+	if (!emptyRelation && len(words) != 5) || words[0].Text != "cases" || words[1].Text != "of" || words[3].Text != "expecting" {
 		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
-			Msg: "unknown tei mark; the example of an operator that reads every row is marked <!-- tei: cases of <operator> expecting <answer> -->"}
+			Msg: "unknown tei mark; the example of an operator that reads every row is marked <!-- tei: cases of <operator> expecting <answer> -->, or with `over no rows` for the empty relation"}
 	}
 	reference := words[2]
 	if !strings.Contains(reference.Text, ".") {

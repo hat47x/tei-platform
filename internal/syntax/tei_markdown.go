@@ -57,16 +57,20 @@ type MarkdownCell struct {
 }
 
 // isOperatorRowSetMark reports whether the words of a mark state one row-set
-// example of an operator: `cases of <operator> expecting <answer>`.
+// example of an operator AND say that the relation is empty:
+// `cases of <operator> expecting <answer> over no rows`.
 //
-// The empty relation is written as the header and delimiter of such a table
-// with no body row. Only that form is read with no body row, so an ordinary
-// table that the author left unwritten is still reported.
+// Decision section 8.2 fixed this phrase. The empty relation is written as the
+// header and delimiter of such a table with no body row; the phrase is what
+// says so. A row-set example WITHOUT the phrase still needs a body row, so a
+// table the author left unwritten is reported rather than silently read as an
+// empty collection.
 func isOperatorRowSetMark(words []MarkdownCell) bool {
-	if len(words) != 5 {
+	if len(words) != 8 {
 		return false
 	}
-	return words[0].Text == "cases" && words[1].Text == "of" && words[3].Text == "expecting"
+	return words[0].Text == "cases" && words[1].Text == "of" && words[3].Text == "expecting" &&
+		words[5].Text == "over" && words[6].Text == "no" && words[7].Text == "rows"
 }
 
 // MarkdownTable is a marked table. Words are the words of the mark after
@@ -144,8 +148,15 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 		emptyRowSetExample := table.stage == 2 && len(table.table.Rows) == 0 &&
 			isOperatorRowSetMark(table.table.Words)
 		if table.stage < 2 || len(table.table.Rows) == 0 && !emptyRowSetExample {
+			message := "a tei mark must be directly followed by a table with a header row, a delimiter row, and at least one row"
+			if table.stage == 2 && len(table.table.Rows) == 0 && len(table.table.Words) == 5 &&
+				table.table.Words[0].Text == "cases" && table.table.Words[3].Text == "expecting" {
+				// An empty row-set example is written, but without the phrase
+				// section 8.2 fixed. Name it rather than only refusing.
+				message += "; an example of the empty relation is marked 'over no rows'"
+			}
 			return &ParseError{Pos: table.table.Mark.Start, End: table.table.Mark.End,
-				Msg: "a tei mark must be directly followed by a table with a header row, a delimiter row, and at least one row"}
+				Msg: message}
 		}
 		document.Tables = append(document.Tables, table.table)
 		table = nil
