@@ -1,4 +1,4 @@
-﻿package validationeval_test
+package validationeval_test
 
 import (
 	"math/big"
