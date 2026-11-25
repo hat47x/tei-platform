@@ -28,7 +28,7 @@ type input struct {
 	} `json:"observations"`
 	Constraints []string `json:"constraints"`
 	Choice      *struct {
-		ObservationID string `json:"observationId"`
+		ObservationID string   `json:"observationId"`
 		Options       []option `json:"options"`
 	} `json:"choice"`
 }
