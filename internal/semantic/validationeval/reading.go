@@ -645,7 +645,13 @@ func withAbsentMapping(rows []NumberReading, attribute core.CanonicalID, mapping
 	out := make([]NumberReading, len(rows))
 	copy(out, rows)
 	for i, row := range out {
-		if row.State == ValuePresent {
+		// Only a row that certainly holds no value is read under the mapping.
+		// A row whose column the query did not return is not absent, it is
+		// unknown: nothing is known about it, including whether it is empty.
+		// Rewriting that row as the mapped value would decide a rule from a
+		// value that was never read (decision section 5: an unread value is
+		// undecided, a value that is absent is read under the mapping).
+		if row.State != ValueNull {
 			continue
 		}
 		if mapped, ok := absent(mapping); ok {
