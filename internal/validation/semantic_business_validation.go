@@ -15,6 +15,17 @@ type semanticValidationRelationRef struct {
 	Cardinality semantic.Cardinality
 }
 
+// isCanonicalReference reports whether an input assignment names an
+// attribute. A decimal literal or a bare word is a constant or a mapping
+// name, not a column, so it is not checked against the relation's rows.
+func isCanonicalReference(value string) bool {
+	if value == "" || !strings.Contains(value, ".") {
+		return false
+	}
+	_, err := core.ParseCanonicalID(value)
+	return err == nil
+}
+
 // validateSemanticBusinessValidationsは、Semanticに置かれた業務Validationが
 // 既存のData / Attribute / Relationと矛盾していないかを検査する。
 // 業務ruleの評価そのものはここでは行わず、authoringされた意味の参照整合性だけを扱う。
@@ -361,6 +372,38 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 						rule.Attribute,
 						attribute.TypeRef,
 					))
+				}
+				// A rule that reads the rows of a relation reads the columns of
+				// those rows. Every assigned input must be a column of the
+				// relation's target Data; a column of another Data is not there
+				// to read, and the read refuses it with "is not an item of ...".
+				// Validate refuses it first so the same Workspace does not pass
+				// here and fail at the first screen.
+				if declared && operatorReadsEachRow(operator) && rule.Relation != "" {
+					if relation, known := relations[rule.Relation]; known {
+						for _, assignment := range rule.Inputs {
+							if !isCanonicalReference(assignment.Value) {
+								continue
+							}
+							column, err := core.ParseCanonicalID(assignment.Value)
+							if err != nil {
+								continue
+							}
+							// Two shapes reach here: a column no Data declares,
+							// and a column of another Data. Either way it is not
+							// a column of the rows this rule reads, and the read
+							// refuses it with "is not an item of ...".
+							if attributeOwners[column] == relation.Target {
+								continue
+							}
+							out = append(out, errFor(
+								ruleSubject,
+								"SEMANTIC_VALIDATION_OPERATOR_INPUT_OUTSIDE_RELATION_TARGET",
+								"operator semantic validation %s reads input %q from %s, which is not a column of relation %s's rows (%s)",
+								rule.ID, assignment.Name, column, rule.Relation, relation.Target,
+							))
+						}
+					}
 				}
 
 			case semantic.ValidationPositive:
