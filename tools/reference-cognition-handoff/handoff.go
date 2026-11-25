@@ -40,21 +40,34 @@ type Origin struct {
 	Notes map[string]string `json:"notes,omitempty"`
 }
 
+// ProposalBinding is the currentness binding a cognition receipt records: the
+// subject, its revision, and the judgement basis in force. #5808 and #5809 both
+// require that a candidate produced from an older revision or an older criteria
+// set never reaches the current selection, so the handoff carries the binding
+// into the change candidate instead of leaving a consumer to reconstruct it.
+type ProposalBinding struct {
+	Subject  string `json:"subject"`
+	Revision string `json:"revision"`
+	Basis    string `json:"basis,omitempty"`
+}
+
+type Candidate struct {
+	Schema            string           `json:"schema"`
+	ID                string           `json:"id"`
+	BaseModelRevision string           `json:"baseModelRevision"`
+	Origin            Origin           `json:"origin"`
+	Intent            string           `json:"intent"`
+	Delta             []Operation      `json:"delta"`
+	Binding           *ProposalBinding `json:"binding,omitempty"`
+}
+
+// Operation is one delta entry a candidate asks the acceptance path to add.
 type Operation struct {
 	Op        string `json:"op"`
 	Namespace string `json:"namespace"`
 	ID        string `json:"id"`
 	Kind      string `json:"kind"`
 	Attribute string `json:"attribute"`
-}
-
-type Candidate struct {
-	Schema            string      `json:"schema"`
-	ID                string      `json:"id"`
-	BaseModelRevision string      `json:"baseModelRevision"`
-	Origin            Origin      `json:"origin"`
-	Intent            string      `json:"intent"`
-	Delta             []Operation `json:"delta"`
 }
 
 var segmentPattern = regexp.MustCompile(`[^a-z0-9]+`)
@@ -78,6 +91,14 @@ func canonicalSegment(value string) string {
 }
 
 func Handoff(proposalPath, workspaceDir, providerID, model, version, actor, candidateID string) (Candidate, error) {
+	return HandoffWithBinding(proposalPath, workspaceDir, providerID, model, version, actor, candidateID, nil)
+}
+
+// HandoffWithBinding is Handoff with the proposal's currentness binding carried
+// into the change candidate. A nil binding keeps the pre-#5808 behaviour: the
+// candidate is produced but states no revision, and RequireCurrentAtHandoff
+// then refuses to treat it as current.
+func HandoffWithBinding(proposalPath, workspaceDir, providerID, model, version, actor, candidateID string, binding *ProposalBinding) (Candidate, error) {
 	raw, err := os.ReadFile(proposalPath)
 	if err != nil {
 		return Candidate{}, err
@@ -130,7 +151,7 @@ func Handoff(proposalPath, workspaceDir, providerID, model, version, actor, cand
 	if actorValue == "" {
 		actorValue = strings.TrimSpace(providerID + "/" + model + "@" + version)
 	}
-	return Candidate{
+	candidate := Candidate{
 		Schema: CandidateSchema, ID: namespace + "." + canonicalSegment(selected.ID),
 		BaseModelRevision: sourceindex.ModelRevision(index),
 		Origin: Origin{
@@ -144,7 +165,11 @@ func Handoff(proposalPath, workspaceDir, providerID, model, version, actor, cand
 			Op: "add-validation", Namespace: namespace,
 			ID: namespace + "." + canonicalSegment(selected.ID), Kind: "positive", Attribute: selected.Subject,
 		}},
-	}, nil
+	}
+	if binding != nil {
+		candidate.Binding = binding
+	}
+	return candidate, nil
 }
 
 func Write(candidate Candidate, path string) error {
