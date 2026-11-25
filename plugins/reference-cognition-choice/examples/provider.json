@@ -1,0 +1,20 @@
+{
+  "schema": "tei.reference.cognition-provider/v0",
+  "id": "reference-local-choice",
+  "model": "local-model",
+  "version": "set-to-installed-model-revision",
+  "execution": "external",
+  "network": "none",
+  "capabilities": [
+    "choice"
+  ],
+  "limits": {
+    "maxContextBytes": 8192,
+    "maxOutputBytes": 8192,
+    "timeoutSeconds": 120
+  },
+  "settings": {
+    "transport": "loopback-chat",
+    "endpoint": "http://127.0.0.1:8080/v1/chat/completions"
+  }
+}
