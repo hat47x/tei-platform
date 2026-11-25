@@ -965,10 +965,12 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"not after\" compares two dates of one record and accepts no scope")
 	}
-	if predicate == RulePredicateOperator && rule.Scope != nil {
-		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
-			"a declared operator takes one value and accepts no scope")
-	}
+	// An operator rule may name a relation. Whether that scope is required or
+	// forbidden depends on the operator's declaration, which this parser does
+	// not read: an operator with an input over every row is asked of the rows of
+	// a relation and must name one, and an operator without such an input is
+	// asked of one record and must not. The conversion decides which (decision
+	// section 15.4); the parser only reads the word.
 	if predicate == RulePredicateRequiredIf && rule.Scope != nil {
 		return RuleAuthoring{}, p.errAtSpan(rule.ScopeSpan,
 			"predicate \"required if\" is about one record and accepts no scope")

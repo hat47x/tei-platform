@@ -297,10 +297,24 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 
 			switch rule.Kind {
 			case semantic.ValidationOperator:
-				if rule.Relation != "" {
+				operator, declared := operators[rule.Operator]
+				// An operator whose declaration reads a column of the rows is
+				// asked of a relation, so that rule names one; an operator that
+				// reads one record's values is not, and a relation written for it
+				// would ask a question the declaration cannot answer (decision
+				// section 15.4).
+				if declared && operatorReadsEachRow(operator) {
+					if rule.Relation == "" {
+						out = append(out, errFor(
+							ruleSubject,
+							"SEMANTIC_VALIDATION_OPERATOR_RELATION_REQUIRED",
+							"operator semantic validation %s uses operator %s, which reads every row of a relation, but names no relation; write \"per <relation>\"",
+							rule.ID, rule.Operator,
+						))
+					}
+				} else if rule.Relation != "" {
 					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "operator semantic validation %s does not accept a relation", rule.ID))
 				}
-				operator, declared := operators[rule.Operator]
 				if !declared {
 					out = append(out, errFor(
 						ruleSubject,
@@ -575,4 +589,18 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 	}
 
 	return out
+}
+
+// operatorReadsEachRow reports whether the operator declares an input read over
+// every row of a relation.
+func operatorReadsEachRow(operator semantic.Operator) bool {
+	if len(operator.Inputs) == 0 {
+		return false
+	}
+	for _, input := range operator.Inputs {
+		if input.OfEachRow {
+			return true
+		}
+	}
+	return false
 }
