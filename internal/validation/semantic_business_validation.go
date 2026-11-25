@@ -16,8 +16,14 @@ type semanticValidationRelationRef struct {
 }
 
 // declaredInputType reports the type a declared operator gives one named input.
-// An input the declaration does not name has no type here, and the caller
-// leaves typing to the check that already refuses undeclared names.
+//
+// It returns the empty OperatorInput when the declaration has no input of that
+// name, which is also the case for an unnamed single input (name ""). The
+// empty value is not a type any check here acts on: a caller compares it
+// against OperatorInputNumber, and a value that matches none of the declared
+// inputs must not be typed as one of them. An assignment that names an input
+// the declaration does not carry is reported by the check for undeclared
+// input names, not by this helper.
 func declaredInputType(operator semantic.Operator, name string) semantic.OperatorInput {
 	for _, input := range operator.Inputs {
 		if input.Name == name {
@@ -420,6 +426,12 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 							// "is not declared as a number". Validate refuses it
 							// first, for the same reason the subject's own type
 							// is checked above.
+							//
+							// Only a number input is typed here. A presence input
+							// asks whether a column holds a value, which any type
+							// can answer, so no column type refuses it. Keep that
+							// distinction explicit: a later type check must not
+							// start demanding a number of a presence input.
 							if inputType == semantic.OperatorInputNumber {
 								if columnAttribute, present := attributes[column]; present &&
 									!isNumericType(columnAttribute.TypeRef) {
