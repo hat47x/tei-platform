@@ -87,6 +87,23 @@ func TestSemanticOperatorCodesAreProduced(t *testing.T) {
 		{"row-scoped operator rule naming a relation no Data declares", func(w *ir.World) {
 			w.Semantics[0].Validations[2].Relation = "sales.order_line.parts_typo"
 		}, "SEMANTIC_VALIDATION_OPERATOR_RELATION_UNKNOWN", "sales.order_line.parts_all_positive"},
+		// The rule is read over the rows of the relation it names, so the
+		// subject attribute has to be a column of those rows. A relation to
+		// another Data gives that Data's rows, and the read refuses it; validate
+		// must refuse it first, as relation-unique already does.
+		{"row-scoped operator rule reading an attribute of another Data", func(w *ir.World) {
+			w.Semantics[0].Data = append(w.Semantics[0].Data, semantic.Data{
+				ID: "sales.customer",
+				Attributes: []semantic.Attribute{
+					{ID: "sales.customer.customer_id", Symbol: "customerId", TypeRef: "std.integer"},
+				},
+			})
+			w.Semantics[0].Data[0].Relations = append(w.Semantics[0].Data[0].Relations, semantic.Relation{
+				ID: "sales.order_line.customer", Symbol: "customer",
+				Target: "sales.customer", Cardinality: semantic.CardinalityOne,
+			})
+			w.Semantics[0].Validations[2].Relation = "sales.order_line.customer"
+		}, "SEMANTIC_VALIDATION_OPERATOR_ATTRIBUTE_OUTSIDE_RELATION_TARGET", "sales.order_line.parts_all_positive"},
 		{"built-in kind carrying an operator", func(w *ir.World) {
 			w.Semantics[0].Validations[1].Operator = "sales.non_negative"
 		}, "SEMANTIC_VALIDATION_OPERATOR_NOT_ALLOWED", "sales.order_line.discount_positive"},
