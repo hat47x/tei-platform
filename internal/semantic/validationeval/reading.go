@@ -242,6 +242,28 @@ func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclarat
 // the rule names, and if that attribute certainly holds no value the
 // declaration's `absent as <name>` decides how the absence reads.
 //
+// refuseNonNumberInputs refuses a rule whose operator declares an input this
+// evaluator cannot read. The operator path reads every input through
+// ReadNumber, so a contract that declares `presence` would be handed the
+// attribute's number instead of whether it holds a value: `takes value:
+// presence` was answered satisfied from the value 7, which is a different
+// question answered by accident (#4359).
+//
+// The refusal is at the rule, not at the declaration: the surface reads the
+// word `presence` and carries it in the contract, and the evaluator's one
+// operator path has no presence reader yet. A rule that needs it is refused
+// rather than answered from a number.
+func refuseNonNumberInputs(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration) error {
+	for _, input := range inputs {
+		if input.Type == semantic.OperatorInputNumber {
+			continue
+		}
+		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as numbers only; a presence input has no reader on this path yet",
+			rule.ID, rule.Operator, input.Name, input.Type)
+	}
+	return nil
+}
+
 // A subject attribute that was not read stays undecided, and in the legacy
 // reader a nil number stays the error it has always been: a reader that did not
 // ask, or cannot say, knows nothing about the value, so no mapping applies. The
@@ -436,6 +458,14 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		}
 		contract := declared[0]
 		inputs := contractInputs(contract)
+		// A presence input is read as presence and never as a number. Before
+		// this the evaluator read every input through ReadNumber, so a contract
+		// that declared `takes value: presence` was handed the attribute's
+		// number: measured, a presence contract was answered satisfied from the
+		// value 7. The two reads ask different questions (#4359).
+		if refusal := refuseNonNumberInputs(rule, inputs); refusal != nil {
+			return Decision{}, refusal
+		}
 		// A rule whose operator declares an input read over every row of a
 		// relation is asked of those rows, not of one record (decision section
 		// 15.1). Every such input of this rule is read in one call, so one
