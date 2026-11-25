@@ -119,6 +119,7 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 		var example semantic.OperatorCase
 		var valueSpan Anchor
 		inputSpans := map[string]Anchor{}
+		repeatedAt := valueSpan
 		if singleValue {
 			valueCell := row[valueIndex]
 			if valueCell.Text == "" {
@@ -132,12 +133,16 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 			if semantic.IsOperatorCasePresenceWord(valueCell.Text) {
 				example = semantic.OperatorCase{Inputs: map[string]string{"value": valueCell.Text}, Satisfied: satisfied}
 				inputSpans["value"] = valueCell.Anchor
+				// The repeated example is reported at the cell the author wrote,
+				// so the span is carried here as it is for the multi-input form.
+				repeatedAt = valueCell.Anchor
 			} else {
 				if _, err := semantic.ParseOperatorCaseValue(valueCell.Text); err != nil {
 					return out, cellError(valueCell, err.Error())
 				}
 				example = semantic.OperatorCase{Value: valueCell.Text, Satisfied: satisfied}
 				valueSpan = valueCell.Anchor
+				repeatedAt = valueCell.Anchor
 			}
 		} else {
 			example = semantic.OperatorCase{Inputs: map[string]string{}, Satisfied: satisfied}
@@ -168,7 +173,6 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 				inputSpans[name] = cell.Anchor
 			}
 		}
-		repeatedAt := valueSpan
 		if !singleValue {
 			names := make([]string, 0, len(columns))
 			for name := range columns {
