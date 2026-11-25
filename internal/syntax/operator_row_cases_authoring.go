@@ -69,7 +69,7 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 	answer := semantic.OperatorRowExpect(answerCell.Text)
 	if !answer.Valid() {
 		return out, cellError(answerCell, fmt.Sprintf(
-			"expecting is written satisfied or not-satisfied, not %q; an undecided example needs the three-valued form, which this change does not read", answerCell.Text))
+			"expecting is written satisfied, not-satisfied or undecided, not %q", answerCell.Text))
 	}
 	out.Case.Answer, out.AnswerSpan = answer, answerCell.Anchor
 
@@ -112,16 +112,16 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 		spans := map[string]Anchor{}
 		for _, name := range names {
 			cell := row[columns[name]]
-			if cell.Text == "" {
-				// An empty cell would state that the row holds no value, which
-				// needs the three-valued form this change does not read. It is
-				// refused rather than read as zero.
-				return out, cellError(cell, fmt.Sprintf(
-					"the %s cell of row %d is empty; an empty cell states that the row holds no value, which this change does not read yet",
-					name, index+1))
-			}
-			if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
-				return out, cellError(cell, fmt.Sprintf("input %q of row %d: %v", name, index+1, err))
+			// A cell states a decimal, the empty text (the row holds no
+			// value), or the word `not-fetched` (the row was not read). The
+			// three states are written, not inferred: an empty cell is a
+			// value holder that is empty, and a row nobody read is said so.
+			switch cell.Text {
+			case semantic.RowCellNoValue, semantic.RowCellNotFetched:
+			default:
+				if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
+					return out, cellError(cell, fmt.Sprintf("input %q of row %d: %v", name, index+1, err))
+				}
 			}
 			values[name] = cell.Text
 			spans[name] = cell.Anchor
