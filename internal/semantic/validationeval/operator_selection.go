@@ -36,6 +36,14 @@ type NamedImplementation struct {
 	// NumberRows decides for an operator whose input reads every row of a
 	// relation. At most one of Number, Numbers and NumberRows is non-nil.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
+	// Values decides for an operator that declares an input which is not a
+	// number (decision section 8.4). It receives the input name to value map,
+	// and every value states the type it was read as.
+	Values func(values map[string]OperatorValue) (bool, error)
+	// ValueRows decides for an operator whose input reads every row of a
+	// relation and declares an input which is not a number. At most one of
+	// Number, Numbers, NumberRows, Values and ValueRows is non-nil.
+	ValueRows func(rows map[string][]ValueReading) (Tri, error)
 	// Absent reads an absent value under the mapping the rule named, or
 	// reports that this implementation cannot read that mapping. A shipped
 	// implementation that states none leaves every absence undecided.
@@ -252,6 +260,26 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
 			decide := match.NumberRows
 			implementation.NumberRows = func(rows map[string][]NumberReading) (Tri, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(rows)
+			}
+		}
+		if match.Values != nil {
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.Values
+			implementation.Values = func(values map[string]OperatorValue) (bool, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(values)
+			}
+		}
+		if match.ValueRows != nil {
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.ValueRows
+			implementation.ValueRows = func(rows map[string][]ValueReading) (Tri, error) {
 				if called != nil {
 					called(call)
 				}

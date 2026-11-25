@@ -36,6 +36,22 @@ type OperatorImplementation struct {
 	// the order they were read, and answers TriYes, TriNo or TriMaybe. It sees
 	// no Source, so what a rule reads stays decided by the declaration.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
+	// Values decides a rule whose operator declares an input that is not a
+	// number (decision section 8.4). It receives the input name to value map,
+	// and every value states the type it was read as, so an implementation
+	// that reads text is never handed a number. A single-input contract hands
+	// it that one input under its own name.
+	//
+	// A numeric implementation keeps Number, Numbers or NumberRows and is not
+	// asked to provide this. One implementation provides one kind of decision
+	// function: providing both would leave it ambiguous which value it
+	// answered from.
+	Values func(values map[string]OperatorValue) (bool, error)
+	// ValueRows decides a rule whose operator reads every row of a relation
+	// and declares an input that is not a number. It receives, per input
+	// name, the states of the rows that were read, and answers TriYes, TriNo
+	// or TriMaybe.
+	ValueRows func(rows map[string][]ValueReading) (Tri, error)
 	// Absent reads an absent value under the mapping the rule named. A rule may
 	// write `or <name>` after an input, and the declaration may state
 	// `absent as <name>`; the mapping says how an absent value is to be read.
@@ -44,6 +60,10 @@ type OperatorImplementation struct {
 	// mapping. A nil Absent, or ok=false for that mapping, means this
 	// implementation cannot read the absence that way, and the decision stays
 	// undecided instead of reading the absence as zero or as present.
+	//
+	// A mapping states a number (`absent as zero`). It is applied to an input
+	// whose value is a number; an absence of a date, a text or a boolean keeps
+	// its own reason, because no mapping states one.
 	Absent func(mapping string) (*big.Rat, bool)
 }
 
@@ -147,8 +167,10 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasRows := implementation.NumberRows != nil
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
+	hasValues := implementation.Values != nil
+	hasValueRows := implementation.ValueRows != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasValues, hasValueRows} {
 		if present {
 			shapes++
 		}
@@ -159,15 +181,32 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	if shapes > 1 {
 		return fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", contract.ID)
 	}
-	if rowScoped && !hasRows {
+	// A declaration that states a value which is not a number is decided from
+	// the typed values, and a numeric declaration from the numbers. The two are
+	// not interchangeable: an implementation offered the numbers would be asked
+	// about a date it cannot read, and one offered the typed values would be
+	// asked about a number it never declared. Neither is silently substituted
+	// for the other (decision section 8.4).
+	typed := readsTypedValues(inputs)
+	if typed && !hasValues && !hasValueRows {
+		unreadable := nonNumberInput(inputs)
+		return fmt.Errorf("operator %s takes input %q as %s, which is not a number, but its implementation decides from numbers; select an implementation that reads %s", contract.ID, unreadable.Name, unreadable.Type, unreadable.Type)
+	}
+	if !typed && (hasValues || hasValueRows) {
+		return fmt.Errorf("operator %s takes numbers only, but its implementation decides from typed values", contract.ID)
+	}
+	if rowScoped && !hasRows && !hasValueRows {
 		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
 	if !rowScoped && hasRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
 	}
+	if !rowScoped && hasValueRows {
+		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
+	}
 	if !rowScoped {
 		multiInput := len(inputs) > 1
-		if multiInput && !hasMulti {
+		if multiInput && !hasMulti && !hasValues {
 			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))
 		}
 		if !multiInput && hasMulti {
@@ -197,6 +236,22 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 		return err
 	}
 	return nil
+}
+
+// nonNumberInput is the first declared input whose value is not a number, so a
+// refusal can name the input and the type an implementation would have to read.
+func nonNumberInput(inputs []semantic.OperatorInputDeclaration) semantic.OperatorInputDeclaration {
+	for _, input := range inputs {
+		if input.Type.ReadsAValue() && input.Type != semantic.OperatorInputNumber {
+			return input
+		}
+	}
+	for _, input := range inputs {
+		if input.Type != semantic.OperatorInputNumber {
+			return input
+		}
+	}
+	return semantic.OperatorInputDeclaration{Name: "value", Type: semantic.OperatorInputNumber}
 }
 
 // checkOperatorCases asks the implementation about every example the contract
@@ -257,33 +312,31 @@ func checkOperatorCases(contract semantic.Operator, implementation OperatorImple
 				contract.ID, len(inputs), operatorInputNames(inputs))
 		}
 
-		values := map[string]*big.Rat{}
-		if example.Inputs != nil {
-			for name, text := range example.Inputs {
-				value, err := semantic.ParseOperatorCaseValue(text)
-				if err != nil {
-					return fmt.Errorf("operator %s has an unreadable example (%s): %w", contract.ID, name, err)
-				}
-				values[name] = value
-			}
-		} else {
-			value, err := semantic.ParseOperatorCaseValue(example.Value)
-			if err != nil {
-				return fmt.Errorf("operator %s has an unreadable example: %w", contract.ID, err)
-			}
-			// A single-input operator may name its input (`takes amount: number`).
-			// The example's one value belongs to that input, whatever it is
-			// called, so the implementation is never handed a nil value.
-			values[inputs[0].Name] = value
-		}
-
 		var (
 			got bool
 			err error
 		)
-		if implementation.Numbers != nil {
+		switch {
+		case implementation.Values != nil:
+			// The example's cells are read as the values of the types the
+			// declaration states, so the implementation is asked exactly the
+			// question a rule read would ask it (section 8.4).
+			typed, typedErr := exampleValues(inputs, example)
+			if typedErr != nil {
+				return fmt.Errorf("operator %s has an unreadable example: %w", contract.ID, typedErr)
+			}
+			got, err = implementation.Values(typed)
+		case implementation.Numbers != nil:
+			values, valuesErr := exampleNumbers(inputs, example)
+			if valuesErr != nil {
+				return fmt.Errorf("operator %s has an unreadable example: %w", contract.ID, valuesErr)
+			}
 			got, err = implementation.Numbers(values)
-		} else {
+		default:
+			values, valuesErr := exampleNumbers(inputs, example)
+			if valuesErr != nil {
+				return fmt.Errorf("operator %s has an unreadable example: %w", contract.ID, valuesErr)
+			}
 			got, err = implementation.Number(values[inputs[0].Name])
 		}
 		if err != nil {
@@ -295,6 +348,71 @@ func checkOperatorCases(contract semantic.Operator, implementation OperatorImple
 		}
 	}
 	return nil
+}
+
+// exampleNumbers reads the cells of one example as the numbers of the inputs
+// they belong to. A single-input example states one value, which belongs to
+// the first input whatever it is called, so the implementation is never handed
+// a nil value.
+func exampleNumbers(inputs []semantic.OperatorInputDeclaration, example semantic.OperatorCase) (map[string]*big.Rat, error) {
+	values := map[string]*big.Rat{}
+	if example.Inputs == nil {
+		value, err := semantic.ParseOperatorCaseValue(example.Value)
+		if err != nil {
+			return nil, err
+		}
+		values[inputs[0].Name] = value
+		return values, nil
+	}
+	for name, text := range example.Inputs {
+		value, err := semantic.ParseOperatorCaseValue(text)
+		if err != nil {
+			return nil, fmt.Errorf("(%s): %w", name, err)
+		}
+		values[name] = value
+	}
+	return values, nil
+}
+
+// exampleValues reads the cells of one example as the values of the types the
+// declaration states. The type comes from the signature and never from the
+// cell: an input of type any keeps the type its cell was written as, so the
+// number 100 and the text "100" are two values of one `any` input (section
+// 8.3).
+func exampleValues(inputs []semantic.OperatorInputDeclaration, example semantic.OperatorCase) (map[string]OperatorValue, error) {
+	kinds := map[string]semantic.OperatorInput{}
+	for _, input := range inputs {
+		kinds[input.Name] = input.Type
+	}
+	values := map[string]OperatorValue{}
+	if example.Inputs == nil {
+		cell, err := semantic.ParseOperatorCaseCell(example.Value)
+		if err != nil {
+			return nil, err
+		}
+		value, err := OperatorValueFor(kinds[inputs[0].Name], cell)
+		if err != nil {
+			return nil, err
+		}
+		values[inputs[0].Name] = value
+		return values, nil
+	}
+	for name, text := range example.Inputs {
+		cell, err := semantic.ParseOperatorCaseCell(text)
+		if err != nil {
+			return nil, fmt.Errorf("(%s): %w", name, err)
+		}
+		kind, declared := kinds[name]
+		if !declared {
+			return nil, fmt.Errorf("(%s) is not one of its inputs", name)
+		}
+		value, err := OperatorValueFor(kind, cell)
+		if err != nil {
+			return nil, fmt.Errorf("(%s): %w", name, err)
+		}
+		values[name] = value
+	}
+	return values, nil
 }
 
 // operatorExampleNames lists the inputs an example states, in declaration
@@ -349,16 +467,74 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 	if len(contract.RowCases) == 0 {
 		return nil
 	}
-	if implementation.NumberRows == nil {
+	if implementation.NumberRows == nil && implementation.ValueRows == nil {
 		return fmt.Errorf("operator %s states row examples, but its selected implementation does not decide over rows", contract.ID)
 	}
 	inputs := contractInputs(contract)
+	typed := readsTypedValues(inputs)
+	if typed != (implementation.ValueRows != nil) {
+		// The rows are handed to the implementation in the form its
+		// declaration asks for, and in no other. A numeric implementation is
+		// never asked about a row of text, and a typed one is never asked
+		// about a row of numbers it did not declare.
+		if typed {
+			return fmt.Errorf("operator %s states row examples for inputs that are not numbers, but its selected implementation decides from numbers", contract.ID)
+		}
+		return fmt.Errorf("operator %s states row examples for numeric inputs, but its selected implementation decides from typed values", contract.ID)
+	}
 	for _, example := range contract.RowCases {
 		// Section 8.1: an example may state the empty relation. Every column
 		// is then empty, and the implementation is asked about no rows rather
 		// than skipped: whether the empty relation satisfies the operator is
 		// the operator's own answer, and it must not depend on the
 		// declaration's `refutes on some rows`.
+		//
+		// The three states a read row can hold are written in the table: a
+		// value of the input's type, the empty text (no value), and the word
+		// `not-fetched` (not read). They are handed to the implementation as
+		// they are, so the example asks it exactly the question a rule read
+		// would.
+		if typed {
+			rows := make(map[string][]ValueReading, len(inputs))
+			for _, input := range inputs {
+				name := input.Name
+				if name == "" {
+					name = "value"
+				}
+				column := make([]ValueReading, 0, len(example.Rows))
+				for index, row := range example.Rows {
+					text, stated := row[name]
+					if !stated {
+						return fmt.Errorf("operator %s row example states no value for input %q on row %d", contract.ID, name, index+1)
+					}
+					switch text {
+					case semantic.RowCellNoValue:
+						column = append(column, ValueReading{State: ValueNull})
+					case semantic.RowCellNotFetched:
+						column = append(column, ValueReading{State: ValueNotFetched})
+					default:
+						cell, err := semantic.ParseOperatorCaseCell(text)
+						if err != nil {
+							return fmt.Errorf("operator %s has an unreadable row example (%s, row %d): %w", contract.ID, name, index+1, err)
+						}
+						value, err := OperatorValueFor(input.Type, cell)
+						if err != nil {
+							return fmt.Errorf("operator %s has a row example that is not a value of input %q's type (%s, row %d): %w", contract.ID, name, name, index+1, err)
+						}
+						column = append(column, ValueReading{State: ValuePresent, Value: &value})
+					}
+				}
+				rows[name] = column
+			}
+			answer, err := implementation.ValueRows(rows)
+			if err != nil {
+				return fmt.Errorf("the implementation of operator %s could not decide a row example: %w", contract.ID, err)
+			}
+			if err := checkRowExampleAnswer(contract, example, answer); err != nil {
+				return err
+			}
+			continue
+		}
 		rows := make(map[string][]NumberReading, len(inputs))
 		for _, input := range inputs {
 			name := input.Name
@@ -395,14 +571,23 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 		if err != nil {
 			return fmt.Errorf("the implementation of operator %s could not decide a row example: %w", contract.ID, err)
 		}
-		want, ok := operatorRowExpectTri(example.Answer)
-		if !ok {
-			return fmt.Errorf("operator %s has a row example whose answer %q is not one this evaluator knows", contract.ID, example.Answer)
+		if err := checkRowExampleAnswer(contract, example, answer); err != nil {
+			return err
 		}
-		if answer != want {
-			return fmt.Errorf("TEI_OPERATOR_IMPLEMENTATION_MISMATCH: the contract of operator %s states that a row example is %s, but the selected implementation answers %s",
-				contract.ID, example.Answer, operatorRowTriWord(answer))
-		}
+	}
+	return nil
+}
+
+// checkRowExampleAnswer compares the answer an implementation gave a row
+// example with the answer the example states.
+func checkRowExampleAnswer(contract semantic.Operator, example semantic.OperatorRowCase, answer Tri) error {
+	want, ok := operatorRowExpectTri(example.Answer)
+	if !ok {
+		return fmt.Errorf("operator %s has a row example whose answer %q is not one this evaluator knows", contract.ID, example.Answer)
+	}
+	if answer != want {
+		return fmt.Errorf("TEI_OPERATOR_IMPLEMENTATION_MISMATCH: the contract of operator %s states that a row example is %s, but the selected implementation answers %s",
+			contract.ID, example.Answer, operatorRowTriWord(answer))
 	}
 	return nil
 }

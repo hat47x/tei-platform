@@ -233,6 +233,17 @@ type OperatorInput string
 const (
 	// OperatorInputNumber is one numeric value of the constrained attribute.
 	OperatorInputNumber OperatorInput = "number"
+	// OperatorInputDate is one calendar date: a day without a time of day and
+	// without a zone.
+	OperatorInputDate OperatorInput = "date"
+	// OperatorInputText is one string value.
+	OperatorInputText OperatorInput = "text"
+	// OperatorInputTruth is one boolean value.
+	OperatorInputTruth OperatorInput = "truth"
+	// OperatorInputAny is one value of any of the types above. The type a
+	// value was read as stays part of the value, so a number read as 100 and
+	// a text read as "100" are two values, not one.
+	OperatorInputAny OperatorInput = "any"
 	// OperatorInputPresence is whether an attribute holds a value, not the
 	// value itself.
 	OperatorInputPresence OperatorInput = "presence"
@@ -241,11 +252,29 @@ const (
 // Valid reports whether this is a known operator input kind. Only the kinds
 // something in this program actually reads are valid: a word accepted at
 // authoring time that no reader handles would build a contract nothing can
-// decide. date, text, truth, and any are stated by the design but have no
-// reader here yet, so they stay out of this list until one exists.
+// decide.
+//
+// number, date, text, truth and any are read by the evaluator through the
+// readers of validationeval (decision section 8.4). presence has no value to
+// hand an implementation, so it stays valid at the declaration only: a rule
+// whose operator declares it is refused by the evaluator rather than answered
+// from a value of another kind.
 func (i OperatorInput) Valid() bool {
 	switch i {
-	case OperatorInputNumber, OperatorInputPresence:
+	case OperatorInputNumber, OperatorInputDate, OperatorInputText,
+		OperatorInputTruth, OperatorInputAny, OperatorInputPresence:
+		return true
+	}
+	return false
+}
+
+// ReadsAValue reports whether this input kind states a value an
+// implementation can be handed, as opposed to presence, which states only
+// whether a value is there.
+func (i OperatorInput) ReadsAValue() bool {
+	switch i {
+	case OperatorInputNumber, OperatorInputDate, OperatorInputText,
+		OperatorInputTruth, OperatorInputAny:
 		return true
 	}
 	return false

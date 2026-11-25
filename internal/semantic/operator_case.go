@@ -10,8 +10,10 @@ import (
 // author of the contract. They are not produced by an implementation, so an
 // implementation can be checked against them.
 type OperatorCase struct {
-	// Value is a decimal number exactly as written, such as "300", "0", or
-	// "-0.01". It is kept as text so no precision is lost or invented.
+	// Value is one value exactly as written, such as "300", "0", "-0.01",
+	// "2026-04-01", "\"A-100\"" or "true". It is kept as text so no precision
+	// is lost or invented, and so the type the cell states stays visible:
+	// the quotes around a text are part of what was written (section 8.3).
 	//
 	// It states the example of a SINGLE-input operator. A declaration that
 	// lists more than one input states its example as one value per input name
@@ -19,8 +21,8 @@ type OperatorCase struct {
 	// held.
 	Value     string `json:"value"`
 	Satisfied bool   `json:"satisfied"`
-	// Inputs holds one decimal text per declared input name, in the spelling
-	// the declaration gave. It is set only for a multi-input example; a
+	// Inputs holds one cell text per declared input name, in the spelling
+	// the table gave. It is set only for a multi-input example; a
 	// single-input example leaves it empty and uses Value, so its JSON is
 	// unchanged.
 	Inputs map[string]string `json:"inputs,omitempty"`
@@ -83,9 +85,16 @@ func ParseOperatorCaseValue(text string) (*big.Rat, error) {
 }
 
 // SameOperatorCaseValue reports whether two example values are the same
-// number, however they are written ("0" and "0.0").
+// value, however they are written ("0" and "0.0"). Two values of different
+// kinds are never the same: the number 100 and the text "100" are two values
+// of an `any` input, not one example written twice (section 8.3).
 func SameOperatorCaseValue(left, right string) bool {
-	a, errA := ParseOperatorCaseValue(left)
-	b, errB := ParseOperatorCaseValue(right)
-	return errA == nil && errB == nil && a.Cmp(b) == 0
+	a, errA := ParseOperatorCaseCell(left)
+	b, errB := ParseOperatorCaseCell(right)
+	if errA != nil || errB != nil {
+		// A text that states no value at all is compared as written; it is
+		// refused where the table is read.
+		return left == right
+	}
+	return SameOperatorCaseCell(a, b)
 }

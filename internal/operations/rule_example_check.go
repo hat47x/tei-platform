@@ -111,6 +111,128 @@ func (s exampleSource) readCellDate(row int, attribute core.CanonicalID) (valida
 	return validationeval.DateReading{State: validationeval.ValuePresent, Value: date}, nil
 }
 
+// readCellText reads the text of one cell of one row. A column the example
+// does not have was not written, so it is not fetched.
+func (s exampleSource) readCellText(row int, attribute core.CanonicalID) (validationeval.TextReading, error) {
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.TextReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[row][column]
+	if cell.Text == "" {
+		return validationeval.TextReading{State: validationeval.ValueNull}, nil
+	}
+	value, err := semantic.ParseOperatorCaseCell(cell.Text)
+	if err != nil {
+		return validationeval.TextReading{}, err
+	}
+	if !value.Fits(semantic.OperatorInputText) {
+		return validationeval.TextReading{}, fmt.Errorf("%q is not text; write it between double quotes", cell.Text)
+	}
+	observed := value.Text
+	return validationeval.TextReading{State: validationeval.ValuePresent, Value: &observed}, nil
+}
+
+// readCellTruth reads the boolean of one cell of one row. A column the example
+// does not have was not written, so it is not fetched.
+func (s exampleSource) readCellTruth(row int, attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.TruthReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[row][column]
+	if cell.Text == "" {
+		return validationeval.TruthReading{State: validationeval.ValueNull}, nil
+	}
+	value, err := semantic.ParseOperatorCaseCell(cell.Text)
+	if err != nil {
+		return validationeval.TruthReading{}, err
+	}
+	if !value.Fits(semantic.OperatorInputTruth) {
+		return validationeval.TruthReading{}, fmt.Errorf("%q is not a boolean; write the word true or the word false", cell.Text)
+	}
+	observed := value.Truth
+	return validationeval.TruthReading{State: validationeval.ValuePresent, Value: &observed}, nil
+}
+
+// readCellAny reads one cell of one row as the value it states. The quoting
+// decides what the value is, so a quoted cell is text and an unquoted one is
+// whatever else it reads as: the number 100 and the text "100" are two values
+// of one `any` item (section 8.3).
+func (s exampleSource) readCellAny(row int, attribute core.CanonicalID) (validationeval.AnyReading, error) {
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.AnyReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[row][column]
+	if cell.Text == "" {
+		return validationeval.AnyReading{State: validationeval.ValueNull}, nil
+	}
+	value, err := validationeval.OperatorValueFor(semantic.OperatorInputAny, mustCell(cell.Text))
+	if err != nil {
+		return validationeval.AnyReading{}, err
+	}
+	return validationeval.AnyReading{State: validationeval.ValuePresent, Value: &value}, nil
+}
+
+// mustCell reads one cell, whose notation the table reader has already
+// checked.
+func mustCell(text string) semantic.OperatorCaseCell {
+	value, err := semantic.ParseOperatorCaseCell(text)
+	if err != nil {
+		return semantic.OperatorCaseCell{Kind: semantic.OperatorCaseCellText, Text: text}
+	}
+	return value
+}
+
+// ReadText reads the text of one item of this row. An item the table has no
+// column for was not written, so it is not fetched; an empty cell is a record
+// that holds no value, which is not the same as the empty string written as
+// "" (section 8.3).
+func (s exampleSource) ReadText(attribute core.CanonicalID) (validationeval.TextReading, error) {
+	if s.row < 0 {
+		return validationeval.TextReading{}, fmt.Errorf("a rule about all the rows asked for the single value %s", attribute)
+	}
+	return s.readCellText(s.row, attribute)
+}
+
+// ReadTruth reads the boolean of one item of this row.
+func (s exampleSource) ReadTruth(attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	if s.row < 0 {
+		return validationeval.TruthReading{}, fmt.Errorf("a rule about all the rows asked for the single value %s", attribute)
+	}
+	return s.readCellTruth(s.row, attribute)
+}
+
+// ReadAny reads one item of this row as the value it states.
+func (s exampleSource) ReadAny(attribute core.CanonicalID) (validationeval.AnyReading, error) {
+	if s.row < 0 {
+		return validationeval.AnyReading{}, fmt.Errorf("a rule about all the rows asked for the single value %s", attribute)
+	}
+	return s.readCellAny(s.row, attribute)
+}
+
+// ReadRelationValues reads one item of every row as the value it states, and
+// says the rows are all there are: the author wrote the whole example.
+func (s exampleSource) ReadRelationValues(relation, attribute core.CanonicalID) (validationeval.ValueRowsReading, error) {
+	if s.row >= 0 {
+		return validationeval.ValueRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
+	}
+	reading := validationeval.ValueRowsReading{Coverage: validationeval.CoverageComplete}
+	for index := range s.example.Rows {
+		row, err := s.readCellAny(index, attribute)
+		if err != nil {
+			return validationeval.ValueRowsReading{}, err
+		}
+		converted := validationeval.ValueReading{State: row.State}
+		if row.State == validationeval.ValuePresent {
+			converted.Value = row.Value
+		}
+		reading.Rows = append(reading.Rows, converted)
+	}
+	return reading, nil
+}
+
 // ReadPresence reports whether the item holds a value in this row. An item the
 // table has no column for was not written, so it is not fetched; an empty cell
 // is a record that holds no value.

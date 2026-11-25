@@ -160,17 +160,30 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 			}
 			for i, example := range operator.Cases {
 				// An example states either one value or one value per declared
-				// input. Each stated value is checked the same way: it must be a
-				// decimal number, and no two examples may state the same values.
+				// input. Each stated value is checked the same way: it must be
+				// a value of the type that input reads, and no two examples
+				// may state the same values.
+				inputTypes := map[string]semantic.OperatorInput{}
+				if len(operator.Inputs) == 0 {
+					inputTypes["value"] = operator.Input
+				} else {
+					for _, input := range operator.Inputs {
+						name := input.Name
+						if name == "" {
+							name = "value"
+						}
+						inputTypes[name] = input.Type
+					}
+				}
 				stated := []string{example.Value}
 				if example.Inputs != nil {
 					stated = stated[:0]
 					for name, value := range example.Inputs {
-						if _, err := semantic.ParseOperatorCaseValue(value); err != nil {
+						if err := semantic.CheckOperatorCaseCellFits(value, inputTypes[name]); err != nil {
 							out = append(out, errFor(
 								operatorSubject,
 								"INVALID_SEMANTIC_OPERATOR_CASE",
-								"semantic operator %s has an example whose value for input %q, %q, is not a decimal number",
+								"semantic operator %s has an example whose value for input %q, %q, is not a value of that input's type",
 								operator.ID, name, value,
 							))
 							stated = nil
@@ -182,11 +195,11 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 						continue
 					}
 					sort.Strings(stated)
-				} else if _, err := semantic.ParseOperatorCaseValue(example.Value); err != nil {
+				} else if err := semantic.CheckOperatorCaseCellFits(example.Value, inputTypes["value"]); err != nil {
 					out = append(out, errFor(
 						operatorSubject,
 						"INVALID_SEMANTIC_OPERATOR_CASE",
-						"semantic operator %s has an example whose value %q is not a decimal number",
+						"semantic operator %s has an example whose value %q is not a value of that input's type",
 						operator.ID,
 						example.Value,
 					))

@@ -215,6 +215,17 @@ func attachOperatorCases(r *Result) error {
 							})
 						}
 					}
+					// Every cell must be a value of the type its input reads.
+					// A cell written for another type is refused here, at the
+					// cell, so the table is not read at all and no
+					// implementation is asked about a value it never stated
+					// (section 8.3).
+					if err := requireExampleCellsMatchTypes(*operator, example, func(span syntax.Anchor, message string) error {
+						return r.collectSourceError(pending.filename, &syntax.ParseError{
+							Pos: span.Start, End: span.End, Msg: message})
+					}); err != nil {
+						return err
+					}
 					// A declared input the example does not state leaves that
 					// input unread, so the example is not one the implementation
 					// can be asked about. The reader refuses that shape when it
@@ -306,6 +317,9 @@ func attachOperatorRowCases(r *Result) error {
 					}
 				}
 				if err := requireRowCaseNamesMatchSignature(*operator, table, fail); err != nil {
+					return err
+				}
+				if err := requireRowExampleCellsMatchTypes(*operator, table, fail); err != nil {
 					return err
 				}
 				operator.RowCases = append(operator.RowCases, table.Case)
@@ -552,4 +566,99 @@ func operatorInputNamesInOrder(operator semantic.Operator) []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// operatorInputTypes is the type each declared input name reads. The unnamed
+// single-input form answers to "value" and takes the type the contract states.
+func operatorInputTypes(operator semantic.Operator) map[string]semantic.OperatorInput {
+	types := map[string]semantic.OperatorInput{}
+	if len(operator.Inputs) == 0 {
+		types["value"] = operator.Input
+		return types
+	}
+	for _, input := range operator.Inputs {
+		name := input.Name
+		if name == "" {
+			name = "value"
+		}
+		types[name] = input.Type
+	}
+	return types
+}
+
+// requireExampleCellsMatchTypes checks every cell of one example against the
+// type the declaration gives its input, and refuses a cell written for another
+// type at that cell's own position.
+//
+// The check is here, where the declaration is in hand, and not in the table
+// reader: the reader knows the column names but not their types, because the
+// operator may be declared in a document read later. It still happens while
+// the Workspace is loaded, so a cell of the wrong type stops the load before an
+// implementation is selected and before any real row is read (section 8.3).
+func requireExampleCellsMatchTypes(
+	operator semantic.Operator,
+	example syntax.OperatorCaseAuthoring,
+	fail func(syntax.Anchor, string) error,
+) error {
+	types := operatorInputTypes(operator)
+	cells := map[string]string{}
+	if example.Value.Inputs == nil {
+		cells[operatorInputNamesInOrder(operator)[0]] = example.Value.Value
+	} else {
+		for name, text := range example.Value.Inputs {
+			cells[name] = text
+		}
+	}
+	for name, text := range cells {
+		kind, declared := types[name]
+		if !declared {
+			// A column that names no declared input is reported where the
+			// columns are matched to the signature.
+			continue
+		}
+		if err := semantic.CheckOperatorCaseCellFits(text, kind); err != nil {
+			span, ok := example.InputSpans[name]
+			if !ok {
+				span = example.ValueSpan
+			}
+			if err := fail(span, fmt.Sprintf(
+				"operator %s takes %s for input %q, but an example states a cell that is not one: %v",
+				operator.ID, kind, name, err)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// requireRowExampleCellsMatchTypes is requireExampleCellsMatchTypes for the
+// table of rows a row-scoped operator's example states.
+func requireRowExampleCellsMatchTypes(
+	operator semantic.Operator,
+	table syntax.OperatorRowCasesAuthoring,
+	fail func(syntax.Anchor, string) error,
+) error {
+	types := operatorInputTypes(operator)
+	for rowIndex, row := range table.Case.Rows {
+		for name, text := range row {
+			kind, declared := types[name]
+			if !declared {
+				continue
+			}
+			if text == semantic.RowCellNoValue || text == semantic.RowCellNotFetched {
+				// A row that holds no value, or was not read, is written the
+				// same way whatever the input's type is (section 8.1).
+				continue
+			}
+			if err := semantic.CheckOperatorCaseCellFits(text, kind); err != nil {
+				span := table.CellSpans[rowIndex][name]
+				if err := fail(span, fmt.Sprintf(
+					"operator %s takes %s for input %q, but row %d of its example states a cell that is not one: %v",
+					operator.ID, kind, name, rowIndex+1, err)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

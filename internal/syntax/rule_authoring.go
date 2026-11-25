@@ -79,6 +79,23 @@ type OperatorInputWord string
 // OperatorInputNumberWord declares that the operator reads one numeric value.
 const OperatorInputNumberWord OperatorInputWord = "number"
 
+// OperatorInputDateWord declares that the operator reads one calendar date, a
+// day written YYYY-MM-DD.
+const OperatorInputDateWord OperatorInputWord = "date"
+
+// OperatorInputTextWord declares that the operator reads one string value,
+// written between double quotes in an example table.
+const OperatorInputTextWord OperatorInputWord = "text"
+
+// OperatorInputTruthWord declares that the operator reads one boolean value,
+// written as the word true or false in an example table.
+const OperatorInputTruthWord OperatorInputWord = "truth"
+
+// OperatorInputAnyWord declares that the operator reads one value of any type.
+// The type a value was read as stays part of the value, so an example's
+// quoting decides what an implementation is handed.
+const OperatorInputAnyWord OperatorInputWord = "any"
+
 // OperatorInputPresenceWord declares that the operator reads whether an
 // attribute holds a value, not the value itself.
 const OperatorInputPresenceWord OperatorInputWord = "presence"
@@ -486,7 +503,7 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 	}
 	if !knownOperatorInputWord(inputTok.Text) {
 		return OperatorInput{}, p.errAt(inputTok, fmt.Sprintf(
-			"unknown operator input %q; accepted inputs are number, presence", inputTok.Text))
+			"unknown operator input %q; accepted inputs are %s", inputTok.Text, acceptedOperatorInputWordsList()))
 	}
 	// `of each row` makes the input read every row of the relation.
 	var ofEachRow bool
@@ -577,7 +594,8 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 }
 
 // acceptedOperatorInputWords is the closed list of type words this surface
-// reads. The words with no reader yet (date, text, truth, any) are not in it.
+// reads. Every word in it names a type the evaluator can read a value of, so a
+// word cannot be offered and then refused.
 //
 // It is one list, not two: the hint that tells an author what to write and the
 // check that decides what is accepted both read it, so a word cannot be offered
@@ -585,6 +603,10 @@ func (p *Parser) parseOperatorInput() (OperatorInput, error) {
 // hint.
 var acceptedOperatorInputWords = []OperatorInputWord{
 	OperatorInputNumberWord,
+	OperatorInputDateWord,
+	OperatorInputTextWord,
+	OperatorInputTruthWord,
+	OperatorInputAnyWord,
 	OperatorInputPresenceWord,
 }
 

@@ -242,26 +242,92 @@ func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclarat
 // the rule names, and if that attribute certainly holds no value the
 // declaration's `absent as <name>` decides how the absence reads.
 //
-// refuseNonNumberInputs refuses a rule whose operator declares an input this
-// evaluator cannot read. The operator path reads every input through
-// ReadNumber, so a contract that declares `presence` would be handed the
-// attribute's number instead of whether it holds a value: `takes value:
-// presence` was answered satisfied from the value 7, which is a different
-// question answered by accident (#4359).
+// requireValueReaders refuses a rule whose operator declares an input this
+// evaluator cannot read a value of.
 //
-// The refusal is at the rule, not at the declaration: the surface reads the
-// word `presence` and carries it in the contract, and the evaluator's one
-// operator path has no presence reader yet. A rule that needs it is refused
-// rather than answered from a number.
-func refuseNonNumberInputs(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration) error {
+// The operator path used to read every input through ReadNumber, so a contract
+// that declared `presence` was handed the attribute's number instead of
+// whether it holds a value: `takes value: presence` was answered satisfied
+// from the value 7, which is a different question answered by accident
+// (#4359). Each input is now read through the reader its own type names, and a
+// type with no value to hand an implementation, or a reader that cannot read
+// that type, is refused rather than answered from a value of another kind.
+func requireValueReaders(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration, source StatefulSource) error {
+	// A rule whose inputs include one that is not a number is decided through
+	// the typed path, which reads every input of it — numeric or not — as a
+	// typed value. A rule whose inputs are all numbers keeps the numeric path.
+	typed := readsTypedValues(inputs)
 	for _, input := range inputs {
-		if input.Type == semantic.OperatorInputNumber {
+		if !input.Type.ReadsAValue() {
+			return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but an input of type %s states whether a value is there and not a value, so there is none to hand an implementation; the %s input has no reader on this path yet",
+				rule.ID, rule.Operator, input.Name, input.Type, input.Type, input.Type)
+		}
+		if input.OfEachRow {
+			if !canReadValueRows(input.Type, typed, source) {
+				return fmt.Errorf("semantic validation %s reads operator %s input %q as %s over every row, but this reader cannot read the rows of a relation that way; the %s input has no reader on this path yet",
+					rule.ID, rule.Operator, input.Name, input.Type, input.Type)
+			}
 			continue
 		}
-		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as numbers only; the %s input has no reader on this path yet",
-			rule.ID, rule.Operator, input.Name, input.Type, input.Type)
+		if typed && !canReadValue(input.Type, source) {
+			return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this reader cannot read a value of that type; the %s input has no reader on this path yet",
+				rule.ID, rule.Operator, input.Name, input.Type, input.Type)
+		}
 	}
 	return nil
+}
+
+// canReadValue reports whether source can read a value of this type. A reader
+// that cannot is refused, so a value of another representation is never
+// substituted for the one the declaration asks for.
+func canReadValue(kind semantic.OperatorInput, source StatefulSource) bool {
+	switch kind {
+	case semantic.OperatorInputNumber:
+		return true
+	case semantic.OperatorInputDate:
+		_, ok := source.(StatefulDateSource)
+		return ok
+	case semantic.OperatorInputText:
+		_, ok := source.(StatefulTextSource)
+		return ok
+	case semantic.OperatorInputTruth:
+		_, ok := source.(StatefulTruthSource)
+		return ok
+	case semantic.OperatorInputAny:
+		_, ok := source.(StatefulAnySource)
+		return ok
+	}
+	return false
+}
+
+// canReadValueRows reports whether source can read a column of this type over
+// every row of a relation. A rule whose inputs are all numbers keeps the
+// numeric row reader it has always had; a rule that reads a typed value reads
+// every column of it — numeric or not — through the typed row reader, which
+// states the type of every row it read.
+func canReadValueRows(kind semantic.OperatorInput, typed bool, source StatefulSource) bool {
+	if !typed {
+		_, ok := source.(StatefulRowNumberSource)
+		return ok
+	}
+	_, ok := source.(StatefulRowValueSource)
+	return ok
+}
+
+// readsTypedValues reports whether a rule's inputs include one whose value is
+// not a number, so the rule is decided through the typed value path rather
+// than the numeric one.
+//
+// presence states whether a value is there and not a value, so a contract that
+// declares it is not a typed-value contract: it is refused by the evaluator
+// before an implementation is asked.
+func readsTypedValues(inputs []semantic.OperatorInputDeclaration) bool {
+	for _, input := range inputs {
+		if input.Type.ReadsAValue() && input.Type != semantic.OperatorInputNumber {
+			return true
+		}
+	}
+	return false
 }
 
 // A subject attribute that was not read stays undecided, and in the legacy
@@ -452,6 +518,28 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		return decideRequiredIf(rule, source)
 
 	case rule.Kind == semantic.ValidationOperator && withOperators:
+		// An input is read through the reader its own type names, and never
+		// through another type's reader. Before this the evaluator read every
+		// input through ReadNumber, so a contract that declared `takes value:
+		// presence` was handed the attribute's number: measured, a presence
+		// contract was answered satisfied from the value 7. The two reads ask
+		// different questions (#4359).
+		//
+		// The check is made before an implementation is selected, because it
+		// is about the declaration and the reader, not about which
+		// implementation was chosen: a rule this evaluator cannot read is
+		// refused whether or not an implementation happens to be selected.
+		var declaredBeforeRead []semantic.Operator
+		for _, op := range operators.Declared {
+			if op.ID == rule.Operator {
+				declaredBeforeRead = append(declaredBeforeRead, op)
+			}
+		}
+		if len(declaredBeforeRead) == 1 {
+			if refusal := requireValueReaders(rule, contractInputs(declaredBeforeRead[0]), source); refusal != nil {
+				return Decision{}, refusal
+			}
+		}
 		implementation, err := selectOperatorImplementation(rule, operators)
 		if err != nil {
 			return Decision{}, err
@@ -469,22 +557,20 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		}
 		contract := declared[0]
 		inputs := contractInputs(contract)
-		// A presence input is read as presence and never as a number. Before
-		// this the evaluator read every input through ReadNumber, so a contract
-		// that declared `takes value: presence` was handed the attribute's
-		// number: measured, a presence contract was answered satisfied from the
-		// value 7. The two reads ask different questions (#4359).
-		if refusal := refuseNonNumberInputs(rule, inputs); refusal != nil {
-			return Decision{}, refusal
-		}
 		// A rule whose operator declares an input read over every row of a
 		// relation is asked of those rows, not of one record (decision section
 		// 15.1). Every such input of this rule is read in one call, so one
 		// answer never mixes two reads (section 14.2 B-10).
 		for _, input := range inputs {
 			if input.OfEachRow {
+				if readsTypedValues(inputs) {
+					return decideRowScopedValueOperator(rule, contract, inputs, implementation, source)
+				}
 				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
 			}
+		}
+		if readsTypedValues(inputs) {
+			return decideTypedOperator(rule, contract, inputs, implementation, source)
 		}
 		// The rule subject supplies the first input, and only it. A rule that
 		// also assigns that input by name binds it twice, so the instruction

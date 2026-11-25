@@ -124,7 +124,7 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 			if valueCell.Text == "" {
 				return out, cellError(valueCell, "the value cell is empty; an example without a value is not read as zero or as \"no value\"")
 			}
-			if _, err := semantic.ParseOperatorCaseValue(valueCell.Text); err != nil {
+			if _, err := semantic.ParseOperatorCaseCell(valueCell.Text); err != nil {
 				return out, cellError(valueCell, err.Error())
 			}
 			example = semantic.OperatorCase{Value: valueCell.Text, Satisfied: satisfied}
@@ -141,7 +141,7 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 				if cell.Text == "" {
 					return out, cellError(cell, fmt.Sprintf("the cell for input %q is empty; every input the table names states a value, and an unread value is not written as blank", name))
 				}
-				if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
+				if _, err := semantic.ParseOperatorCaseCell(cell.Text); err != nil {
 					return out, cellError(cell, err.Error())
 				}
 				example.Inputs[name] = cell.Text

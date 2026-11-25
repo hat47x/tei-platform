@@ -143,7 +143,7 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 			switch cell.Text {
 			case semantic.RowCellNoValue, semantic.RowCellNotFetched:
 			default:
-				if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
+				if _, err := semantic.ParseOperatorCaseCell(cell.Text); err != nil {
 					return out, cellError(cell, fmt.Sprintf("input %q of row %d: %v", name, index+1, err))
 				}
 			}
