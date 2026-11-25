@@ -124,11 +124,21 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 			if valueCell.Text == "" {
 				return out, cellError(valueCell, "the value cell is empty; an example without a value is not read as zero or as \"no value\"")
 			}
-			if _, err := semantic.ParseOperatorCaseValue(valueCell.Text); err != nil {
-				return out, cellError(valueCell, err.Error())
+			// The single-value form names the one input by its own name, and
+			// that input may be a presence input, whose cell states one of two
+			// words rather than a decimal. The word is carried here and read
+			// against the input's type at the Workspace, where the signature is
+			// known.
+			if semantic.IsOperatorCasePresenceWord(valueCell.Text) {
+				example = semantic.OperatorCase{Inputs: map[string]string{"value": valueCell.Text}, Satisfied: satisfied}
+				inputSpans["value"] = valueCell.Anchor
+			} else {
+				if _, err := semantic.ParseOperatorCaseValue(valueCell.Text); err != nil {
+					return out, cellError(valueCell, err.Error())
+				}
+				example = semantic.OperatorCase{Value: valueCell.Text, Satisfied: satisfied}
+				valueSpan = valueCell.Anchor
 			}
-			example = semantic.OperatorCase{Value: valueCell.Text, Satisfied: satisfied}
-			valueSpan = valueCell.Anchor
 		} else {
 			example = semantic.OperatorCase{Inputs: map[string]string{}, Satisfied: satisfied}
 			names := make([]string, 0, len(columns))
