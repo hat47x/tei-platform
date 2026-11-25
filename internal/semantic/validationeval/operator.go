@@ -179,15 +179,26 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// answers one of them differently is not an implementation of this
 	// operator, so it is not asked about real data.
 	//
-	// An example states the values of one record. A row-scoped operator's
-	// meaning is stated by the table of rows (section 8), which is not read
-	// yet, so the examples of such a contract are refused rather than checked
-	// against an implementation that would be asked a different question.
+	// A row-scoped operator's meaning is stated by a table of rows (section 8):
+	// one table is one example, and every row of it is a row of the relation.
+	// An example of the one-record form says nothing this operator can be
+	// asked, so it is refused rather than checked as if its one value described
+	// a set of rows.
 	if rowScoped {
-		if len(contract.Cases) > 0 {
-			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its meaning is stated by a table of rows; a one-record example is not checked against it", contract.ID)
+		for _, example := range contract.Cases {
+			if !example.IsRowSetExample() {
+				return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its examples state a table of rows; a one-record example is not checked against it", contract.ID)
+			}
+		}
+		if err := checkRowSetOperatorCases(contract, implementation); err != nil {
+			return err
 		}
 		return nil
+	}
+	for _, example := range contract.Cases {
+		if example.IsRowSetExample() {
+			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads no rows of a relation, so a table of rows is not an example of it; state one record's values", contract.ID)
+		}
 	}
 
 	// The contract's own examples come first. An implementation that
@@ -197,6 +208,90 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 		return err
 	}
 	return nil
+}
+
+// checkRowSetOperatorCases asks the implementation about every row-set example
+// the contract states, and refuses it at the first different answer.
+//
+// The rows are handed to the implementation as the values of one input's
+// column, state-present for every row: this change keeps to examples whose
+// values are all stated, so no example carries an absent or unread value, and
+// the coverage the example implies is the whole relation.
+//
+// TriMaybe is not checked. A row-set example states rows whose values are all
+// present, so an implementation that answers TriMaybe about them is answering
+// about something other than the rows it was given; that is a mismatch, not an
+// undecided example.
+func checkRowSetOperatorCases(contract semantic.Operator, implementation OperatorImplementation) error {
+	inputs := contractInputs(contract)
+	expected := map[string]Tri{
+		semantic.RowExpectSatisfied:    TriYes,
+		semantic.RowExpectNotSatisfied: TriNo,
+	}
+	for _, example := range contract.Cases {
+		if !example.IsRowSetExample() {
+			continue
+		}
+		want, known := expected[example.RowExpect]
+		if !known {
+			return fmt.Errorf("operator %s has a row-set example whose expected answer %q is not one this reader knows", contract.ID, example.RowExpect)
+		}
+		rows := make(map[string][]NumberReading, len(inputs))
+		for _, input := range inputs {
+			column := make([]NumberReading, 0, len(example.Rows))
+			for index, row := range example.Rows {
+				text, stated := row[input.Name]
+				if !stated {
+					return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares input %q, but row %d of an example states no value for it",
+						contract.ID, input.Name, index+1)
+				}
+				value, err := semantic.ParseOperatorCaseValue(text)
+				if err != nil {
+					return fmt.Errorf("operator %s has an unreadable row-set example (%s, row %d): %w", contract.ID, input.Name, index+1, err)
+				}
+				column = append(column, NumberReading{State: ValuePresent, Value: value})
+			}
+			rows[input.Name] = column
+		}
+		for name := range example.Rows[0] {
+			known := false
+			for _, input := range inputs {
+				if input.Name == name {
+					known = true
+				}
+			}
+			if !known {
+				return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s example states the column %q, which is not one of its inputs (%s)",
+					contract.ID, name, operatorInputNames(inputs))
+			}
+		}
+		got, err := implementation.NumberRows(rows)
+		if err != nil {
+			return fmt.Errorf("the implementation of operator %s could not decide the contract's row-set example: %w", contract.ID, err)
+		}
+		if got != want {
+			return fmt.Errorf("TEI_OPERATOR_IMPLEMENTATION_MISMATCH: the contract of operator %s states that %s is %s, but the selected implementation answers %s",
+				contract.ID, rowSetExampleText(example), example.RowExpect, triCaseWord(got))
+		}
+	}
+	return nil
+}
+
+// rowSetExampleText renders one row-set example for a diagnostic: the answer it
+// expects and the rows it states, so the reader can find the table.
+func rowSetExampleText(example semantic.OperatorCase) string {
+	return fmt.Sprintf("expecting %s over %d row(s)", example.RowExpect, len(example.Rows))
+}
+
+// triCaseWord renders a three-valued answer as a word, for a diagnostic.
+func triCaseWord(answer Tri) string {
+	switch answer {
+	case TriYes:
+		return "satisfied"
+	case TriNo:
+		return "not-satisfied"
+	}
+	return "undecided"
 }
 
 // checkOperatorCases asks the implementation about every example the contract

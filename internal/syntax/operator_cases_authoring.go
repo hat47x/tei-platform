@@ -25,7 +25,7 @@ import (
 //
 // The note column is documentation and is not kept.
 
-// OperatorCaseAuthoring is one row and the spans of its cells.
+// OperatorCaseAuthoring is one example and the spans of its cells.
 type OperatorCaseAuthoring struct {
 	Value      semantic.OperatorCase
 	ValueSpan  Anchor
@@ -34,6 +34,10 @@ type OperatorCaseAuthoring struct {
 	// the header gave. A single-input row leaves it empty: its one value is
 	// named by the fixed `value` column, whose span is ValueSpan.
 	InputSpans map[string]Anchor
+	// RowSpans holds, for a row-set example, the span of every cell of every
+	// row, in the order the table wrote them. A diagnostic about one row
+	// points at the cell that stated it.
+	RowSpans [][]Anchor
 }
 
 // OperatorCasesAuthoring is one parsed case table. Operator is the authored
@@ -53,9 +57,15 @@ type OperatorCasesAuthoring struct {
 func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error) {
 	var out OperatorCasesAuthoring
 	words := table.Words
-	if len(words) != 3 || words[0].Text != "cases" || words[1].Text != "of" {
+	if len(words) < 3 || words[0].Text != "cases" || words[1].Text != "of" {
 		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
 			Msg: "unknown tei mark; the examples of an operator are marked <!-- tei: cases of <operator> -->"}
+	}
+	if len(words) > 3 {
+		// `cases of <operator> expecting <answer>` states a row-set example: one
+		// table is one example, and the answer is written once in the mark
+		// rather than in every body row.
+		return parseRowSetOperatorCases(table, words)
 	}
 	reference := words[2]
 	if !strings.Contains(reference.Text, ".") {

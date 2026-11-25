@@ -113,6 +113,85 @@ type pendingOperatorCases struct {
 	table    syntax.OperatorCasesAuthoring
 }
 
+// attachRowSetColumns checks that a row-set example's columns are exactly the
+// operator's declared input names, and reports the column that is wrong at the
+// place it was written.
+//
+// A column that names no declared input would be read by nobody, and a declared
+// input with no column would be read as a value the author never supplied. The
+// declaration is in hand here, so both are refused at the table rather than
+// only when a rule is read.
+func attachRowSetColumns(
+	r *Result,
+	pending pendingOperatorCases,
+	operator semantic.Operator,
+	declared map[string]bool,
+	example syntax.OperatorCaseAuthoring,
+) error {
+	for name := range tableColumns(example) {
+		if declared[name] {
+			continue
+		}
+		span, ok := pending.table.InputHeaderSpans[name]
+		if !ok {
+			span = example.ValueSpan
+		}
+		return r.collectSourceError(pending.filename, &syntax.ParseError{
+			Pos: span.Start, End: span.End,
+			Msg: fmt.Sprintf("operator %s declares no input named %q; a row-set column is one of its input names", operator.ID, name),
+		})
+	}
+	for _, input := range operatorInputNamesInOrder(operator) {
+		if exampleColumnStated(example, input) {
+			continue
+		}
+		span, ok := pending.table.InputHeaderSpans[input]
+		if !ok {
+			span = example.ValueSpan
+		}
+		return r.collectSourceError(pending.filename, &syntax.ParseError{
+			Pos: span.Start, End: span.End,
+			Msg: fmt.Sprintf("operator %s declares input %q, but this row set states no column for it", operator.ID, input),
+		})
+	}
+	return nil
+}
+
+// tableColumns lists the input names a row-set example states. Every row states
+// every column, so one row is enough.
+func tableColumns(example syntax.OperatorCaseAuthoring) map[string]bool {
+	names := map[string]bool{}
+	if len(example.Value.Rows) == 0 {
+		return names
+	}
+	for name := range example.Value.Rows[0] {
+		names[name] = true
+	}
+	return names
+}
+
+// exampleColumnStated reports whether a row-set example states the column named
+// by one declared input.
+func exampleColumnStated(example syntax.OperatorCaseAuthoring, input string) bool {
+	if len(example.Value.Rows) == 0 {
+		return false
+	}
+	_, stated := example.Value.Rows[0][input]
+	return stated
+}
+
+// operatorReadsRows reports whether the operator declares an input read over
+// every row of a relation. This package asks the signature directly rather than
+// the evaluator's helper, because it must not import the evaluator.
+func operatorReadsRows(operator semantic.Operator) bool {
+	for _, input := range operator.Inputs {
+		if input.OfEachRow {
+			return true
+		}
+	}
+	return false
+}
+
 // attachOperatorCases adds every case table to the operator it names. A table
 // for an operator no source declares, and a second table for one operator,
 // stop the Load at the table's own position.
@@ -125,11 +204,21 @@ func attachOperatorCases(r *Result) error {
 				Pos: table.OperatorSpan.Start, End: table.OperatorSpan.End, Msg: message})
 		}
 		if prior, duplicate := attached[table.Operator]; duplicate {
-			if err := fail(fmt.Sprintf("operator %s already has a case table at %s:%d:%d; write its examples in one table",
-				table.Operator, filepath.ToSlash(prior.relative), prior.table.OperatorSpan.Start.Line, prior.table.OperatorSpan.Start.Column)); err != nil {
-				return err
+			// One table of one-value examples is all one operator can state:
+			// every row would be an example, and a second table would be a
+			// second statement of the same form. A row-set table is one
+			// example, so two of them are two examples and both are kept.
+			// Mixing the two forms is refused: the same operator cannot be
+			// stated once as rows and once as one value.
+			priorRowSet := len(prior.table.Cases) == 1 && prior.table.Cases[0].Value.IsRowSetExample()
+			thisRowSet := len(table.Cases) == 1 && table.Cases[0].Value.IsRowSetExample()
+			if !priorRowSet || !thisRowSet {
+				if err := fail(fmt.Sprintf("operator %s already has a case table at %s:%d:%d; write its examples in one table, and do not mix one-value examples with row-set examples",
+					table.Operator, filepath.ToSlash(prior.relative), prior.table.OperatorSpan.Start.Line, prior.table.OperatorSpan.Start.Column)); err != nil {
+					return err
+				}
+				continue
 			}
-			continue
 		}
 		found := false
 		for i := range r.World.Semantics {
@@ -148,6 +237,19 @@ func attachOperatorCases(r *Result) error {
 				// The operator is declared here, so "no source declares it" is
 				// not a second finding: one statement gets one diagnosis.
 				found = true
+				// A row-set table states the rows of a relation, so it is an
+				// example of an operator that reads every row. A one-record
+				// operator reads the values of one record, and a table of rows
+				// would ask it a question it never asks. Refuse the shape here,
+				// at the table, so one statement has one diagnosis.
+				if !operatorReadsRows(*operator) && len(table.Cases) == 1 && table.Cases[0].Value.IsRowSetExample() {
+					return r.collectSourceError(pending.filename, &syntax.ParseError{
+						Pos: table.OperatorSpan.Start, End: table.OperatorSpan.End,
+						Msg: fmt.Sprintf(
+							"TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads no rows of a relation, so a table of rows is not an example of it; state one record's values",
+							operator.ID),
+					})
+				}
 				// An example carries one value. An operator that declares more
 				// than one input cannot be stated by such a table: the other
 				// inputs would go unstated, and the example would say something
@@ -157,6 +259,14 @@ func attachOperatorCases(r *Result) error {
 				// table, so one statement has one diagnosis (#5894).
 				multiInputTable := len(operator.Inputs) > 1
 				for _, example := range table.Cases {
+					if example.Value.IsRowSetExample() {
+						// A row-set example states the columns of the rows, so
+						// its columns are the operator's input names whether the
+						// operator declares one input or several. Section 8 says
+						// the row-set form states every declared input, and the
+						// implementation reads them all at once.
+						continue
+					}
 					if multiInputTable && example.Value.Inputs == nil {
 						names := make([]string, 0, len(operator.Inputs))
 						for _, input := range operator.Inputs {
@@ -175,6 +285,20 @@ func attachOperatorCases(r *Result) error {
 				// are checked now rather than only when a rule is evaluated.
 				declared := operatorInputNames(*operator)
 				for _, example := range table.Cases {
+					if example.Value.IsRowSetExample() {
+						// Every column of a row-set table is an input name, and
+						// every declared input has to be one of those columns:
+						// a row that leaves an input unstated says something the
+						// author never wrote, and the implementation would read
+						// that input as a value nobody supplied.
+						if err := attachRowSetColumns(r, pending, *operator, declared, example); err != nil {
+							return err
+						}
+						// One table is one example, so it is kept like any other
+						// and the implementation is checked against it later.
+						operator.Cases = append(operator.Cases, example.Value)
+						continue
+					}
 					for name := range example.Value.Inputs {
 						if !declared[name] {
 							span, ok := table.InputHeaderSpans[name]

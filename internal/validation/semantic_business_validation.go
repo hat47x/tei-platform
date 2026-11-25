@@ -158,7 +158,72 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 					ns.ID,
 				))
 			}
+			rowSetExamplesSeen := false
+			oneRecordExamplesSeen := false
 			for i, example := range operator.Cases {
+				if example.IsRowSetExample() {
+					// A row-set example states one table: every cell of every
+					// row must be a decimal number, and the answer is one of the
+					// two words a row set can state. The one-value checks below
+					// read Value and Inputs, which a row set does not use.
+					rowSetExamplesSeen = true
+					if oneRecordExamplesSeen {
+						// One operator cannot be stated once as a table of rows
+						// and once as one record's values: the two forms answer
+						// different questions, and an implementation is checked
+						// against every example of both.
+						out = append(out, errFor(
+							operatorSubject,
+							"TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH",
+							"semantic operator %s states both a row-set example and a one-record example; one operator's examples use one form",
+							operator.ID,
+						))
+						break
+					}
+					if example.RowExpect != semantic.RowExpectSatisfied && example.RowExpect != semantic.RowExpectNotSatisfied {
+						out = append(out, errFor(
+							operatorSubject,
+							"INVALID_SEMANTIC_OPERATOR_CASE",
+							"semantic operator %s has a row-set example expecting %q; a row set states satisfied or not-satisfied",
+							operator.ID, example.RowExpect,
+						))
+					}
+					for rowIndex, row := range example.Rows {
+						for name, value := range row {
+							if _, err := semantic.ParseOperatorCaseValue(value); err != nil {
+								out = append(out, errFor(
+									operatorSubject,
+									"INVALID_SEMANTIC_OPERATOR_CASE",
+									"semantic operator %s has a row-set example whose value for input %q in row %d, %q, is not a decimal number",
+									operator.ID, name, rowIndex+1, value,
+								))
+							}
+						}
+					}
+					for _, prior := range operator.Cases[:i] {
+						if semantic.SameRowSetRows(prior, example) {
+							out = append(out, errFor(
+								operatorSubject,
+								"DUPLICATE_SEMANTIC_OPERATOR_CASE",
+								"semantic operator %s states the same row-set example more than once (%s)",
+								operator.ID,
+								semantic.RowSetExampleStates(example),
+							))
+							break
+						}
+					}
+					continue
+				}
+				if rowSetExamplesSeen {
+					out = append(out, errFor(
+						operatorSubject,
+						"TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH",
+						"semantic operator %s states both a row-set example and a one-record example; one operator's examples use one form",
+						operator.ID,
+					))
+					break
+				}
+				oneRecordExamplesSeen = true
 				// An example states either one value or one value per declared
 				// input. Each stated value is checked the same way: it must be a
 				// decimal number, and no two examples may state the same values.
