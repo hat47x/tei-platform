@@ -252,6 +252,26 @@ func presentRows(values ...string) []validationeval.NumberReading {
 	return out
 }
 
+// within reads the same mapping every-at-most learned: an absent bound is
+// zero only when the declaration states `absent as zero` and the rule names it.
+func TestWithinReadsAbsentValuesUnderTheMappingItKnows(t *testing.T) {
+	for _, available := range validationeval.BuiltinImplementations() {
+		if available.ID != "tei.number.within" {
+			continue
+		}
+		if available.Absent == nil {
+			t.Fatal("within states no mapping reader")
+		}
+		zero, ok := available.Absent("zero")
+		if !ok || zero.Sign() != 0 {
+			t.Fatalf("zero=%v ok=%v, want the value zero", zero, ok)
+		}
+		if _, ok := available.Absent("open"); ok {
+			t.Fatal("within read a mapping it does not state")
+		}
+	}
+}
+
 // An absence is read under the mapping the rule named, and a mapping the
 // implementation does not know leaves the row's own reason.
 func TestEveryAtMostReadsAbsentValuesUnderTheMappingItKnows(t *testing.T) {

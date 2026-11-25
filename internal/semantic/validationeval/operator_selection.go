@@ -102,6 +102,16 @@ func BuiltinImplementations() []NamedImplementation {
 				}
 				return v.Cmp(low) >= 0 && v.Cmp(high) <= 0, nil
 			},
+			// A bound that holds no value is read as zero only when the
+			// declaration states `absent as zero` and the rule names it. Any
+			// other mapping is refused, so an absence keeps its own reason
+			// rather than being read as a value this implementation invented.
+			Absent: func(mapping string) (*big.Rat, bool) {
+				if mapping != "zero" {
+					return nil, false
+				}
+				return new(big.Rat), true
+			},
 		},
 		{
 			// tei.number.every-at-most decides "every row's value is at most
