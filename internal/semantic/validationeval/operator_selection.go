@@ -100,15 +100,16 @@ func BuiltinImplementations() []NamedImplementation {
 			},
 		},
 		{
-			// tei.number.every reads one column of the rows of a relation and
-			// decides "every row is at most the limit". It is the shipped
-			// implementation of the row-scoped shape, so a Workspace can
-			// select it for an operator whose input states `of each row` and
-			// have the rule decided from real rows (decision section 15.3).
+			// tei.number.every-at-most decides "every row's value is at most
+			// its limit". Both inputs are columns of the relation's rows: a
+			// row-scoped input reads a column, never one constant, so the
+			// comparison is row against row and a single row above its own
+			// limit is the counterexample the declaration's `refutes on some
+			// rows` is about.
 			//
-			// It reads inputs named value and limit. A row that holds no value
-			// is not read as zero: the answer is TriMaybe and the evaluator
-			// reports the row's own reason.
+			// A row whose value or limit was not read answers TriMaybe, so
+			// the evaluator reports that row's own reason instead of reading
+			// it as zero.
 			ID:    "tei.number.every-at-most",
 			Input: semantic.OperatorInputNumber,
 			NumberRows: func(rows map[string][]NumberReading) (Tri, error) {
@@ -120,32 +121,21 @@ func BuiltinImplementations() []NamedImplementation {
 				if !ok {
 					return TriMaybe, fmt.Errorf("every-at-most reads an input named \"limit\"; the rule supplied no limit input")
 				}
-				// The limit is one value for the whole relation. The reader
-				// returns it once per row like any other input, so every one
-				// of those rows must agree; a column whose rows differ is not
-				// one limit, and comparing row 1's value with row 1's limit
-				// would call that every row.
-				var limit *big.Rat
-				for index, row := range limits {
-					if row.State != ValuePresent || row.Value == nil {
+				if len(values) != len(limits) {
+					// Both inputs are columns of the same rows, so they must
+					// be the same length. Comparing a short column against a
+					// long one would compare rows that do not belong together.
+					return TriMaybe, fmt.Errorf("every-at-most reads %d value rows and %d limit rows; both are columns of the same rows", len(values), len(limits))
+				}
+				for index := range values {
+					value, limit := values[index], limits[index]
+					if value.State != ValuePresent || limit.State != ValuePresent {
 						return TriMaybe, nil
 					}
-					if index == 0 {
-						limit = row.Value
-						continue
+					if value.Value == nil || limit.Value == nil {
+						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a value", index)
 					}
-					if row.Value.Cmp(limit) != 0 {
-						return TriMaybe, fmt.Errorf("every-at-most reads one limit for the whole relation; the limit column holds different values")
-					}
-				}
-				if limit == nil {
-					return TriMaybe, nil
-				}
-				for _, row := range values {
-					if row.State != ValuePresent {
-						return TriMaybe, nil
-					}
-					if row.Value.Cmp(limit) > 0 {
+					if value.Value.Cmp(limit.Value) > 0 {
 						return TriNo, nil
 					}
 				}
