@@ -51,9 +51,14 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 	var out OperatorRowCasesAuthoring
 	words := table.Words
 	// <!-- tei: cases of <operator> expecting <answer> -->
-	if len(words) != 5 || words[0].Text != "cases" || words[1].Text != "of" || words[3].Text != "expecting" {
+	// <!-- tei: cases of <operator> expecting <answer> over no rows -->
+	//
+	// Section 8.2: the empty relation is stated by the clause `over no rows`
+	// in the mark, not by a table whose body the author left unwritten.
+	noRows := saysOverNoRows(words)
+	if (len(words) != 5 && !noRows) || words[0].Text != "cases" || words[1].Text != "of" || words[3].Text != "expecting" {
 		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
-			Msg: "unknown tei mark; the example of an operator that reads every row is marked <!-- tei: cases of <operator> expecting <answer> -->"}
+			Msg: "unknown tei mark; the example of an operator that reads every row is marked <!-- tei: cases of <operator> expecting <answer> -->, and an empty relation adds the clause `over no rows`"}
 	}
 	reference := words[2]
 	if !strings.Contains(reference.Text, ".") {
@@ -97,12 +102,29 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 		columns[cell.Text] = i
 		out.InputHeaderSpans[cell.Text] = cell.Anchor
 	}
-	// Section 8.1: an empty relation is one example, written as this table's
-	// header and delimiter with no body row. It is not read as a row that
-	// holds no value: the example states that there are no rows at all.
+	// Section 8.2: an empty relation is one example, written as this table's
+	// header and delimiter with no body row and the mark's `over no rows`.
+	// It is not read as a row that holds no value: the example states that
+	// there are no rows at all. The clause and the body must agree: a table
+	// with rows under the clause, and an empty table without it, are refused
+	// here so neither is silently read as the other.
 	//
 	// Rows is made non-nil before the loop so an example with no rows is kept
 	// as an empty collection rather than as "no example".
+	if noRows {
+		if len(table.Rows) > 0 {
+			first := table.Rows[0]
+			at := table.Mark
+			if len(first) > 0 {
+				at = first[0].Anchor
+			}
+			return out, &ParseError{Pos: at.Start, End: at.End,
+				Msg: "the mark says `over no rows`, but the table states rows; write one or the other"}
+		}
+	} else if len(table.Rows) == 0 {
+		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
+			Msg: "a row example needs at least one row; an empty relation is written in the mark with `over no rows`"}
+	}
 	names := make([]string, 0, len(columns))
 	for name := range columns {
 		names = append(names, name)
