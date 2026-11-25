@@ -552,7 +552,10 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 	var reason *Undecided
 	for index, input := range inputs {
 		attribute := rule.Attribute
-		var mapping string
+		// The subject's own declaration can state `absent as <mapping>` too.
+		// It is carried by the declaration, not by a rule assignment, so it is
+		// read from input rather than from an assignment (#4359).
+		mapping := input.AbsentAs
 		if index > 0 {
 			assignment := findInputAssignment(rule, input.Name)
 			if assignment == nil {
@@ -572,7 +575,12 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 					rule.ID, rule.Operator, input.Name, assignment.Value)
 			}
 			attribute = named
-			mapping = assignment.AbsentAs
+			// The rule's assignment names the mapping it read the input under;
+			// the declaration's own mapping applies only where the rule states
+			// none for this input.
+			if assignment.AbsentAs != "" {
+				mapping = assignment.AbsentAs
+			}
 		}
 		reading, err := reader.ReadRelationNumbers(rule.Relation, attribute)
 		if err != nil {
