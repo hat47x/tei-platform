@@ -305,6 +305,17 @@ func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDec
 			// that value; otherwise the absence keeps its own reason. An
 			// implementation that cannot read the mapping must not be given
 			// zero, and the absence must not become a satisfied input.
+			//
+			// Only a value the record certainly does not hold is read this way.
+			// A value the reader never fetched is unknown, not absent, so a
+			// mapping does not apply to it: rewriting it would decide a rule
+			// from a value nobody read (decision section 5's table). The
+			// row-scoped path was corrected for this and the per-record path
+			// was not, so one rule answered differently depending on which path
+			// read it (#4359).
+			if stopped.Reason != UndecidedValueNull {
+				return stopped, nil
+			}
 			if assignment.AbsentAs != "" && absent != nil {
 				if mapped, ok := absent(assignment.AbsentAs); ok {
 					values[input.Name] = new(big.Rat).Set(mapped)

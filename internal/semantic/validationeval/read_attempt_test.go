@@ -22,12 +22,19 @@ type attemptingSource struct {
 	values   map[string]*big.Rat
 	attempts map[string]string
 	calls    []string
+	// nulls names the attributes the record holds as empty. An attribute in
+	// neither values nor nulls was not fetched. The two are different states,
+	// so a test must be able to say which one it means.
+	nulls map[string]bool
 }
 
 func (s *attemptingSource) ReadNumber(attribute core.CanonicalID) (validationeval.NumberReading, error) {
 	s.calls = append(s.calls, string(attribute))
 	value, ok := s.values[string(attribute)]
 	if !ok {
+		if s.nulls[string(attribute)] {
+			return validationeval.NumberReading{State: validationeval.ValueNull}, nil
+		}
 		return validationeval.NumberReading{State: validationeval.ValueNotFetched}, nil
 	}
 	return validationeval.NumberReading{State: validationeval.ValuePresent, Value: value}, nil
