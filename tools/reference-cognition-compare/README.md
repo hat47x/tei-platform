@@ -23,9 +23,39 @@ go run ./tools/reference-cognition-compare -baseline
 
 # 実ローカルモデルとの比較（同一ケース集合）
 go run ./tools/reference-cognition-compare -baseline -model -provider provider.json
+
+# 比較と同時に、何を測ったかの記録を残す
+go run ./tools/reference-cognition-compare -baseline -model -provider provider.json \
+  -provenance provenance.json \
+  -model-artifact /path/to/model.gguf \
+  -template-source http://127.0.0.1:8080/props
 ```
 
 `-provider` は `execution: external` / `network: none` / `settings.endpoint` を宣言した Provider JSON。
+
+## Provenance（何を測ったかの記録）
+
+#5807 / #5809 は「実際の構成・モデルdigest・テンプレート・要求/応答の指紋を保存」を求める。率だけの報告は、未知のシステムについての数字であり、後日の再実行で差分がモデル由来かハーネス由来かを判定できない。
+
+`-provenance` は以下を1ファイルに書き出す（`0600`）。
+
+- ケース集合のダイジェスト
+- モデル成果物の SHA-256 とバイト数（`-model-artifact`）
+- チャットテンプレートの SHA-256 と取得元（`-template-source`）
+- ケースごとの要求ダイジェスト・応答ダイジェスト・実時間
+
+**読めなかった事実は空欄にせず `unrecorded` に列挙する。** 空欄は「該当なし」と読めるが、真相は「観測できなかった」のことが多いため。成果物が読めないときはゼロダイジェストを書かない。異なる2モデルが同一に見え、存在しない provenance を主張することになる。
+
+### 実測の provenance（2026-11-25、CPUのみ）
+
+```
+caseSetDigest  sha256:0f37b2e9729cd618b4ae9c88563be23f75bc898c974b83ecf105c622f7852beb
+modelDigest    sha256:cbdf3fa9dc50a4124977980f37da4f1fa764b0cfe800d275cd43d26ce2a81af4 (17,627,940,768 bytes)
+templateDigest sha256:a04653367fbabaf38e91c426b8572ec18b1342dee6675caa8ce9564b6877da94
+unrecorded     []
+```
+
+基線側はモデル成果物・テンプレートを持たないため、この2項目は空欄になる。基線が「決定的」であることは、同一入力で同一応答ダイジェストを返すことで別途確認している。
 
 ## 実測（2026-11-25、CPUのみ、9ケース）
 

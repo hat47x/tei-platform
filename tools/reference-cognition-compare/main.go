@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"sort"
 	"time"
@@ -110,6 +112,14 @@ type CaseOutcome struct {
 	Verdict  string `json:"verdict"`
 	Detail   string `json:"detail,omitempty"`
 	Millis   int64  `json:"millis"`
+
+	// RequestDigest fingerprints the context sent to the provider and
+	// ReplyDigest fingerprints the proposal it returned. Two runs that disagree
+	// on either produced different inputs or different outputs, so a difference
+	// in the rates cannot be attributed to the model alone. Both are absent for
+	// a case that never reached the provider.
+	RequestDigest string `json:"requestDigest,omitempty"`
+	ReplyDigest   string `json:"replyDigest,omitempty"`
 }
 
 func main() {
@@ -117,6 +127,9 @@ func main() {
 	providerPath := flag.String("provider", "", "provider JSON (execution external, network none)")
 	baseline := flag.Bool("baseline", true, "run the deterministic lexical baseline")
 	model := flag.Bool("model", false, "also run the loopback model provider declared by -provider")
+	provenancePath := flag.String("provenance", "", "write a provenance record to this path")
+	modelArtifact := flag.String("model-artifact", "", "path to the model artifact the provider serves, digested into the provenance record")
+	templateSource := flag.String("template-source", "", "URL that discloses the chat template the provider uses, digested into the provenance record")
 	flag.Parse()
 	if !*baseline && !*model {
 		fail(fmt.Errorf("select -baseline, -model, or both"))
@@ -128,10 +141,17 @@ func main() {
 	if len(set.Cases) == 0 {
 		fail(fmt.Errorf("case set contains no cases"))
 	}
+	caseSetRaw, err := os.ReadFile(*casesPath)
+	if err != nil {
+		fail(err)
+	}
 
 	report := map[string]ProviderResult{}
+	provenance := newProvenance(digestBytes(stripBOM(caseSetRaw)), *casesPath)
 	if *baseline {
-		report["lexical"] = runSet(set, lexicalProvider())
+		result := runSet(set, lexicalProvider())
+		report["lexical"] = result
+		provenance.Providers = append(provenance.Providers, caseProvenance(result))
 	}
 	if *model {
 		if *providerPath == "" {
@@ -141,7 +161,37 @@ func main() {
 		if err != nil {
 			fail(err)
 		}
-		report["model"] = runSet(set, provider)
+		result := runSet(set, provider)
+		report["model"] = result
+		entry := caseProvenance(result)
+		entry.Endpoint = provider.endpoint
+		if *modelArtifact != "" {
+			digest, size, err := artifactDigest(*modelArtifact)
+			switch {
+			case err != nil:
+				provenance.Unrecorded = append(provenance.Unrecorded,
+					fmt.Sprintf("model artifact %s was not read: %v", *modelArtifact, err))
+			default:
+				entry.ModelDigest, entry.ModelBytes = digest, size
+			}
+		} else {
+			provenance.Unrecorded = append(provenance.Unrecorded,
+				"no model artifact path was supplied, so the model digest is unrecorded")
+		}
+		if *templateSource != "" {
+			body, err := readTemplate(*templateSource)
+			switch {
+			case err != nil:
+				provenance.Unrecorded = append(provenance.Unrecorded,
+					fmt.Sprintf("chat template from %s was not read: %v", *templateSource, err))
+			default:
+				entry.TemplateDigest, entry.TemplateSource = templateDigest(body), *templateSource
+			}
+		} else {
+			provenance.Unrecorded = append(provenance.Unrecorded,
+				"no template source was supplied, so the chat template digest is unrecorded")
+		}
+		provenance.Providers = append(provenance.Providers, entry)
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
@@ -149,6 +199,77 @@ func main() {
 	if err := encoder.Encode(report); err != nil {
 		fail(err)
 	}
+	if *provenancePath != "" {
+		if err := writeProvenance(*provenancePath, provenance); err != nil {
+			fail(err)
+		}
+	}
+}
+
+// caseProvenance copies the per-case fingerprints a run produced into the
+// provenance record, in the order the cases ran.
+func caseProvenance(result ProviderResult) ProviderProvenance {
+	entry := ProviderProvenance{
+		Provider: result.Provider,
+		Model:    result.Model,
+		Version:  result.Version,
+	}
+	for _, outcome := range result.Outcomes {
+		entry.Cases = append(entry.Cases, CaseProvenance{
+			Case:          outcome.ID,
+			RequestDigest: outcome.RequestDigest,
+			ReplyDigest:   outcome.ReplyDigest,
+			Millis:        outcome.Millis,
+		})
+	}
+	return entry
+}
+
+// readTemplate fetches a chat template from a loopback source. The source is
+// the operator's declaration, not an assumption: a URL that is not reachable is
+// reported as unrecorded rather than substituted with an empty template.
+func readTemplate(source string) (string, error) {
+	request, err := http.NewRequest(http.MethodGet, source, nil)
+	if err != nil {
+		return "", err
+	}
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		// The template source is a loopback endpoint the operator declared. A
+		// redirect is not followed: following one would read a template from an
+		// address nobody declared.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP %d", response.StatusCode)
+	}
+	// The shape a server uses to disclose its template varies; read it as an
+	// opaque body and take the first field that names a template, so this does
+	// not presume one server's JSON.
+	raw, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
+	if err != nil {
+		return "", err
+	}
+	var payload struct {
+		ChatTemplate string `json:"chat_template"`
+		Template     string `json:"template"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		// Not JSON: the body itself is the template.
+		return string(raw), nil
+	}
+	if payload.ChatTemplate != "" {
+		return payload.ChatTemplate, nil
+	}
+	if payload.Template != "" {
+		return payload.Template, nil
+	}
+	return "", nil
 }
 
 // provider is the seam this command runs a case set through. The implementation
@@ -158,7 +279,11 @@ type provider struct {
 	name    string
 	model   string
 	version string
-	invoke  func(context.Context, port.Provider, []byte) ([]byte, error)
+	// endpoint is the declared loopback endpoint, recorded in the provenance
+	// record so a run can be traced to a process. It is empty for the
+	// in-process baseline, which has none.
+	endpoint string
+	invoke   func(context.Context, port.Provider, []byte) ([]byte, error)
 }
 
 func lexicalProvider() provider {
@@ -240,7 +365,16 @@ func measureCase(set CaseSet, c Case, p provider, declared port.Provider) (CaseO
 	proposalRaw, err := p.invoke(context.Background(), declared, raw)
 	elapsed := time.Since(started)
 
-	outcome := CaseOutcome{ID: c.ID, Kind: c.Kind, Expected: c.Expected, Millis: elapsed.Milliseconds()}
+	outcome := CaseOutcome{
+		ID: c.ID, Kind: c.Kind, Expected: c.Expected, Millis: elapsed.Milliseconds(),
+		// The digests are recorded whether or not the call succeeded: a failed
+		// call still sent these exact bytes, and a later run that sends different
+		// bytes for the same case has changed the input, not the model.
+		RequestDigest: digestBytes(raw),
+	}
+	if proposalRaw != nil {
+		outcome.ReplyDigest = digestBytes(proposalRaw)
+	}
 	counts := Counts{Cases: 1}
 	if err != nil {
 		outcome.Verdict = "failed"
@@ -323,9 +457,10 @@ func readProvider(path string) (provider, error) {
 	}
 	settings := declared.Settings
 	return provider{
-		name:    declared.ID,
-		model:   declared.Model,
-		version: declared.Version,
+		name:     declared.ID,
+		model:    declared.Model,
+		version:  declared.Version,
+		endpoint: endpoint,
 		invoke: func(ctx context.Context, p port.Provider, raw []byte) ([]byte, error) {
 			return choice.Invoke(ctx, endpoint, declared.Model, settings, raw)
 		},
