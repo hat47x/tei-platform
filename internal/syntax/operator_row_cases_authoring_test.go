@@ -105,13 +105,44 @@ func TestRowExampleTableRefusesAnUnknownAnswer(t *testing.T) {
 	}
 }
 
-// A cell that is not a decimal is refused at its own cell.
+// A cell that is neither a decimal nor one of the other spellings a table may
+// write a value in is refused at its own cell. A decimal-like text that is not
+// a decimal (an exponent, for instance) is not read as another kind: it is
+// refused, because the signature decides which kinds are allowed and this text
+// spells none of them.
 func TestRowExampleTableRefusesANonDecimalCell(t *testing.T) {
 	const src = "<!-- tei: cases of sales.every_line expecting satisfied -->\n" +
 		"| value | limit |\n| --- | --- |\n| 1e3 | 10 |\n"
 	_, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
 	if err == nil || !strings.Contains(err.Error(), "row 1") {
-		t.Fatalf("a non-decimal cell was accepted or unlocated: %v", err)
+		t.Fatalf("a cell that spells no value was accepted or unlocated: %v", err)
+	}
+}
+
+// A table may state a value of a type other than number in the spelling
+// section 8.3 gives it. The cell is kept as written: the operator's declaration
+// decides which kinds are allowed, and that decision is made where the whole
+// source is loaded, not here.
+func TestRowExampleTableReadsTheOtherSpellings(t *testing.T) {
+	const src = "<!-- tei: cases of sales.every_line expecting satisfied -->\n" +
+		"| value | limit |\n| --- | --- |\n| 2026-04-01 | \"A-100\" |\n| true | 10 |\n"
+	parsed, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
+	if err != nil {
+		t.Fatalf("a spelled value was refused: %v", err)
+	}
+	want := []map[string]string{
+		{"value": "2026-04-01", "limit": `"A-100"`},
+		{"value": "true", "limit": "10"},
+	}
+	if len(parsed.Case.Rows) != len(want) {
+		t.Fatalf("rows=%v, want %v", parsed.Case.Rows, want)
+	}
+	for index, row := range want {
+		for name, value := range row {
+			if got := parsed.Case.Rows[index][name]; got != value {
+				t.Fatalf("row %d %s=%q, want %q (the cell is kept as written)", index, name, got, value)
+			}
+		}
 	}
 }
 

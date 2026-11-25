@@ -86,6 +86,21 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "low-greater-than-high", values: map[string]*big.Rat{"value": big.NewRat(50, 1), "low": big.NewRat(100, 1), "high": big.NewRat(0, 1)}, wantErr: true},
 		},
 	}
+	// tei.day.not-before decides days, so its expectations are the two days and the answer the contract states.
+	dayInputWant := map[string][]struct {
+		name    string
+		days    map[string]semantic.CalendarDate
+		want    bool
+		wantErr bool
+	}{
+		"tei.day.not-before": {
+			{name: "the day is the deadline", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 4, Day: 1}, "deadline": {Year: 2026, Month: 4, Day: 1}}, want: true},
+			{name: "after the deadline", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 4, Day: 2}, "deadline": {Year: 2026, Month: 4, Day: 1}}, want: true},
+			{name: "before the deadline", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 3, Day: 31}, "deadline": {Year: 2026, Month: 4, Day: 1}}, want: false},
+			{name: "no value input", days: map[string]semantic.CalendarDate{"deadline": {Year: 2026, Month: 4, Day: 1}}, wantErr: true},
+			{name: "no deadline input", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 4, Day: 1}}, wantErr: true},
+		},
+	}
 	seen := map[string]bool{}
 	for _, implementation := range validationeval.BuiltinImplementations() {
 		if seen[implementation.ID] {
@@ -147,12 +162,32 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
 				}
 			}
+		} else if implementation.Dates != nil {
+			cases, known := dayInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.Dates(tc.days)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%v err=nil, want an error", implementation.ID, tc.name, got)
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%v err=%v, want %v", implementation.ID, tc.name, got, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
+				}
+			}
 		} else {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant))
 	}
 }
 
