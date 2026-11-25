@@ -311,6 +311,18 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 							"operator semantic validation %s uses operator %s, which reads every row of a relation, but names no relation; write \"per <relation>\"",
 							rule.ID, rule.Operator,
 						))
+					} else if _, known := relations[rule.Relation]; !known {
+						// A relation that no Data declares cannot be read, and
+						// the read is the only place this used to be found. A
+						// reader who mistyped it would see "semantic validation
+						// cannot read ... over relation <typo>" only when they
+						// happened to open a screen; validate said ok.
+						out = append(out, errFor(
+							ruleSubject,
+							"SEMANTIC_VALIDATION_OPERATOR_RELATION_UNKNOWN",
+							"operator semantic validation %s names relation %s, which no Data declares",
+							rule.ID, rule.Relation,
+						))
 					}
 				} else if rule.Relation != "" {
 					out = append(out, errFor(ruleSubject, "SEMANTIC_VALIDATION_RELATION_NOT_ALLOWED", "operator semantic validation %s does not accept a relation", rule.ID))
