@@ -48,9 +48,11 @@ func TestRuleAuthoringReadsANamedOperatorInput(t *testing.T) {
 // author who follows the hint lands on a second error.
 //
 // Every word the hint offers is accepted here, and every word it does not is
-// refused with the reason a reader gives. The four typed words (date, text,
-// truth, any) became readers at once with the value carrier of section 8.4, so
-// they are offered and accepted: the hint and the check read one list.
+// refused by name. Road item 5's next change gave date, text, truth and any
+// their readers, so the four words are now accepted and the hint names what is
+// accepted: a word added to the vocabulary cannot be offered without being
+// accepted, and one outside it is refused with the list rather than with a
+// wrong-line error.
 func TestRuleAuthoringNeverOffersATypeWordItRefuses(t *testing.T) {
 	for _, word := range []string{"number", "date", "text", "truth", "any", "presence"} {
 		if _, err := syntax.ParseRuleAuthoringFile("namespace sales\noperator sales.op: takes start: " + word + "\n"); err != nil {

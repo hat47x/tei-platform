@@ -233,18 +233,20 @@ type OperatorInput string
 const (
 	// OperatorInputNumber is one numeric value of the constrained attribute.
 	OperatorInputNumber OperatorInput = "number"
-	// OperatorInputDate is one calendar date. Section 7 fixes what a reader
-	// accepts as a date; a value that is not one is refused, not read as a
-	// nearby date.
+	// OperatorInputDate is one calendar day, read and written as YYYY-MM-DD.
+	// Section 7 fixes what a reader accepts as a date; a value that is not one
+	// is refused, not read as a nearby date.
 	OperatorInputDate OperatorInput = "date"
-	// OperatorInputText is one text value. A text is written with quotes in
-	// an example table so it is never read as a number (section 8.3).
+	// OperatorInputText is one string. It is written with quotes in an example
+	// table so it is never read as a number (section 8.3). An empty string is
+	// a value; a cell the author left empty states that the row holds no
+	// value, which is a different state.
 	OperatorInputText OperatorInput = "text"
-	// OperatorInputTruth is one truth value, written `true` or `false`.
+	// OperatorInputTruth is one of the two truth values, written true/false.
 	OperatorInputTruth OperatorInput = "truth"
-	// OperatorInputAny is one value of any type. The value keeps the type it
-	// was read as, so a number and a quoted text are different values
-	// (section 8.3 and 8.4).
+	// OperatorInputAny is a value of any of the kinds above. Which kind was
+	// read travels with the value, so a number and a quoted text are two
+	// values (section 8.3 and 8.4).
 	OperatorInputAny OperatorInput = "any"
 	// OperatorInputPresence is whether an attribute holds a value, not the
 	// value itself.
@@ -257,8 +259,8 @@ const (
 // decide.
 func (i OperatorInput) Valid() bool {
 	switch i {
-	case OperatorInputNumber, OperatorInputDate, OperatorInputText,
-		OperatorInputTruth, OperatorInputAny, OperatorInputPresence:
+	case OperatorInputNumber, OperatorInputPresence, OperatorInputDate,
+		OperatorInputText, OperatorInputTruth, OperatorInputAny:
 		return true
 	}
 	return false

@@ -224,6 +224,14 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 		return semantic.OperatorInputAny, true
 	case OperatorInputPresenceWord:
 		return semantic.OperatorInputPresence, true
+	case OperatorInputDateWord:
+		return semantic.OperatorInputDate, true
+	case OperatorInputTextWord:
+		return semantic.OperatorInputText, true
+	case OperatorInputTruthWord:
+		return semantic.OperatorInputTruth, true
+	case OperatorInputAnyWord:
+		return semantic.OperatorInputAny, true
 	}
 	return "", false
 }
