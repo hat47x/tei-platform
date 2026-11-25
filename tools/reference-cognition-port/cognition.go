@@ -495,6 +495,9 @@ func ProposeWithInvoker(ctx context.Context, requestPath, providerPath, command 
 	if err := validateProvider(provider); err != nil {
 		return Receipt{}, err
 	}
+	if invoke != nil && provider.Execution != ExecutionExternal {
+		return Receipt{}, fmt.Errorf("bound invoker requires external provider")
+	}
 	contextRaw, err := json.Marshal(request.Context)
 	if err != nil {
 		return Receipt{}, err
