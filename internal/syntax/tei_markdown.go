@@ -56,6 +56,19 @@ type MarkdownCell struct {
 	Anchor Anchor
 }
 
+// isOperatorRowSetMark reports whether the words of a mark state one row-set
+// example of an operator: `cases of <operator> expecting <answer>`.
+//
+// The empty relation is written as the header and delimiter of such a table
+// with no body row. Only that form is read with no body row, so an ordinary
+// table that the author left unwritten is still reported.
+func isOperatorRowSetMark(words []MarkdownCell) bool {
+	if len(words) != 5 {
+		return false
+	}
+	return words[0].Text == "cases" && words[1].Text == "of" && words[3].Text == "expecting"
+}
+
 // MarkdownTable is a marked table. Words are the words of the mark after
 // `tei:`, for the language to interpret. Every row has as many cells as the
 // header.
@@ -122,7 +135,15 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 	commentStart := Position{}
 
 	finishTable := func() error {
-		if table.stage < 2 || len(table.table.Rows) == 0 {
+		// Section 8.1: a row-set example states one table of rows, and the
+		// empty relation is one such example. A table with a header and a
+		// delimiter and no body row states it. Only the marker form that
+		// carries an explicit answer is read this way: an ordinary table
+		// (`data`, `example`, `cases of <operator>`) still needs a body row,
+		// so a table left unwritten is not silently read as an empty one.
+		emptyRowSetExample := table.stage == 2 && len(table.table.Rows) == 0 &&
+			isOperatorRowSetMark(table.table.Words)
+		if table.stage < 2 || len(table.table.Rows) == 0 && !emptyRowSetExample {
 			return &ParseError{Pos: table.table.Mark.Start, End: table.table.Mark.End,
 				Msg: "a tei mark must be directly followed by a table with a header row, a delimiter row, and at least one row"}
 		}
