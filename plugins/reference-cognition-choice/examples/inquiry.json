@@ -1,0 +1,43 @@
+{
+  "schema": "tei.reference.cognition-request/v0",
+  "id": "inquiry-001",
+  "kind": "choice",
+  "profile": "offline",
+  "context": {
+    "workspaceRevision": "example-v1",
+    "observations": [
+      {
+        "id": "inquiry-001",
+        "statement": "先月分の請求金額が想定より高いので、明細を確認したい。"
+      }
+    ],
+    "constraints": [
+      "問い合わせの主な目的を分類する。判断材料が不足する場合はunknown。"
+    ],
+    "choice": {
+      "observationId": "inquiry-001",
+      "options": [
+        {
+          "id": "technical",
+          "description": "不具合・技術的な質問"
+        },
+        {
+          "id": "contract",
+          "description": "契約内容・契約変更"
+        },
+        {
+          "id": "billing",
+          "description": "請求金額・支払い"
+        },
+        {
+          "id": "request",
+          "description": "機能追加・改善要望"
+        },
+        {
+          "id": "other",
+          "description": "上記に当てはまらない明確な問い合わせ"
+        }
+      ]
+    }
+  }
+}
