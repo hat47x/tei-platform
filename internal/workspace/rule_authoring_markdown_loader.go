@@ -124,7 +124,11 @@ func attachOperatorCases(r *Result) error {
 			return r.collectSourceError(pending.filename, &syntax.ParseError{
 				Pos: table.OperatorSpan.Start, End: table.OperatorSpan.End, Msg: message})
 		}
-		if prior, duplicate := attached[table.Operator]; duplicate {
+		if prior, duplicate := attached[table.Operator]; duplicate && prior.table.RowAnswer == nil && table.RowAnswer == nil {
+			// A one-record operator states its examples in one table. A
+			// row-scoped operator states one example per table, so several
+			// tables for it are several examples rather than a duplicate
+			// statement (#5953).
 			if err := fail(fmt.Sprintf("operator %s already has a case table at %s:%d:%d; write its examples in one table",
 				table.Operator, filepath.ToSlash(prior.relative), prior.table.OperatorSpan.Start.Line, prior.table.OperatorSpan.Start.Column)); err != nil {
 				return err
@@ -155,8 +159,35 @@ func attachOperatorCases(r *Result) error {
 				// decides a rule, but a Workspace nobody reads would then pass
 				// validate and fail only at read time. Refuse it here, at the
 				// table, so one statement has one diagnosis (#5894).
+				// A row-scoped example states the rows of the relation, so its
+				// columns are the operator's input names and every one of them
+				// must be stated. The signature check below covers both forms.
+				rowScoped := table.RowAnswer != nil
+				if rowScoped && !declaresAnInputOverEachRow(*operator) {
+					return r.collectSourceError(pending.filename, &syntax.ParseError{
+						Pos: table.RowAnswerSpan.Start, End: table.RowAnswerSpan.End,
+						Msg: fmt.Sprintf(
+							"TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares no input read over each row, so its examples state one record rather than a table of rows",
+							operator.ID),
+					})
+				}
 				multiInputTable := len(operator.Inputs) > 1
 				for _, example := range table.Cases {
+					if rowScoped {
+						if example.Value.Rows == nil || example.Value.RowAnswer == nil {
+							return r.collectSourceError(pending.filename, &syntax.ParseError{
+								Pos: table.RowAnswerSpan.Start, End: table.RowAnswerSpan.End,
+								Msg: fmt.Sprintf("operator %s has a row-scoped example without its rows or without the answer the mark states", operator.ID),
+							})
+						}
+						if example.Value.Value != "" || example.Value.Inputs != nil {
+							return r.collectSourceError(pending.filename, &syntax.ParseError{
+								Pos: table.OperatorSpan.Start, End: table.OperatorSpan.End,
+								Msg: fmt.Sprintf("operator %s has a row-scoped example that also states a one-record value", operator.ID),
+							})
+						}
+						continue
+					}
 					if multiInputTable && example.Value.Inputs == nil {
 						names := make([]string, 0, len(operator.Inputs))
 						for _, input := range operator.Inputs {
@@ -175,6 +206,33 @@ func attachOperatorCases(r *Result) error {
 				// are checked now rather than only when a rule is evaluated.
 				declared := operatorInputNames(*operator)
 				for _, example := range table.Cases {
+					if example.Value.Rows != nil {
+						// A row-scoped example states its columns per row rather
+						// than in the one-record Inputs map.
+						for name := range example.Value.Rows[0] {
+							if !declared[name] {
+								span, ok := table.InputHeaderSpans[name]
+								if !ok {
+									span = example.RowSpans[0][name]
+								}
+								return r.collectSourceError(pending.filename, &syntax.ParseError{
+									Pos: span.Start, End: span.End,
+									Msg: fmt.Sprintf("operator %s declares no input named %q; an example column is one of its input names", operator.ID, name),
+								})
+							}
+						}
+						for _, input := range operatorInputNamesInOrder(*operator) {
+							if _, stated := example.Value.Rows[0][input]; stated {
+								continue
+							}
+							return r.collectSourceError(pending.filename, &syntax.ParseError{
+								Pos: table.OperatorSpan.Start, End: table.OperatorSpan.End,
+								Msg: fmt.Sprintf("operator %s declares input %q, but this example states no value for it", operator.ID, input),
+							})
+						}
+						operator.Cases = append(operator.Cases, example.Value)
+						continue
+					}
 					for name := range example.Value.Inputs {
 						if !declared[name] {
 							span, ok := table.InputHeaderSpans[name]
@@ -364,6 +422,18 @@ func mergeAuthoringMarkdown(root string, r *Result, filename string, regions []s
 		}
 	}
 	return len(regions) + len(tables), definitions, nil
+}
+
+// declaresAnInputOverEachRow reports whether some declared input reads every
+// row of the relation. A row-scoped example states the rows of that relation,
+// so only such an operator can state one.
+func declaresAnInputOverEachRow(operator semantic.Operator) bool {
+	for _, input := range operator.Inputs {
+		if input.OfEachRow {
+			return true
+		}
+	}
+	return false
 }
 
 // operatorInputNames is the set of names an operator's declared inputs answer to.

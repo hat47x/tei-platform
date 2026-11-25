@@ -159,11 +159,45 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				))
 			}
 			for i, example := range operator.Cases {
-				// An example states either one value or one value per declared
-				// input. Each stated value is checked the same way: it must be a
-				// decimal number, and no two examples may state the same values.
+				// An example states either one value, or one value per declared
+				// input, or the rows of a relation with one answer. Each stated
+				// value is checked the same way: it must be a decimal number,
+				// and no two examples may state the same values.
 				stated := []string{example.Value}
-				if example.Inputs != nil {
+				if len(example.Rows) > 0 {
+					stated = stated[:0]
+					for _, row := range example.Rows {
+						for name, value := range row {
+							if _, err := semantic.ParseOperatorCaseValue(value); err != nil {
+								out = append(out, errFor(
+									operatorSubject,
+									"INVALID_SEMANTIC_OPERATOR_CASE",
+									"semantic operator %s has a row-scoped example whose value for input %q, %q, is not a decimal number",
+									operator.ID, name, value,
+								))
+								stated = nil
+								break
+							}
+							stated = append(stated, value)
+						}
+						if stated == nil {
+							break
+						}
+					}
+					if stated == nil {
+						continue
+					}
+					if example.RowAnswer == nil {
+						out = append(out, errFor(
+							operatorSubject,
+							"INVALID_SEMANTIC_OPERATOR_CASE",
+							"semantic operator %s has a row-scoped example that states no answer; write expecting satisfied or expecting not-satisfied",
+							operator.ID,
+						))
+						continue
+					}
+					sort.Strings(stated)
+				} else if example.Inputs != nil {
 					stated = stated[:0]
 					for name, value := range example.Inputs {
 						if _, err := semantic.ParseOperatorCaseValue(value); err != nil {

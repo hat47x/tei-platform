@@ -184,8 +184,12 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// yet, so the examples of such a contract are refused rather than checked
 	// against an implementation that would be asked a different question.
 	if rowScoped {
-		if len(contract.Cases) > 0 {
-			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its meaning is stated by a table of rows; a one-record example is not checked against it", contract.ID)
+		// A row-scoped example states the rows of the relation and one answer.
+		// The implementation is asked about those rows, and a different answer
+		// is a different implementation of this operator, exactly as for a
+		// one-record example (decision section 8.1).
+		if err := checkRowScopedOperatorCases(contract, implementation); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -335,4 +339,97 @@ func operatorInputNames(inputs []semantic.OperatorInputDeclaration) string {
 		names = append(names, name)
 	}
 	return strings.Join(names, ", ")
+}
+
+// checkRowScopedOperatorCases asks a row-scoped implementation about every
+// example the contract states as a table of rows. The rows are given in the
+// order the table wrote them, every declared input must be stated in every row,
+// and the answer the table states is the one the implementation must give.
+//
+// An implementation that answers one example differently is not an
+// implementation of this operator, so it is not asked about real data. Only
+// the three-valued answer is compared: the coverage and the refutation
+// statement belong to the evaluator, not to the example (decision section
+// 8.1).
+func checkRowScopedOperatorCases(contract semantic.Operator, implementation OperatorImplementation) error {
+	inputs := contractInputs(contract)
+	for _, example := range contract.Cases {
+		if example.RowAnswer == nil || len(example.Rows) == 0 {
+			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s has a row-scoped example without its rows or without the answer the table states",
+				contract.ID)
+		}
+		if example.Value != "" || example.Inputs != nil {
+			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s has a row-scoped example that also states a one-record value",
+				contract.ID)
+		}
+		rows := make(map[string][]NumberReading, len(inputs))
+		for _, input := range inputs {
+			column := make([]NumberReading, 0, len(example.Rows))
+			for index, row := range example.Rows {
+				text, stated := row[input.Name]
+				if !stated {
+					return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s example row %d states no value for input %q",
+						contract.ID, index+1, input.Name)
+				}
+				value, err := semantic.ParseOperatorCaseValue(text)
+				if err != nil {
+					return fmt.Errorf("operator %s has an unreadable example (%s, row %d): %w",
+						contract.ID, input.Name, index+1, err)
+				}
+				column = append(column, NumberReading{State: ValuePresent, Value: value})
+			}
+			rows[input.Name] = column
+		}
+		for name := range example.Rows[0] {
+			known := false
+			for _, input := range inputs {
+				if input.Name == name {
+					known = true
+				}
+			}
+			if !known {
+				return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s example states %q, which is not one of its inputs (%s)",
+					contract.ID, name, operatorInputNames(inputs))
+			}
+		}
+		got, err := implementation.NumberRows(rows)
+		if err != nil {
+			return fmt.Errorf("the implementation of operator %s could not decide the contract's example (%s): %w",
+				contract.ID, operatorRowExampleText(example), err)
+		}
+		if (got == TriYes) != *example.RowAnswer || got == TriMaybe {
+			return fmt.Errorf("TEI_OPERATOR_IMPLEMENTATION_MISMATCH: the contract of operator %s states that the rows (%s) are %s, but the selected implementation answers %s",
+				contract.ID, operatorRowExampleText(example), operatorCaseWord(*example.RowAnswer), operatorRowAnswerWord(got))
+		}
+	}
+	return nil
+}
+
+// operatorRowExampleText renders the rows of one row-scoped example, one row
+// per pair of braces, for a diagnostic.
+func operatorRowExampleText(example semantic.OperatorCase) string {
+	parts := make([]string, 0, len(example.Rows))
+	for _, row := range example.Rows {
+		names := make([]string, 0, len(row))
+		for name := range row {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		pairs := make([]string, 0, len(names))
+		for _, name := range names {
+			pairs = append(pairs, name+": "+row[name])
+		}
+		parts = append(parts, strings.Join(pairs, ", "))
+	}
+	return strings.Join(parts, " / ")
+}
+
+func operatorRowAnswerWord(answer Tri) string {
+	switch answer {
+	case TriYes:
+		return string(ResultSatisfied)
+	case TriNo:
+		return string(ResultNotSatisfied)
+	}
+	return "undecided"
 }

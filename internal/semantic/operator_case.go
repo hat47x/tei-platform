@@ -24,13 +24,49 @@ type OperatorCase struct {
 	// single-input example leaves it empty and uses Value, so its JSON is
 	// unchanged.
 	Inputs map[string]string `json:"inputs,omitempty"`
+	// Rows holds the rows of a row-scoped example: one entry per row, each
+	// entry one decimal text per input name. A row-scoped operator reads every
+	// row of a relation, and one table states one example of that (decision
+	// section 8, "one table is one example"), so a table's rows are the rows of
+	// the relation rather than rows of examples.
+	//
+	// Rows is set only for a row-scoped example. A one-record example leaves it
+	// empty and uses Value or Inputs, so its JSON is unchanged.
+	Rows []map[string]string `json:"rows,omitempty"`
+	// RowAnswer is the answer a row-scoped example expects. It is a pointer
+	// because an example must state its expectation explicitly: a zero value
+	// cannot be told apart from an expectation of "not satisfied", and reading
+	// the old Satisfied field as the expectation of a row-scoped example would
+	// let a structure carried over from the one-record form decide an answer
+	// nobody wrote.
+	RowAnswer *bool `json:"rowAnswer,omitempty"`
 }
 
 // SameOperatorCaseStates reports whether two examples state the same values,
 // however they are written, so a table cannot list one example twice. A
 // single-input example compares its one value; a multi-input example compares
-// every input it states and requires the same input names.
+// every input it states and requires the same input names. A row-scoped
+// example compares the rows in order, including how many rows state the same
+// values: two equal rows are two rows of the relation, and dropping one would
+// change the example.
 func SameOperatorCaseStates(left, right OperatorCase) bool {
+	if len(left.Rows) != len(right.Rows) {
+		return false
+	}
+	if len(left.Rows) > 0 {
+		for i := range left.Rows {
+			if len(left.Rows[i]) != len(right.Rows[i]) {
+				return false
+			}
+			for name, value := range left.Rows[i] {
+				other, present := right.Rows[i][name]
+				if !present || !SameOperatorCaseValue(value, other) {
+					return false
+				}
+			}
+		}
+		return true
+	}
 	if len(left.Inputs) != len(right.Inputs) {
 		return false
 	}

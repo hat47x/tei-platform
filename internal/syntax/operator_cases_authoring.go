@@ -34,6 +34,10 @@ type OperatorCaseAuthoring struct {
 	// the header gave. A single-input row leaves it empty: its one value is
 	// named by the fixed `value` column, whose span is ValueSpan.
 	InputSpans map[string]Anchor
+	// RowSpans holds the span of every cell of a row-scoped example, one entry
+	// per row in the order the table wrote them, keyed by the input each cell
+	// states. A one-record example leaves it empty.
+	RowSpans []map[string]Anchor
 }
 
 // OperatorCasesAuthoring is one parsed case table. Operator is the authored
@@ -47,15 +51,27 @@ type OperatorCasesAuthoring struct {
 	// name the header gave. A column that names no declared input is a mistake
 	// in the header, so the diagnostic points there rather than at a body cell.
 	InputHeaderSpans map[string]Anchor
+	// RowAnswer is the answer a row-scoped table states once, in its mark. It
+	// is nil for a one-record table, whose rows each state their own answer.
+	RowAnswer *bool
+	// RowAnswerSpan is the span of the word that states the row-scoped answer.
+	RowAnswerSpan Anchor
 }
 
 // ParseOperatorCasesTable reads a marked table as the examples of an operator.
+//
+// A table marked `cases of <operator> expecting <answer>` states one example of
+// a row-scoped operator, whose rows are the relation's rows (decision section
+// 8, "one table is one example"). Every other column is one of the operator's
+// input names, and the table has no `expect` column: the answer is stated once,
+// by the mark. A table marked `cases of <operator>` keeps the one-record form,
+// where each row is one example and the `expect` column states its answer.
 func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error) {
 	var out OperatorCasesAuthoring
 	words := table.Words
-	if len(words) != 3 || words[0].Text != "cases" || words[1].Text != "of" {
+	if len(words) < 3 || len(words) > 5 || words[0].Text != "cases" || words[1].Text != "of" {
 		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
-			Msg: "unknown tei mark; the examples of an operator are marked <!-- tei: cases of <operator> -->"}
+			Msg: "unknown tei mark; the examples of an operator are marked <!-- tei: cases of <operator> -->, and a row-scoped example adds expecting <answer>"}
 	}
 	reference := words[2]
 	if !strings.Contains(reference.Text, ".") {
@@ -66,6 +82,17 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 		return out, cellError(reference, err.Error())
 	}
 	out.Operator, out.OperatorSpan = operator, reference.Anchor
+	if len(words) > 3 {
+		if len(words) == 4 || words[3].Text != "expecting" {
+			return out, cellError(words[3], "a row-scoped example states its answer as \"expecting satisfied\" or \"expecting not-satisfied\"")
+		}
+		answer, err := caseExpectation(words[4])
+		if err != nil {
+			return out, err
+		}
+		out.RowAnswer = &answer
+		out.RowAnswerSpan = words[4].Anchor
+	}
 
 	// A table states either one value, named by the fixed `value` column, or one
 	// value per declared input, named by the input's own name. Which form it is
@@ -74,6 +101,20 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 	// an input name, and leaves the signature check to the Workspace.
 	header := table.Header
 	expectIndex, hasExpect := columnIndex(header, "expect")
+	if out.RowAnswer != nil {
+		// A row-scoped example states its answer once, in the mark, and its
+		// rows are the rows of the relation. An `expect` column would say the
+		// same thing per row and invite reading each row as its own example,
+		// which is the one-record form this table does not use.
+		if hasExpect {
+			cell := header[expectIndex]
+			return out, cellError(cell, "a row-scoped example states one answer in the mark (expecting satisfied or expecting not-satisfied); remove the expect column")
+		}
+		if err := parseRowScopedCases(table, &out); err != nil {
+			return out, err
+		}
+		return out, nil
+	}
 	if !hasExpect {
 		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
 			Msg: "a case table needs the column \"expect\""}
@@ -202,4 +243,79 @@ func sortStrings(names []string) {
 			names[j], names[j-1] = names[j-1], names[j]
 		}
 	}
+}
+
+// parseRowScopedCases reads a table whose rows are the rows of one row-scoped
+// example. The mark has already stated the operator and the expected answer.
+// Every column is one of the operator's input names; the operator's signature
+// is checked when the whole source is loaded, because which operator is
+// declared is not known here.
+func parseRowScopedCases(table MarkdownTable, out *OperatorCasesAuthoring) error {
+	columns := map[string]int{}
+	out.InputHeaderSpans = map[string]Anchor{}
+	seenHeader := map[string]bool{}
+	for i, cell := range table.Header {
+		if cell.Text == "" {
+			return cellError(cell, "a column header is empty; name one of the operator's inputs")
+		}
+		if seenHeader[cell.Text] {
+			return cellError(cell, fmt.Sprintf("column %q appears more than once", cell.Text))
+		}
+		seenHeader[cell.Text] = true
+		switch cell.Text {
+		case "note":
+			// Documentation, not an input.
+			continue
+		case "expect":
+			return cellError(cell, "a row-scoped example has no expect column; the mark states the answer")
+		}
+		columns[cell.Text] = i
+		out.InputHeaderSpans[cell.Text] = cell.Anchor
+	}
+	if len(columns) == 0 {
+		return &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
+			Msg: "a row-scoped example needs one column per declared input"}
+	}
+	if len(table.Rows) == 0 {
+		return &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
+			Msg: "a row-scoped example needs at least one row; an empty table does not state a row of the relation"}
+	}
+
+	rows := make([]map[string]string, 0, len(table.Rows))
+	rowSpans := make([]map[string]Anchor, 0, len(table.Rows))
+	names := make([]string, 0, len(columns))
+	for name := range columns {
+		names = append(names, name)
+	}
+	sortStrings(names)
+	for _, row := range table.Rows {
+		values := make(map[string]string, len(columns))
+		spans := make(map[string]Anchor, len(columns))
+		for _, name := range names {
+			cell := row[columns[name]]
+			if cell.Text == "" {
+				return cellError(cell, fmt.Sprintf("the cell for input %q is empty; a row that holds no value is not written as blank here", name))
+			}
+			if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
+				return cellError(cell, err.Error())
+			}
+			values[name] = cell.Text
+			spans[name] = cell.Anchor
+		}
+		rows = append(rows, values)
+		rowSpans = append(rowSpans, spans)
+	}
+	example := semantic.OperatorCase{Rows: rows, RowAnswer: out.RowAnswer}
+	for _, prior := range out.Cases {
+		if semantic.SameOperatorCaseStates(prior.Value, example) {
+			return &ParseError{Pos: rowSpans[0][names[0]].Start, End: rowSpans[0][names[0]].End,
+				Msg: fmt.Sprintf("the same rows are written more than once (the first is at %d:%d); one example has one expected result",
+					prior.ExpectSpan.Start.Line, prior.ExpectSpan.Start.Column)}
+		}
+	}
+	answerSpan := out.RowAnswerSpan
+	out.Cases = append(out.Cases, OperatorCaseAuthoring{
+		Value: example, ExpectSpan: answerSpan, InputSpans: rowSpans[0], RowSpans: rowSpans,
+	})
+	return nil
 }
