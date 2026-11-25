@@ -118,6 +118,17 @@ func TestSemanticOperatorCodesAreProduced(t *testing.T) {
 				{Name: "limit", Value: "sales.customer.credit_limit"},
 			}
 		}, "SEMANTIC_VALIDATION_OPERATOR_INPUT_OUTSIDE_RELATION_TARGET", "sales.order_line.parts_all_positive"},
+		// A numeric input reads a number. A column declared as text is not that,
+		// and the read refuses it with "is not declared as a number".
+		{"row-scoped operator rule reading a text column as a number", func(w *ir.World) {
+			// The operator has to declare a second, numeric input for the
+			// assignment to be about typing at all.
+			w.Semantics[0].Operators[1].Inputs = append(w.Semantics[0].Operators[1].Inputs,
+				semantic.OperatorInputDeclaration{Name: "limit", Type: semantic.OperatorInputNumber})
+			w.Semantics[0].Validations[2].Inputs = []semantic.ValidationInputAssignment{
+				{Name: "limit", Value: "sales.order_line.item_name"},
+			}
+		}, "SEMANTIC_VALIDATION_OPERATOR_INPUT_REQUIRES_NUMERIC_ATTRIBUTE", "sales.order_line.parts_all_positive"},
 		{"built-in kind carrying an operator", func(w *ir.World) {
 			w.Semantics[0].Validations[1].Operator = "sales.non_negative"
 		}, "SEMANTIC_VALIDATION_OPERATOR_NOT_ALLOWED", "sales.order_line.discount_positive"},

@@ -15,6 +15,18 @@ type semanticValidationRelationRef struct {
 	Cardinality semantic.Cardinality
 }
 
+// declaredInputType reports the type a declared operator gives one named input.
+// An input the declaration does not name has no type here, and the caller
+// leaves typing to the check that already refuses undeclared names.
+func declaredInputType(operator semantic.Operator, name string) semantic.OperatorInput {
+	for _, input := range operator.Inputs {
+		if input.Name == name {
+			return input.Type
+		}
+	}
+	return ""
+}
+
 // isCanonicalReference reports whether an input assignment names an
 // attribute. A decimal literal or a bare word is a constant or a mapping
 // name, not a column, so it is not checked against the relation's rows.
@@ -382,6 +394,7 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				if declared && operatorReadsEachRow(operator) && rule.Relation != "" {
 					if relation, known := relations[rule.Relation]; known {
 						for _, assignment := range rule.Inputs {
+							inputType := declaredInputType(operator, assignment.Name)
 							if !isCanonicalReference(assignment.Value) {
 								continue
 							}
@@ -393,15 +406,31 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 							// and a column of another Data. Either way it is not
 							// a column of the rows this rule reads, and the read
 							// refuses it with "is not an item of ...".
-							if attributeOwners[column] == relation.Target {
+							if attributeOwners[column] != relation.Target {
+								out = append(out, errFor(
+									ruleSubject,
+									"SEMANTIC_VALIDATION_OPERATOR_INPUT_OUTSIDE_RELATION_TARGET",
+									"operator semantic validation %s reads input %q from %s, which is not a column of relation %s's rows (%s)",
+									rule.ID, assignment.Name, column, rule.Relation, relation.Target,
+								))
 								continue
 							}
-							out = append(out, errFor(
-								ruleSubject,
-								"SEMANTIC_VALIDATION_OPERATOR_INPUT_OUTSIDE_RELATION_TARGET",
-								"operator semantic validation %s reads input %q from %s, which is not a column of relation %s's rows (%s)",
-								rule.ID, assignment.Name, column, rule.Relation, relation.Target,
-							))
+							// A numeric input reads a number. A column declared as
+							// text is not that, and the read refuses it with
+							// "is not declared as a number". Validate refuses it
+							// first, for the same reason the subject's own type
+							// is checked above.
+							if inputType == semantic.OperatorInputNumber {
+								if columnAttribute, present := attributes[column]; present &&
+									!isNumericType(columnAttribute.TypeRef) {
+									out = append(out, errFor(
+										ruleSubject,
+										"SEMANTIC_VALIDATION_OPERATOR_INPUT_REQUIRES_NUMERIC_ATTRIBUTE",
+										"operator semantic validation %s reads input %q from %s, which takes a number, but has type %s",
+										rule.ID, assignment.Name, column, columnAttribute.TypeRef,
+									))
+								}
+							}
 						}
 					}
 				}
