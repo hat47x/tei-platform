@@ -211,6 +211,67 @@ Operatorの意味は、宣言の近くに書いた例で述べる。今の例の
 
 次の製品変更は、既存のOperator署名、例の表、Ruleの入力束縛、実装選択、評価器を同じ変更単位で接続する。独立した期待と旧単入力の回帰試験を添え、`plan/NOW.md` に定めた受注初回変更の検収を優先する。
 
+### 8.1 行集合の例を表で記述する（2026-11-25、実装に向けた設計案）
+
+道⑤の残件である「一表が一例」を、既存の `tei.authoring/v1` の表とOperator実装選択へ接続する。次のコード変更は、値が揃った行集合の例をLoad・意味モデル・`CheckImplementationMatchesContract` の同じ経路に通す一件とする。新しい言語、例専用の評価器、別の実装選択機構は設けない。
+
+#### 記述形式
+
+行集合の期待は行ごとに書かず、記録の例の表と同じ `expecting` を印に用いる。例えば以下の宣言に対し、明細二行の集合を二通り示す。
+
+```tei
+operator sales.every_line_at_most:
+  takes value: number of each row
+  takes limit: number
+  refutes on some rows
+```
+
+```markdown
+<!-- tei: cases of sales.every_line_at_most expecting satisfied -->
+| value | limit |
+| --- | --- |
+| 2 | 10 |
+| 5 | 5 |
+
+<!-- tei: cases of sales.every_line_at_most expecting not-satisfied -->
+| value | limit |
+| --- | --- |
+| 2 | 10 |
+| 5 | 4 |
+```
+
+- 従来の `cases of <operator>` と表内の `expect` 列は、一行が一例である従来のOperatorに限り、そのまま維持する。行集合では `cases of <operator> expecting <answer>` とし、列は署名の入力名だけにする。単一入力の行集合でも `value` 列を一件の値と解釈しない。
+- 一つのOperatorに複数の行集合の例を置ける。同じOperatorへの従来形式の二表は引き続き拒否する。行集合形式と従来形式の混在も拒否する。例の数と表内の行数は別であり、同値の行が二つあっても消さない。
+- 入力の列順は問わない。行の中で入力を対応付け、行の並びと多重性を保つ。 `limit` が属性参照でも定数でも、ここで述べるのは実装へ渡る行ごとの値である。定数の繰返しを省略する記法は足さない。
+- 初回は数値が揃った非空の表を対象にする。空欄、未読、空集合、`undecided` の期待を扱えると装って受理しない。現行Markdown scannerは本文が一行もない表を拒否するため、空集合を表す記法の採否は別の変更で扱う。空集合をNULL一行とみなさない。
+
+#### 意味モデルと実装選択
+
+§15.3 の `OperatorCase` の拡張を使い、行集合は行の配列（各行は入力名から数値原文への対応）、期待は表に一つの明示的な値として持つ。旧 `Value`・`Inputs`・`Satisfied` の読取りとJSONを変えない。行集合では `Rows` と新しい期待欄だけを意味として解釈し、旧値欄や真の旧 `Satisfied` と併記した矛盾する構造は拒否する（旧JSON形式に由来するfalseは行集合の期待として読まない）。行集合の有無と期待の明示を検証し、ゼロ値だけで不成立を期待したことにしない。
+
+現行 `internal/syntax/operator_cases_authoring.go` の表読取り、`internal/workspace/rule_authoring_markdown_loader.go` の `attachOperatorCases`、`internal/semantic/operator_case.go` の例の比較、`internal/validation/semantic_business_validation.go` の検査、`internal/semantic/validationeval/operator.go` の `CheckImplementationMatchesContract` を接続する。表の形は印で識別し、署名との一致は全Source読込み後に検査する。現在の「同じOperatorの二表を拒否する」制約は行集合形式だけ変更する。未宣言の列・不足した列・重複する列・不正値は、印、列名、セルの該当位置へ戻す。期待不一致は少なくとも対象Operatorと表の期待位置を特定できるようにする。
+
+実装に渡す値は既存の `map[string][]NumberReading` とし、数値は既存の十進数読取りで厳密に変換する。 `NumberRows` を呼ぶために行を列へ写すだけで、実装を選び直したり、Providerを呼んだりしない。期待との照合に失敗した実装は、`tei validate` と実行時の双方で拒否する。数値の意味が同じで、入力名と行順・多重性が等しい二表は期待の一致にかかわらず重複として拒否する。列順の入替えは同一の例であり、行順を変えた例は別の試験として残せる。
+
+この表が述べるのは**純粋なOperatorの入力と答え**である。実DBの `Coverage`、読取Attempt、業務主キー、Ruleによる読み替え、Ownerの受理を表から作らない。部分読取での `refutes on some rows` の効力は§15.2と実DB経路で引き続き検査する。
+
+#### 次の実装の受入条件
+
+| 入力・操作 | 独立した期待 |
+| --- | --- |
+| 上記二表と適合する実装を選ぶ | `tei validate` が通り、二表が二例として保持される |
+| 二表目の期待だけを成立へ変える | 実装不一致として拒否。実データ読取りは行わない |
+| 列を逆順にする | 同じ判定。別の入力へ値を取り違えない |
+| 同じ数値の別表記で一表を重ねる | 重複を拒否（例：5と5.0）。同じ表内の同値行は保持 |
+| 行集合形式に従来の期待列を加える／入力名を欠く／余分な列を置く | Source位置付きで拒否 |
+| 従来の一行一例の表を読む | 旧JSON・判定・診断の回帰がない |
+
+この一件が通った後、§8の三値の例へ広げる。空欄は `ValueNull`、明示語 `not-fetched` は `ValueNotFetched` として扱う案とし、欠けた列を未読の代用にしない。数値のある行、NULLのある行、未読のある行を同じ表に置けるようにする。Operator契約の例ではRule固有の読み替えを暗黙に実施しない。読み替え自体はRuleの例および製品読取経路で確かめる。
+
+特に `every-at-most` では、比較可能な一行に反例があれば、他の行がNULLや未読でも反証は成立する。反例と未読行の順序を入れ替えた二例で同じ期待を固定する。現行mainの `operator_selection.go` は行走査中に最初のNULL・未読で `TriMaybe` を返すため、後の行に反例があると判定が順序に依存し得る（静読による指摘、未実行）。これは一般のOperatorすべてに可換性を要求するものではなく、当該Operatorの意味の検査である。不正なpresent-without-value等の入力契約違反は、既知の反例で隠さない。
+
+本節は設計案であり、Parser・意味型・実装の変更や実行済みの証拠ではない。担当は #4359。優先順位は `plan/NOW.md` のままとする。
+
 ## 9. 判断：式の入れ子は入れない
 
 規則の入力は項目か定数に限る。`a + b > c`のような入れ子、`let`、`it`、パイプは入れない。
