@@ -37,6 +37,8 @@ const (
 	kindOther valueKind = iota
 	kindNumber
 	kindDate
+	kindText
+	kindTruth
 )
 
 // Detail is the rows of one relation for one source record.
@@ -99,6 +101,10 @@ func NewDetail(semantics []semantic.Namespace, relation semantic.Relation, targe
 			kinds[attribute.ID] = kindNumber
 		case semantic.IsCalendarDateType(types, attribute.TypeRef):
 			kinds[attribute.ID] = kindDate
+		case semantic.IsTextType(types, attribute.TypeRef):
+			kinds[attribute.ID] = kindText
+		case semantic.IsTruthType(types, attribute.TypeRef):
+			kinds[attribute.ID] = kindTruth
 		default:
 			kinds[attribute.ID] = kindOther
 		}
@@ -194,6 +200,37 @@ func date(value any) (semantic.CalendarDate, error) {
 	return semantic.CalendarDate{}, fmt.Errorf("a %T is not a calendar date", value)
 }
 
+// text reads one value as a text. A text is what the driver returned, read as
+// it is: a text is not a number and a number is not a text, so neither is
+// converted into the other here.
+func text(value any) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case []byte:
+		return string(v), nil
+	}
+	return "", fmt.Errorf("a %T is not a text", value)
+}
+
+// truth reads one value as a truth. Only a truth is one: the number 1 and the
+// text "true" are refused rather than read as the nearest truth.
+func truth(value any) (bool, error) {
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case string:
+		switch v {
+		case "true":
+			return true, nil
+		case "false":
+			return false, nil
+		}
+		return false, fmt.Errorf("%q is not a truth; a truth is written true or false", v)
+	}
+	return false, fmt.Errorf("a %T is not a truth", value)
+}
+
 // key is what two values of one attribute are compared by. Numbers are
 // compared as numbers and dates as dates, so two spellings of one value are
 // one key. Anything else is compared as observed, and its Go type is part of
@@ -212,6 +249,21 @@ func key(kind valueKind, value any) (string, error) {
 			return "", err
 		}
 		return "date:" + d.String(), nil
+	case kindText:
+		t, err := text(value)
+		if err != nil {
+			return "", err
+		}
+		return "text:" + t, nil
+	case kindTruth:
+		b, err := truth(value)
+		if err != nil {
+			return "", err
+		}
+		if b {
+			return "truth:true", nil
+		}
+		return "truth:false", nil
 	}
 	switch v := value.(type) {
 	case string:
@@ -274,6 +326,50 @@ func (d *Detail) readDate(index int, attribute core.CanonicalID) (validationeval
 	return validationeval.DateReading{State: validationeval.ValuePresent, Value: day}, nil
 }
 
+func (d *Detail) readText(index int, attribute core.CanonicalID) (validationeval.TextReading, error) {
+	kind, err := d.kindOf(attribute)
+	if err != nil {
+		return validationeval.TextReading{}, err
+	}
+	if kind != kindText {
+		return validationeval.TextReading{}, fmt.Errorf("%s is not declared as a text", attribute)
+	}
+	value, held := d.rows[index].Attributes[attribute]
+	switch {
+	case !held:
+		return validationeval.TextReading{State: validationeval.ValueNotFetched}, nil
+	case value == nil:
+		return validationeval.TextReading{State: validationeval.ValueNull}, nil
+	}
+	t, err := text(value)
+	if err != nil {
+		return validationeval.TextReading{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
+	}
+	return validationeval.TextReading{State: validationeval.ValuePresent, Value: t}, nil
+}
+
+func (d *Detail) readTruth(index int, attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	kind, err := d.kindOf(attribute)
+	if err != nil {
+		return validationeval.TruthReading{}, err
+	}
+	if kind != kindTruth {
+		return validationeval.TruthReading{}, fmt.Errorf("%s is not declared as a truth", attribute)
+	}
+	value, held := d.rows[index].Attributes[attribute]
+	switch {
+	case !held:
+		return validationeval.TruthReading{State: validationeval.ValueNotFetched}, nil
+	case value == nil:
+		return validationeval.TruthReading{State: validationeval.ValueNull}, nil
+	}
+	b, err := truth(value)
+	if err != nil {
+		return validationeval.TruthReading{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
+	}
+	return validationeval.TruthReading{State: validationeval.ValuePresent, Value: b}, nil
+}
+
 func (d *Detail) readKey(index int, attribute core.CanonicalID) (validationeval.KeyReading, error) {
 	kind, err := d.kindOf(attribute)
 	if err != nil {
@@ -302,6 +398,16 @@ func (d *Detail) ReadNumber(attribute core.CanonicalID) (validationeval.NumberRe
 // ReadDate refuses for the same reason as ReadNumber.
 func (d *Detail) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, error) {
 	return validationeval.DateReading{}, fmt.Errorf("%s was asked of all the rows of relation %s; a rule about one record reads one row", attribute, d.relation.ID)
+}
+
+// ReadText refuses for the same reason as ReadNumber.
+func (d *Detail) ReadText(attribute core.CanonicalID) (validationeval.TextReading, error) {
+	return validationeval.TextReading{}, fmt.Errorf("%s was asked of all the rows of relation %s; a rule about one record reads one row", attribute, d.relation.ID)
+}
+
+// ReadTruth refuses for the same reason as ReadNumber.
+func (d *Detail) ReadTruth(attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	return validationeval.TruthReading{}, fmt.Errorf("%s was asked of all the rows of relation %s; a rule about one record reads one row", attribute, d.relation.ID)
 }
 
 // ReadRelationKeys reads the value of attribute in every row.
@@ -399,6 +505,14 @@ func (r Row) ReadNumber(attribute core.CanonicalID) (validationeval.NumberReadin
 
 func (r Row) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, error) {
 	return r.detail.readDate(r.index, attribute)
+}
+
+func (r Row) ReadText(attribute core.CanonicalID) (validationeval.TextReading, error) {
+	return r.detail.readText(r.index, attribute)
+}
+
+func (r Row) ReadTruth(attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	return r.detail.readTruth(r.index, attribute)
 }
 
 // ReadRelationNumbers refuses for the same reason as ReadRelationKeys.

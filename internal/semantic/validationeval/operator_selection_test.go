@@ -101,6 +101,34 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "no deadline input", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 4, Day: 1}}, wantErr: true},
 		},
 	}
+	// tei.text.same-as and tei.truth.is-true decide values carrying their
+	// type, so their expectations are the values the reader would hand them.
+	valueInputWant := map[string][]struct {
+		name    string
+		values  map[string]semantic.OperatorValue
+		want    bool
+		wantErr bool
+	}{
+		"tei.text.same-as": {
+			{name: "the same text", values: map[string]semantic.OperatorValue{"value": {Text: textValue("A-100")}, "other": {Text: textValue("A-100")}}, want: true},
+			{name: "a different text", values: map[string]semantic.OperatorValue{"value": {Text: textValue("A-100")}, "other": {Text: textValue("B-200")}}, want: false},
+			// The empty text is a value of length zero, so two of them are the
+			// same text.
+			{name: "the empty text", values: map[string]semantic.OperatorValue{"value": {Text: textValue("")}, "other": {Text: textValue("")}}, want: true},
+			{name: "no value input", values: map[string]semantic.OperatorValue{"other": {Text: textValue("A-100")}}, wantErr: true},
+			{name: "no other input", values: map[string]semantic.OperatorValue{"value": {Text: textValue("A-100")}}, wantErr: true},
+			// A value that was not read as a text is not one, and this
+			// implementation says so rather than reading it as the nearest
+			// text.
+			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(7, 1)}, "other": {Text: textValue("7")}}, wantErr: true},
+		},
+		"tei.truth.is-true": {
+			{name: "true", values: map[string]semantic.OperatorValue{"value": {Truth: truthValue(true)}}, want: true},
+			{name: "false", values: map[string]semantic.OperatorValue{"value": {Truth: truthValue(false)}}, want: false},
+			{name: "no value input", values: map[string]semantic.OperatorValue{}, wantErr: true},
+			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(1, 1)}}, wantErr: true},
+		},
+	}
 	seen := map[string]bool{}
 	for _, implementation := range validationeval.BuiltinImplementations() {
 		if seen[implementation.ID] {
@@ -182,14 +210,37 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
 				}
 			}
+		} else if implementation.Values != nil {
+			cases, known := valueInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.Values(tc.values)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%v err=nil, want an error", implementation.ID, tc.name, got)
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%v err=%v, want %v", implementation.ID, tc.name, got, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
+				}
+			}
 		} else {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant)+len(valueInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant)+len(valueInputWant))
 	}
 }
+
+func textValue(text string) *string { return &text }
+func truthValue(truth bool) *bool   { return &truth }
 
 func TestResolveImplementationsReturnsOnlyWhatWasSelected(t *testing.T) {
 	var calls []string

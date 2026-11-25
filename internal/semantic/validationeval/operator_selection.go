@@ -33,8 +33,7 @@ type NamedImplementation struct {
 	// Numbers decides for a multi-input operator. Exactly one of Number and
 	// Numbers is non-nil.
 	Numbers func(values map[string]*big.Rat) (bool, error)
-	// NumberRows decides for an operator whose input reads every row of a
-	// relation. At most one of Number, Numbers, NumberRows, Date and Dates is
+	// At most one of Number, Numbers, NumberRows, Date, Dates and Values is
 	// non-nil.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
 	// Date decides for an operator that declares exactly one input, of type
@@ -42,6 +41,11 @@ type NamedImplementation struct {
 	// as a day and never as a number.
 	Date  func(day semantic.CalendarDate) (bool, error)
 	Dates func(values map[string]semantic.CalendarDate) (bool, error)
+	// Values decides for an operator whose inputs are of any type (section
+	// 8.4). Each value carries the type it was read as, so a text is a text
+	// and a truth is a truth, and one implementation decides one kind of
+	// value: providing this and a number function is refused.
+	Values func(values map[string]semantic.OperatorValue) (bool, error)
 	// Absent reads an absent value under the mapping the rule named, or
 	// reports that this implementation cannot read that mapping. A shipped
 	// implementation that states none leaves every absence undecided.
@@ -221,6 +225,54 @@ func BuiltinImplementations() []NamedImplementation {
 				return value.Compare(deadline) >= 0, nil
 			},
 		},
+		{
+			// tei.text.same-as decides "the text holds exactly the other
+			// text". Both inputs are texts, and a text is read as a text: the
+			// reader reports what each attribute holds, and this implementation
+			// compares the two. A text is never read as a number, so the text
+			// "7" and the number 7 are not the same value and are never
+			// compared.
+			//
+			// Two spellings of one text are one text, because the reader
+			// reports the text and not its spelling. The empty text is a value
+			// of length zero, so a record that holds it and a record that holds
+			// no text are different states and only the first is asked about
+			// here (decision section 8.3).
+			ID:    "tei.text.same-as",
+			Input: semantic.OperatorInputText,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("same-as reads an input named \"value\"; the rule supplied no value input")
+				}
+				other, ok := values["other"]
+				if !ok {
+					return false, fmt.Errorf("same-as reads an input named \"other\"; the rule supplied no other input")
+				}
+				if value.Text == nil || other.Text == nil {
+					return false, fmt.Errorf("same-as reads two texts; one of its inputs was not read as a text")
+				}
+				return *value.Text == *other.Text, nil
+			},
+		},
+		{
+			// tei.truth.is-true decides "the truth holds". A truth is read as a
+			// truth: the reader reports whether the attribute holds true, and
+			// this implementation answers that. A truth is never read as the
+			// number 1, which would answer a different question.
+			ID:    "tei.truth.is-true",
+			Input: semantic.OperatorInputTruth,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("is-true reads an input named \"value\"; the rule supplied no value input")
+				}
+				if value.Truth == nil {
+					return false, fmt.Errorf("is-true reads a truth; its input was not read as a truth")
+				}
+				return *value.Truth, nil
+			},
+		},
 	}
 }
 
@@ -303,6 +355,16 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
 			decide := match.Dates
 			implementation.Dates = func(values map[string]semantic.CalendarDate) (bool, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(values)
+			}
+		}
+		if match.Values != nil {
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.Values
+			implementation.Values = func(values map[string]semantic.OperatorValue) (bool, error) {
 				if called != nil {
 					called(call)
 				}

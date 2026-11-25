@@ -27,6 +27,8 @@ const (
 	startsOn   core.CanonicalID = "organization.membership.starts_on"
 	endsOn     core.CanonicalID = "organization.membership.ends_on"
 	registered core.CanonicalID = "organization.membership.registered_at"
+	labelID    core.CanonicalID = "organization.membership.label"
+	activeID   core.CanonicalID = "organization.membership.active"
 )
 
 var membershipData = semantic.Data{
@@ -39,6 +41,8 @@ var membershipData = semantic.Data{
 		{ID: startsOn, Symbol: "startsOn", TypeRef: "std.date"},
 		{ID: endsOn, Symbol: "endsOn", TypeRef: "std.date"},
 		{ID: registered, Symbol: "registeredAt", TypeRef: "std.datetime"},
+		{ID: labelID, Symbol: "label", TypeRef: "std.text"},
+		{ID: activeID, Symbol: "active", TypeRef: "std.truth"},
 	},
 }
 
@@ -51,7 +55,8 @@ var testSemantics = []semantic.Namespace{
 	{ID: "std", Types: []semantic.Type{
 		{ID: "std.identifier", Kind: semantic.TypePrimitive}, {ID: "std.integer", Kind: semantic.TypePrimitive},
 		{ID: "std.decimal", Kind: semantic.TypePrimitive}, {ID: "std.date", Kind: semantic.TypePrimitive},
-		{ID: "std.datetime", Kind: semantic.TypePrimitive},
+		{ID: "std.datetime", Kind: semantic.TypePrimitive}, {ID: "std.text", Kind: semantic.TypePrimitive},
+		{ID: "std.truth", Kind: semantic.TypePrimitive},
 	}},
 }
 

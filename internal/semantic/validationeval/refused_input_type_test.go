@@ -73,40 +73,27 @@ func TestARefusedInputNamesItsOwnType(t *testing.T) {
 	})
 }
 
-// The four typed words are read by the example table, but not yet by the
-// reader that decides a rule: it reads an attribute as a number, so a rule that
-// declares one is refused at the rule rather than answered from a number it was
-// never read as. The value the example asks about is checked separately in
-// operator_value_test.go, where a typed implementation receives it.
+// The reader that decides a rule reads a text and a truth as what they are. A
+// rule whose operator declares one is refused only when the reader itself
+// cannot read that kind, and the refusal says what the reader cannot read
+// rather than blaming another type (#4359).
 //
-// Section 8.4 names the order: the value carrier and the typed decision field
-// come first, and the reader for an attribute of another type follows. This
-// test pins the boundary the reader has reached, so a later change can move it
-// by changing one guard rather than by finding out what it used to be.
-//
-// A calendar day is read as a day on this path now, so it is not in this list.
-// Neither is presence: an example that states a value for a presence input is
-// refused by the example check, which answers before the reader path is
-// reached, and a presence input without an example is pinned by
-// TestARefusedInputNamesItsOwnType. What stays here are the words that still
-// have no reader on this path.
-func TestATypedInputIsRefusedUntilTheReaderReadsIt(t *testing.T) {
+// A calendar day is read as a day on this path (#6014), and an `any` input is
+// read as the type the reader reports, so neither is in this list. Presence is
+// pinned by TestARefusedInputNamesItsOwnType, because an example that states a
+// value for it is refused by the example check before the reader path is
+// reached. What stays here are the kinds a reader may still not carry.
+func TestATypedInputIsRefusedWhenTheReaderCannotReadIt(t *testing.T) {
 	for _, kind := range []semantic.OperatorInput{
-		semantic.OperatorInput("text"),
-		semantic.OperatorInput("truth"),
-		semantic.OperatorInput("any"),
+		semantic.OperatorInputText,
+		semantic.OperatorInputTruth,
 	} {
 		t.Run(string(kind), func(t *testing.T) {
 			// The example states a value of the declared type, written the way
 			// section 8.3 says it is written.
-			example := semantic.OperatorCase{Value: "2026-04-01", Satisfied: true}
-			switch kind {
-			case semantic.OperatorInputText:
+			example := semantic.OperatorCase{Value: "true", Satisfied: true}
+			if kind == semantic.OperatorInputText {
 				example = semantic.OperatorCase{Value: `"A-100"`, Satisfied: true}
-			case semantic.OperatorInputTruth:
-				example = semantic.OperatorCase{Value: "true", Satisfied: true}
-			case semantic.OperatorInputAny:
-				example = semantic.OperatorCase{Value: "7", Satisfied: true}
 			}
 			contract := semantic.Operator{
 				ID: "sales.op", Symbol: "op", Input: kind,
@@ -124,15 +111,17 @@ func TestATypedInputIsRefusedUntilTheReaderReadsIt(t *testing.T) {
 				ID: "sales.order_line.probe", Kind: semantic.ValidationOperator,
 				Attribute: "sales.order_line.quantity", Operator: "sales.op",
 			}
-			_, err := validationeval.Decide(rule, refusingTypeSource{},
+			_, err := validationeval.Decide(rule, numberOnlySource{},
 				validationeval.Operators{
 					Declared:        []semantic.Operator{contract},
 					Implementations: []validationeval.OperatorImplementation{implementation},
 				})
 			if err == nil {
-				t.Fatalf("a %s input was decided by a reader that reads numbers", kind)
+				t.Fatalf("a %s input was decided by a reader that cannot read one", kind)
 			}
-			if !strings.Contains(err.Error(), "the "+string(kind)+" input has no reader") {
+			// The reason names this type, so the author knows which reader is
+			// missing rather than which declaration is wrong.
+			if !strings.Contains(err.Error(), "cannot read a "+string(kind)) {
 				t.Fatalf("the refusal does not give %q as the reason: %v", kind, err)
 			}
 		})

@@ -102,6 +102,38 @@ type StatefulPresenceSource interface {
 	ReadPresence(attribute core.CanonicalID) (PresenceReading, error)
 }
 
+// TextReading is one text value and its state. Value is a text exactly when
+// State is ValuePresent, and the zero value otherwise.
+//
+// A text and an absence are different states, as they are for every other
+// type: the empty text is a value of length zero, and a cell that holds no
+// value is not one (decision section 8.3).
+type TextReading struct {
+	State ValueState
+	Value string
+}
+
+// StatefulTextSource is implemented by a reader that can read text. A rule over
+// text is refused by a reader that cannot: the rule is not decided from another
+// representation, because a text is not a number and a number is not a text.
+type StatefulTextSource interface {
+	ReadText(attribute core.CanonicalID) (TextReading, error)
+}
+
+// TruthReading is one truth value and its state. Value is a truth exactly when
+// State is ValuePresent, and the zero value otherwise.
+type TruthReading struct {
+	State ValueState
+	Value bool
+}
+
+// StatefulTruthSource is implemented by a reader that can read a truth. A rule
+// over a truth is refused by a reader that cannot: it is not decided from the
+// number 1 or 0, which is a different question answered by accident.
+type StatefulTruthSource interface {
+	ReadTruth(attribute core.CanonicalID) (TruthReading, error)
+}
+
 // UndecidedReason names why a rule could not be decided.
 type UndecidedReason string
 
@@ -488,6 +520,12 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		// anyone wrote, and the two reads ask different questions.
 		if declaresDateInput(inputs) {
 			return decideDateOperator(rule, contract, inputs, implementation, source)
+		}
+		// A contract may declare a text input or a truth input. Each is read
+		// as what it is, never as a number: the text "7" is not the number 7,
+		// and the truth true is not the number 1.
+		if declaresTextOrTruthInput(inputs) {
+			return decideTextTruthOperator(rule, contract, inputs, implementation, source)
 		}
 		// A rule whose operator declares an input read over every row of a
 		// relation is asked of those rows, not of one record (decision section
