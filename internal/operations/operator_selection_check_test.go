@@ -97,6 +97,69 @@ func TestCheckOperatorSelectionRefusesAnImplementationOfTheWrongInput(t *testing
 	}
 }
 
+// Two entries for one operator are ambiguous, and the message names the
+// operator rather than an implementation name the reader could look up.
+// The finding must still be produced and still point at that operator.
+func TestCheckOperatorSelectionRefusesTwoEntriesForOneOperator(t *testing.T) {
+	loaded := selectionCheckLoaded(
+		selectionCheckWorld(semantic.Operator{ID: "stock.number_op", Symbol: "number_op", Input: semantic.OperatorInputNumber}),
+		[]workspace.OperatorImplementationSelection{
+			{Operator: "stock.number_op", Implementation: "test.number"},
+			{Operator: "stock.number_op", Implementation: "test.presence"},
+		},
+	)
+	codes := selectionCheckCodes(loaded)
+	if len(codes) != 1 || codes[0] != OperatorSelectionUnresolvedCode {
+		t.Fatalf("codes=%v, want exactly the selection finding", codes)
+	}
+	finding := CheckOperatorSelection(loaded, sourceindex.Index{}, selectionCheckAvailable())[0]
+	if !strings.Contains(finding.Diagnostic.Message, "TEI_OPERATOR_IMPLEMENTATION_AMBIGUOUS") {
+		t.Fatalf("the finding does not carry the ambiguity code: %q", finding.Diagnostic.Message)
+	}
+	// The message names the operator, not an implementation, so the finding
+	// cannot be attributed by implementation name. It must still land on the
+	// operator the two entries share.
+	if finding.Diagnostic.Subject == nil || finding.Diagnostic.Subject.ID != "stock.number_op" {
+		t.Fatalf("subject=%+v, want stock.number_op", finding.Diagnostic.Subject)
+	}
+}
+
+// A name one available implementation carries twice is ambiguous too. Here the
+// message does name the implementation, so the finding must be attributed to
+// the operator that selected it, not to whichever entry happens to be first.
+func TestCheckOperatorSelectionAttributesATwoEntryNameToTheOperatorThatSelectedIt(t *testing.T) {
+	loaded := selectionCheckLoaded(
+		selectionCheckWorld(
+			semantic.Operator{ID: "stock.first_op", Symbol: "first_op", Input: semantic.OperatorInputNumber},
+			semantic.Operator{ID: "stock.second_op", Symbol: "second_op", Input: semantic.OperatorInputNumber},
+		),
+		[]workspace.OperatorImplementationSelection{
+			// This one resolves, so it must not be the one reported.
+			{Operator: "stock.first_op", Implementation: "test.number"},
+			{Operator: "stock.second_op", Implementation: "test.duplicated"},
+		},
+	)
+	available := append(selectionCheckAvailable(),
+		[]validationeval.NamedImplementation{
+			{ID: "test.duplicated", Input: semantic.OperatorInputNumber,
+				Number: func(*big.Rat) (bool, error) { return true, nil }},
+			{ID: "test.duplicated", Input: semantic.OperatorInputNumber,
+				Number: func(*big.Rat) (bool, error) { return true, nil }},
+		}...)
+	findings := CheckOperatorSelection(loaded, sourceindex.Index{}, available)
+	if len(findings) != 1 {
+		t.Fatalf("findings=%d, want one", len(findings))
+	}
+	if !strings.Contains(findings[0].Diagnostic.Message, "TEI_OPERATOR_IMPLEMENTATION_AMBIGUOUS") ||
+		!strings.Contains(findings[0].Diagnostic.Message, "test.duplicated") {
+		t.Fatalf("the finding does not carry the ambiguity and the name: %q", findings[0].Diagnostic.Message)
+	}
+	if findings[0].Diagnostic.Subject == nil || findings[0].Diagnostic.Subject.ID != "stock.second_op" {
+		t.Fatalf("subject=%+v, want stock.second_op (the operator that selected the name)",
+			findings[0].Diagnostic.Subject)
+	}
+}
+
 // A selection that this binary can honour, and a Workspace that selected
 // nothing, both produce no finding. Without this the refusal above could be a
 // blanket refusal of every selection.
