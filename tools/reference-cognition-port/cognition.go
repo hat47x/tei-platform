@@ -135,15 +135,24 @@ type Receipt struct {
 	ProviderDigest   string           `json:"providerDigest"`
 	SettingsDigest   string           `json:"settingsDigest"`
 	InputFingerprint string           `json:"inputFingerprint"`
-	State            string           `json:"state"`
-	Proposal         *Proposal        `json:"proposal,omitempty"`
-	OutputDigest     string           `json:"outputDigest,omitempty"`
-	Diagnostics      []string         `json:"diagnostics,omitempty"`
-	Limits           Limits           `json:"limits"`
-	GrantsAuthority  bool             `json:"grantsAuthority"`
-	Accepted         bool             `json:"accepted"`
-	Applied          bool             `json:"applied"`
-	Notes            []string         `json:"notes"`
+
+	// Binding records what the proposal is bound to: the subject, its revision,
+	// and the judgement basis in force when it was produced. #5808 and #5809
+	// both need a candidate produced from an older revision or an older
+	// criteria set to be discarded rather than shown against the current
+	// selection, so the binding travels with the receipt instead of being
+	// re-derived by a consumer from whatever request happens to be current.
+	Binding Binding `json:"binding"`
+
+	State           string    `json:"state"`
+	Proposal        *Proposal `json:"proposal,omitempty"`
+	OutputDigest    string    `json:"outputDigest,omitempty"`
+	Diagnostics     []string  `json:"diagnostics,omitempty"`
+	Limits          Limits    `json:"limits"`
+	GrantsAuthority bool      `json:"grantsAuthority"`
+	Accepted        bool      `json:"accepted"`
+	Applied         bool      `json:"applied"`
+	Notes           []string  `json:"notes"`
 }
 
 func digest(content []byte) string {
@@ -299,6 +308,10 @@ func ProposeWithInvoker(ctx context.Context, requestPath, providerPath, command 
 	if err != nil {
 		return Receipt{}, err
 	}
+	basisDigest, err := BasisDigest(request)
+	if err != nil {
+		return Receipt{}, err
+	}
 	settingsRaw, err := json.Marshal(provider.Settings)
 	if err != nil {
 		return Receipt{}, err
@@ -312,6 +325,7 @@ func ProposeWithInvoker(ctx context.Context, requestPath, providerPath, command 
 		RequestDigest: digest(requestRaw), ContextDigest: digest(contextRaw),
 		ProviderDigest: digest(providerRaw), SettingsDigest: digest(settingsRaw),
 		InputFingerprint: digest(append(append([]byte(request.Kind+"\x00"), contextRaw...), 0)),
+		Binding:          BindingOf(request, basisDigest),
 		Limits:           provider.Limits,
 		GrantsAuthority:  false, Accepted: false, Applied: false,
 		Notes: []string{
