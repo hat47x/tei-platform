@@ -111,13 +111,16 @@ func TestRowExampleIsCheckedAgainstTheImplementation(t *testing.T) {
 			wantErr: "unreadable",
 		},
 		{
-			name: "an example with no rows is refused",
+			name: "an example with no rows states the empty relation",
 			example: semantic.OperatorRowCase{
-				// An empty collection is not the same as one row holding no
-				// value, so it is refused rather than read as one.
+				// Section 8.1: the empty relation is one example. Every column
+				// is empty and the implementation is asked about no rows, so
+				// the answer is the operator's own and not a refusal here.
+				// `every-at-most` holds for no rows, which is why an example
+				// that states satisfied is accepted.
+				Rows:   []map[string]string{},
 				Answer: semantic.OperatorRowSatisfied,
 			},
-			wantErr: "no rows",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

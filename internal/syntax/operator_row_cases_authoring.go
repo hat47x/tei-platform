@@ -97,16 +97,18 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 		columns[cell.Text] = i
 		out.InputHeaderSpans[cell.Text] = cell.Anchor
 	}
-	if len(table.Rows) == 0 {
-		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
-			Msg: "a row example needs at least one row; an empty table is not an empty collection"}
-	}
-
+	// Section 8.1: an empty relation is one example, written as this table's
+	// header and delimiter with no body row. It is not read as a row that
+	// holds no value: the example states that there are no rows at all.
+	//
+	// Rows is made non-nil before the loop so an example with no rows is kept
+	// as an empty collection rather than as "no example".
 	names := make([]string, 0, len(columns))
 	for name := range columns {
 		names = append(names, name)
 	}
 	sortStrings(names)
+	out.Case.Rows = make([]map[string]string, 0, len(table.Rows))
 	for index, row := range table.Rows {
 		values := map[string]string{}
 		spans := map[string]Anchor{}
