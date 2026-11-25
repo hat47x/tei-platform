@@ -57,26 +57,51 @@ func TestRowExampleTableRefusesAnExpectColumn(t *testing.T) {
 	}
 }
 
-// The first change reads only the two definite answers. An undecided answer
-// needs the three-valued form, so it is refused instead of accepted and left
-// uncheckable.
-func TestRowExampleTableRefusesAnUndecidedAnswer(t *testing.T) {
+// An example may state that its rows cannot be compared: the answer is
+// `undecided` and one of the rows holds no value or was not read
+// (decision section 8.1's table of three-valued answers).
+func TestRowExampleTableReadsAnUndecidedAnswer(t *testing.T) {
 	const src = "<!-- tei: cases of sales.every_line expecting undecided -->\n" +
-		"| value | limit |\n| --- | --- |\n| 2 | 10 |\n"
-	_, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
-	if err == nil || !strings.Contains(err.Error(), "satisfied or not-satisfied") {
-		t.Fatalf("an undecided answer was accepted: %v", err)
+		"| value | limit |\n| --- | --- |\n|  | 10 |\n"
+	parsed, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
+	if err != nil {
+		t.Fatalf("an undecided answer was refused: %v", err)
+	}
+	if parsed.Case.Answer != semantic.OperatorRowUndecided {
+		t.Fatalf("answer=%q, want undecided", parsed.Case.Answer)
+	}
+	if len(parsed.Case.Rows) != 1 {
+		t.Fatalf("rows=%v, want one row", parsed.Case.Rows)
+	}
+	// The empty cell states that the row holds no value; it is not zero, and
+	// it is not a missing column.
+	if value, stated := parsed.Case.Rows[0]["value"]; !stated || value != semantic.RowCellNoValue {
+		t.Fatalf("value cell=%q stated=%v, want the empty text", value, stated)
 	}
 }
 
-// An empty cell states that a row holds no value, which belongs to the three-valued
-// change, so it is refused rather than read as zero.
-func TestRowExampleTableRefusesAnEmptyCell(t *testing.T) {
-	const src = "<!-- tei: cases of sales.every_line expecting satisfied -->\n" +
-		"| value | limit |\n| --- | --- |\n|  | 10 |\n"
+// An unread row is written as the word `not-fetched`, so it is never
+// confused with a row that holds no value.
+func TestRowExampleTableReadsANotFetchedRow(t *testing.T) {
+	const src = "<!-- tei: cases of sales.every_line expecting undecided -->\n" +
+		"| value | limit |\n| --- | --- |\n| not-fetched | 10 |\n"
+	parsed, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
+	if err != nil {
+		t.Fatalf("a not-fetched row was refused: %v", err)
+	}
+	if value := parsed.Case.Rows[0]["value"]; value != semantic.RowCellNotFetched {
+		t.Fatalf("value cell=%q, want the word not-fetched", value)
+	}
+}
+
+// An answer that is none of the three is still refused, and the cell says
+// which answers exist.
+func TestRowExampleTableRefusesAnUnknownAnswer(t *testing.T) {
+	const src = "<!-- tei: cases of sales.every_line expecting maybe -->\n" +
+		"| value | limit |\n| --- | --- |\n| 2 | 10 |\n"
 	_, err := syntax.ParseOperatorRowCasesTable(mustRowTable(t, src))
-	if err == nil || !strings.Contains(err.Error(), "holds no value") {
-		t.Fatalf("an empty cell was accepted: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "satisfied, not-satisfied or undecided") {
+		t.Fatalf("an unknown answer was accepted: %v", err)
 	}
 }
 

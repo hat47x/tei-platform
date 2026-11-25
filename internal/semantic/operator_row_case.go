@@ -30,25 +30,53 @@ type OperatorRowCase struct {
 
 // OperatorRowExpect is the answer a row example states.
 //
-// The first change that reads these examples accepts the two answers
-// "satisfied" and "not-satisfied". An "undecided" answer needs the three-valued
-// input states (empty and unread cells), which decision section 8.1 defers to
-// the change after this one; accepting it now would let an author state
-// something this path cannot check.
+// A row states a decimal, an empty cell (the row holds no value), or the word
+// `not-fetched` (the row was not read). Section 8.1's table of three-valued
+// answers therefore has three answers, and each is written rather than left
+// to a zero value: an example that states no answer is refused, not read as
+// not-satisfied.
 type OperatorRowExpect string
 
 const (
 	OperatorRowSatisfied    OperatorRowExpect = "satisfied"
 	OperatorRowNotSatisfied OperatorRowExpect = "not-satisfied"
+	// OperatorRowUndecided is the answer of an example whose rows cannot be
+	// compared: a row holds no value, or was not read, with no row that
+	// refutes the operator.
+	OperatorRowUndecided OperatorRowExpect = "undecided"
 )
 
-// Valid reports whether this is an answer an example may state today.
+// RowCellNoValue is the text of a row cell that states the row holds no value.
+// An empty cell writes it: the cell is present and holds the empty text, which
+// is not the same as a missing column.
+const RowCellNoValue = ""
+
+// RowCellNotFetched is the word a row cell writes when the row was not read.
+// It is a word rather than an empty cell so a value nobody fetched is never
+// written as a value nobody holds.
+const RowCellNotFetched = "not-fetched"
+
+// Valid reports whether this is an answer an example may state.
 func (e OperatorRowExpect) Valid() bool {
 	switch e {
-	case OperatorRowSatisfied, OperatorRowNotSatisfied:
+	case OperatorRowSatisfied, OperatorRowNotSatisfied, OperatorRowUndecided:
 		return true
 	}
 	return false
+}
+
+// SameOperatorRowValue reports whether two row cells state the same value: two
+// spellings of one number are the same ("2" and "2.0"), an empty cell is the
+// same as an empty cell, `not-fetched` is the same as `not-fetched`, and a
+// number is never the same as no value or as an unread row.
+func SameOperatorRowValue(left, right string) bool {
+	switch {
+	case left == RowCellNotFetched || right == RowCellNotFetched:
+		return left == RowCellNotFetched && right == RowCellNotFetched
+	case left == RowCellNoValue || right == RowCellNoValue:
+		return left == RowCellNoValue && right == RowCellNoValue
+	}
+	return SameOperatorCaseValue(left, right)
 }
 
 // SameOperatorRowCaseStates reports whether two row examples state the same
@@ -67,7 +95,7 @@ func SameOperatorRowCaseStates(left, right OperatorRowCase) bool {
 		}
 		for name, value := range a {
 			other, present := b[name]
-			if !present || !SameOperatorCaseValue(value, other) {
+			if !present || !SameOperatorRowValue(value, other) {
 				return false
 			}
 		}

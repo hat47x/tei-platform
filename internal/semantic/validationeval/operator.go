@@ -369,11 +369,23 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 				if !stated {
 					return fmt.Errorf("operator %s row example states no value for input %q on row %d", contract.ID, name, index+1)
 				}
-				value, err := semantic.ParseOperatorCaseValue(text)
-				if err != nil {
-					return fmt.Errorf("operator %s has an unreadable row example (%s, row %d): %w", contract.ID, name, index+1, err)
+				// The three states a read row can hold are written in the
+				// table: a decimal, the empty text (no value), and the word
+				// `not-fetched` (not read). They are handed to the
+				// implementation as they are, so the example asks it exactly
+				// the question a rule read would.
+				switch text {
+				case semantic.RowCellNoValue:
+					column = append(column, NumberReading{State: ValueNull})
+				case semantic.RowCellNotFetched:
+					column = append(column, NumberReading{State: ValueNotFetched})
+				default:
+					value, err := semantic.ParseOperatorCaseValue(text)
+					if err != nil {
+						return fmt.Errorf("operator %s has an unreadable row example (%s, row %d): %w", contract.ID, name, index+1, err)
+					}
+					column = append(column, NumberReading{State: ValuePresent, Value: value})
 				}
-				column = append(column, NumberReading{State: ValuePresent, Value: value})
 			}
 			rows[name] = column
 		}
@@ -401,6 +413,8 @@ func operatorRowExpectTri(answer semantic.OperatorRowExpect) (Tri, bool) {
 		return TriYes, true
 	case semantic.OperatorRowNotSatisfied:
 		return TriNo, true
+	case semantic.OperatorRowUndecided:
+		return TriMaybe, true
 	}
 	return 0, false
 }
