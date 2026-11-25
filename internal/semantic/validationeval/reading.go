@@ -258,8 +258,8 @@ func refuseNonNumberInputs(rule semantic.Validation, inputs []semantic.OperatorI
 		if input.Type == semantic.OperatorInputNumber {
 			continue
 		}
-		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as numbers only; a presence input has no reader on this path yet",
-			rule.ID, rule.Operator, input.Name, input.Type)
+		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as numbers only; the %s input has no reader on this path yet",
+			rule.ID, rule.Operator, input.Name, input.Type, input.Type)
 	}
 	return nil
 }
