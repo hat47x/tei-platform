@@ -86,19 +86,22 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "low-greater-than-high", values: map[string]*big.Rat{"value": big.NewRat(50, 1), "low": big.NewRat(100, 1), "high": big.NewRat(0, 1)}, wantErr: true},
 		},
 	}
-	// tei.day.not-before decides days, so its expectations are the two days and the answer the contract states.
-	dayInputWant := map[string][]struct {
+	// tei.day.not-before decides days through the one value shape section 8.4
+	// fixes, so its expectations are the values as the reader hands them over
+	// and the answer the contract states. A day is a day, so the values carry
+	// the type they were read as.
+	typedInputWant := map[string][]struct {
 		name    string
-		days    map[string]semantic.CalendarDate
+		values  map[string]semantic.OperatorValue
 		want    bool
 		wantErr bool
 	}{
 		"tei.day.not-before": {
-			{name: "the day is the deadline", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 4, Day: 1}, "deadline": {Year: 2026, Month: 4, Day: 1}}, want: true},
-			{name: "after the deadline", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 4, Day: 2}, "deadline": {Year: 2026, Month: 4, Day: 1}}, want: true},
-			{name: "before the deadline", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 3, Day: 31}, "deadline": {Year: 2026, Month: 4, Day: 1}}, want: false},
-			{name: "no value input", days: map[string]semantic.CalendarDate{"deadline": {Year: 2026, Month: 4, Day: 1}}, wantErr: true},
-			{name: "no deadline input", days: map[string]semantic.CalendarDate{"value": {Year: 2026, Month: 4, Day: 1}}, wantErr: true},
+			{name: "the day is the deadline", values: dayValues("2026-04-01", "2026-04-01"), want: true},
+			{name: "after the deadline", values: dayValues("2026-04-02", "2026-04-01"), want: true},
+			{name: "before the deadline", values: dayValues("2026-03-31", "2026-04-01"), want: false},
+			{name: "no value input", values: dayValues("", "2026-04-01"), wantErr: true},
+			{name: "no deadline input", values: dayValues("2026-04-01", ""), wantErr: true},
 		},
 	}
 	seen := map[string]bool{}
@@ -162,13 +165,13 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
 				}
 			}
-		} else if implementation.Dates != nil {
-			cases, known := dayInputWant[implementation.ID]
+		} else if implementation.Values != nil {
+			cases, known := typedInputWant[implementation.ID]
 			if !known {
 				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
 			}
 			for _, tc := range cases {
-				got, err := implementation.Dates(tc.days)
+				got, err := implementation.Values(tc.values)
 				if tc.wantErr {
 					if err == nil {
 						t.Fatalf("%s(%s)=%v err=nil, want an error", implementation.ID, tc.name, got)
@@ -186,9 +189,31 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(dayInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant))
 	}
+}
+
+// dayValues builds the values a rule about two days hands to an implementation.
+// An empty text is a day nobody supplied, which the implementation refuses
+// rather than reading as the zero day.
+func dayValues(value, deadline string) map[string]semantic.OperatorValue {
+	values := map[string]semantic.OperatorValue{}
+	if value != "" {
+		day, err := semantic.ParseCalendarDate(value)
+		if err != nil {
+			panic(err)
+		}
+		values["value"] = semantic.OperatorValue{Date: &day}
+	}
+	if deadline != "" {
+		day, err := semantic.ParseCalendarDate(deadline)
+		if err != nil {
+			panic(err)
+		}
+		values["deadline"] = semantic.OperatorValue{Date: &day}
+	}
+	return values
 }
 
 func TestResolveImplementationsReturnsOnlyWhatWasSelected(t *testing.T) {

@@ -34,14 +34,14 @@ type NamedImplementation struct {
 	// Numbers is non-nil.
 	Numbers func(values map[string]*big.Rat) (bool, error)
 	// NumberRows decides for an operator whose input reads every row of a
-	// relation. At most one of Number, Numbers, NumberRows, Date and Dates is
+	// relation. At most one of Number, Numbers, NumberRows and Values is
 	// non-nil.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
-	// Date decides for an operator that declares exactly one input, of type
-	// date, and Dates decides one that declares more than one. A day is read
-	// as a day and never as a number.
-	Date  func(day semantic.CalendarDate) (bool, error)
-	Dates func(values map[string]semantic.CalendarDate) (bool, error)
+	// Values decides for an operator whose inputs are of any type. It receives
+	// one value per input name, each carrying the type it was read as
+	// (section 8.4), so a day is decided by the same field that decides a
+	// number and a text.
+	Values func(values map[string]semantic.OperatorValue) (bool, error)
 	// Absent reads an absent value under the mapping the rule named, or
 	// reports that this implementation cannot read that mapping. A shipped
 	// implementation that states none leaves every absence undecided.
@@ -209,16 +209,16 @@ func BuiltinImplementations() []NamedImplementation {
 			// is not before itself, which holds.
 			ID:    "tei.day.not-before",
 			Input: semantic.OperatorInputDate,
-			Dates: func(values map[string]semantic.CalendarDate) (bool, error) {
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
 				value, ok := values["value"]
-				if !ok {
-					return false, fmt.Errorf("not-before reads an input named \"value\"; the rule supplied no value input")
+				if !ok || value.Date == nil {
+					return false, fmt.Errorf("not-before reads an input named \"value\" as a calendar day; the rule supplied no day")
 				}
 				deadline, ok := values["deadline"]
-				if !ok {
-					return false, fmt.Errorf("not-before reads an input named \"deadline\"; the rule supplied no deadline input")
+				if !ok || deadline.Date == nil {
+					return false, fmt.Errorf("not-before reads an input named \"deadline\" as a calendar day; the rule supplied no day")
 				}
-				return value.Compare(deadline) >= 0, nil
+				return value.Date.Compare(*deadline.Date) >= 0, nil
 			},
 		},
 	}
@@ -289,20 +289,14 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 				return decide(rows)
 			}
 		}
-		if match.Date != nil {
+		if match.Values != nil {
+			// A value of any type is decided by the one field that carries the
+			// type it was read as (section 8.4). A day, a number and a text are
+			// all decided by it, so there is no second field a rule could be
+			// answered from.
 			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
-			decide := match.Date
-			implementation.Date = func(day semantic.CalendarDate) (bool, error) {
-				if called != nil {
-					called(call)
-				}
-				return decide(day)
-			}
-		}
-		if match.Dates != nil {
-			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
-			decide := match.Dates
-			implementation.Dates = func(values map[string]semantic.CalendarDate) (bool, error) {
+			decide := match.Values
+			implementation.Values = func(values map[string]semantic.OperatorValue) (bool, error) {
 				if called != nil {
 					called(call)
 				}

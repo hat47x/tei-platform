@@ -44,24 +44,6 @@ type OperatorImplementation struct {
 	// mapping. A nil Absent, or ok=false for that mapping, means this
 	// implementation cannot read the absence that way, and the decision stays
 	// undecided instead of reading the absence as zero or as present.
-	// Date decides a rule for an operator that declares exactly one input, of
-	// type date, and Dates decides one that declares more than one. A day is
-	// read as a day and never as a number: a day read through the decimal
-	// reader is not a value anyone wrote.
-	//
-	// An implementation that provides one of these and one of the number
-	// functions is refused, because which values it answers about would be
-	// ambiguous.
-	Date  func(day semantic.CalendarDate) (bool, error)
-	Dates func(values map[string]semantic.CalendarDate) (bool, error)
-	// Absent reads an absent value under the mapping the rule named. A rule may
-	// write `or <name>` after an input and the declaration may state
-	// `absent as <name>`; the mapping says how an absent value is to be read.
-	//
-	// It is asked only when the input held no value and the rule named a
-	// mapping. A nil Absent, or ok=false for that mapping, means this
-	// implementation cannot read the absence that way, and the decision stays
-	// undecided instead of reading the absence as zero or as present.
 	Absent func(mapping string) (*big.Rat, bool)
 	// Values decides a rule for an operator whose inputs are of any type.
 	// It receives one value per input name, each carrying the type it was
@@ -175,10 +157,8 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
 	hasTyped := implementation.Values != nil
-	hasDate := implementation.Date != nil
-	hasDates := implementation.Dates != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasDate, hasDates} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped} {
 		if present {
 			shapes++
 		}
@@ -188,8 +168,8 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	}
 	if shapes > 1 {
 		// Which values an implementation answers about must not be ambiguous.
-		// One that provides a number function and a date function would answer
-		// a rule from whichever the evaluator happened to fill.
+		// One that provides a number function and a typed one would answer a
+		// rule from whichever the evaluator happened to fill.
 		return fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", contract.ID)
 	}
 	if rowScoped && !hasRows {
@@ -201,33 +181,18 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// An implementation that reads values of any type (section 8.4) decides
 	// both a single-input and a multi-input contract: the declaration's types
 	// are what decide which value each input gets, not how many inputs there
-	// are.
+	// are. A contract that declares a calendar day is one of those, so it is
+	// decided by the typed field and never by a number one.
 	if !rowScoped && !hasTyped {
 		multiInput := len(inputs) > 1
-		if multiInput && !hasMulti && !hasDates {
+		if multiInput && !hasMulti {
 			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))
 		}
 		if !multiInput && hasMulti {
 			return fmt.Errorf("operator %s declares one input but its implementation takes multiple values", contract.ID)
 		}
-		if !multiInput && hasDates {
-			return fmt.Errorf("operator %s declares one input but its implementation takes multiple values", contract.ID)
-		}
 		if multiInput && hasSingle {
 			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))
-		}
-		// A calendar day is decided by the date functions, and a number by the
-		// number ones. An implementation of the other kind cannot decide this
-		// operator, whatever the count of its inputs.
-		if declaresDateInput(inputs) {
-			if multiInput && !hasDates {
-				return fmt.Errorf("operator %s takes a calendar day but its selected implementation does not decide a calendar day", contract.ID)
-			}
-			if !multiInput && !hasDate {
-				return fmt.Errorf("operator %s takes a calendar day but its selected implementation does not decide a calendar day", contract.ID)
-			}
-		} else if hasDate || hasDates {
-			return fmt.Errorf("operator %s declares no calendar-day input, but its implementation decides calendar days", contract.ID)
 		}
 	}
 
