@@ -239,6 +239,43 @@ func parseTruth(text string) (bool, error) {
 	return false, fmt.Errorf("%q is not written true or false", text)
 }
 
+// anyValue reads a value of an attribute as the type the driver handed it back
+// in. The type is what the driver returned, not what the value looks like: a
+// driver's `int64` is a number and its `bool` is a truth, so no guessing is
+// involved and the value keeps the type it arrived with (section 8.4).
+//
+// A text is the one case where the driver's own type does not decide, because a
+// driver may hand back the text of a column for any of the types. A text that
+// reads as a number or as a truth is refused rather than resolved by picking
+// one, which is the same refusal section 8.3 makes for an example cell.
+func anyValue(value any) (semantic.AnyValue, error) {
+	switch v := value.(type) {
+	case *big.Rat:
+		return semantic.AnyValue{Type: semantic.OperatorInputNumber, Number: v}, nil
+	case semantic.CalendarDate:
+		if v.IsZero() {
+			return semantic.AnyValue{}, fmt.Errorf("the zero calendar date is not a date")
+		}
+		day := v
+		return semantic.AnyValue{Type: semantic.OperatorInputDate, Date: &day}, nil
+	case bool:
+		return semantic.AnyValue{Type: semantic.OperatorInputTruth, Truth: &v}, nil
+	case string, []byte:
+		spelled, err := text(value)
+		if err != nil {
+			return semantic.AnyValue{}, err
+		}
+		if _, err := semantic.ParseOperatorCaseValue(spelled); err == nil {
+			return semantic.AnyValue{}, fmt.Errorf("%q is read as both a text and a number; a value of an `any` input says its type with quotes", spelled)
+		}
+		if _, err := semantic.ParseOperatorTruthValue(spelled); err == nil {
+			return semantic.AnyValue{}, fmt.Errorf("%q is read as both a text and a truth; a value of an `any` input says its type with quotes", spelled)
+		}
+		return semantic.AnyValue{Type: semantic.OperatorInputText, Text: &spelled}, nil
+	}
+	return semantic.AnyValue{}, fmt.Errorf("a %T is not a value of any type this program reads", value)
+}
+
 // key is what two values of one attribute are compared by. Numbers are
 // compared as numbers and dates as dates, so two spellings of one value are
 // one key. Anything else is compared as observed, and its Go type is part of
@@ -366,6 +403,31 @@ func (d *Detail) readTruth(index int, attribute core.CanonicalID) (validationeva
 		return validationeval.TruthReading{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
 	}
 	return validationeval.TruthReading{State: validationeval.ValuePresent, Value: held2}, nil
+}
+
+// readAny reads the attribute as a value of the type the driver handed it back
+// in. A calendar date asked for as any type is still a calendar date: the kind
+// check the other reads make keeps the two questions apart (section 7).
+func (d *Detail) readAny(index int, attribute core.CanonicalID) (validationeval.AnyReading, error) {
+	kind, err := d.kindOf(attribute)
+	if err != nil {
+		return validationeval.AnyReading{}, err
+	}
+	if kind == kindDate {
+		return validationeval.AnyReading{}, fmt.Errorf("%s is declared as a calendar date, which is not read as a value of any type", attribute)
+	}
+	value, held := d.rows[index].Attributes[attribute]
+	switch {
+	case !held:
+		return validationeval.AnyReading{State: validationeval.ValueNotFetched}, nil
+	case value == nil:
+		return validationeval.AnyReading{State: validationeval.ValueNull}, nil
+	}
+	any, err := anyValue(value)
+	if err != nil {
+		return validationeval.AnyReading{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
+	}
+	return validationeval.AnyReading{State: validationeval.ValuePresent, Value: any}, nil
 }
 
 func (d *Detail) readKey(index int, attribute core.CanonicalID) (validationeval.KeyReading, error) {
@@ -510,6 +572,12 @@ func (r Row) ReadText(attribute core.CanonicalID) (validationeval.TextReading, e
 
 func (r Row) ReadTruth(attribute core.CanonicalID) (validationeval.TruthReading, error) {
 	return r.detail.readTruth(r.index, attribute)
+}
+
+// ReadAny reads the attribute as a value of the type the driver handed it back
+// in, which is the type the value carries to the implementation (section 8.4).
+func (r Row) ReadAny(attribute core.CanonicalID) (validationeval.AnyReading, error) {
+	return r.detail.readAny(r.index, attribute)
 }
 
 // ReadRelationKeys refuses: one row is not the rows of a relation.
