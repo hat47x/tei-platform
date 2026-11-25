@@ -42,10 +42,13 @@ func rangeWithOpen(absent string) semantic.Validation {
 }
 
 func TestAnAbsentInputIsReadUnderTheNamedMapping(t *testing.T) {
-	// unit_price is absent, so `high` has no value; the mapping reads it as 1,
-	// and the value 5 is above it, so the rule does not hold.
+	// unit_price holds no value, so `high` is absent; the mapping reads it as
+	// 1, and the value 5 is above it, so the rule does not hold. The absence
+	// must be stated by the reader: an attribute it did not read is a different
+	// state, and the mapping does not apply to it.
 	source := &attemptingSource{
 		values: map[string]*big.Rat{"sales.order_line.discount": mustParseRat(t, "5")},
+		absent: map[string]bool{"sales.order_line.unit_price": true},
 		attempts: map[string]string{
 			"sales.order_line.discount":   "read-1",
 			"sales.order_line.unit_price": "read-1",

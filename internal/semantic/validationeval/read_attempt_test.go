@@ -22,10 +22,17 @@ type attemptingSource struct {
 	values   map[string]*big.Rat
 	attempts map[string]string
 	calls    []string
+	// absent names the attributes the record holds no value for. An attribute
+	// in neither this set nor values was not read, which is a different state:
+	// nothing is known about a value nobody fetched.
+	absent map[string]bool
 }
 
 func (s *attemptingSource) ReadNumber(attribute core.CanonicalID) (validationeval.NumberReading, error) {
 	s.calls = append(s.calls, string(attribute))
+	if s.absent[string(attribute)] {
+		return validationeval.NumberReading{State: validationeval.ValueNull}, nil
+	}
 	value, ok := s.values[string(attribute)]
 	if !ok {
 		return validationeval.NumberReading{State: validationeval.ValueNotFetched}, nil
