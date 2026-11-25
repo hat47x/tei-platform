@@ -148,15 +148,27 @@ func BuiltinImplementations() []NamedImplementation {
 				// before a row that cannot be compared decides the answer:
 				// stopping at the first such row made the answer depend on the
 				// order the rows happened to be read in (decision section 8).
+				//
+				// A row the reader reports as present without a value is a
+				// contract violation, not an unknown row. It is checked for
+				// every row before any comparison: a counterexample in another
+				// row must not hide it (decision section 8.1).
 				unreadable := false
+				for index := range values {
+					if values[index].State == ValuePresent && values[index].Value == nil {
+						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a value", index)
+					}
+					if limits[index].State == ValuePresent && limits[index].Value == nil {
+						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a limit", index)
+					}
+					if values[index].State != ValuePresent || limits[index].State != ValuePresent {
+						unreadable = true
+					}
+				}
 				for index := range values {
 					value, limit := values[index], limits[index]
 					if value.State != ValuePresent || limit.State != ValuePresent {
-						unreadable = true
 						continue
-					}
-					if value.Value == nil || limit.Value == nil {
-						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a value", index)
 					}
 					if value.Value.Cmp(limit.Value) > 0 {
 						return TriNo, nil
