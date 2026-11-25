@@ -141,10 +141,19 @@ func BuiltinImplementations() []NamedImplementation {
 					// long one would compare rows that do not belong together.
 					return TriMaybe, fmt.Errorf("every-at-most reads %d value rows and %d limit rows; both are columns of the same rows", len(values), len(limits))
 				}
+				// A row that cannot be compared leaves the answer undecided
+				// only when no other row already refutes the contract. A
+				// witnessed counterexample is a counterexample however many
+				// rows around it were not read, so the rows are all looked at
+				// before a row that cannot be compared decides the answer:
+				// stopping at the first such row made the answer depend on the
+				// order the rows happened to be read in (decision section 8).
+				unreadable := false
 				for index := range values {
 					value, limit := values[index], limits[index]
 					if value.State != ValuePresent || limit.State != ValuePresent {
-						return TriMaybe, nil
+						unreadable = true
+						continue
 					}
 					if value.Value == nil || limit.Value == nil {
 						return TriMaybe, fmt.Errorf("every-at-most reads row %d as present without a value", index)
@@ -152,6 +161,9 @@ func BuiltinImplementations() []NamedImplementation {
 					if value.Value.Cmp(limit.Value) > 0 {
 						return TriNo, nil
 					}
+				}
+				if unreadable {
+					return TriMaybe, nil
 				}
 				return TriYes, nil
 			},
