@@ -84,6 +84,41 @@ type StatefulDateSource interface {
 	ReadDate(attribute core.CanonicalID) (DateReading, error)
 }
 
+// TextReading is one text value and its state. Value is set exactly when State
+// is ValuePresent.
+//
+// It is a reading of its own rather than a number read from the same column,
+// because the two ask different questions: a text value is compared as written,
+// and a column that holds no number is not therefore holding no text.
+type TextReading struct {
+	State ValueState
+	Value string
+}
+
+// StatefulTextSource is implemented by a reader that can read a text value. A
+// rule about text is refused by a reader that cannot; it is not decided from a
+// value of another type (section 8.4).
+type StatefulTextSource interface {
+	ReadText(attribute core.CanonicalID) (TextReading, error)
+}
+
+// TruthReading is one truth value and its state. Value is set exactly when
+// State is ValuePresent.
+//
+// The zero value is not false: a truth nobody read is not the truth "false",
+// and the state says which of the two it is.
+type TruthReading struct {
+	State ValueState
+	Value bool
+}
+
+// StatefulTruthSource is implemented by a reader that can read a truth value. A
+// rule about truth is refused by a reader that cannot; it is not decided from a
+// value of another type (section 8.4).
+type StatefulTruthSource interface {
+	ReadTruth(attribute core.CanonicalID) (TruthReading, error)
+}
+
 // PresenceReading is what a reader knows about whether one attribute of one
 // record holds a value.
 //
@@ -288,6 +323,53 @@ func readSubjectInput(rule semantic.Validation, input semantic.OperatorInputDecl
 		}
 	}
 	return nil, stopped, nil
+}
+
+// readTextSubject reads the subject attribute as a text value, in the type the
+// input declaration states (section 8.4). The state is carried next to the
+// value, so "the record holds no text" and "nobody read the attribute" stay
+// apart rather than both becoming the empty string.
+func readTextSubject(rule semantic.Validation, source StatefulSource) (semantic.OperatorValue, *Undecided, error) {
+	reader, ok := source.(StatefulTextSource)
+	if !ok {
+		return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s reads attribute %s as text, but this reader cannot read text", rule.ID, rule.Attribute)
+	}
+	reading, err := reader.ReadText(rule.Attribute)
+	if err != nil {
+		return semantic.OperatorValue{}, nil, err
+	}
+	switch reading.State {
+	case ValuePresent:
+		text := reading.Value
+		return semantic.OperatorValue{Text: &text}, nil, nil
+	case ValueNull:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNull, Attribute: rule.Attribute}, nil
+	default:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNotFetched, Attribute: rule.Attribute}, nil
+	}
+}
+
+// readTruthSubject reads the subject attribute as a truth value, in the type the
+// input declaration states (section 8.4). A truth nobody read is not the truth
+// false: the state says which of the two it is.
+func readTruthSubject(rule semantic.Validation, source StatefulSource) (semantic.OperatorValue, *Undecided, error) {
+	reader, ok := source.(StatefulTruthSource)
+	if !ok {
+		return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s reads attribute %s as truth, but this reader cannot read truth", rule.ID, rule.Attribute)
+	}
+	reading, err := reader.ReadTruth(rule.Attribute)
+	if err != nil {
+		return semantic.OperatorValue{}, nil, err
+	}
+	switch reading.State {
+	case ValuePresent:
+		truth := reading.Value
+		return semantic.OperatorValue{Truth: &truth}, nil, nil
+	case ValueNull:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNull, Attribute: rule.Attribute}, nil
+	default:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNotFetched, Attribute: rule.Attribute}, nil
+	}
 }
 
 func readAssignedInput(rule semantic.Validation, input semantic.OperatorInputDeclaration, values map[string]*big.Rat, source StatefulSource, absent func(string) (*big.Rat, bool)) (*Undecided, error) {
@@ -506,23 +588,60 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 				return Decision{}, fmt.Errorf("semantic validation %s assigns operator %s input %q, which the rule subject already supplies", rule.ID, rule.Operator, assignment.Name)
 			}
 		}
-		values := make(map[string]*big.Rat, len(inputs))
-		// The first input comes from the attribute the rule constrains.
+		// The subject is read in the type its declaration states. A number is
+		// read as it always was; a text and a truth are read by the reader that
+		// understands them, which is what section 8.4 asks for: the value an
+		// implementation receives carries the type it was read as, so a rule
+		// about text is never answered from a number the attribute was never
+		// read as.
 		//
-		// It is read through the same path as every later input, so the mapping
-		// its declaration states is applied. Before this, the subject was read
-		// without consulting the declaration: `takes value: number absent as
-		// open` was accepted at authoring time and then never used for the subject,
-		// so an absent subject stayed undecided while the contract said how to
-		// read it (#4359).
-		value, undecided, err := readSubjectInput(rule, inputs[0], source, implementation.Absent)
-		if err != nil {
-			return Decision{}, err
+		// A subject that holds no value stays undecided, whatever its type, so
+		// an empty cell is not read as the empty text or as false.
+		var typedSubject semantic.OperatorValue
+		switch inputs[0].Type {
+		case semantic.OperatorInputNumber:
+			number, undecided, err := readSubjectInput(rule, inputs[0], source, implementation.Absent)
+			if err != nil {
+				return Decision{}, err
+			}
+			if undecided != nil {
+				return Decision{Undecided: undecided}, nil
+			}
+			typedSubject = semantic.OperatorValue{Number: number}
+		case semantic.OperatorInputText:
+			value, undecided, err := readTextSubject(rule, source)
+			if err != nil {
+				return Decision{}, err
+			}
+			if undecided != nil {
+				return Decision{Undecided: undecided}, nil
+			}
+			typedSubject = value
+		case semantic.OperatorInputTruth:
+			value, undecided, err := readTruthSubject(rule, source)
+			if err != nil {
+				return Decision{}, err
+			}
+			if undecided != nil {
+				return Decision{Undecided: undecided}, nil
+			}
+			typedSubject = value
+		default:
+			// A type with no reader on this path is refused by name rather
+			// than answered from the empty value: a subject nobody read is not
+			// the zero of its type, and a rule decided that way would be
+			// answered from a value it never held (section 8.4).
+			return Decision{}, fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this reader reads an attribute as a number; the %s input has no reader on this path yet",
+				rule.ID, rule.Operator, inputs[0].Name, inputs[0].Type, inputs[0].Type)
 		}
-		if undecided != nil {
-			return Decision{Undecided: undecided}, nil
+		// `values` is what the numeric fields receive, so it holds the subject
+		// only when the subject was read as a number. A subject read as another
+		// type is carried in `typed`, which the Values field receives, and it
+		// has no number here to put in this map.
+		values := make(map[string]*big.Rat, len(inputs))
+		if typedSubject.Number != nil {
+			values[inputs[0].Name] = new(big.Rat).Set(typedSubject.Number)
 		}
-		values[inputs[0].Name] = new(big.Rat).Set(value)
 		// The subject and every attribute-assigned input must belong to one
 		// Read Attempt. Having all three values is not the same as knowing they
 		// are one snapshot (section 14.2 B-10), so the origin of each input is
@@ -564,15 +683,18 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			// the mapping above already turned into an undecided reason, so the
 			// values in hand are all present ones.
 			typed := make(map[string]semantic.OperatorValue, len(inputs))
-			for _, input := range inputs {
-				// A value the reader read as a number is carried as one. A
-				// value of any other type is read by the reader that
-				// understands it, which this path does not call yet, so an
-				// input of such a type has no value here and the rule is
-				// refused rather than answered from a number it was never
-				// read as (section 8.4).
+			for index, input := range inputs {
+				// The subject was read in the type its declaration states, so
+				// it is carried as that type. Every later input is a constant
+				// or an attribute read as a number on this path, and a type
+				// with no reader here is refused by name rather than answered
+				// from a number it was never read as (section 8.4).
+				if index == 0 {
+					typed[input.Name] = typedSubject
+					continue
+				}
 				if input.Type != semantic.OperatorInputNumber {
-					return Decision{}, fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this reader reads an attribute as a number; the %s input has no reader on this path yet",
+					return Decision{}, fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this reader reads an assigned attribute as a number; the %s input has no reader on this path yet",
 						rule.ID, rule.Operator, input.Name, input.Type, input.Type)
 				}
 				typed[input.Name] = semantic.OperatorValue{Number: new(big.Rat).Set(values[input.Name])}

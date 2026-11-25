@@ -73,16 +73,16 @@ func TestARefusedInputNamesItsOwnType(t *testing.T) {
 	})
 }
 
-// The four typed words are read by the example table, but not yet by the
-// reader that decides a rule: it reads an attribute as a number, so a rule that
-// declares one is refused at the rule rather than answered from a number it was
-// never read as. The value the example asks about is checked separately in
-// operator_value_test.go, where a typed implementation receives it.
+// The typed words are read by the example table, and the reader that decides a
+// rule reads a text and a truth as their own type. The two that have no reader
+// on this path yet are refused at the rule rather than answered from a number
+// they were never read as, and a reader that cannot read the type it is asked
+// for is refused with a message that says which read it lacks.
 //
 // Section 8.4 names the order: the value carrier and the typed decision field
-// come first, and the reader for an attribute of another type follows. This
-// test pins the boundary the reader has reached, so a later change can move it
-// by changing one guard rather than by finding out what it used to be.
+// come first, and the readers follow one at a time. This test pins the boundary
+// the reader has reached, so a later change moves it by changing one guard
+// rather than by finding out what it used to be.
 //
 // A calendar day is read as a day on this path now, so it is not in this list.
 // Neither is presence: an example that states a value for a presence input is
@@ -91,23 +91,53 @@ func TestARefusedInputNamesItsOwnType(t *testing.T) {
 // TestARefusedInputNamesItsOwnType. What stays here are the words that still
 // have no reader on this path.
 func TestATypedInputIsRefusedUntilTheReaderReadsIt(t *testing.T) {
+	// A reader that reads only numbers is asked for a text and a truth and
+	// says which read it lacks, rather than answering from the number.
 	for _, kind := range []semantic.OperatorInput{
-		semantic.OperatorInput("text"),
-		semantic.OperatorInput("truth"),
-		semantic.OperatorInput("any"),
+		semantic.OperatorInputText,
+		semantic.OperatorInputTruth,
 	} {
 		t.Run(string(kind), func(t *testing.T) {
-			// The example states a value of the declared type, written the way
-			// section 8.3 says it is written.
-			example := semantic.OperatorCase{Value: "2026-04-01", Satisfied: true}
-			switch kind {
-			case semantic.OperatorInputText:
-				example = semantic.OperatorCase{Value: `"A-100"`, Satisfied: true}
-			case semantic.OperatorInputTruth:
+			example := semantic.OperatorCase{Value: `"A-100"`, Satisfied: true}
+			if kind == semantic.OperatorInputTruth {
 				example = semantic.OperatorCase{Value: "true", Satisfied: true}
-			case semantic.OperatorInputAny:
-				example = semantic.OperatorCase{Value: "7", Satisfied: true}
 			}
+			contract := semantic.Operator{
+				ID: "sales.op", Symbol: "op", Input: kind,
+				Inputs: []semantic.OperatorInputDeclaration{{Name: "value", Type: kind}},
+				Cases:  []semantic.OperatorCase{example},
+			}
+			implementation := validationeval.OperatorImplementation{
+				Operator: "sales.op",
+				Input:    kind,
+				Values: func(map[string]semantic.OperatorValue) (bool, error) {
+					return true, nil
+				},
+			}
+			rule := semantic.Validation{
+				ID: "sales.order_line.probe", Kind: semantic.ValidationOperator,
+				Attribute: "sales.order_line.quantity", Operator: "sales.op",
+			}
+			_, err := validationeval.Decide(rule, refusingTypeSource{},
+				validationeval.Operators{
+					Declared:        []semantic.Operator{contract},
+					Implementations: []validationeval.OperatorImplementation{implementation},
+				})
+			if err == nil {
+				t.Fatalf("a %s input was decided by a reader that reads numbers", kind)
+			}
+			if !strings.Contains(err.Error(), "cannot read "+string(kind)) {
+				t.Fatalf("the refusal does not name the read it lacks: %v", err)
+			}
+		})
+	}
+	// A type with no reader on this path is refused by name. It is not answered
+	// from the empty value: a subject nobody read is not the zero of its type.
+	for _, kind := range []semantic.OperatorInput{
+		semantic.OperatorInputAny,
+	} {
+		t.Run(string(kind), func(t *testing.T) {
+			example := semantic.OperatorCase{Value: "7", Satisfied: true}
 			contract := semantic.Operator{
 				ID: "sales.op", Symbol: "op", Input: kind,
 				Inputs: []semantic.OperatorInputDeclaration{{Name: "value", Type: kind}},
