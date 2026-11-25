@@ -130,20 +130,28 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 		names = append(names, name)
 	}
 	sortStrings(names)
+	// The type of each column comes from the operator's declaration, so a cell
+	// is read the way its input says (section 8.3). This file does not read the
+	// declaration, so the values are kept as written here and read by the
+	// Workspace, which knows the signature. What this file does is keep the
+	// three states apart: a cell that holds no value, a cell nobody read, and
+	// a cell that states a value.
 	out.Case.Rows = make([]map[string]string, 0, len(table.Rows))
 	for index, row := range table.Rows {
 		values := map[string]string{}
 		spans := map[string]Anchor{}
 		for _, name := range names {
 			cell := row[columns[name]]
-			// A cell states a decimal, the empty text (the row holds no
-			// value), or the word `not-fetched` (the row was not read). The
-			// three states are written, not inferred: an empty cell is a
-			// value holder that is empty, and a row nobody read is said so.
+			// A cell states a value of its input's type, the empty text (the
+			// row holds no value), or the word `not-fetched` (the row was not
+			// read). The three states are written, not inferred: an empty cell
+			// is a value holder that is empty, and a row nobody read is said
+			// so. A value of a text input is written with quotes, so the empty
+			// text is not the same as an empty text value (section 8.3).
 			switch cell.Text {
 			case semantic.RowCellNoValue, semantic.RowCellNotFetched:
 			default:
-				if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
+				if _, err := semantic.ParseOperatorRowCellValue(cell.Text); err != nil {
 					return out, cellError(cell, fmt.Sprintf("input %q of row %d: %v", name, index+1, err))
 				}
 			}

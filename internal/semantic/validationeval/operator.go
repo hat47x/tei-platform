@@ -45,6 +45,15 @@ type OperatorImplementation struct {
 	// implementation cannot read the absence that way, and the decision stays
 	// undecided instead of reading the absence as zero or as present.
 	Absent func(mapping string) (*big.Rat, bool)
+	// Values decides a rule for an operator whose inputs are of any type.
+	// It receives one value per input name, each carrying the type it was
+	// read as (section 8.4). A value is present only for an input the reader
+	// read, so an implementation never has to tell a value nobody holds from
+	// one nobody read.
+	//
+	// An implementation provides either this field or the numeric ones, never
+	// both: providing both would leave which value it answers from ambiguous.
+	Values func(values map[string]semantic.OperatorValue) (bool, error)
 }
 
 // Operators is what an evaluation knows about declared operators: the
@@ -147,8 +156,9 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasRows := implementation.NumberRows != nil
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
+	hasTyped := implementation.Values != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped} {
 		if present {
 			shapes++
 		}
@@ -165,7 +175,11 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	if !rowScoped && hasRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
 	}
-	if !rowScoped {
+	// An implementation that reads values of any type (section 8.4) decides
+	// both a single-input and a multi-input contract: the declaration's types
+	// are what decide which value each input gets, not how many inputs there
+	// are.
+	if !rowScoped && !hasTyped {
 		multiInput := len(inputs) > 1
 		if multiInput && !hasMulti {
 			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))
@@ -255,6 +269,35 @@ func checkOperatorCases(contract semantic.Operator, implementation OperatorImple
 		} else if multi {
 			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s declares %d inputs (%s), but its example carries one value; a multi-input example states one column per input",
 				contract.ID, len(inputs), operatorInputNames(inputs))
+		}
+
+		// A typed implementation is asked about the values as the
+		// declaration says they are read, so a text is a text and a number
+		// is a number (section 8.3, 8.4). The example states the same
+		// spelling for each input, so the reading here is the one the
+		// author wrote.
+		if implementation.Values != nil {
+			typed := make(map[string]semantic.OperatorValue, len(inputs))
+			for _, input := range inputs {
+				text := example.Value
+				if example.Inputs != nil {
+					text = example.Inputs[input.Name]
+				}
+				value, err := semantic.ParseOperatorInputValue(input.Type, text)
+				if err != nil {
+					return fmt.Errorf("operator %s has an unreadable example for input %q, which is read as %s: %w", contract.ID, input.Name, input.Type, err)
+				}
+				typed[input.Name] = value
+			}
+			got, err := implementation.Values(typed)
+			if err != nil {
+				return fmt.Errorf("the implementation of operator %s could not decide the contract's example %s: %w", contract.ID, operatorExampleText(example), err)
+			}
+			if got != example.Satisfied {
+				return fmt.Errorf("TEI_OPERATOR_IMPLEMENTATION_MISMATCH: the contract of operator %s states that %s is %s, but the selected implementation answers %s",
+					contract.ID, operatorExampleText(example), operatorCaseWord(example.Satisfied), operatorCaseWord(got))
+			}
+			continue
 		}
 
 		values := map[string]*big.Rat{}
@@ -372,16 +415,24 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 					return fmt.Errorf("operator %s row example states no value for input %q on row %d", contract.ID, name, index+1)
 				}
 				// The three states a read row can hold are written in the
-				// table: a decimal, the empty text (no value), and the word
-				// `not-fetched` (not read). They are handed to the
-				// implementation as they are, so the example asks it exactly
-				// the question a rule read would.
+				// table: a value of the input's type, the empty text (no
+				// value), and the word `not-fetched` (not read). They are
+				// handed to the implementation as they are, so the example
+				// asks it exactly the question a rule read would.
 				switch text {
 				case semantic.RowCellNoValue:
 					column = append(column, NumberReading{State: ValueNull})
 				case semantic.RowCellNotFetched:
 					column = append(column, NumberReading{State: ValueNotFetched})
 				default:
+					// A value is read in the type the declaration gave, so a
+					// date is a date and a text is a text (section 8.3). The
+					// numeric column is the one this path reads, so an input
+					// of another type is refused rather than read as a number.
+					if input.Type != semantic.OperatorInputNumber {
+						return fmt.Errorf("operator %s row example states a value for input %q, which is read as %s, but this path reads rows as numbers; the %s input has no reader on this path yet",
+							contract.ID, name, input.Type, input.Type)
+					}
 					value, err := semantic.ParseOperatorCaseValue(text)
 					if err != nil {
 						return fmt.Errorf("operator %s has an unreadable row example (%s, row %d): %w", contract.ID, name, index+1, err)

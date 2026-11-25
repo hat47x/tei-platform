@@ -205,12 +205,15 @@ func reportedOperator(operators []semantic.Operator, id core.CanonicalID) bool {
 
 // OperatorInputFor maps one input word onto the existing operator input. The
 // second return value is false for a word this surface does not define.
+//
+// Every word this surface accepts is mapped: a word accepted at authoring time
+// and refused here would build a contract the conversion cannot read. The
+// values each type reads are decided by section 8.4, which this file hands to
+// the evaluator unchanged.
 func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 	switch word {
 	case OperatorInputNumberWord:
 		return semantic.OperatorInputNumber, true
-	case OperatorInputPresenceWord:
-		return semantic.OperatorInputPresence, true
 	case OperatorInputDateWord:
 		return semantic.OperatorInputDate, true
 	case OperatorInputTextWord:
@@ -219,6 +222,8 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 		return semantic.OperatorInputTruth, true
 	case OperatorInputAnyWord:
 		return semantic.OperatorInputAny, true
+	case OperatorInputPresenceWord:
+		return semantic.OperatorInputPresence, true
 	}
 	return "", false
 }

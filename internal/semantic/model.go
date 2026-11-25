@@ -233,26 +233,30 @@ type OperatorInput string
 const (
 	// OperatorInputNumber is one numeric value of the constrained attribute.
 	OperatorInputNumber OperatorInput = "number"
-	// OperatorInputPresence is whether an attribute holds a value, not the
-	// value itself.
-	OperatorInputPresence OperatorInput = "presence"
 	// OperatorInputDate is one calendar day, read and written as YYYY-MM-DD.
+	// Section 7 fixes what a reader accepts as a date; a value that is not one
+	// is refused, not read as a nearby date.
 	OperatorInputDate OperatorInput = "date"
-	// OperatorInputText is one string. An empty string is a value; a cell the
-	// author left empty states that the row holds no value.
+	// OperatorInputText is one string. It is written with quotes in an example
+	// table so it is never read as a number (section 8.3). An empty string is
+	// a value; a cell the author left empty states that the row holds no
+	// value, which is a different state.
 	OperatorInputText OperatorInput = "text"
 	// OperatorInputTruth is one of the two truth values, written true/false.
 	OperatorInputTruth OperatorInput = "truth"
 	// OperatorInputAny is a value of any of the kinds above. Which kind was
-	// read travels with the value, so "100" and 100 stay two values.
+	// read travels with the value, so a number and a quoted text are two
+	// values (section 8.3 and 8.4).
 	OperatorInputAny OperatorInput = "any"
+	// OperatorInputPresence is whether an attribute holds a value, not the
+	// value itself.
+	OperatorInputPresence OperatorInput = "presence"
 )
 
 // Valid reports whether this is a known operator input kind. Only the kinds
 // something in this program actually reads are valid: a word accepted at
 // authoring time that no reader handles would build a contract nothing can
-// decide. date, text, truth, and any are stated by the design but have no
-// reader here yet, so they stay out of this list until one exists.
+// decide.
 func (i OperatorInput) Valid() bool {
 	switch i {
 	case OperatorInputNumber, OperatorInputPresence, OperatorInputDate,
@@ -260,6 +264,17 @@ func (i OperatorInput) Valid() bool {
 		return true
 	}
 	return false
+}
+
+// ReadsValue reports whether this input reads a value of some type, as opposed
+// to whether an attribute holds one. Presence reads the latter, so an
+// implementation that receives values is never asked about it.
+func (i OperatorInput) ReadsValue() bool {
+	switch i {
+	case OperatorInputPresence:
+		return false
+	}
+	return i.Valid()
 }
 
 // OperatorInputDeclaration is one input of an operator signature: its name,

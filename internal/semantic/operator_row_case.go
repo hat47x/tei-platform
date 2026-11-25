@@ -1,5 +1,9 @@
 package semantic
 
+import (
+	"strings"
+)
+
 // This file states the example of an operator whose input reads every row of
 // a relation.
 //
@@ -55,6 +59,45 @@ const RowCellNoValue = ""
 // It is a word rather than an empty cell so a value nobody fetched is never
 // written as a value nobody holds.
 const RowCellNotFetched = "not-fetched"
+
+// ParseOperatorRowCellValue reads the text a row cell writes for a value,
+// without knowing the type of the input it belongs to. Section 8.3 fixes the
+// writing per type, and the type comes from the declaration the Workspace
+// holds, so this reading accepts every shape a type can write and refuses the
+// text that is none of them.
+//
+// A text is written with quotes, a date as YYYY-MM-DD, a truth as the word true
+// or false, and a number as decimal digits. The reader for a column of a
+// declared input applies the type; this one only says whether the text can be
+// read as a value at all.
+func ParseOperatorRowCellValue(text string) (OperatorValue, error) {
+	if strings.HasPrefix(text, `"`) {
+		value, err := ParseOperatorTextValue(text)
+		if err != nil {
+			return OperatorValue{}, err
+		}
+		return OperatorValue{Text: &value}, nil
+	}
+	if _, err := ParseOperatorTruthValue(text); err == nil {
+		value, err := ParseOperatorTruthValue(text)
+		if err != nil {
+			return OperatorValue{}, err
+		}
+		return OperatorValue{Truth: &value}, nil
+	}
+	if _, err := ParseCalendarDate(text); err == nil {
+		date, err := ParseCalendarDate(text)
+		if err != nil {
+			return OperatorValue{}, err
+		}
+		return OperatorValue{Date: &date}, nil
+	}
+	number, err := ParseOperatorCaseValue(text)
+	if err != nil {
+		return OperatorValue{}, err
+	}
+	return OperatorValue{Number: number}, nil
+}
 
 // Valid reports whether this is an answer an example may state.
 func (e OperatorRowExpect) Valid() bool {
