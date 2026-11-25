@@ -243,11 +243,11 @@ func contractInputs(contract semantic.Operator) []semantic.OperatorInputDeclarat
 // declaration's `absent as <name>` decides how the absence reads.
 //
 // refuseNonNumberInputs refuses a rule whose operator declares an input this
-// evaluator cannot read. The operator path reads every input through
-// ReadNumber, so a contract that declares `presence` would be handed the
-// attribute's number instead of whether it holds a value: `takes value:
-// presence` was answered satisfied from the value 7, which is a different
-// question answered by accident (#4359).
+// evaluator cannot read on the operator path. The operator path reads every
+// number input through ReadNumber and every calendar-day input through
+// ReadDate, so a contract that declares `presence` would be handed the
+// attribute's number: `takes value: presence` was answered satisfied from the
+// value 7, which is a different question answered by accident (#4359).
 //
 // The refusal is at the rule, not at the declaration: the surface reads the
 // word `presence` and carries it in the contract, and the evaluator's one
@@ -482,6 +482,12 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		// value 7. The two reads ask different questions (#4359).
 		if refusal := refuseNonNumberInputs(rule, inputs); refusal != nil {
 			return Decision{}, refusal
+		}
+		// A contract may declare a calendar-day input. A day is read as a day,
+		// never as a number: `2026-04-01` read as a decimal is not a value
+		// anyone wrote, and the two reads ask different questions.
+		if declaresDateInput(inputs) {
+			return decideDateOperator(rule, contract, inputs, implementation, source)
 		}
 		// A rule whose operator declares an input read over every row of a
 		// relation is asked of those rows, not of one record (decision section

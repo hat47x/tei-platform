@@ -83,12 +83,18 @@ func TestARefusedInputNamesItsOwnType(t *testing.T) {
 // come first, and the reader for an attribute of another type follows. This
 // test pins the boundary the reader has reached, so a later change can move it
 // by changing one guard rather than by finding out what it used to be.
+//
+// A calendar day is read as a day on this path now, so it is not in this list.
+// Neither is presence: an example that states a value for a presence input is
+// refused by the example check, which answers before the reader path is
+// reached, and a presence input without an example is pinned by
+// TestARefusedInputNamesItsOwnType. What stays here are the words that still
+// have no reader on this path.
 func TestATypedInputIsRefusedUntilTheReaderReadsIt(t *testing.T) {
 	for _, kind := range []semantic.OperatorInput{
-		semantic.OperatorInputDate,
-		semantic.OperatorInputText,
-		semantic.OperatorInputTruth,
-		semantic.OperatorInputAny,
+		semantic.OperatorInput("text"),
+		semantic.OperatorInput("truth"),
+		semantic.OperatorInput("any"),
 	} {
 		t.Run(string(kind), func(t *testing.T) {
 			// The example states a value of the declared type, written the way

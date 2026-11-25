@@ -34,8 +34,14 @@ type NamedImplementation struct {
 	// Numbers is non-nil.
 	Numbers func(values map[string]*big.Rat) (bool, error)
 	// NumberRows decides for an operator whose input reads every row of a
-	// relation. At most one of Number, Numbers and NumberRows is non-nil.
+	// relation. At most one of Number, Numbers, NumberRows, Date and Dates is
+	// non-nil.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
+	// Date decides for an operator that declares exactly one input, of type
+	// date, and Dates decides one that declares more than one. A day is read
+	// as a day and never as a number.
+	Date  func(day semantic.CalendarDate) (bool, error)
+	Dates func(values map[string]semantic.CalendarDate) (bool, error)
 	// Absent reads an absent value under the mapping the rule named, or
 	// reports that this implementation cannot read that mapping. A shipped
 	// implementation that states none leaves every absence undecided.
@@ -190,6 +196,31 @@ func BuiltinImplementations() []NamedImplementation {
 				return new(big.Rat), true
 			},
 		},
+		{
+			// tei.day.not-before decides "the value's day is not before the
+			// deadline's day". Both inputs are calendar days, and a day is
+			// read as a day: the reader reports which day each attribute
+			// holds, and this implementation compares the two. A day is never
+			// read through the decimal reader, where `2026-04-01` would not be
+			// a value anyone wrote.
+			//
+			// The two days are the same day when the rule's subject and its
+			// deadline name the same attribute; the answer is then that the day
+			// is not before itself, which holds.
+			ID:    "tei.day.not-before",
+			Input: semantic.OperatorInputDate,
+			Dates: func(values map[string]semantic.CalendarDate) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("not-before reads an input named \"value\"; the rule supplied no value input")
+				}
+				deadline, ok := values["deadline"]
+				if !ok {
+					return false, fmt.Errorf("not-before reads an input named \"deadline\"; the rule supplied no deadline input")
+				}
+				return value.Compare(deadline) >= 0, nil
+			},
+		},
 	}
 }
 
@@ -256,6 +287,26 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 					called(call)
 				}
 				return decide(rows)
+			}
+		}
+		if match.Date != nil {
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.Date
+			implementation.Date = func(day semantic.CalendarDate) (bool, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(day)
+			}
+		}
+		if match.Dates != nil {
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.Dates
+			implementation.Dates = func(values map[string]semantic.CalendarDate) (bool, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(values)
 			}
 		}
 		// A shipped implementation may know how to read an absent value under
