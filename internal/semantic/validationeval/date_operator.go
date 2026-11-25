@@ -11,9 +11,10 @@ import (
 //
 // A day is read as a day. The reader reports one reading per attribute, and the
 // reading states whether the value was read, whether the record holds no value,
-// or which day it holds. The implementation receives the days and answers a
-// boolean; it never sees a Source, so what a rule reads stays decided by the
-// declaration.
+// or which day it holds. The implementation receives the days in the one shape
+// section 8.4 fixes — one value per input, carrying the type it was read as —
+// and answers a boolean; it never sees a Source, so what a rule reads stays
+// decided by the declaration.
 //
 // A rule whose day input reads every row of a relation is refused rather than
 // read row by row: this reader has no reader for a column of days yet, and
@@ -53,7 +54,7 @@ func decideDateOperator(rule semantic.Validation, contract semantic.Operator, in
 	// Every input is read before the operator is asked, so an unread part is
 	// never turned into a settled answer and a value the caller supplied is
 	// never left unread.
-	values := make(map[string]semantic.CalendarDate, len(inputs))
+	values := make(map[string]semantic.OperatorValue, len(inputs))
 	for index, input := range inputs {
 		attribute := rule.Attribute
 		if index > 0 {
@@ -70,7 +71,7 @@ func decideDateOperator(rule semantic.Validation, contract semantic.Operator, in
 					return Decision{}, fmt.Errorf("semantic validation %s assigns operator %s input %q the value %q, which is neither an attribute nor a calendar day: %w",
 						rule.ID, rule.Operator, input.Name, assignment.Value, err)
 				}
-				values[input.Name] = day
+				values[input.Name] = semantic.OperatorValue{Date: &day}
 				continue
 			}
 			named, err := core.ParseCanonicalID(assignment.Value)
@@ -86,7 +87,8 @@ func decideDateOperator(rule semantic.Validation, contract semantic.Operator, in
 		}
 		switch reading.State {
 		case ValuePresent:
-			values[input.Name] = reading.Value
+			day := reading.Value
+			values[input.Name] = semantic.OperatorValue{Date: &day}
 		case ValueNull:
 			// A record that holds no day for this attribute has no value to
 			// ask the operator about. The decision is undecided, and the reason
@@ -100,19 +102,15 @@ func decideDateOperator(rule semantic.Validation, contract semantic.Operator, in
 	}
 	// Every input came from this one record, so no two-attempt check is needed:
 	// the reader states the record it read.
-	var satisfied bool
-	var err error
-	if len(inputs) == 1 {
-		if implementation.Date == nil {
-			return Decision{}, fmt.Errorf("operator %s takes a calendar day, but its selected implementation does not decide a calendar day", rule.Operator)
-		}
-		satisfied, err = implementation.Date(values[inputs[0].Name])
-	} else {
-		if implementation.Dates == nil {
-			return Decision{}, fmt.Errorf("operator %s declares %d inputs and takes a calendar day, but its selected implementation decides one value", rule.Operator, len(inputs))
-		}
-		satisfied, err = implementation.Dates(values)
+	//
+	// The implementation is asked about the values in the one shape section 8.4
+	// fixes: one value per input, carrying the type it was read as. A value the
+	// reader did not read was already turned into an undecided reason above, so
+	// every value in hand is a present one.
+	if implementation.Values == nil {
+		return Decision{}, fmt.Errorf("operator %s takes a calendar day, but its selected implementation does not decide values of any type", rule.Operator)
 	}
+	satisfied, err := implementation.Values(values)
 	if err != nil {
 		return Decision{}, fmt.Errorf("operator %s could not decide semantic validation %s: %w", rule.Operator, rule.ID, err)
 	}

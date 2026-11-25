@@ -51,12 +51,23 @@ func day(year, month, day int) semantic.CalendarDate {
 
 // notBefore states that the subject's day is not before the deadline the rule
 // names. It is a plain reading of that meaning.
+//
+// The values arrive in the one shape section 8.4 fixes: one value per input,
+// carrying the type it was read as, so a day is a day and not a number.
 func notBefore() validationeval.OperatorImplementation {
 	return validationeval.OperatorImplementation{
 		Operator: "sales.not_before",
 		Input:    semantic.OperatorInputDate,
-		Dates: func(values map[string]semantic.CalendarDate) (bool, error) {
-			return values["value"].Compare(values["deadline"]) >= 0, nil
+		Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+			value, ok := values["value"]
+			if !ok || value.Date == nil {
+				return false, nil
+			}
+			deadline, ok := values["deadline"]
+			if !ok || deadline.Date == nil {
+				return false, nil
+			}
+			return value.Date.Compare(*deadline.Date) >= 0, nil
 		},
 	}
 }
@@ -210,33 +221,23 @@ func TestADayInputThatReadsEveryRowIsRefused(t *testing.T) {
 	}
 }
 
-// An implementation that provides a number function and a date function would
+// An implementation that provides a number function and the typed one would
 // answer from whichever the evaluator filled, so the selection is refused.
 func TestAnImplementationCannotDecideNumbersAndDays(t *testing.T) {
 	implementation := notBefore()
 	implementation.Number = func(value *big.Rat) (bool, error) { return true, nil }
 	err := validationeval.CheckImplementationMatchesContract(notBeforeContract(), implementation)
 	if err == nil {
-		t.Fatal("an implementation that decides numbers and days was accepted")
+		t.Fatal("an implementation that decides numbers and typed values was accepted")
 	}
 }
 
-// An implementation that decides days cannot implement an operator that
-// declares no calendar-day input, whatever its inputs count.
-func TestADayImplementationCannotImplementANumberOperator(t *testing.T) {
-	contract := semantic.Operator{
-		ID: "sales.within", Symbol: "within",
-		Input: semantic.OperatorInputNumber,
-		Inputs: []semantic.OperatorInputDeclaration{
-			{Name: "value", Type: semantic.OperatorInputNumber},
-			{Name: "low", Type: semantic.OperatorInputNumber},
-			{Name: "high", Type: semantic.OperatorInputNumber},
-		},
-	}
-	implementation := notBefore()
-	err := validationeval.CheckImplementationMatchesContract(contract, implementation)
-	if err == nil {
-		t.Fatal("a day implementation was accepted for a number operator")
+// A typed implementation decides a contract that declares a calendar day, so it
+// is accepted for that contract and for a number one: the declaration's types
+// decide which value each input gets (section 8.4).
+func TestATypedImplementationDecidesADayContract(t *testing.T) {
+	if err := validationeval.CheckImplementationMatchesContract(notBeforeContract(), notBefore()); err != nil {
+		t.Fatalf("the typed implementation does not decide a day contract: %v", err)
 	}
 }
 
