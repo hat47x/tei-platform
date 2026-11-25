@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	choice "tei/plugins/reference-cognition-choice"
 	cognitionport "tei/tools/reference-cognition-port"
 )
 
@@ -16,11 +17,22 @@ func main() {
 	requestPath := flag.String("request", "", "cognition request JSON")
 	providerPath := flag.String("provider", "", "cognition provider JSON")
 	command := flag.String("command", "", "trusted command for an external provider; write JSON to $TEI_COGNITION_OUTPUT")
+	localChoice := flag.Bool("local-choice", false, "bind the reference local choice plugin (requires matching provider settings)")
 	flag.Parse()
 	if *requestPath == "" || *providerPath == "" {
 		fail(fmt.Errorf("-request and -provider are required"))
 	}
-	receipt, err := cognitionport.Propose(context.Background(), *requestPath, *providerPath, *command)
+	var invoker cognitionport.ExternalInvoker
+	if *localChoice {
+		invoker = func(ctx context.Context, provider cognitionport.Provider, raw []byte) ([]byte, error) {
+			if provider.Settings["transport"] != choice.Transport || provider.Network != cognitionport.NetworkNone {
+				return nil, fmt.Errorf("local choice requires loopback-chat transport and no external network")
+			}
+			endpoint, _ := provider.Settings["endpoint"].(string)
+			return choice.Invoke(ctx, endpoint, provider.Model, raw)
+		}
+	}
+	receipt, err := cognitionport.ProposeWithInvoker(context.Background(), *requestPath, *providerPath, *command, invoker)
 	if err != nil {
 		fail(err)
 	}
