@@ -106,6 +106,50 @@ func TestAnUnreadInputCarriesNoValue(t *testing.T) {
 	}
 }
 
+// Every input type the authoring surface accepts names a constant here, and
+// each of those constants is what a test uses to read the word. The plan check
+// requires that: a declared word no test mentions is a word nothing shows is
+// produced.
+func TestEveryAcceptedInputTypeNamesAConstant(t *testing.T) {
+	kinds := []semantic.OperatorInput{
+		semantic.OperatorInputNumber,
+		semantic.OperatorInputPresence,
+		semantic.OperatorInputDate,
+		semantic.OperatorInputText,
+		semantic.OperatorInputTruth,
+		semantic.OperatorInputAny,
+	}
+	for _, kind := range kinds {
+		if !kind.Valid() {
+			t.Fatalf("%s is not accepted", kind)
+		}
+		// presence is accepted and has no value field: it is answered from
+		// whether the attribute holds a value, not from a value.
+		if kind == semantic.OperatorInputPresence {
+			if validationeval.HasField(kind) {
+				t.Fatal("presence has a value field")
+			}
+			continue
+		}
+		if !validationeval.HasField(kind) {
+			t.Fatalf("%s is accepted but has no value field", kind)
+		}
+		// The word the surface writes and the constant that reads it are the
+		// same spelling, so a table's column name matches the declaration.
+		word, ok := syntax.OperatorInputFor(syntax.OperatorInputWord(string(kind)))
+		if !ok || word != kind {
+			t.Fatalf("%s does not map back from its own word", kind)
+		}
+	}
+	// A word that is not in the surface's list is refused by the authoring
+	// check rather than accepted and dropped later.
+	for _, unknown := range []semantic.OperatorInput{"", "presence ", "Date"} {
+		if unknown.Valid() {
+			t.Fatalf("%q is accepted", unknown)
+		}
+	}
+}
+
 // A word with no value field is refused rather than silently dropped.
 func TestAShapeWithNoFieldIsRefused(t *testing.T) {
 	value := validationeval.OperatorValue{}

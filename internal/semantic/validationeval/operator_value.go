@@ -134,11 +134,19 @@ func Unread() OperatorValue { return OperatorValue{} }
 // HasField reports whether the given input type has a value field here. It is
 // what the authoring surface consults before it offers a type word: a word with
 // no field would build a contract nothing can decide.
+//
+// presence is absent from this list on purpose. A presence input is answered
+// from whether the attribute holds a value, not from a value, so it has no
+// value field to fill; an implementation is asked about it as present, absent,
+// or unknown. It is a reader that exists, which is why the authoring surface
+// offers it, and it is not a value, which is why it has no field here.
 func HasField(kind semantic.OperatorInput) bool {
 	switch kind {
 	case semantic.OperatorInputNumber, semantic.OperatorInputDate,
 		semantic.OperatorInputText, semantic.OperatorInputTruth, semantic.OperatorInputAny:
 		return true
+	case semantic.OperatorInputPresence:
+		return false
 	}
 	return false
 }
