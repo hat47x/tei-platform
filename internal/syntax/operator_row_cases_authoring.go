@@ -68,6 +68,11 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 	// in the mark, not by a table whose body the author left unwritten.
 	noRows := saysOverNoRows(words)
 	if (len(words) != 5 && !noRows) || words[0].Text != "cases" || words[1].Text != "of" || words[3].Text != "expecting" {
+		// A mark whose words are right but whose answer is missing is refused
+		// as an unknown mark, whose message names the row form's shape and so
+		// the answer word the mark has to carry. That is the right refusal for
+		// it: the table cannot supply the answer, because a row example answers
+		// about the rows together.
 		return out, &ParseError{Pos: table.Mark.Start, End: table.Mark.End,
 			Msg: "unknown tei mark; the example of an operator that reads every row is marked <!-- tei: cases of <operator> expecting <answer> -->, and an empty relation adds the clause `over no rows`"}
 	}

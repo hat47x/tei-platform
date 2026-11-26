@@ -71,7 +71,10 @@ func loadAuthoringMarkdown(root string, r *Result, filename string, src []byte) 
 		case "cases":
 			// Two forms share the mark. The one-record form has no answer in
 			// the mark; the row form states it there (section 8.1).
-			if len(table.Words) > 3 {
+			//
+			// The word count tells them apart: the row form names the answer,
+			// so its mark has more words than the one-record form's three.
+			if len(table.Words) >= 4 {
 				parsed, err := syntax.ParseOperatorRowCasesTable(table)
 				if err != nil {
 					return 0, 0, r.collectSourceError(filename, err)
