@@ -825,16 +825,23 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 			"semantic validation %s uses operator %s, which reads every row, but the rule names no relation; write \"per <relation>\"",
 			rule.ID, rule.Operator)
 	}
+	if implementation.NumberRows == nil && implementation.ValueRows == nil {
+		return Decision{}, fmt.Errorf(
+			"operator %s reads every row of a relation, but its selected implementation does not decide over rows",
+			rule.Operator)
+	}
+	// A row-scoped operator whose inputs are of a type other than number is read
+	// by the reader that understands that type over rows, not by the row number
+	// reader (decision section 8.4). Reading the column as numbers would answer
+	// a question about a value nobody read.
+	if implementation.ValueRows != nil {
+		return decideTypedRowScopedOperator(rule, inputs, implementation, source)
+	}
 	reader, ok := source.(StatefulRowNumberSource)
 	if !ok {
 		return Decision{}, fmt.Errorf(
 			"semantic validation %s reads every row of relation %s, but this reader cannot read the rows of a relation",
 			rule.ID, rule.Relation)
-	}
-	if implementation.NumberRows == nil {
-		return Decision{}, fmt.Errorf(
-			"operator %s reads every row of a relation, but its selected implementation does not decide over rows",
-			rule.Operator)
 	}
 
 	rows := make(map[string][]NumberReading, len(inputs))

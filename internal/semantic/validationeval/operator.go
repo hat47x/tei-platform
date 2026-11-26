@@ -46,6 +46,14 @@ type OperatorImplementation struct {
 	// never both: providing both would leave which value it answers from
 	// ambiguous.
 	Values func(values map[string]semantic.OperatorValue) (bool, error)
+	// ValueRows decides a rule whose operator reads every row of a relation in
+	// any type. It receives, per input name, the rows that were read in the
+	// order they were read, each value carrying the type it was read as
+	// (decision section 8.4).
+	//
+	// An implementation provides either this field or one of the others, never
+	// both: providing both would leave which value it answers from ambiguous.
+	ValueRows func(rows map[string][]RowValueReading) (Tri, error)
 	// Absent reads an absent value under the mapping the rule named. A rule may
 	// write `or <name>` after an input, and the declaration may state
 	// `absent as <name>`; the mapping says how an absent value is to be read.
@@ -158,8 +166,9 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasMulti := implementation.Numbers != nil
 	hasSingle := implementation.Number != nil
 	hasTyped := implementation.Values != nil
+	hasTypedRows := implementation.ValueRows != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows} {
 		if present {
 			shapes++
 		}
@@ -173,11 +182,14 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 		// rule from whichever the evaluator happened to fill.
 		return fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", contract.ID)
 	}
-	if rowScoped && !hasRows {
+	if rowScoped && !hasRows && !hasTypedRows {
 		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
 	if !rowScoped && hasRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
+	}
+	if !rowScoped && hasTypedRows {
+		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows of any type", contract.ID)
 	}
 	// An implementation that reads values of any type (section 8.4) decides
 	// both a single-input and a multi-input contract: the declaration's types
