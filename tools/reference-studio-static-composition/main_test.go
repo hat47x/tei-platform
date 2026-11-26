@@ -118,3 +118,96 @@ func TestMissingServiceCannotProduceIncompleteStaticHost(t *testing.T) {
 		t.Fatalf("expected missing-service rejection, got %v", err)
 	}
 }
+
+func TestUntrustedFixtureValuesCannotInjectGoSource(t *testing.T) {
+	attack := "studio.catalog\"\npackage injected\nimport \"os/exec\"\n../../outside.go"
+	tests := []struct {
+		name   string
+		mutate func(*profile)
+		want   string
+	}{
+		{
+			name: "injected fixture version",
+			mutate: func(p *profile) {
+				p.FixtureVersion = attack
+			},
+			want: "unsupported or incomplete",
+		},
+		{
+			name: "unknown service ID with Go source fragment",
+			mutate: func(p *profile) {
+				p.Services[0].ID = attack
+			},
+			want: "unknown service",
+		},
+		{
+			name: "known service with injected version",
+			mutate: func(p *profile) {
+				p.Services[0].Version = attack
+			},
+			want: "incompatible version",
+		},
+		{
+			name: "injected scope",
+			mutate: func(p *profile) {
+				p.Scope = attack
+			},
+			want: "unsupported or incomplete",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var p profile
+			if err := json.Unmarshal([]byte(goodFixture), &p); err != nil {
+				t.Fatal(err)
+			}
+			tc.mutate(&p)
+			raw, err := json.Marshal(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			source, _, err := composeServices(raw)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected rejection containing %q, source=%q err=%v", tc.want, source, err)
+			}
+			if len(source) != 0 {
+				t.Fatalf("rejected fixture returned generated source: %q", source)
+			}
+		})
+	}
+
+	t.Run("UIKit raw JSON is not copied into Go source", func(t *testing.T) {
+		var p profile
+		if err := json.Unmarshal([]byte(goodFixture), &p); err != nil {
+			t.Fatal(err)
+		}
+		uiKit, err := json.Marshal(map[string]string{
+			"schemaVersion": "tei-ui-composition-reference-v0",
+			"description":   attack,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p.UIKit = uiKit
+		raw, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		generated, _, err := composeServices(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		baseline, _, err := composeServices([]byte(goodFixture))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(generated, baseline) {
+			t.Fatalf("untrusted UIKit data changed generated Go source:\n%s", generated)
+		}
+		for _, fragment := range []string{attack, "package injected", `import "os/exec"`, "../../outside.go"} {
+			if strings.Contains(string(generated), fragment) {
+				t.Errorf("generated Go source contains untrusted fragment %q", fragment)
+			}
+		}
+	})
+}
