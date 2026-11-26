@@ -42,11 +42,12 @@ func SameOperatorCaseStates(left, right OperatorCase) bool {
 		if !present {
 			return false
 		}
-		// A presence input's cell states one of two words, which is not a
-		// decimal, so two cells state the same example when they are the same
-		// word. A decimal keeps the number comparison, which reads "5" and
-		// "5.0" as one number and never reads a word as one.
-		if IsOperatorCasePresenceWord(value) {
+		// A presence input's cell states one of two words, and a cell nobody
+		// read states the word for that, and neither is a decimal. Two such
+		// cells state the same example when they are the same word. A decimal
+		// keeps the number comparison, which reads "5" and "5.0" as one number
+		// and never reads a word as one.
+		if IsOperatorCasePresenceWord(value) || IsOperatorCaseNotFetchedWord(value) {
 			if value != other {
 				return false
 			}
