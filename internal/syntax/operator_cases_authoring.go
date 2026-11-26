@@ -136,6 +136,14 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 				// The repeated example is reported at the cell the author wrote,
 				// so the span is carried here as it is for the multi-input form.
 				repeatedAt = valueCell.Anchor
+			} else if semantic.IsOperatorCaseNotFetchedWord(valueCell.Text) {
+				// Section 8.3: the writing for "not read" does not depend on the
+				// input's type, so a cell of this form may write the same word
+				// the row-set form writes. It is not a decimal, so it is carried
+				// as written and read against the input's type at the Workspace.
+				example = semantic.OperatorCase{Inputs: map[string]string{"value": valueCell.Text}, Satisfied: satisfied}
+				inputSpans["value"] = valueCell.Anchor
+				repeatedAt = valueCell.Anchor
 			} else {
 				if _, err := semantic.ParseOperatorCaseValue(valueCell.Text); err != nil {
 					return out, cellError(valueCell, err.Error())
@@ -162,6 +170,15 @@ func ParseOperatorCasesTable(table MarkdownTable) (OperatorCasesAuthoring, error
 				// spelling, and a word in a number cell is refused at the
 				// Workspace, where the signature is known.
 				if semantic.IsOperatorCasePresenceWord(cell.Text) {
+					example.Inputs[name] = cell.Text
+					inputSpans[name] = cell.Anchor
+					continue
+				}
+				// Section 8.3: the writing for "not read" does not depend on the
+				// input's type, so a cell of this form may write the same word
+				// the row-set form writes. It is not a decimal, so it is carried
+				// as written and read against the input's type at the Workspace.
+				if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
 					example.Inputs[name] = cell.Text
 					inputSpans[name] = cell.Anchor
 					continue
