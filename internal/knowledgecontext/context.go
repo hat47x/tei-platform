@@ -40,10 +40,9 @@ func Build(w ir.World, sources sourceindex.Index, target subject.Subject) Contex
 			"dependency-edge-is-not-semantic-applicability",
 			"dependency-edge-is-not-write-or-runtime-authority",
 			"projection-or-runtime-identity-is-not-business-data-identity",
-			// The same identity rule applies here: this list counts edges, not
-			// declared outcome names, so a count is not a number of business
-			// results.
-			"edge-identity-is-from-relation-to-so-same-payload-outcomes-collapse",
+			// Unlike trace, this view retains matching dependency occurrences.
+			// Their count is not a count of named business outcomes.
+			"dependency-occurrences-are-retained-without-outcome-names",
 		},
 	}
 

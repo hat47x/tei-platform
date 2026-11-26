@@ -4,20 +4,73 @@ import (
 	"strings"
 	"testing"
 
+	"tei/internal/index"
 	"tei/internal/ir"
+	"tei/internal/modelref/derivedbridge"
+	"tei/internal/semantic"
 	"tei/internal/sourceindex"
 	"tei/internal/subject"
 )
 
-// A caller reading `outgoing` as a number of business results is wrong: two
-// named outcomes that name the same payload are one edge. The context has to
-// say that where it answers the count.
-func TestContextStatesThatSamePayloadOutcomesCollapse(t *testing.T) {
-	ctx := Build(ir.World{}, sourceindex.Index{}, subject.Subject{Kind: "semantic-capability", ID: "equip.loan_register"})
-	joined := strings.Join(ctx.AuthorityLimits, "\n")
-	const statement = "edge-identity-is-from-relation-to-so-same-payload-outcomes-collapse"
-	if !strings.Contains(joined, statement) {
-		t.Fatalf("the context does not state the edge identity limit: %v", ctx.AuthorityLimits)
+// Compare both projections of the same declaration, not merely a string
+// emitted for an empty world. The original #5426 case has two named
+// outcomes with the same payload and one input referencing that payload.
+func TestContextRetainsSamePayloadOutcomeOccurrences(t *testing.T) {
+	world := ir.World{Semantics: []semantic.Namespace{{
+		ID: "equip",
+		Data: []semantic.Data{{ID: "equip.loan", Symbol: "Loan"}},
+		Capabilities: []semantic.Capability{{
+			ID: "equip.loan_register", Symbol: "register",
+			Inputs: []semantic.Parameter{{Name: "loan", Type: "equip.loan"}},
+			Outcomes: []semantic.Outcome{
+				{Name: "created", Payload: "equip.loan"},
+				{Name: "overlapping", Payload: "equip.loan"},
+			},
+		}},
+	}}}
+	target := subject.Subject{Kind: "semantic-capability", ID: "equip.loan_register"}
+	for _, n := range []int{2, 1} {
+		world.Semantics[0].Capabilities[0].Outcomes = world.Semantics[0].Capabilities[0].Outcomes[:n]
+		ctx := Build(world, sourceindex.Index{}, target)
+		joined := strings.Join(ctx.AuthorityLimits, "\n")
+		if !strings.Contains(joined, "dependency-occurrences-are-retained-without-outcome-names") ||
+			strings.Contains(joined, "same-payload-outcomes-collapse") {
+			t.Fatalf("context misstates dependency occurrences: %v", ctx.AuthorityLimits)
+		}
+		var inputs, outcomes int
+		for _, edge := range ctx.Outgoing {
+			if edge.To.ID != "equip.loan" {
+				t.Fatalf("unexpected dependency: %+v", edge)
+			}
+			switch edge.Relation {
+			case "input":
+				inputs++
+			case "outcome":
+				outcomes++
+			}
+		}
+		if len(ctx.Outgoing) != n+1 || inputs != 1 || outcomes != n {
+			t.Fatalf("%d declared outcomes: context has %d edges, %d inputs, %d outcomes", n, len(ctx.Outgoing), inputs, outcomes)
+		}
+		projection := derivedbridge.FromIndex(index.Build(world), "test")
+		var projectedInputs, projectedOutcomes int
+		for _, edge := range projection.Graph.Edges {
+			if edge.From.Subject != target {
+				continue
+			}
+			switch edge.Relation {
+			case "input":
+				projectedInputs++
+			case "outcome":
+				projectedOutcomes++
+			}
+		}
+		if projectedInputs != 1 || projectedOutcomes != 1 {
+			t.Fatalf("%d declared outcomes: trace projection has %d inputs and %d outcomes", n, projectedInputs, projectedOutcomes)
+		}
+		if !strings.Contains(strings.Join(projection.AuthorityLimits, "\n"), "edge-identity-is-from-relation-to-so-same-payload-outcomes-collapse") {
+			t.Fatalf("trace projection omits its edge identity limit: %v", projection.AuthorityLimits)
+		}
 	}
 }
 
