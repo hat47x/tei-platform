@@ -611,20 +611,22 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		if refusal := refuseNonNumberInputs(rule, inputs); refusal != nil {
 			return Decision{}, refusal
 		}
+		// A rule whose operator declares an input read over every row of a
+		// relation is asked of those rows, not of one record (decision section
+		// 15.1). Every such input of this rule is read in one call, so one
+		// answer never mixes two reads (section 14.2 B-10). The row-scoped
+		// question is decided before the one-record one, because the two read
+		// different things: a column of days is not one record's day.
+		for _, input := range inputs {
+			if input.OfEachRow {
+				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
+			}
+		}
 		// A contract may declare a calendar-day input. A day is read as a day,
 		// never as a number: `2026-04-01` read as a decimal is not a value
 		// anyone wrote, and the two reads ask different questions.
 		if declaresDateInput(inputs) {
 			return decideDateOperator(rule, contract, inputs, implementation, source)
-		}
-		// A rule whose operator declares an input read over every row of a
-		// relation is asked of those rows, not of one record (decision section
-		// 15.1). Every such input of this rule is read in one call, so one
-		// answer never mixes two reads (section 14.2 B-10).
-		for _, input := range inputs {
-			if input.OfEachRow {
-				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
-			}
 		}
 		// The rule subject supplies the first input, and only it. A rule that
 		// also assigns that input by name binds it twice, so the instruction
@@ -817,10 +819,16 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 			"semantic validation %s reads every row of relation %s, but this reader cannot read the rows of a relation",
 			rule.ID, rule.Relation)
 	}
-	if implementation.NumberRows == nil {
+	if implementation.NumberRows == nil && implementation.ValueRows == nil {
 		return Decision{}, fmt.Errorf(
 			"operator %s reads every row of a relation, but its selected implementation does not decide over rows",
 			rule.Operator)
+	}
+	if declaresTypedInput(inputs) {
+		// A column of days, texts or truths is read as that type. The numeric
+		// reader would answer a question about numbers the rule never asked
+		// (decision section 8.4).
+		return decideRowScopedTypedOperator(rule, contract, inputs, implementation, source)
 	}
 
 	rows := make(map[string][]NumberReading, len(inputs))

@@ -511,6 +511,60 @@ func (d *Detail) ReadRelationNumbers(relation, attribute core.CanonicalID) (vali
 	return reading, nil
 }
 
+// ReadRelationValues reads one attribute in every row of the relation as a value
+// of the type the value itself states, in the order the rows were read, together
+// with whether those rows are all the rows.
+//
+// It is the typed counterpart of ReadRelationNumbers (decision section 8.4): a
+// calendar date is read as a day, and a value of any other type is read as the
+// type the driver handed it back in, so the kind the reader saw survives the trip
+// to the implementation. A number is read as a number here too, so a rule that
+// declares a typed input over every row is answered from the same read a
+// one-record rule would be.
+func (d *Detail) ReadRelationValues(relation, attribute core.CanonicalID) (validationeval.ValueRowsReading, error) {
+	if err := d.checkRelation(relation); err != nil {
+		return validationeval.ValueRowsReading{}, err
+	}
+	reading := validationeval.ValueRowsReading{
+		Coverage: d.coverage,
+		Rows:     make([]validationeval.RowValue, 0, len(d.rows)),
+	}
+	for index := range d.rows {
+		row, err := d.readRowValue(index, attribute)
+		if err != nil {
+			// A row this reader cannot turn into a reading is the reader's
+			// error, not a value that was absent: it is returned rather than
+			// recorded as "no value", which would answer a question about the
+			// data with a statement about the read.
+			return validationeval.ValueRowsReading{}, err
+		}
+		reading.Rows = append(reading.Rows, row)
+	}
+	return reading, nil
+}
+
+// readRowValue reads one attribute of one row as the value of the type it
+// states. The state is carried next to the value, so a row that holds no value
+// and a row the query did not return stay apart rather than both becoming the
+// zero of their type (decision section 5).
+func (d *Detail) readRowValue(index int, attribute core.CanonicalID) (validationeval.RowValue, error) {
+	if _, err := d.kindOf(attribute); err != nil {
+		return validationeval.RowValue{}, err
+	}
+	value, held := d.rows[index].Attributes[attribute]
+	switch {
+	case !held:
+		return validationeval.RowValue{State: validationeval.ValueNotFetched}, nil
+	case value == nil:
+		return validationeval.RowValue{State: validationeval.ValueNull}, nil
+	}
+	any, err := anyValue(value)
+	if err != nil {
+		return validationeval.RowValue{}, fmt.Errorf("row %d, %s: %w", index, attribute, err)
+	}
+	return validationeval.RowValue{State: validationeval.ValuePresent, Value: semantic.OperatorValue{Any: &any}}, nil
+}
+
 // ReadRelationPeriods reads the period of every row and, when group is not
 // empty, the value rows are grouped by.
 func (d *Detail) ReadRelationPeriods(relation, start, end, group core.CanonicalID) (validationeval.PeriodRowsReading, error) {

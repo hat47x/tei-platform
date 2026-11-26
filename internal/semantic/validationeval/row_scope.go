@@ -61,6 +61,37 @@ type StatefulRowNumberSource interface {
 	ReadRelationNumbers(relation, attribute core.CanonicalID) (NumberRowsReading, error)
 }
 
+// RowValue is one row's value of any type, with the state of the read that
+// produced it.
+//
+// The state is carried next to the value, exactly as a one-record reading does,
+// so "this row holds no value" and "this row was not read" stay apart and
+// neither becomes the zero of its type (decision section 5). Value is set only
+// when State is ValuePresent.
+type RowValue struct {
+	State ValueState
+	Value semantic.OperatorValue
+}
+
+// ValueRowsReading is the value of one input over the rows of a relation, read
+// as the type the declaration gives the input (decision section 8.4).
+//
+// It is the typed counterpart of NumberRowsReading: the rows of a relation are
+// read once, and the value of each row carries which type it was read as, so an
+// implementation that decides a column of days receives days and not numbers.
+type ValueRowsReading struct {
+	Coverage Coverage
+	Rows     []RowValue
+}
+
+// StatefulRowValueSource is implemented by a reader that can read one attribute
+// over every row of a relation as a value of the type the declaration gives it.
+// A reader that cannot is refused rather than asked row by row, and the value is
+// never read as a number it was not declared as.
+type StatefulRowValueSource interface {
+	ReadRelationValues(relation, attribute core.CanonicalID) (ValueRowsReading, error)
+}
+
 // DecideRowScoped is the one place a row-scoped operator answer, the read
 // Coverage and the operator's refutation statement become a Decision. It is
 // exported so a caller that already holds those three facts (the product read
