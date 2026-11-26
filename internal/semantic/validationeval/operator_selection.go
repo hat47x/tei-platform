@@ -221,6 +221,54 @@ func BuiltinImplementations() []NamedImplementation {
 				return value.Date.Compare(*deadline.Date) >= 0, nil
 			},
 		},
+		{
+			// tei.text.same-as decides "the text holds exactly the other text".
+			// Both inputs are texts, and a text is read as a text: the reader
+			// reports what each attribute holds, and this implementation
+			// compares the two. A text is never read as a number, so the text
+			// "7" and the number 7 are not the same value and are never
+			// compared.
+			//
+			// Two spellings of one text are one text, because the reader
+			// reports the text and not its spelling. The empty text is a value
+			// of length zero, so a record that holds it and a record that holds
+			// no text are different states and only the first is asked about
+			// here (decision section 8.3).
+			ID:    "tei.text.same-as",
+			Input: semantic.OperatorInputText,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("same-as reads an input named \"value\"; the rule supplied no value input")
+				}
+				other, ok := values["other"]
+				if !ok {
+					return false, fmt.Errorf("same-as reads an input named \"other\"; the rule supplied no other input")
+				}
+				if value.Text == nil || other.Text == nil {
+					return false, fmt.Errorf("same-as reads two texts; one of its inputs was not read as a text")
+				}
+				return *value.Text == *other.Text, nil
+			},
+		},
+		{
+			// tei.truth.is-true decides "the truth holds". A truth is read as a
+			// truth: the reader reports whether the attribute holds true, and
+			// this implementation answers that. A truth is never read as the
+			// number 1, which would answer a different question.
+			ID:    "tei.truth.is-true",
+			Input: semantic.OperatorInputTruth,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("is-true reads an input named \"value\"; the rule supplied no value input")
+				}
+				if value.Truth == nil {
+					return false, fmt.Errorf("is-true reads a truth; its input was not read as a truth")
+				}
+				return *value.Truth, nil
+			},
+		},
 	}
 }
 

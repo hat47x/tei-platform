@@ -36,6 +36,16 @@ type OperatorImplementation struct {
 	// the order they were read, and answers TriYes, TriNo or TriMaybe. It sees
 	// no Source, so what a rule reads stays decided by the declaration.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
+	// Values decides a rule for an operator whose inputs are of any type. It
+	// receives one value per input name, each carrying the type it was read as
+	// (decision section 8.4). A value is present only for an input the reader
+	// read, so an implementation never has to tell a value nobody holds from
+	// one nobody read.
+	//
+	// An implementation provides either this field or one of the numeric ones,
+	// never both: providing both would leave which value it answers from
+	// ambiguous.
+	Values func(values map[string]semantic.OperatorValue) (bool, error)
 	// Absent reads an absent value under the mapping the rule named. A rule may
 	// write `or <name>` after an input, and the declaration may state
 	// `absent as <name>`; the mapping says how an absent value is to be read.
@@ -45,15 +55,6 @@ type OperatorImplementation struct {
 	// implementation cannot read the absence that way, and the decision stays
 	// undecided instead of reading the absence as zero or as present.
 	Absent func(mapping string) (*big.Rat, bool)
-	// Values decides a rule for an operator whose inputs are of any type.
-	// It receives one value per input name, each carrying the type it was
-	// read as (section 8.4). A value is present only for an input the reader
-	// read, so an implementation never has to tell a value nobody holds from
-	// one nobody read.
-	//
-	// An implementation provides either this field or the numeric ones, never
-	// both: providing both would leave which value it answers from ambiguous.
-	Values func(values map[string]semantic.OperatorValue) (bool, error)
 }
 
 // Operators is what an evaluation knows about declared operators: the
