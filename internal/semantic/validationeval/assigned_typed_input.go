@@ -172,13 +172,14 @@ func readAssignedTypedValue(rule semantic.Validation, input semantic.OperatorInp
 		if err != nil {
 			return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, attribute, err)
 		}
+		if reading.State == ValuePresent && !reading.Value.Valid() {
+			// A value no type reads is not a value. Handing it to an
+			// implementation as an empty one would let a rule be answered from
+			// a value it never held, which is what section 8.4 refuses, so the
+			// reader that produced it is named here instead.
+			return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s: the reader reports attribute %s as holding a value no type reads; a value of an `any` input says its type", rule.ID, attribute)
+		}
 		return presentTypedReading(rule, attribute, reading.State, func() semantic.OperatorValue {
-			if !reading.Value.Valid() {
-				// A value no type reads is not a value: it is reported here,
-				// where the reader that produced it is named, rather than being
-				// handed to an implementation.
-				return semantic.OperatorValue{}
-			}
 			value := reading.Value
 			return semantic.OperatorValue{Any: &value}
 		})
