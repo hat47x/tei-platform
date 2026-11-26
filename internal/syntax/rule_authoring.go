@@ -101,6 +101,24 @@ const OperatorInputAnyWord OperatorInputWord = "any"
 // attribute holds a value, not the value itself.
 const OperatorInputPresenceWord OperatorInputWord = "presence"
 
+// authoredInputValue returns the bytes the author wrote for one input value.
+//
+// A quoted constant keeps its quotes: they are part of how a text is written
+// (section 8.3), and the lexer's string token carries only what is between
+// them. Re-quoting the token text would invent a spelling, so the value is
+// sliced from the source the token covers. Byte offsets are anchored to that
+// source, including a leading BOM, so the slice is the authored text.
+func (p *Parser) authoredInputValue(t Token) string {
+	if t.Kind != TokenString {
+		return t.Text
+	}
+	src := p.lx.Source()
+	if t.Start.Offset < 0 || t.End.Offset > len(src) || t.Start.Offset >= t.End.Offset {
+		return t.Text
+	}
+	return src[t.Start.Offset:t.End.Offset]
+}
+
 // OperatorInput is one parsed `takes` line of an operator declaration.
 type OperatorInput struct {
 	Word          OperatorInputWord
@@ -175,7 +193,10 @@ type RuleReference struct {
 
 // RuleInputAssignment is one `name: value` written after an operator
 // reference. The value is either a complete attribute id or a constant; which
-// one it is stays the reader's decision, so both are kept as authored text.
+// one it is stays the reader's decision, so both are kept as authored text. A
+// constant keeps the spelling the author wrote, quotes included: they are part
+// of how a text is written (section 8.3), and dropping them would leave the
+// conversion unable to tell a text from a word.
 type RuleInputAssignment struct {
 	Name      string
 	Value     string
@@ -824,7 +845,10 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 			if err != nil {
 				return RuleAuthoring{}, err
 			}
-			if valueTok.Kind != TokenIdent {
+			// A constant is written the way its type is written (section 8.3), so
+			// a text constant carries its double quotes. Refusing the quoted form
+			// here would leave a text input that no constant could ever reach.
+			if valueTok.Kind != TokenIdent && valueTok.Kind != TokenString {
 				at := valueTok
 				if valueTok.Kind == TokenEOF {
 					at = nameTok
@@ -834,7 +858,7 @@ func (p *Parser) parseRuleAuthoring(namespace core.CanonicalID) (RuleAuthoring, 
 			}
 			assignment := RuleInputAssignment{
 				Name:      nameTok.Text,
-				Value:     valueTok.Text,
+				Value:     p.authoredInputValue(valueTok),
 				NameSpan:  tokenAnchor(nameTok),
 				ValueSpan: tokenAnchor(valueTok),
 			}
