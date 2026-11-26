@@ -83,6 +83,18 @@ func IsOperatorCasePresenceWord(text string) bool {
 	return false
 }
 
+// IsOperatorCaseNotFetchedWord reports whether the text is the word a cell
+// writes when its value was not read.
+//
+// It is the same word the row-set example's reader carries
+// (`RowCellNotFetched`), and section 8.3 says the writing for "not read" does
+// not depend on the input's type, so a one-record example's cell may write it
+// too. It is not a decimal, so the one-record reader keeps it as written and
+// the Workspace reads it against the input's type.
+func IsOperatorCaseNotFetchedWord(text string) bool {
+	return text == RowCellNotFetched
+}
+
 // ParseOperatorCaseValue reads the decimal text of an example. It accepts an
 // optional minus sign, digits, and an optional fraction, and nothing else: no
 // exponent, no digit grouping, no leading plus, no surrounding space. A text

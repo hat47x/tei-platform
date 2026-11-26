@@ -200,6 +200,14 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 							stated = append(stated, value)
 							continue
 						}
+						// Section 8.3: the writing for "not read" does not depend
+						// on the input's type, so the word is a value of any type's
+						// cell. It is not a decimal, so a number input's decimal
+						// check is skipped for it rather than reading it as one.
+						if semantic.IsOperatorCaseNotFetchedWord(value) {
+							stated = append(stated, value)
+							continue
+						}
 						if _, err := semantic.ParseOperatorCaseValue(value); err != nil {
 							out = append(out, errFor(
 								operatorSubject,
