@@ -49,8 +49,8 @@ type OperatorRowCasesAuthoring struct {
 // operator that reads every row.
 // isNoteColumn reports whether the column index is one of the note columns of
 // this table. A note column is not an input, so its cell states no value.
-func isNoteColumn(notes []int, index int) bool {
-	for _, note := range notes {
+func isNoteColumn(noteIndexes []int, index int) bool {
+	for _, note := range noteIndexes {
 		if note == index {
 			return true
 		}
@@ -110,9 +110,10 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 	}
 	out.InputHeaderSpans = map[string]Anchor{}
 	columns := map[string]int{}
-	// The indexes of the note columns, so a cell under one is not read as a
-	// value of an input.
-	var notes []int
+	// The note columns: the names already seen, so a note word written twice is
+	// refused, and the indexes, so a cell under one is not read as a value.
+	noteNames := map[string]bool{}
+	var noteIndexes []int
 	for i, cell := range header {
 		if cell.Text == "" {
 			return out, cellError(cell, "a column header is empty; name one of the operator's inputs")
@@ -125,9 +126,15 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 		// it is not read as an input. It is the same word the one-row-per-
 		// example table treats that way (section 8.1), and the column is kept
 		// for the author rather than parsed: a row example is about the rows
-		// together, and the note says which rows those are.
+		// together, and the note says which rows those are. A note word written
+		// twice is refused the way a repeated input column is, because a table
+		// whose columns are read has one column per name.
 		if cell.Text == "note" {
-			notes = append(notes, i)
+			if noteNames[cell.Text] {
+				return out, cellError(cell, fmt.Sprintf("column %q appears more than once", cell.Text))
+			}
+			noteNames[cell.Text] = true
+			noteIndexes = append(noteIndexes, i)
 			continue
 		}
 		if _, duplicate := columns[cell.Text]; duplicate {
@@ -178,7 +185,7 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 		values := map[string]string{}
 		spans := map[string]Anchor{}
 		for _, name := range names {
-			if isNoteColumn(notes, columns[name]) {
+			if isNoteColumn(noteIndexes, columns[name]) {
 				continue
 			}
 			cell := row[columns[name]]
