@@ -479,6 +479,8 @@ R-0/R-1は既存C0→C3の狭い拡張として扱う。R-2/R-3はP0の正式Sou
 
 ### 15.1 新たな判断：計算の共有、成果物の世代、Consumerが見る組を分離する
 
+**2026-11-26の適用上の限定（[#5830](https://github.com/hat47x/tei-platform/issues/5830)）**：この節の共通世代と一式公開は、利用側が複数結果を整合した組として読む必要がある場合の設計候補である。独立して利用する出力に共通Generation IDや一式切替を要求しない。同じDBのTransaction/Snapshotなどで必要な整合性が成立する場合も、別の世代発行主体を必須にしない。DBの確定件数はProviderのTransaction結果とその意味が十分な根拠になる場合があり、独立再読取を一律に要求しない。Batch設計[§35](ETL_BATCH_FUNCTION_COMPOSITION_DESIGN_2026-11.md#35-公開単位とdb反映の確認範囲2026-11-26設計候補)で適用条件と反例を整理する。
+
 §3・§10〜14の成果物要求／計算粒度／実現選択／変更影響を踏まえると、最後に残る境界は**「複数出力が計算できたこと」と「複数出力を整合した組として使えること」は異なる**という点である。たとえ二つのResultが同じ論理Operationから導出されても、別々のStore・DB・APIに公開された時点では、片方だけ新世代に切り替わることがある。Data/Relation/Ruleの正本、実Jobの完了、生成Artifactの完全性、各Consumerの実受領を一枚の成功にまとめない。
 
 比較には最低限、次の区分を保つ。ここでの「組」は専用の新しい永続Core型ではなく、既存Result要求・Artifact Manifest・Source/Meaning revision・受理された業務期間の**read-onlyな照合視点**を指す。
