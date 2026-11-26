@@ -68,7 +68,7 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 	// The declarations are indexed before the rules are converted: a rule that
 	// names an input no operator declares must be diagnosed, and that check
 	// needs the declarations.
-	declaredInputs := declaredOperatorInputNames(file.Operators)
+	declaredInputs := declaredOperatorInputs(file.Operators)
 	declaredMappings := declaredOperatorMappings(file.Operators)
 	declaredRowScoped := declaredRowScopedOperators(file)
 	for _, rule := range file.Rules {
@@ -228,20 +228,6 @@ func OperatorInputFor(word OperatorInputWord) (semantic.OperatorInput, bool) {
 	return "", false
 }
 
-// declaredOperatorInputNames indexes the input names each declaration gives,
-// keyed by operator id. Every declared operator gets an entry, so an operator
-// that declares no name is distinguishable from one that is not declared at all.
-//
-// The unnamed single-input form declares no name of its own, but the reader
-// gives it "value" (see OperatorAuthoring.InputName). That name has to be in
-// this index too, or a rule that writes `value:` against `takes number` is
-// refused as undeclared while the same contract read through
-// `takes value: number` passes the name check. Both forms must still refuse
-// value transport until semantic normalization can preserve it (#4362).
-//
-// The name stays out of the emitted semantic.Operator. This index is what the
-// rule check reads; the contract continues to carry only what the author wrote,
-// so a reader that needs a name for the single input still applies "value".
 // declaredOperatorMappings indexes the value-absent mapping each declaration
 // gives, keyed by operator id and then by the input the mapping belongs to. An
 // operator with no entry is either undeclared in this source or declares no
@@ -270,20 +256,63 @@ func declaredOperatorMappings(operators []OperatorAuthoring) map[core.CanonicalI
 	return mappings
 }
 
-func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.CanonicalID][]string {
-	names := make(map[core.CanonicalID][]string, len(operators))
+// declaredOperatorInput is one input an operator declaration names, with the
+// type the declaration gave it.
+type declaredOperatorInput struct {
+	// Name is what a rule writes to address the input. An unnamed input is
+	// addressed as "value".
+	Name string
+	// Type is the declared type, or the empty input when the declaration's
+	// type word has no existing operator input. That declaration is refused on
+	// its own, so no value spelling is checked against a type nobody read.
+	Type semantic.OperatorInput
+}
+
+// declaredOperatorInputs indexes the inputs each declaration gives, keyed by
+// operator id. Every declared operator gets an entry, so an operator that
+// declares no name is distinguishable from one that is not declared at all.
+//
+// The unnamed single-input form declares no name of its own, but the reader
+// gives it "value" (see OperatorAuthoring.InputName). That name has to be in
+// this index too, or a rule that writes `value:` against `takes number` is
+// refused as undeclared while the same contract read through
+// `takes value: number` passes the name check.
+//
+// The name stays out of the emitted semantic.Operator. This index is what the
+// rule check reads; the contract continues to carry only what the author wrote,
+// so a reader that needs a name for the single input still applies "value".
+//
+// The type travels with the name because the rule check reads the value the
+// author wrote against the type the declaration gave: `low: 100` is a number
+// and `low: "100"` is not, and which of the two is written is the
+// declaration's decision, not the value's.
+func declaredOperatorInputs(operators []OperatorAuthoring) map[core.CanonicalID][]declaredOperatorInput {
+	inputs := make(map[core.CanonicalID][]declaredOperatorInput, len(operators))
 	for _, operator := range operators {
-		entry := names[operator.ID]
+		entry := inputs[operator.ID]
 		for _, input := range operator.Inputs {
 			name := input.Name
 			if name == "" {
 				name = "value"
 			}
-			entry = append(entry, name)
+			inputType, _ := OperatorInputFor(input.Word)
+			entry = append(entry, declaredOperatorInput{Name: name, Type: inputType})
 		}
-		names[operator.ID] = entry
+		inputs[operator.ID] = entry
 	}
-	return names
+	return inputs
+}
+
+// declaredInputFor returns the declared input a rule names. The second return
+// value is false when the operator declares no input of that name, so a caller
+// never reads a type from an input nobody declared.
+func declaredInputFor(declared []declaredOperatorInput, name string) (declaredOperatorInput, bool) {
+	for _, input := range declared {
+		if input.Name == name {
+			return input, true
+		}
+	}
+	return declaredOperatorInput{}, false
 }
 
 // ruleToValidationWithInputs refuses an assignment that names an input the
@@ -295,7 +324,7 @@ func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.Canonica
 // places.
 func ruleToValidationWithInputs(
 	rule RuleAuthoring,
-	declaredInputs map[core.CanonicalID][]string,
+	declaredInputs map[core.CanonicalID][]declaredOperatorInput,
 	declaredMappings map[core.CanonicalID]map[string][]string,
 	declaredRowScoped map[core.CanonicalID]bool,
 ) (semantic.Validation, *RuleConversionIssue) {
@@ -314,7 +343,8 @@ func ruleToValidationWithInputs(
 		return refuseAssignedInputs(rule)
 	}
 	for _, assignment := range rule.Inputs {
-		if !inputNameDeclared(declared, assignment.Name) {
+		input, declaredInput := declaredInputFor(declared, assignment.Name)
+		if !declaredInput {
 			return semantic.Validation{}, &RuleConversionIssue{
 				RuleID: rule.ID, Span: assignment.NameSpan,
 				Msg: fmt.Sprintf(
@@ -322,7 +352,7 @@ func ruleToValidationWithInputs(
 					rule.Operator.Text, assignment.Name),
 			}
 		}
-		if issue := assignmentValueTypeIssue(rule, assignment); issue != nil {
+		if issue := assignmentValueTypeIssue(rule, assignment, input.Type); issue != nil {
 			return semantic.Validation{}, issue
 		}
 		if assignment.AbsentAs != "" {
@@ -344,7 +374,7 @@ func ruleToValidationWithInputs(
 	// position so the author can remove exactly that assignment.
 	if len(declared) > 0 {
 		for _, assignment := range rule.Inputs {
-			if assignment.Name == declared[0] {
+			if assignment.Name == declared[0].Name {
 				return semantic.Validation{}, &RuleConversionIssue{
 					RuleID: rule.ID, Span: assignment.NameSpan,
 					Msg: fmt.Sprintf("operator %s input %q is already supplied by the rule subject; do not assign it again",
@@ -359,11 +389,11 @@ func ruleToValidationWithInputs(
 		assigned[assignment.Name] = true
 	}
 	for i := 1; i < len(declared); i++ {
-		if !assigned[declared[i]] {
+		if !assigned[declared[i].Name] {
 			return semantic.Validation{}, &RuleConversionIssue{
 				RuleID: rule.ID, Span: rule.Operator.Anchor,
 				Msg: fmt.Sprintf("operator %s declares input %q but the rule does not assign it; every input except the first must be assigned",
-					rule.Operator.Text, declared[i]),
+					rule.Operator.Text, declared[i].Name),
 			}
 		}
 	}
@@ -397,57 +427,87 @@ func refuseAssignedInputs(rule RuleAuthoring) (semantic.Validation, *RuleConvers
 	}
 }
 
-// assignmentValueTypeIssue refuses a value whose type the declared input does
-// not take.
+// assignmentValueTypeIssue refuses a value whose spelling is not the one the
+// declared input's type takes.
 //
-// Only `number` exists today, so the check is narrow and exact: a numeric input
-// takes a canonical attribute id (an id names the item whose value is read) or a
-// decimal constant. Anything else - a word, a quoted string, a bare `true` - is a
-// type mismatch, and saying so is more useful than reporting it later as an
-// unsupported transport.
-func assignmentValueTypeIssue(rule RuleAuthoring, assignment RuleInputAssignment) *RuleConversionIssue {
-	if !isNumberText(assignment.Value) && !isCanonicalReferenceText(assignment.Value) {
-		return &RuleConversionIssue{
-			RuleID: rule.ID, Span: assignment.ValueSpan,
-			Msg: fmt.Sprintf(
-				"input %q takes a number, but %q is neither a decimal number nor an attribute id",
-				assignment.Name, assignment.Value),
-		}
+// An attribute id is accepted for every type: it names the item whose value is
+// read, and the declaration decides that value's type, not the rule. A constant
+// is read by the same reader the evaluator and the example table use
+// (semantic.ParseOperatorInputValue, decision section 8.3), so a constant this
+// surface cannot read is refused here, at the authored bytes, instead of
+// travelling on as a value of a type nobody wrote.
+//
+// The message names the declared type and says how a value of that type is
+// written. A refusal that only said "takes a number" told the author of a text
+// input nothing about what to write instead.
+//
+// An input whose declared type this surface cannot read has no spelling to
+// check: the declaration itself is refused, and a second refusal here would
+// report the rule for the declaration's problem.
+func assignmentValueTypeIssue(rule RuleAuthoring, assignment RuleInputAssignment, inputType semantic.OperatorInput) *RuleConversionIssue {
+	if inputType == "" || isCanonicalReferenceText(assignment.Value) {
+		return nil
 	}
-	return nil
+	// A presence input reads whether the attribute holds a value rather than
+	// the value itself, so its constant is one of the two words an example cell
+	// states. ParseOperatorInputValue refuses a presence value by design,
+	// because an example never states one.
+	if inputType == semantic.OperatorInputPresence && semantic.IsOperatorCasePresenceWord(assignment.Value) {
+		return nil
+	}
+	if _, err := semantic.ParseOperatorInputValue(inputType, assignment.Value); err == nil {
+		return nil
+	}
+	noun := inputTypeNoun(inputType)
+	return &RuleConversionIssue{
+		RuleID: rule.ID, Span: assignment.ValueSpan,
+		Msg: fmt.Sprintf("input %q takes a %s, but %q is not written as a %s; %s, or name an attribute",
+			assignment.Name, noun, assignment.Value, noun, inputValueAdvice(inputType, assignment.Value)),
+	}
 }
 
-// isNumberText reports whether text reads as a decimal number under the same
-// rule the operator examples use: digits, an optional leading minus, and an
-// optional fraction, nothing else.
-func isNumberText(text string) bool {
-	if text == "" {
-		return false
+// inputTypeNoun names a declared type the way a message about a value says it.
+func inputTypeNoun(inputType semantic.OperatorInput) string {
+	switch inputType {
+	case semantic.OperatorInputNumber:
+		return "number"
+	case semantic.OperatorInputDate:
+		return "calendar date"
+	case semantic.OperatorInputText:
+		return "text"
+	case semantic.OperatorInputTruth:
+		return "truth"
+	case semantic.OperatorInputAny:
+		return "value of any type"
+	case semantic.OperatorInputPresence:
+		return "presence word"
 	}
-	digits := text
-	if digits[0] == '-' {
-		digits = digits[1:]
+	return string(inputType)
+}
+
+// inputValueAdvice says how a value of the declared type is written, so the
+// refusal tells the author what to write rather than only what not to write.
+// The spellings are section 8.3's, read by the same reader the value was read
+// with.
+func inputValueAdvice(inputType semantic.OperatorInput, value string) string {
+	switch inputType {
+	case semantic.OperatorInputNumber:
+		return "write a decimal number, for example 100"
+	case semantic.OperatorInputDate:
+		return "write a calendar date as YYYY-MM-DD, for example 2026-04-01"
+	case semantic.OperatorInputText:
+		// The quotes are what the value was missing, so the example shows them
+		// around exactly what the author wrote.
+		return fmt.Sprintf("write it between double quotes, for example %q", value)
+	case semantic.OperatorInputTruth:
+		return "write true or false"
+	case semantic.OperatorInputAny:
+		return "write a decimal number, a calendar date, a quoted text, or a truth"
+	case semantic.OperatorInputPresence:
+		return fmt.Sprintf("write %s or %s",
+			semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent)
 	}
-	seenDigit, seenPoint, fractionDigits := false, false, 0
-	for i := 0; i < len(digits); i++ {
-		c := digits[i]
-		switch {
-		case c >= '0' && c <= '9':
-			seenDigit = true
-			if seenPoint {
-				fractionDigits++
-			}
-		case c == '.' && !seenPoint && seenDigit:
-			seenPoint = true
-		default:
-			return false
-		}
-	}
-	if !seenDigit || seenPoint && fractionDigits == 0 {
-		return false
-	}
-	// "007" is refused by the example reader as ambiguous, so it is refused here.
-	return !(len(digits) > 1 && digits[0] == '0' && digits[1] != '.')
+	return "write a value of the declared type"
 }
 
 // isCanonicalReferenceText reports whether text is a multi-segment id, which is
