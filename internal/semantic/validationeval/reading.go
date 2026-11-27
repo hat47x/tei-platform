@@ -611,20 +611,25 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		if refusal := refuseNonNumberInputs(rule, inputs); refusal != nil {
 			return Decision{}, refusal
 		}
+		// A rule whose operator declares an input read over every row of a
+		// relation is asked of those rows, not of one record (decision section
+		// 15.1). Every such input of this rule is read in one call, so one
+		// answer never mixes two reads (section 14.2 B-10).
+		//
+		// The row-scoped question is decided before the one-record one: a
+		// column of days is not one record's day, and reading it through the
+		// one-record reader would answer a question about the relation from one
+		// record of it.
+		for _, input := range inputs {
+			if input.OfEachRow {
+				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
+			}
+		}
 		// A contract may declare a calendar-day input. A day is read as a day,
 		// never as a number: `2026-04-01` read as a decimal is not a value
 		// anyone wrote, and the two reads ask different questions.
 		if declaresDateInput(inputs) {
 			return decideDateOperator(rule, contract, inputs, implementation, source)
-		}
-		// A rule whose operator declares an input read over every row of a
-		// relation is asked of those rows, not of one record (decision section
-		// 15.1). Every such input of this rule is read in one call, so one
-		// answer never mixes two reads (section 14.2 B-10).
-		for _, input := range inputs {
-			if input.OfEachRow {
-				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
-			}
 		}
 		// The rule subject supplies the first input, and only it. A rule that
 		// also assigns that input by name binds it twice, so the instruction

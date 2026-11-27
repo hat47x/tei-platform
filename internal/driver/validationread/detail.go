@@ -574,6 +574,109 @@ func (r Row) ReadTruth(attribute core.CanonicalID) (validationeval.TruthReading,
 	return r.detail.readTruth(r.index, attribute)
 }
 
+// ReadTypedRows reads one attribute in every row of the relation as the type the
+// input declaration states. It is the row-scoped reader decision section 8.4
+// fixes: a column of days is read as days and a column of texts as texts, never
+// as numbers, because the two ask different questions of the same column.
+//
+// The column is present only when every row of it was read and holds a value. A
+// row the query did not return, or a row that holds no value, makes the whole
+// column undecided rather than reading that row as the zero of its type: nothing
+// is known about a value nobody read, and the zero of a type is a value.
+func (d *Detail) ReadTypedRows(input semantic.OperatorInputDeclaration, relation, attribute core.CanonicalID) (validationeval.TypedRowReading, error) {
+	if err := d.checkRelation(relation); err != nil {
+		return validationeval.TypedRowReading{}, err
+	}
+	reading := validationeval.TypedRowReading{
+		Values: make([]validationeval.RowValueReading, 0, len(d.rows)),
+	}
+	for index := range d.rows {
+		row, err := d.readTypedRowValue(index, input.Type, attribute)
+		if err != nil {
+			return validationeval.TypedRowReading{}, err
+		}
+		if row.State != validationeval.ValuePresent {
+			return validationeval.TypedRowReading{State: row.State}, nil
+		}
+		reading.Values = append(reading.Values, row)
+	}
+	reading.State = validationeval.ValuePresent
+	return reading, nil
+}
+
+// readTypedRowValue reads one attribute of one row in the type the declaration
+// states. The value is carried in the field that type owns, so an implementation
+// that decides days receives days (decision section 8.4).
+func (d *Detail) readTypedRowValue(index int, inputType semantic.OperatorInput, attribute core.CanonicalID) (validationeval.RowValueReading, error) {
+	switch inputType {
+	case semantic.OperatorInputNumber:
+		reading, err := d.readNumber(index, attribute)
+		if err != nil {
+			return validationeval.RowValueReading{}, err
+		}
+		if reading.State != validationeval.ValuePresent {
+			return validationeval.RowValueReading{State: reading.State}, nil
+		}
+		return validationeval.RowValueReading{
+			State: validationeval.ValuePresent,
+			Value: semantic.OperatorValue{Number: new(big.Rat).Set(reading.Value)},
+		}, nil
+	case semantic.OperatorInputDate:
+		reading, err := d.readDate(index, attribute)
+		if err != nil {
+			return validationeval.RowValueReading{}, err
+		}
+		if reading.State != validationeval.ValuePresent {
+			return validationeval.RowValueReading{State: reading.State}, nil
+		}
+		day := reading.Value
+		return validationeval.RowValueReading{
+			State: validationeval.ValuePresent,
+			Value: semantic.OperatorValue{Date: &day},
+		}, nil
+	case semantic.OperatorInputText:
+		reading, err := d.readText(index, attribute)
+		if err != nil {
+			return validationeval.RowValueReading{}, err
+		}
+		if reading.State != validationeval.ValuePresent {
+			return validationeval.RowValueReading{State: reading.State}, nil
+		}
+		spelled := reading.Value
+		return validationeval.RowValueReading{
+			State: validationeval.ValuePresent,
+			Value: semantic.OperatorValue{Text: &spelled},
+		}, nil
+	case semantic.OperatorInputTruth:
+		reading, err := d.readTruth(index, attribute)
+		if err != nil {
+			return validationeval.RowValueReading{}, err
+		}
+		if reading.State != validationeval.ValuePresent {
+			return validationeval.RowValueReading{State: reading.State}, nil
+		}
+		held := reading.Value
+		return validationeval.RowValueReading{
+			State: validationeval.ValuePresent,
+			Value: semantic.OperatorValue{Truth: &held},
+		}, nil
+	case semantic.OperatorInputAny:
+		reading, err := d.readAny(index, attribute)
+		if err != nil {
+			return validationeval.RowValueReading{}, err
+		}
+		if reading.State != validationeval.ValuePresent {
+			return validationeval.RowValueReading{State: reading.State}, nil
+		}
+		value := reading.Value
+		return validationeval.RowValueReading{
+			State: validationeval.ValuePresent,
+			Value: semantic.OperatorValue{Any: &value},
+		}, nil
+	}
+	return validationeval.RowValueReading{}, fmt.Errorf("%s is declared as %s, which this reader does not read a column of", attribute, inputType)
+}
+
 // ReadAny reads the attribute as a value of the type the driver handed it back
 // in, which is the type the value carries to the implementation (section 8.4).
 func (r Row) ReadAny(attribute core.CanonicalID) (validationeval.AnyReading, error) {
