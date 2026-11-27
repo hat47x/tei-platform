@@ -269,6 +269,18 @@ func BuiltinImplementations() []NamedImplementation {
 				return *value.Truth, nil
 			},
 		},
+		{
+			// tei.any.same-as decides "the value holds exactly the other
+			// value", for inputs declared `any`. A value of an `any` input
+			// keeps the type it was read as, so the comparison reads the kind
+			// from there: a number and a text that spell the same characters
+			// are different values and are never the same.
+			ID:    "tei.any.same-as",
+			Input: semantic.OperatorInputAny,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				return anySameAs(values)
+			},
+		},
 	}
 }
 

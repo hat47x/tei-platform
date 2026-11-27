@@ -119,6 +119,24 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			// implementation says so rather than reading it as the nearest text.
 			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(7, 1)}, "other": {Text: textValue("7")}}, wantErr: true},
 		},
+		"tei.any.same-as": {
+			{name: "the same number", values: anyPair(anyValueOf(big.NewRat(100, 1)), anyValueOf(big.NewRat(100, 1))), want: true},
+			{name: "a different number", values: anyPair(anyValueOf(big.NewRat(100, 1)), anyValueOf(big.NewRat(200, 1))), want: false},
+			{name: "the same text", values: anyPair(anyValueOf("100"), anyValueOf("100")), want: true},
+			{name: "a different text", values: anyPair(anyValueOf("100"), anyValueOf("200")), want: false},
+			{name: "the same truth", values: anyPair(anyValueOf(true), anyValueOf(true)), want: true},
+			{name: "a different truth", values: anyPair(anyValueOf(true), anyValueOf(false)), want: false},
+			// A number and a text that spell the same characters are two values,
+			// which is the distinction section 8.3 makes in an example table and
+			// section 8.4 carries into the value an implementation receives.
+			{name: "a number against the text of the same characters", values: anyPair(anyValueOf(big.NewRat(100, 1)), anyValueOf("100")), want: false},
+			{name: "no value input", values: map[string]semantic.OperatorValue{"other": anyValueOf("A-100")}, wantErr: true},
+			{name: "no other input", values: map[string]semantic.OperatorValue{"value": anyValueOf("A-100")}, wantErr: true},
+			// A value that was not read as a value of any type is not one, and
+			// this implementation says so rather than comparing it as the
+			// nearest type.
+			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(7, 1)}, "other": anyValueOf("7")}, wantErr: true},
+		},
 		"tei.truth.is-true": {
 			{name: "true", values: map[string]semantic.OperatorValue{"value": {Truth: truthValue(true)}}, want: true},
 			{name: "false", values: map[string]semantic.OperatorValue{"value": {Truth: truthValue(false)}}, want: false},
@@ -390,4 +408,9 @@ func TestEveryAtMostReadsAbsentValuesUnderTheMappingItKnows(t *testing.T) {
 			t.Fatalf("an absent row answered %d; it must not be read as a value the implementation never received", int(got))
 		}
 	}
+}
+
+// anyPair builds the two inputs the shipped `tei.any.same-as` reads.
+func anyPair(value, other semantic.OperatorValue) map[string]semantic.OperatorValue {
+	return map[string]semantic.OperatorValue{"value": value, "other": other}
 }
