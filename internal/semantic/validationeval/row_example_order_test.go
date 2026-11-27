@@ -23,6 +23,8 @@ func namedImplementation(t *testing.T, id string) (validationeval.OperatorImplem
 			Number:     available.Number,
 			Numbers:    available.Numbers,
 			NumberRows: available.NumberRows,
+			Values:     available.Values,
+			ValueRows:  available.ValueRows,
 			Absent:     available.Absent,
 		}, true
 	}

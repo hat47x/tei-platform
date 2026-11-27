@@ -826,7 +826,7 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 	// reader (decision section 8.4). Reading the column as numbers would answer
 	// a question about a value nobody read.
 	if implementation.ValueRows != nil {
-		return decideTypedRowScopedOperator(rule, inputs, implementation, source)
+		return decideTypedRowScopedOperator(rule, contract, inputs, implementation, source)
 	}
 	reader, ok := source.(StatefulRowNumberSource)
 	if !ok {

@@ -16,10 +16,10 @@ import (
 // and answers a boolean; it never sees a Source, so what a rule reads stays
 // decided by the declaration.
 //
-// A rule whose day input reads every row of a relation is refused rather than
-// read row by row: this reader has no reader for a column of days yet, and
-// answering from one row would answer a question about the relation from one
-// record of it.
+// A rule whose day input reads every row of a relation is decided by the row
+// path (decideRowScopedOperator, reading.go), which reads a column of days in
+// the type the declaration states: answering from one row would answer a
+// question about the relation from one record of it.
 
 // declaresDateInput reports whether some declared input reads a calendar day.
 func declaresDateInput(inputs []semantic.OperatorInputDeclaration) bool {
@@ -37,13 +37,6 @@ func decideDateOperator(rule semantic.Validation, contract semantic.Operator, in
 	dates, ok := source.(StatefulDateSource)
 	if !ok {
 		return Decision{}, fmt.Errorf("semantic validation %s reads operator %s, which takes a calendar day, but this reader cannot read a calendar day", rule.ID, rule.Operator)
-	}
-	for _, input := range inputs {
-		if input.OfEachRow {
-			return Decision{}, fmt.Errorf(
-				"semantic validation %s reads operator %s input %q over every row of relation %s, but this reader reads a calendar day of one record; a column of days has no reader yet",
-				rule.ID, rule.Operator, input.Name, rule.Relation)
-		}
 	}
 	// The rule subject supplies the first input, and only it.
 	for _, assignment := range rule.Inputs {
