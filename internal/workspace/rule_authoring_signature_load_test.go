@@ -33,7 +33,10 @@ func TestRuleAuthoringSignatureDiagnosticsReachLoad(t *testing.T) {
 			name: "value of the wrong type",
 			body: "namespace sales\noperator sales.op: takes low: number\n" +
 				"rule sales.item.probe:\n  sales.item.amount is sales.op low: ITEM-A\n",
-			want:   "takes a number",
+			// The refusal names the type the declaration states, which is what
+			// an author of a wrong-typed value needs: it used to say "takes a
+			// number" whatever the declaration said.
+			want:   "is read as number",
 			ruleID: "sales.item.probe",
 		},
 		{

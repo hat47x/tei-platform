@@ -69,10 +69,11 @@ func RuleNamespace(file RuleAuthoringFile) (semantic.Namespace, []RuleConversion
 	// names an input no operator declares must be diagnosed, and that check
 	// needs the declarations.
 	declaredInputs := declaredOperatorInputNames(file.Operators)
+	declaredTypes := declaredOperatorInputTypes(file.Operators)
 	declaredMappings := declaredOperatorMappings(file.Operators)
 	declaredRowScoped := declaredRowScopedOperators(file)
 	for _, rule := range file.Rules {
-		validation, issue := ruleToValidationWithInputs(rule, declaredInputs, declaredMappings, declaredRowScoped)
+		validation, issue := ruleToValidationWithInputs(rule, declaredInputs, declaredTypes, declaredMappings, declaredRowScoped)
 		if issue != nil {
 			issues = append(issues, *issue)
 			continue
@@ -286,6 +287,39 @@ func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.Canonica
 	return names
 }
 
+// declaredOperatorInputTypes indexes the type each declared input reads, so a
+// rule's assigned value is checked against the type the declaration states and
+// not against the one this surface happened to assume.
+//
+// The type words were `number` alone for a long time, and the value check was
+// written for that. Section 3 added date, text, truth and any, so the check
+// reads the type from the declaration now.
+func declaredOperatorInputTypes(operators []OperatorAuthoring) map[core.CanonicalID]map[string]semantic.OperatorInput {
+	types := make(map[core.CanonicalID]map[string]semantic.OperatorInput, len(operators))
+	for _, operator := range operators {
+		entry := types[operator.ID]
+		if entry == nil {
+			entry = make(map[string]semantic.OperatorInput, len(operator.Inputs))
+		}
+		for _, input := range operator.Inputs {
+			name := input.Name
+			if name == "" {
+				name = "value"
+			}
+			kind, known := OperatorInputFor(input.Word)
+			if !known {
+				// A word this surface refuses is reported where the
+				// declaration is read, so the rule is not diagnosed for it
+				// twice.
+				continue
+			}
+			entry[name] = kind
+		}
+		types[operator.ID] = entry
+	}
+	return types
+}
+
 // ruleToValidationWithInputs refuses an assignment that names an input the
 // referenced operator does not declare.
 //
@@ -296,6 +330,7 @@ func declaredOperatorInputNames(operators []OperatorAuthoring) map[core.Canonica
 func ruleToValidationWithInputs(
 	rule RuleAuthoring,
 	declaredInputs map[core.CanonicalID][]string,
+	declaredTypes map[core.CanonicalID]map[string]semantic.OperatorInput,
 	declaredMappings map[core.CanonicalID]map[string][]string,
 	declaredRowScoped map[core.CanonicalID]bool,
 ) (semantic.Validation, *RuleConversionIssue) {
@@ -322,7 +357,7 @@ func ruleToValidationWithInputs(
 					rule.Operator.Text, assignment.Name),
 			}
 		}
-		if issue := assignmentValueTypeIssue(rule, assignment); issue != nil {
+		if issue := assignmentValueTypeIssue(rule, assignment, declaredTypes[core.CanonicalID(rule.Operator.Text)][assignment.Name]); issue != nil {
 			return semantic.Validation{}, issue
 		}
 		if assignment.AbsentAs != "" {
@@ -400,21 +435,47 @@ func refuseAssignedInputs(rule RuleAuthoring) (semantic.Validation, *RuleConvers
 // assignmentValueTypeIssue refuses a value whose type the declared input does
 // not take.
 //
-// Only `number` exists today, so the check is narrow and exact: a numeric input
-// takes a canonical attribute id (an id names the item whose value is read) or a
-// decimal constant. Anything else - a word, a quoted string, a bare `true` - is a
-// type mismatch, and saying so is more useful than reporting it later as an
-// unsupported transport.
-func assignmentValueTypeIssue(rule RuleAuthoring, assignment RuleInputAssignment) *RuleConversionIssue {
-	if !isNumberText(assignment.Value) && !isCanonicalReferenceText(assignment.Value) {
+// The type comes from the declaration, so a text input is checked as a text and
+// a day as a day. The check was written when `number` was the only type word,
+// and it said "takes a number" whatever the declaration stated, which told the
+// author of a text input nothing about what to write instead (section 3, 8.3).
+//
+// An attribute id is accepted for every type: it names the item whose value is
+// read, and the reader reads that item as the declared type. A constant is read
+// in the spelling that type is written in, and a value no type reads is refused
+// at the assignment's own position rather than later as an unsupported
+// transport.
+func assignmentValueTypeIssue(rule RuleAuthoring, assignment RuleInputAssignment, kind semantic.OperatorInput) *RuleConversionIssue {
+	if isCanonicalReferenceText(assignment.Value) {
+		return nil
+	}
+	if _, err := semantic.ParseOperatorInputValue(kind, assignment.Value); err != nil {
 		return &RuleConversionIssue{
 			RuleID: rule.ID, Span: assignment.ValueSpan,
 			Msg: fmt.Sprintf(
-				"input %q takes a number, but %q is neither a decimal number nor an attribute id",
-				assignment.Name, assignment.Value),
+				"input %q is read as %s, but %q is not one of that type: %s",
+				assignment.Name, kind, assignment.Value, typedValueSpelling(kind)),
 		}
 	}
 	return nil
+}
+
+// typedValueSpelling says how a value of the given type is written, so a
+// refusal tells the author what to write rather than only what was wrong.
+func typedValueSpelling(kind semantic.OperatorInput) string {
+	switch kind {
+	case semantic.OperatorInputNumber:
+		return "write a decimal number such as 100 or -0.01, or an attribute id"
+	case semantic.OperatorInputDate:
+		return "write a calendar day as YYYY-MM-DD, or an attribute id"
+	case semantic.OperatorInputText:
+		return `write a text in double quotes such as "A-100", or an attribute id`
+	case semantic.OperatorInputTruth:
+		return "write true or false, or an attribute id"
+	case semantic.OperatorInputAny:
+		return "write a decimal number, a calendar day as YYYY-MM-DD, a text in double quotes, or true or false"
+	}
+	return "write an attribute id"
 }
 
 // isNumberText reports whether text reads as a decimal number under the same

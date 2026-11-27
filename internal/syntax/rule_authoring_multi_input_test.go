@@ -156,8 +156,11 @@ rule sales.order_line.discount_non_negative:
 	if len(issues) != 1 {
 		t.Fatalf("issues=%+v, want one type-mismatch issue", issues)
 	}
-	if !contains(issues[0].Msg, "takes a number") {
-		t.Fatalf("issue should mention number type: %v", issues[0].Msg)
+	// The refusal names the type the declaration states, which is what the
+	// author of a wrong-typed value needs: it used to say "takes a number"
+	// whatever the declaration said.
+	if !contains(issues[0].Msg, "is read as number") {
+		t.Fatalf("issue should name the declared type: %v", issues[0].Msg)
 	}
 }
 
