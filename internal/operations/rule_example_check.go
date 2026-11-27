@@ -67,6 +67,11 @@ func (s exampleSource) ReadNumber(attribute core.CanonicalID) (validationeval.Nu
 	if cell.Text == "" {
 		return validationeval.NumberReading{State: validationeval.ValueNull}, nil
 	}
+	// A cell that writes the word for "not read" is read as not fetched, which
+	// is the state the word states, rather than as a decimal it never was.
+	if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
+		return validationeval.NumberReading{State: validationeval.ValueNotFetched}, nil
+	}
 	value, err := semantic.ParseOperatorCaseValue(cell.Text)
 	if err != nil {
 		return validationeval.NumberReading{}, err
@@ -85,6 +90,11 @@ func (s exampleSource) ReadDate(attribute core.CanonicalID) (validationeval.Date
 	cell := s.example.Rows[s.row][column]
 	if cell.Text == "" {
 		return validationeval.DateReading{State: validationeval.ValueNull}, nil
+	}
+	// A cell that writes the word for "not read" is read as not fetched, which
+	// is the state the word states, rather than as a date it never was.
+	if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
+		return validationeval.DateReading{State: validationeval.ValueNotFetched}, nil
 	}
 	date, err := semantic.ParseCalendarDate(cell.Text)
 	if err != nil {

@@ -144,14 +144,20 @@ func resolveRuleExamples(r *Result) error {
 		for _, row := range table.Rows {
 			cells := make([]RuleExampleCell, 0, len(row))
 			for i, cell := range row {
-				if cell.Text != "" && example.Items[i].Numeric {
+				// A value nobody read is written with the word `not-fetched`, and
+				// section 8.3 says that writing does not depend on the type, so a
+				// cell of any type's item may write it. It is not a number and
+				// not a date, so both type checks are skipped for it rather than
+				// reading it as a value it never was.
+				unread := semantic.IsOperatorCaseNotFetchedWord(cell.Text)
+				if cell.Text != "" && example.Items[i].Numeric && !unread {
 					if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
 						if err := reject(cell.Anchor, fmt.Sprintf("item %s is a number: %v", example.Items[i].Symbol, err)); err != nil {
 							return err
 						}
 					}
 				}
-				if cell.Text != "" && example.Items[i].Date {
+				if cell.Text != "" && example.Items[i].Date && !unread {
 					if _, err := semantic.ParseCalendarDate(cell.Text); err != nil {
 						if err := reject(cell.Anchor, fmt.Sprintf("item %s is a date: %v", example.Items[i].Symbol, err)); err != nil {
 							return err
