@@ -34,9 +34,15 @@ type NamedImplementation struct {
 	// Numbers is non-nil.
 	Numbers func(values map[string]*big.Rat) (bool, error)
 	// NumberRows decides for an operator whose input reads every row of a
-	// relation. At most one of Number, Numbers, NumberRows and Values is
-	// non-nil.
+	// relation. At most one of Number, Numbers, NumberRows, Values and
+	// ValueRows is non-nil.
 	NumberRows func(rows map[string][]NumberReading) (Tri, error)
+	// ValueRows decides for an operator whose input reads every row of a
+	// relation in a type other than number. It receives, per input name, the
+	// rows that were read in the order they were read, each value carrying the
+	// type it was read as (section 8.4). At most one of Number, Numbers,
+	// NumberRows, Values and ValueRows is non-nil.
+	ValueRows func(rows map[string][]RowValueReading) (Tri, error)
 	// Values decides for an operator whose inputs are of any type. It receives
 	// one value per input name, each carrying the type it was read as
 	// (section 8.4), so a day is decided by the same field that decides a
@@ -222,6 +228,74 @@ func BuiltinImplementations() []NamedImplementation {
 			},
 		},
 		{
+			// tei.day.every-not-before decides "every row's day is not before
+			// the deadline's day". It is the row form of tei.day.not-before:
+			// the same two days, asked of every row of a relation instead of
+			// of one record. Both inputs are calendar days, and a day is read
+			// as a day: the reader reports which day each attribute holds, and
+			// this implementation compares the two. A day is never read through
+			// the decimal reader, where `2026-04-01` would not be a value
+			// anyone wrote.
+			//
+			// The deadline may be a column of the rows or one constant for the
+			// whole relation; either way every row is compared against its own
+			// deadline, and one row before its own deadline is the
+			// counterexample the declaration's `refutes on some rows` is about.
+			//
+			// A row whose day or deadline was not read, or holds no value,
+			// answers TriMaybe, so the evaluator reports that row's own reason
+			// instead of reading it as a day this implementation invented. The
+			// rows are all looked at before such a row decides the answer: a
+			// counterexample that was seen is a counterexample however many
+			// rows around it were not read (decision section 8).
+			ID:    "tei.day.every-not-before",
+			Input: semantic.OperatorInputDate,
+			ValueRows: func(rows map[string][]RowValueReading) (Tri, error) {
+				values, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-not-before reads an input named \"value\"; the rule supplied no value input")
+				}
+				deadlines, ok := rows["deadline"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-not-before reads an input named \"deadline\"; the rule supplied no deadline input")
+				}
+				if len(values) != len(deadlines) {
+					// Both inputs are columns of the same rows, so they must be
+					// the same length. Comparing a short column against a long
+					// one would compare rows that do not belong together.
+					return TriMaybe, fmt.Errorf("every-not-before reads %d value rows and %d deadline rows; both are columns of the same rows", len(values), len(deadlines))
+				}
+				// A row the reader reports as present without a value is a
+				// contract violation, not a value that was absent. It is checked
+				// for every row before any row is compared: a known
+				// counterexample must not hide a violation the reader made
+				// (decision section 8.1).
+				for index := range values {
+					if values[index].State == ValuePresent && values[index].Value.Kind() != semantic.OperatorInputDate {
+						return TriMaybe, fmt.Errorf("every-not-before reads row %d as present without a day", index)
+					}
+					if deadlines[index].State == ValuePresent && deadlines[index].Value.Kind() != semantic.OperatorInputDate {
+						return TriMaybe, fmt.Errorf("every-not-before reads row %d as present without a deadline day", index)
+					}
+				}
+				unreadable := false
+				for index := range values {
+					value, deadline := values[index], deadlines[index]
+					if value.State != ValuePresent || deadline.State != ValuePresent {
+						unreadable = true
+						continue
+					}
+					if value.Value.Date.Compare(*deadline.Value.Date) < 0 {
+						return TriNo, nil
+					}
+				}
+				if unreadable {
+					return TriMaybe, nil
+				}
+				return TriYes, nil
+			},
+		},
+		{
 			// tei.text.same-as decides "the text holds exactly the other text".
 			// Both inputs are texts, and a text is read as a text: the reader
 			// reports what each attribute holds, and this implementation
@@ -361,6 +435,20 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 					called(call)
 				}
 				return decide(values)
+			}
+		}
+		if match.ValueRows != nil {
+			// A row of any type is decided by the one field that carries the
+			// type it was read as (section 8.4), exactly as a value of one
+			// record is: a day, a number and a text are all decided by it, so
+			// there is no second field a rule could be answered from.
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.ValueRows
+			implementation.ValueRows = func(rows map[string][]RowValueReading) (Tri, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(rows)
 			}
 		}
 		// A shipped implementation may know how to read an absent value under

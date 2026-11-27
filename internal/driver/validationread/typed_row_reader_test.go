@@ -112,33 +112,46 @@ func TestAColumnOfCalendarDatesIsReadAsDays(t *testing.T) {
 	}
 }
 
-// A row the query did not return makes the whole column undecided, and the state
-// says which of the two it was rather than reading the row as the zero of its
-// type.
+// A row the query did not return keeps its own state beside its value, so the
+// row is not read as the zero of its type and a counterexample in another row is
+// still visible (decision section 6: a counterexample that was seen settles the
+// rule whatever else is unknown).
 func TestAColumnWithARowNobodyReadIsNotRead(t *testing.T) {
 	detail := shippedDetail(t, validationeval.CoverageComplete,
 		shippedRow(map[core.CanonicalID]any{shippedAt: "2026-04-06"}),
 		shippedRow(map[core.CanonicalID]any{}),
 	)
 	reading := readShippedTypedRows(t, detail, semantic.OperatorInputDate, shippedAt)
-	if reading.State != validationeval.ValueNotFetched {
-		t.Fatalf("state=%q, want not-fetched", reading.State)
+	if len(reading.Values) != 2 {
+		t.Fatalf("values=%d, want one per row of the relation", len(reading.Values))
 	}
-	if len(reading.Values) != 0 {
-		t.Fatalf("values=%v, want none for a column nobody read", reading.Values)
+	if reading.Values[0].State != validationeval.ValuePresent {
+		t.Fatalf("row 0 state=%q, want present", reading.Values[0].State)
+	}
+	if reading.Values[1].State != validationeval.ValueNotFetched {
+		t.Fatalf("row 1 state=%q, want not-fetched", reading.Values[1].State)
+	}
+	if reading.Values[1].Value.Kind() != "" {
+		t.Fatalf("row 1 carries %v, want no value for a row nobody read", reading.Values[1].Value)
 	}
 }
 
-// A row that holds no value makes the column undecided with the record's own
-// reason, and it is not read as the zero of its type.
+// A row that holds no value keeps that state beside its value, so it is not read
+// as the zero of its type and the rest of the column stays readable.
 func TestAColumnWithARowThatHoldsNoValueIsNotRead(t *testing.T) {
 	detail := shippedDetail(t, validationeval.CoverageComplete,
 		shippedRow(map[core.CanonicalID]any{shippedAt: "2026-04-06"}),
 		shippedRow(map[core.CanonicalID]any{shippedAt: nil}),
 	)
 	reading := readShippedTypedRows(t, detail, semantic.OperatorInputDate, shippedAt)
-	if reading.State != validationeval.ValueNull {
-		t.Fatalf("state=%q, want null", reading.State)
+	if len(reading.Values) != 2 {
+		t.Fatalf("values=%d, want one per row of the relation", len(reading.Values))
+	}
+	if reading.Values[1].State != validationeval.ValueNull {
+		t.Fatalf("row 1 state=%q, want null", reading.Values[1].State)
+	}
+	if reading.Values[1].Value.Kind() != "" {
+		t.Fatalf("row 1 carries %v, want no value", reading.Values[1].Value)
 	}
 }
 

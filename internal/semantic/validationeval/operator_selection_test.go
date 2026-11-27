@@ -146,6 +146,56 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(1, 1)}}, wantErr: true},
 		},
 	}
+	// tei.day.every-not-before decides days through the one value shape section
+	// 8.4 fixes, over the rows of a relation. Its expectations are the rows as
+	// the reader hands them over, each value carrying the type it was read as,
+	// and the answer the contract states for them.
+	typedRowInputWant := map[string][]struct {
+		name    string
+		rows    map[string][]validationeval.RowValueReading
+		want    validationeval.Tri
+		wantErr bool
+	}{
+		"tei.day.every-not-before": {
+			{name: "every day not before its deadline", rows: dayColumns(
+				[2]string{"2026-04-01", "2026-04-01"}, [2]string{"2026-04-02", "2026-04-01"},
+			), want: validationeval.TriYes},
+			{name: "one day before its own deadline", rows: dayColumns(
+				[2]string{"2026-04-01", "2026-04-05"}, [2]string{"2026-03-31", "2026-04-01"},
+			), want: validationeval.TriNo},
+			{name: "a later deadline hides an earlier one", rows: dayColumns(
+				// The per-row comparison is what makes this TriNo: comparing the
+				// second day against the first deadline would also say TriNo, but
+				// comparing it against the last one would not.
+				[2]string{"2026-04-01", "2026-05-01"}, [2]string{"2026-03-31", "2026-04-01"},
+			), want: validationeval.TriNo},
+			{name: "a row that holds no value", rows: dayColumns(
+				[2]string{semantic.RowCellNoValue, "2026-04-01"}, [2]string{"2026-04-02", "2026-04-01"},
+			), want: validationeval.TriMaybe},
+			{name: "a row nobody read", rows: dayColumns(
+				[2]string{semantic.RowCellNotFetched, "2026-04-01"}, [2]string{"2026-04-02", "2026-04-01"},
+			), want: validationeval.TriMaybe},
+			// Section 8.1: the empty relation is one example. No row is before
+			// its deadline, so the answer is the operator's own.
+			{name: "no rows", rows: map[string][]validationeval.RowValueReading{
+				"value": {}, "deadline": {},
+			}, want: validationeval.TriYes},
+			{name: "columns of different lengths", rows: map[string][]validationeval.RowValueReading{
+				"value":    {dayCell("2026-04-01"), dayCell("2026-04-02")},
+				"deadline": {dayCell("2026-04-01")},
+			}, wantErr: true},
+			{name: "no value input", rows: map[string][]validationeval.RowValueReading{
+				"deadline": {dayCell("2026-04-01")},
+			}, wantErr: true},
+			{name: "no deadline input", rows: map[string][]validationeval.RowValueReading{
+				"value": {dayCell("2026-04-01")},
+			}, wantErr: true},
+			{name: "a day nobody read is not a day", rows: map[string][]validationeval.RowValueReading{
+				"value":    {{State: validationeval.ValuePresent, Value: semantic.OperatorValue{Number: big.NewRat(20260401, 1)}}},
+				"deadline": {dayCell("2026-04-01")},
+			}, wantErr: true},
+		},
+	}
 	seen := map[string]bool{}
 	for _, implementation := range validationeval.BuiltinImplementations() {
 		if seen[implementation.ID] {
@@ -207,6 +257,26 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
 				}
 			}
+		} else if implementation.ValueRows != nil {
+			cases, known := typedRowInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.ValueRows(tc.rows)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%d err=nil, want an error", implementation.ID, tc.name, int(got))
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%d err=%v, want %d", implementation.ID, tc.name, int(got), err, int(tc.want))
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
+				}
+			}
 		} else if implementation.Values != nil {
 			cases, known := typedInputWant[implementation.ID]
 			if !known {
@@ -231,9 +301,36 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant))
 	}
+}
+
+// dayColumns builds the two columns a rule about days hands to an
+// implementation: one row per pair, in the order written.
+func dayColumns(pairs ...[2]string) map[string][]validationeval.RowValueReading {
+	rows := map[string][]validationeval.RowValueReading{}
+	for _, pair := range pairs {
+		rows["value"] = append(rows["value"], dayCell(pair[0]))
+		rows["deadline"] = append(rows["deadline"], dayCell(pair[1]))
+	}
+	return rows
+}
+
+// dayCell reads one cell the way a reader hands it over: a day, a row that
+// holds no value, or a row nobody read.
+func dayCell(text string) validationeval.RowValueReading {
+	switch text {
+	case semantic.RowCellNoValue:
+		return validationeval.RowValueReading{State: validationeval.ValueNull}
+	case semantic.RowCellNotFetched:
+		return validationeval.RowValueReading{State: validationeval.ValueNotFetched}
+	}
+	day, err := semantic.ParseCalendarDate(text)
+	if err != nil {
+		panic(err)
+	}
+	return validationeval.RowValueReading{State: validationeval.ValuePresent, Value: semantic.OperatorValue{Date: &day}}
 }
 
 // dayValues builds the values a rule about two days hands to an implementation.

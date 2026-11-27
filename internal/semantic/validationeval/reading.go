@@ -619,7 +619,9 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		// The row-scoped question is decided before the one-record one: a
 		// column of days is not one record's day, and reading it through the
 		// one-record reader would answer a question about the relation from one
-		// record of it.
+		// record of it. A day input that reads every row is a column of days,
+		// which the row path reads in the type the declaration states (section
+		// 8.4).
 		for _, input := range inputs {
 			if input.OfEachRow {
 				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
@@ -826,7 +828,7 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 	// reader (decision section 8.4). Reading the column as numbers would answer
 	// a question about a value nobody read.
 	if implementation.ValueRows != nil {
-		return decideTypedRowScopedOperator(rule, inputs, implementation, source)
+		return decideTypedRowScopedOperator(rule, contract, inputs, implementation, source)
 	}
 	reader, ok := source.(StatefulRowNumberSource)
 	if !ok {
