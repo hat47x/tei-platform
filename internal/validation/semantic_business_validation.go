@@ -180,6 +180,15 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 				if example.Inputs != nil {
 					stated = stated[:0]
 					for name, value := range example.Inputs {
+						// Section 8.3: the writing for "not read" does not depend
+						// on the input's type, so the word is a value of any type's
+						// cell, including a presence input's. It is checked first
+						// so a presence input does not refuse the one writing
+						// every type shares.
+						if semantic.IsOperatorCaseNotFetchedWord(value) {
+							stated = append(stated, value)
+							continue
+						}
 						// A presence input reads whether the attribute holds a
 						// value, so its cell states one of two words instead of a
 						// decimal. A word in a cell of another type is refused
@@ -197,14 +206,6 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 								stated = nil
 								break
 							}
-							stated = append(stated, value)
-							continue
-						}
-						// Section 8.3: the writing for "not read" does not depend
-						// on the input's type, so the word is a value of any type's
-						// cell. It is not a decimal, so a number input's decimal
-						// check is skipped for it rather than reading it as one.
-						if semantic.IsOperatorCaseNotFetchedWord(value) {
 							stated = append(stated, value)
 							continue
 						}
@@ -230,6 +231,13 @@ func validateSemanticBusinessValidations(w ir.World) []Diagnostic {
 					// type above and nothing is left to read here.
 					continue
 				} else if inputTypes["value"] == semantic.OperatorInputPresence {
+					// Section 8.3: the writing for "not read" does not depend on
+					// the input's type, so a single-value cell may state it even
+					// when the one input reads presence. It is checked first for
+					// the same reason as the multi-input form.
+					if semantic.IsOperatorCaseNotFetchedWord(example.Value) {
+						continue
+					}
 					// The operator's one input reads whether the attribute holds
 					// a value, so its cell states one of two words. A decimal is
 					// refused the way a word is in a number cell.
