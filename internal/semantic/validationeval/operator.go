@@ -54,6 +54,13 @@ type OperatorImplementation struct {
 	// An implementation provides either this field or one of the others, never
 	// both: providing both would leave which value it answers from ambiguous.
 	ValueRows func(rows map[string][]RowValueReading) (Tri, error)
+	// PresenceRows decides a rule whose operator reads whether every row of a
+	// relation holds a value (decision section 8.6). It receives, per input
+	// name, the state of each row in the order the rows were read, and answers
+	// TriYes, TriNo or TriMaybe. Presence travels in its own field because it
+	// is not a value of any type: a truth is what a column says and presence is
+	// whether the column says anything.
+	PresenceRows func(rows map[string][]PresenceReading) (Tri, error)
 	// Presence decides a rule whose operator declares an input that reads
 	// whether an attribute holds a value rather than which value it holds
 	// (decision section 3: "presence reads whether, not what"). It receives,
@@ -183,7 +190,8 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasTypedRows := implementation.ValueRows != nil
 	hasPresence := implementation.Presence != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows, hasPresence} {
+	hasPresenceRows := implementation.PresenceRows != nil
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows, hasPresence, hasPresenceRows} {
 		if present {
 			shapes++
 		}
@@ -202,14 +210,22 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// answer the other: an implementation deciding values would be handed the
 	// number a presence rule never asked about, which is the mistake #4359
 	// measured (a presence contract answered satisfied from the value 7).
-	if rowScoped && declaresPresenceInput(inputs) {
-		return fmt.Errorf("operator %s reads whether an attribute holds a value of every row of relation, which no reader reads yet", contract.ID)
+	// A presence input read over every row of a relation is decided by the row
+	// form of the presence field (decision section 8.6), and a presence input
+	// read from one record by the one-record field. The two cannot stand in for
+	// each other: one is a column of answers and the other one record's answer.
+	if rowScoped && declaresPresenceInput(inputs) && !hasPresenceRows {
+		return fmt.Errorf("operator %s declares the presence input %q over every row of a relation, but its implementation does not decide whether each row holds a value",
+			contract.ID, presenceInputName(inputs))
 	}
-	if declaresPresenceInput(inputs) && !hasPresence {
+	if !rowScoped && hasPresenceRows {
+		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides whether every row holds a value", contract.ID)
+	}
+	if declaresPresenceInput(inputs) && !hasPresence && !hasPresenceRows {
 		return fmt.Errorf("operator %s declares the presence input %q, but its implementation decides values; presence asks whether a value is there, not which value it is",
 			contract.ID, presenceInputName(inputs))
 	}
-	if !declaresPresenceInput(inputs) && hasPresence {
+	if !declaresPresenceInput(inputs) && (hasPresence || hasPresenceRows) {
 		return fmt.Errorf("operator %s declares no presence input, but its implementation decides whether a value is there", contract.ID)
 	}
 	// A presence implementation answers every input with "does this record
@@ -225,11 +241,14 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 			}
 		}
 	}
-	if rowScoped && !hasRows && !hasTypedRows {
+	if rowScoped && !hasRows && !hasTypedRows && !hasPresenceRows {
 		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
 	if !rowScoped && hasRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
+	}
+	if !rowScoped && hasPresenceRows {
+		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides whether every row holds a value", contract.ID)
 	}
 	if !rowScoped && hasTypedRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows of any type", contract.ID)

@@ -581,6 +581,12 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		// measured (a presence contract answered satisfied from the value 7),
 		// and reading it as a value of any type would answer the same
 		// question by accident.
+		// A presence input read over every row is a column of answers, not one
+		// record's answer (decision section 8.6), so it is decided by the row
+		// path before the one-record presence path.
+		if declaresPresenceInput(inputs) && implementation.PresenceRows != nil {
+			return decideRowScopedOperator(rule, contract, inputs, implementation, source)
+		}
 		if declaresPresenceInput(inputs) {
 			return decidePresenceOperator(rule, contract, inputs, implementation, source)
 		}
@@ -789,10 +795,16 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 			"semantic validation %s uses operator %s, which reads every row, but the rule names no relation; write \"per <relation>\"",
 			rule.ID, rule.Operator)
 	}
-	if implementation.NumberRows == nil && implementation.ValueRows == nil {
+	if implementation.NumberRows == nil && implementation.ValueRows == nil && implementation.PresenceRows == nil {
 		return Decision{}, fmt.Errorf(
 			"operator %s reads every row of a relation, but its selected implementation does not decide over rows",
 			rule.Operator)
+	}
+	// A row-scoped presence input asks, for every row, whether that row holds a
+	// value (decision section 8.6). It is decided before the value paths: the
+	// question is about each row's presence, not about which value it holds.
+	if implementation.PresenceRows != nil {
+		return decidePresenceRowScopedOperator(rule, contract, inputs, implementation, source)
 	}
 	// A row-scoped operator whose inputs are of a type other than number is read
 	// by the reader that understands that type over rows, not by the row number

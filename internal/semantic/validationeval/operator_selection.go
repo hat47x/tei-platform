@@ -43,6 +43,10 @@ type NamedImplementation struct {
 	// type it was read as (section 8.4). At most one of Number, Numbers,
 	// NumberRows, Values and ValueRows is non-nil.
 	ValueRows func(rows map[string][]RowValueReading) (Tri, error)
+	// PresenceRows decides for an operator whose input reads whether every row
+	// of a relation holds a value (decision section 8.6). At most one of the
+	// fields is non-nil.
+	PresenceRows func(rows map[string][]PresenceReading) (Tri, error)
 	// Values decides for an operator whose inputs are of any type. It receives
 	// one value per input name, each carrying the type it was read as
 	// (section 8.4), so a day is decided by the same field that decides a
@@ -533,6 +537,35 @@ func BuiltinImplementations() []NamedImplementation {
 				return value, nil
 			},
 		},
+		{
+			// tei.presence.every-is-present decides "every row holds a value".
+			// It is the row form of tei.presence.is-present: the same question
+			// asked of every row of a relation instead of of one record
+			// (decision section 8.6). A row that holds none is a counterexample,
+			// so the answer is TriNo; a row nobody read never reaches this
+			// implementation, because the evaluator reports that row's own
+			// reason before asking.
+			ID:    "tei.presence.every-is-present",
+			Input: semantic.OperatorInputPresence,
+			PresenceRows: func(rows map[string][]PresenceReading) (Tri, error) {
+				column, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-is-present reads an input named \"value\"; the rule supplied no value input")
+				}
+				for index, row := range column {
+					if row.State == ValueNotFetched {
+						// A row nobody read is not "holds none", and folding it into
+						// that answer would decide a question about a row nobody
+						// looked at.
+						return TriMaybe, fmt.Errorf("every-is-present reads row %d, which was not fetched; a row nobody read is not a row that holds nothing", index)
+					}
+					if row.State == ValueNull {
+						return TriNo, nil
+					}
+				}
+				return TriYes, nil
+			},
+		},
 	}
 }
 
@@ -626,6 +659,18 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 					called(call)
 				}
 				return decide(values)
+			}
+		}
+		if match.PresenceRows != nil {
+			// Whether every row holds a value is a row-scoped answer, so it is
+			// carried and recorded like the other row fields (section 8.6).
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.PresenceRows
+			implementation.PresenceRows = func(rows map[string][]PresenceReading) (Tri, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(rows)
 			}
 		}
 		if match.ValueRows != nil {

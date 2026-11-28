@@ -86,6 +86,35 @@ func (r Row) ReadPresence(attribute core.CanonicalID) (validationeval.PresenceRe
 	return r.detail.readPresence(r.index, attribute)
 }
 
+// ReadRelationPresence reads whether every row of the relation holds a value
+// for attribute, with the state of each row in the order the rows were read and
+// whether those rows are all the rows (decision section 8.6).
+//
+// The value is not parsed, exactly as for one row: an empty text is a value and
+// only SQL NULL is none. A row the query did not return is reported as not
+// fetched, so the evaluator can tell a row nobody read from a row that holds
+// nothing.
+func (d *Detail) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+	if err := d.checkRelation(relation); err != nil {
+		return validationeval.PresenceRowsReading{}, err
+	}
+	if _, err := d.kindOf(attribute); err != nil {
+		return validationeval.PresenceRowsReading{}, err
+	}
+	reading := validationeval.PresenceRowsReading{
+		Coverage: d.coverage,
+		Rows:     make([]validationeval.PresenceReading, 0, len(d.rows)),
+	}
+	for index := range d.rows {
+		row, err := d.readPresence(index, attribute)
+		if err != nil {
+			return validationeval.PresenceRowsReading{}, err
+		}
+		reading.Rows = append(reading.Rows, row)
+	}
+	return reading, nil
+}
+
 // declaresRowScopedOperator reports whether the operator this rule names
 // declares an input read over all rows of a relation.
 func declaresRowScopedOperator(rule semantic.Validation, operators validationeval.Operators) bool {

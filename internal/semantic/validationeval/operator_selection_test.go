@@ -39,8 +39,8 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 				"limit": presentRows("1", "1"),
 			}, want: validationeval.TriNo},
 			{name: "a later limit hides an earlier one", rows: map[string][]validationeval.NumberReading{
-				// The per-row comparison is what makes this TriNo: comparing
-				// value 2 against the first limit (1) would also say TriNo,
+				// The per-row comparison is what makes this validationeval.TriNo: comparing
+				// value 2 against the first limit (1) would also say validationeval.TriNo,
 				// but comparing it against the last limit (100) would not.
 				"value": presentRows("1", "2"),
 				"limit": presentRows("5", "1"),
@@ -56,7 +56,7 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "zero is read under the mapping the rule names", rows: map[string][]validationeval.NumberReading{
 				"value": presentRows("1", "0"),
 				"limit": presentRows("1", "1"),
-				// The rows are the same, so the answer is TriYes after the
+				// The rows are the same, so the answer is validationeval.TriYes after the
 				// absence would be replaced; the mapping itself is asserted
 				// separately below.
 			}, want: validationeval.TriYes},
@@ -181,8 +181,8 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 				[2]string{"2026-04-01", "2026-04-05"}, [2]string{"2026-03-31", "2026-04-01"},
 			), want: validationeval.TriNo},
 			{name: "a later deadline hides an earlier one", rows: dayColumns(
-				// The per-row comparison is what makes this TriNo: comparing the
-				// second day against the first deadline would also say TriNo, but
+				// The per-row comparison is what makes this validationeval.TriNo: comparing the
+				// second day against the first deadline would also say validationeval.TriNo, but
 				// comparing it against the last one would not.
 				[2]string{"2026-04-01", "2026-05-01"}, [2]string{"2026-03-31", "2026-04-01"},
 			), want: validationeval.TriNo},
@@ -388,13 +388,59 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
 				}
 			}
+		} else if implementation.PresenceRows != nil {
+			cases, known := presenceRowInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.PresenceRows(tc.rows)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%d err=nil, want an error", implementation.ID, tc.name, int(got))
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%d err=%v, want %d", implementation.ID, tc.name, int(got), err, int(tc.want))
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
+				}
+			}
 		} else {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant)+len(presenceRowInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant)+len(presenceRowInputWant))
 	}
+}
+
+// presenceRowInputWant is the expectation table of the row form of the
+// presence question, keyed by implementation.
+var presenceRowInputWant = map[string][]struct {
+	name    string
+	rows    map[string][]validationeval.PresenceReading
+	want    validationeval.Tri
+	wantErr bool
+}{
+	"tei.presence.every-is-present": {
+		{name: "every row holds a value", rows: presenceRowValues(validationeval.ValuePresent, validationeval.ValuePresent), want: validationeval.TriYes},
+		{name: "one row holds none", rows: presenceRowValues(validationeval.ValuePresent, validationeval.ValueNull), want: validationeval.TriNo},
+		{name: "no value input", rows: map[string][]validationeval.PresenceReading{}, wantErr: true},
+		// A row nobody read is refused rather than read as "holds none".
+		{name: "a row nobody read", rows: presenceRowValues(validationeval.ValuePresent, validationeval.ValueNotFetched), wantErr: true},
+	},
+}
+
+// presenceRowValues builds one input's column from the states given.
+func presenceRowValues(states ...validationeval.ValueState) map[string][]validationeval.PresenceReading {
+	rows := make([]validationeval.PresenceReading, 0, len(states))
+	for _, state := range states {
+		rows = append(rows, validationeval.PresenceReading{State: state})
+	}
+	return map[string][]validationeval.PresenceReading{"value": rows}
 }
 
 // textColumns builds the two text columns a rule hands to an implementation:

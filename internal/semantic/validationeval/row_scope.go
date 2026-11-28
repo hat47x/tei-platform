@@ -61,6 +61,27 @@ type StatefulRowNumberSource interface {
 	ReadRelationNumbers(relation, attribute core.CanonicalID) (NumberRowsReading, error)
 }
 
+// PresenceRowsReading is whether every row of a relation holds a value for one
+// attribute, with the state of every row and whether those rows are all the
+// rows (decision section 8.6).
+//
+// The state of a row carries the same three meanings as a one-record presence
+// reading: it holds a value, it holds none, and nobody read it. The first two
+// are answers and are handed to the implementation; the third is not an answer
+// at all, so the evaluator reports the row's own reason instead.
+type PresenceRowsReading struct {
+	Coverage Coverage
+	Rows     []PresenceReading
+}
+
+// StatefulPresenceRowSource is implemented by a reader that can say, for one
+// attribute, whether every row of a relation holds a value. A reader that
+// cannot is refused rather than asked row by row: a rule whose presence input
+// reads all the rows cannot be answered from one row.
+type StatefulPresenceRowSource interface {
+	ReadRelationPresence(relation, attribute core.CanonicalID) (PresenceRowsReading, error)
+}
+
 // DecideRowScoped is the one place a row-scoped operator answer, the read
 // Coverage and the operator's refutation statement become a Decision. It is
 // exported so a caller that already holds those three facts (the product read
