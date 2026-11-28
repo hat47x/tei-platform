@@ -407,62 +407,34 @@ func operatorInputNames(inputs []semantic.OperatorInputDeclaration) string {
 // and real data is not read for it).
 //
 // The example's rows are the values as they would have been read, so the
-// implementation is asked exactly the map the rule path would hand it.
+// implementation is asked exactly the map the rule path would hand it: an
+// implementation that decides numbers is asked the numeric columns, and one
+// that reads values of any type is asked the columns in the type each input
+// declares (section 8.3, 8.4).
 func checkOperatorRowCases(contract semantic.Operator, implementation OperatorImplementation) error {
 	if len(contract.RowCases) == 0 {
 		return nil
 	}
-	if implementation.NumberRows == nil {
+	if implementation.NumberRows == nil && implementation.ValueRows == nil {
 		return fmt.Errorf("operator %s states row examples, but its selected implementation does not decide over rows", contract.ID)
 	}
 	inputs := contractInputs(contract)
 	for _, example := range contract.RowCases {
-		// Section 8.1: an example may state the empty relation. Every column
-		// is then empty, and the implementation is asked about no rows rather
-		// than skipped: whether the empty relation satisfies the operator is
-		// the operator's own answer, and it must not depend on the
-		// declaration's `refutes on some rows`.
-		rows := make(map[string][]NumberReading, len(inputs))
-		for _, input := range inputs {
-			name := input.Name
-			if name == "" {
-				name = "value"
+		var (
+			answer Tri
+			err    error
+		)
+		if implementation.ValueRows != nil {
+			var rows map[string][]RowValueReading
+			if rows, err = rowExampleValueColumns(contract, inputs, example); err == nil {
+				answer, err = implementation.ValueRows(rows)
 			}
-			column := make([]NumberReading, 0, len(example.Rows))
-			for index, row := range example.Rows {
-				text, stated := row[name]
-				if !stated {
-					return fmt.Errorf("operator %s row example states no value for input %q on row %d", contract.ID, name, index+1)
-				}
-				// The three states a read row can hold are written in the
-				// table: a value of the input's type, the empty text (no
-				// value), and the word `not-fetched` (not read). They are
-				// handed to the implementation as they are, so the example
-				// asks it exactly the question a rule read would.
-				switch text {
-				case semantic.RowCellNoValue:
-					column = append(column, NumberReading{State: ValueNull})
-				case semantic.RowCellNotFetched:
-					column = append(column, NumberReading{State: ValueNotFetched})
-				default:
-					// A value is read in the type the declaration gave, so a
-					// date is a date and a text is a text (section 8.3). The
-					// numeric column is the one this path reads, so an input
-					// of another type is refused rather than read as a number.
-					if input.Type != semantic.OperatorInputNumber {
-						return fmt.Errorf("operator %s row example states a value for input %q, which is read as %s, but this path reads rows as numbers; the %s input has no reader on this path yet",
-							contract.ID, name, input.Type, input.Type)
-					}
-					value, err := semantic.ParseOperatorCaseValue(text)
-					if err != nil {
-						return fmt.Errorf("operator %s has an unreadable row example (%s, row %d): %w", contract.ID, name, index+1, err)
-					}
-					column = append(column, NumberReading{State: ValuePresent, Value: value})
-				}
+		} else {
+			var rows map[string][]NumberReading
+			if rows, err = rowExampleNumberColumns(contract, inputs, example); err == nil {
+				answer, err = implementation.NumberRows(rows)
 			}
-			rows[name] = column
 		}
-		answer, err := implementation.NumberRows(rows)
 		if err != nil {
 			return fmt.Errorf("the implementation of operator %s could not decide a row example: %w", contract.ID, err)
 		}
@@ -476,6 +448,96 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 		}
 	}
 	return nil
+}
+
+// rowExampleNumberColumns reads one example's rows as the numeric columns an
+// implementation that decides numbers is asked about.
+func rowExampleNumberColumns(contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, example semantic.OperatorRowCase) (map[string][]NumberReading, error) {
+	// Section 8.1: an example may state the empty relation. Every column is
+	// then empty, and the implementation is asked about no rows rather than
+	// skipped: whether the empty relation satisfies the operator is the
+	// operator's own answer, and it must not depend on the declaration's
+	// `refutes on some rows`.
+	rows := make(map[string][]NumberReading, len(inputs))
+	for _, input := range inputs {
+		name := input.Name
+		if name == "" {
+			name = "value"
+		}
+		column := make([]NumberReading, 0, len(example.Rows))
+		for index, row := range example.Rows {
+			text, stated := row[name]
+			if !stated {
+				return nil, fmt.Errorf("operator %s row example states no value for input %q on row %d", contract.ID, name, index+1)
+			}
+			// The three states a read row can hold are written in the table: a
+			// value of the input's type, the empty text (no value), and the word
+			// `not-fetched` (not read). They are handed to the implementation as
+			// they are, so the example asks it exactly the question a rule read
+			// would.
+			switch text {
+			case semantic.RowCellNoValue:
+				column = append(column, NumberReading{State: ValueNull})
+			case semantic.RowCellNotFetched:
+				column = append(column, NumberReading{State: ValueNotFetched})
+			default:
+				// A value is read in the type the declaration gave, so a date is
+				// a date and a text is a text (section 8.3). The numeric column is
+				// the one this path reads, so an input of another type is refused
+				// rather than read as a number.
+				if input.Type != semantic.OperatorInputNumber {
+					return nil, fmt.Errorf("operator %s row example states a value for input %q, which is read as %s, but this path reads rows as numbers; the %s input has no reader on this path yet",
+						contract.ID, name, input.Type, input.Type)
+				}
+				value, err := semantic.ParseOperatorCaseValue(text)
+				if err != nil {
+					return nil, fmt.Errorf("operator %s has an unreadable row example (%s, row %d): %w", contract.ID, name, index+1, err)
+				}
+				column = append(column, NumberReading{State: ValuePresent, Value: value})
+			}
+		}
+		rows[name] = column
+	}
+	return rows, nil
+}
+
+// rowExampleValueColumns reads one example's rows as the columns of typed values
+// an implementation that reads values of any type is asked about. Each cell is
+// read in the type its input declares, which is the same reading the rule path
+// makes, so the example asks the implementation exactly the question a rule
+// read would (section 8.3, 8.4).
+func rowExampleValueColumns(contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, example semantic.OperatorRowCase) (map[string][]RowValueReading, error) {
+	rows := make(map[string][]RowValueReading, len(inputs))
+	for _, input := range inputs {
+		name := input.Name
+		if name == "" {
+			name = "value"
+		}
+		column := make([]RowValueReading, 0, len(example.Rows))
+		for index, row := range example.Rows {
+			text, stated := row[name]
+			if !stated {
+				return nil, fmt.Errorf("operator %s row example states no value for input %q on row %d", contract.ID, name, index+1)
+			}
+			// A row that holds no value and a row nobody read keep their own
+			// state, and the value is carried only for a row that holds one
+			// (section 8.4).
+			switch text {
+			case semantic.RowCellNoValue:
+				column = append(column, RowValueReading{State: ValueNull})
+			case semantic.RowCellNotFetched:
+				column = append(column, RowValueReading{State: ValueNotFetched})
+			default:
+				value, err := semantic.ParseOperatorInputValue(input.Type, text)
+				if err != nil {
+					return nil, fmt.Errorf("operator %s has an unreadable row example (%s, row %d): %w", contract.ID, name, index+1, err)
+				}
+				column = append(column, RowValueReading{State: ValuePresent, Value: value})
+			}
+		}
+		rows[name] = column
+	}
+	return rows, nil
 }
 
 // operatorRowExpectTri maps the answer an example states onto the answer an

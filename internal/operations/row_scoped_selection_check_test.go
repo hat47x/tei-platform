@@ -82,3 +82,56 @@ func TestCheckOperatorSelectionRefusesARowScopedOperatorJudgedFromOneRecord(t *t
 		t.Fatalf("the finding carries no message")
 	}
 }
+
+// everyDayNotBefore declares an operator whose input reads a column of days.
+func everyDayNotBefore() semantic.Operator {
+	return semantic.Operator{
+		ID: "stock.every_day_not_before", Symbol: "every_day_not_before",
+		Input: semantic.OperatorInputDate,
+		Inputs: []semantic.OperatorInputDeclaration{
+			{Name: "value", Type: semantic.OperatorInputDate, OfEachRow: true},
+			{Name: "deadline", Type: semantic.OperatorInputDate},
+		},
+	}
+}
+
+// A Workspace selects a row implementation by name, so the type of the column it
+// decides is what keeps a Workspace from being answered from a value nobody
+// read: a contract that reads a column of days is not decided by the
+// implementation that decides a column of numbers, and validate must refuse the
+// selection rather than wait for a read.
+func TestCheckOperatorSelectionRefusesANumberRowImplementationForAColumnOfDays(t *testing.T) {
+	contract := everyDayNotBefore()
+	loaded := selectionCheckLoaded(
+		selectionCheckWorld(contract),
+		[]workspace.OperatorImplementationSelection{{Operator: string(contract.ID), Implementation: "tei.number.every-at-most"}},
+	)
+	findings := CheckOperatorSelection(loaded, sourceindex.Index{}, validationeval.BuiltinImplementations())
+	if len(findings) != 1 {
+		t.Fatalf("findings=%+v, want exactly the selection finding", findings)
+	}
+	message := findings[0].Diagnostic.Message
+	if !strings.Contains(message, "date") || !strings.Contains(message, "number") {
+		t.Fatalf("the finding does not name the two types: %q", message)
+	}
+}
+
+// The same selection of the implementation that decides a column of days is
+// honoured, so a Workspace that states it passes validate.
+func TestCheckOperatorSelectionAcceptsTheShippedImplementationOfAColumnOfDays(t *testing.T) {
+	contract := everyDayNotBefore()
+	contract.RowCases = []semantic.OperatorRowCase{{
+		Rows: []map[string]string{
+			{"value": "2026-04-01", "deadline": "2026-04-01"},
+			{"value": "2026-03-31", "deadline": "2026-04-05"},
+		},
+		Answer: semantic.OperatorRowNotSatisfied,
+	}}
+	loaded := selectionCheckLoaded(
+		selectionCheckWorld(contract),
+		[]workspace.OperatorImplementationSelection{{Operator: string(contract.ID), Implementation: "tei.day.every-not-before"}},
+	)
+	if findings := CheckOperatorSelection(loaded, sourceindex.Index{}, validationeval.BuiltinImplementations()); len(findings) != 0 {
+		t.Fatalf("findings=%+v, want none", findings)
+	}
+}
