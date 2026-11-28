@@ -119,6 +119,34 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			// implementation says so rather than reading it as the nearest text.
 			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(7, 1)}, "other": {Text: textValue("7")}}, wantErr: true},
 		},
+		// The two presence implementations answer the one question a presence
+		// input asks: whether the attribute holds a value. The expected values
+		// are read from their definitions, and a cell that states a value the
+		// input never read is refused rather than answered from a number.
+		"tei.presence.is-present": {
+			{name: "the attribute holds a value", values: map[string]semantic.OperatorValue{
+				"value": {Presence: boolPointer(true)},
+			}, want: true},
+			{name: "the attribute holds no value", values: map[string]semantic.OperatorValue{
+				"value": {Presence: boolPointer(false)},
+			}, want: false},
+			{name: "no value input", values: map[string]semantic.OperatorValue{}, wantErr: true},
+			{name: "a number is not a presence", values: map[string]semantic.OperatorValue{
+				"value": {Number: big.NewRat(7, 1)},
+			}, wantErr: true},
+		},
+		"tei.presence.is-absent": {
+			{name: "the attribute holds no value", values: map[string]semantic.OperatorValue{
+				"value": {Presence: boolPointer(false)},
+			}, want: true},
+			{name: "the attribute holds a value", values: map[string]semantic.OperatorValue{
+				"value": {Presence: boolPointer(true)},
+			}, want: false},
+			{name: "no value input", values: map[string]semantic.OperatorValue{}, wantErr: true},
+			{name: "a number is not a presence", values: map[string]semantic.OperatorValue{
+				"value": {Number: big.NewRat(7, 1)},
+			}, wantErr: true},
+		},
 		"tei.any.same-as": {
 			{name: "the same number", values: anyPair(anyValueOf(big.NewRat(100, 1)), anyValueOf(big.NewRat(100, 1))), want: true},
 			{name: "a different number", values: anyPair(anyValueOf(big.NewRat(100, 1)), anyValueOf(big.NewRat(200, 1))), want: false},
@@ -426,6 +454,10 @@ func anyCell(text string) validationeval.RowValueReading {
 	}
 	return validationeval.RowValueReading{State: validationeval.ValuePresent, Value: value}
 }
+
+// boolPointer is the value a presence reading carries: a pointer so "nobody
+// read it" stays different from "the answer is false".
+func boolPointer(value bool) *bool { return &value }
 
 // dayColumns builds the two columns a rule about days hands to an
 // implementation: one row per pair, in the order written.

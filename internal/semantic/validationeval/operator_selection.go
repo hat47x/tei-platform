@@ -498,6 +498,44 @@ func BuiltinImplementations() []NamedImplementation {
 			},
 		},
 		{
+			// tei.presence.is-present decides "the attribute holds a value". A
+			// presence input asks that question, not what the value is, so the
+			// answer travels in OperatorValue.Presence: reading it from Truth
+			// would answer "the value is true" instead, which is a different
+			// question and the bug #4359 measured (a presence contract was once
+			// answered satisfied from the number 7).
+			ID:    "tei.presence.is-present",
+			Input: semantic.OperatorInputPresence,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("is-present reads an input named \"value\"; the rule supplied no value input")
+				}
+				if value.Presence == nil {
+					return false, fmt.Errorf("is-present reads a presence; its input was not read as presence")
+				}
+				return *value.Presence, nil
+			},
+		},
+		{
+			// tei.presence.is-absent decides "the attribute holds no value". It
+			// is the same question as is-present with the answer reversed, kept
+			// as its own implementation so a rule states which of the two it
+			// means rather than negating a word in the middle of a declaration.
+			ID:    "tei.presence.is-absent",
+			Input: semantic.OperatorInputPresence,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("is-absent reads an input named \"value\"; the rule supplied no value input")
+				}
+				if value.Presence == nil {
+					return false, fmt.Errorf("is-absent reads a presence; its input was not read as presence")
+				}
+				return !*value.Presence, nil
+			},
+		},
+		{
 			// tei.any.same-as decides "the value holds exactly the other
 			// value", for inputs declared `any`. A value of an `any` input
 			// keeps the type it was read as, so the comparison reads the kind

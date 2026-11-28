@@ -335,19 +335,16 @@ func readAnySubject(rule semantic.Validation, source StatefulSource) (semantic.O
 // operator path has no presence reader yet. A rule that needs it is refused
 // rather than answered from a number.
 //
-// A value of any type is read as that type (section 8.4), so the four typed
-// words are no longer refused: the value the reader hands the implementation
-// carries the type, and the reader decides which one from the declaration.
-// Only presence, which asks whether a value is there rather than what it is,
-// stays refused on this path.
+// A value of any type is read as that type (section 8.4), so every typed word
+// is read by the reader that understands it: the value the reader hands the
+// implementation carries the type, and the reader decides which one from the
+// declaration.
+//
+// Presence is one of those types now. It asks whether a value is there rather
+// than what it is, and the answer travels in OperatorValue.Presence so an
+// implementation never reads a number as the answer to that question (#4359,
+// measured: a presence contract was once answered satisfied from the number 7).
 func refuseNonNumberInputs(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration) error {
-	for _, input := range inputs {
-		if input.Type != semantic.OperatorInputPresence {
-			continue
-		}
-		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as values; the presence input has no reader on this path yet",
-			rule.ID, rule.Operator, input.Name, input.Type)
-	}
 	return nil
 }
 
@@ -369,6 +366,35 @@ func readSubjectInput(rule semantic.Validation, input semantic.OperatorInputDecl
 		}
 	}
 	return nil, stopped, nil
+}
+
+// readPresenceSubject reads the subject attribute as presence, in the type the
+// input declaration states (section 8.4). A presence input asks whether the
+// attribute holds a value, not what its value is: a record that holds no value
+// and an attribute nobody read are different states, and neither is read as the
+// absence of a value the record does hold.
+func readPresenceSubject(rule semantic.Validation, input semantic.OperatorInputDeclaration, source StatefulSource) (semantic.OperatorValue, *Undecided, error) {
+	reader, ok := source.(StatefulPresenceSource)
+	if !ok {
+		return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s reads operator %s input %q as presence, but this reader cannot read presence", rule.ID, rule.Operator, input.Name)
+	}
+	reading, err := reader.ReadPresence(rule.Attribute)
+	if err != nil {
+		return semantic.OperatorValue{}, nil, err
+	}
+	switch reading.State {
+	case ValuePresent:
+		held := true
+		return semantic.OperatorValue{Presence: &held}, nil, nil
+	case ValueNull:
+		// A record that holds no value answers the presence question with
+		// "no". It is a settled answer, not an undecided one: the reader looked
+		// and found nothing, which is what absence of a value means.
+		held := false
+		return semantic.OperatorValue{Presence: &held}, nil, nil
+	default:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNotFetched, Attribute: rule.Attribute}, nil
+	}
 }
 
 // readTextSubject reads the subject attribute as a text value, in the type the
@@ -686,6 +712,15 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 				return Decision{Undecided: undecided}, nil
 			}
 			typedSubject = value
+		case semantic.OperatorInputPresence:
+			value, undecided, err := readPresenceSubject(rule, inputs[0], source)
+			if err != nil {
+				return Decision{}, err
+			}
+			if undecided != nil {
+				return Decision{Undecided: undecided}, nil
+			}
+			typedSubject = value
 		default:
 			// A type with no reader on this path is refused by name rather
 			// than answered from the empty value: a subject nobody read is not
@@ -693,6 +728,16 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			// answered from a value it never held (section 8.4).
 			return Decision{}, fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this reader reads an attribute as a number; the %s input has no reader on this path yet",
 				rule.ID, rule.Operator, inputs[0].Name, inputs[0].Type, inputs[0].Type)
+		}
+		// A subject read as a type other than number has no number to give a
+		// numeric implementation. Handing it an empty value would answer the rule
+		// from a value the record never held, so the shapes are refused here
+		// rather than decided: an implementation that decides from values of any
+		// type is the one a typed subject goes to (section 8.4).
+		if typedSubject.Number == nil && implementation.Values == nil {
+			return Decision{}, fmt.Errorf(
+				"semantic validation %s reads operator %s input %q as %s, but its implementation decides from a number",
+				rule.ID, rule.Operator, inputs[0].Name, inputs[0].Type)
 		}
 		// `values` is what the numeric fields receive, so it holds the subject
 		// only when the subject was read as a number. A subject read as another

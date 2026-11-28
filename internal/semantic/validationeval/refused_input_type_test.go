@@ -11,19 +11,19 @@ import (
 )
 
 // The evaluator's one operator path reads inputs as values. A contract that
-// declares a type this program cannot read is refused before the operator is
+// declares a type this reader cannot read is refused before the operator is
 // called, so a rule cannot be answered from a value of the wrong kind (#4359).
 //
-// The four typed words (date, text, truth, any) are read as their own type by
-// the value carrier of section 8.4, so this test pins only the input whose
-// question is different: presence asks whether a value is there, not what it
-// is, and the numeric read would answer the second question by accident.
+// Presence is one of the types the path reads now: it asks whether a value is
+// there, and the answer travels in OperatorValue.Presence rather than in Truth.
+// The refusal this test pins is therefore about a reader that cannot read
+// presence, not about the type having no reader at all.
 //
 // The refusal used to name `presence` whatever the type was, because the message
 // was written for that type and then generalised without changing the wording.
 // Measured: a `date` contract said "the presence input has no reader on this
 // path yet", which sends the author looking at the wrong declaration. The
-// wording now names its own type, which this pins for the type it still refuses.
+// wording now names its own type and its input.
 func TestARefusedInputNamesItsOwnType(t *testing.T) {
 	t.Run("presence", func(t *testing.T) {
 		kind := semantic.OperatorInputPresence
@@ -56,17 +56,17 @@ func TestARefusedInputNamesItsOwnType(t *testing.T) {
 		if !strings.Contains(err.Error(), `"value"`) {
 			t.Fatalf("the refusal does not name the input: %v", err)
 		}
-		// The reason names this type: "the <type> input has no reader".
-		// A message written for one type and reused for others names the
-		// wrong one, which is what this pins.
-		if !strings.Contains(err.Error(), "the "+string(kind)+" input has no reader") {
+		// The reason names the read this reader lacks. A message written for
+		// one type and reused for others names the wrong one, which is what
+		// this pins.
+		if !strings.Contains(err.Error(), "cannot read "+string(kind)) {
 			t.Fatalf("the refusal does not give %q as the reason: %v", kind, err)
 		}
 		// And it does not blame a different type.
 		for _, other := range []semantic.OperatorInput{
 			"date", "text", "truth", "any",
 		} {
-			if strings.Contains(err.Error(), " "+string(other)+" input has no reader") {
+			if strings.Contains(err.Error(), "cannot read "+string(other)) {
 				t.Fatalf("the refusal for %s blames the %s input: %v", kind, other, err)
 			}
 		}

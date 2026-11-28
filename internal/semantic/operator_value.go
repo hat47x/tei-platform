@@ -38,6 +38,14 @@ type OperatorValue struct {
 	// Any is a value read from an input declared `any`. It keeps the type it
 	// was read as, so a number and a quoted text are different values.
 	Any *AnyValue
+	// Presence is what an input declared `presence` reads: whether the
+	// attribute holds a value, not the value itself. True means it holds one,
+	// false means it holds none.
+	//
+	// It is a field of this value rather than a use of Truth on purpose: "the
+	// attribute holds a value" and "the value is true" are different questions,
+	// and answering one from the other is the bug this field prevents (#4359).
+	Presence *bool
 }
 
 // AnyValue is one value read from an input that may be of any type. The Type
@@ -85,6 +93,9 @@ func (v OperatorValue) Valid() bool {
 		}
 		set++
 	}
+	if v.Presence != nil {
+		set++
+	}
 	return set == 1
 }
 
@@ -118,6 +129,8 @@ func (v OperatorValue) Kind() OperatorInput {
 		return OperatorInputTruth
 	case v.Any != nil:
 		return OperatorInputAny
+	case v.Presence != nil:
+		return OperatorInputPresence
 	}
 	return ""
 }
@@ -169,7 +182,19 @@ func ParseOperatorInputValue(input OperatorInput, text string) (OperatorValue, e
 		}
 		return OperatorValue{Any: value}, nil
 	case OperatorInputPresence:
-		return OperatorValue{}, fmt.Errorf("%q is a value, but this input reads whether an attribute holds one; presence takes no value in an example", text)
+		// A presence cell states whether the attribute holds a value, in the two
+		// words the example table writes. It states no value of another type.
+		switch text {
+		case OperatorCasePresencePresent:
+			held := true
+			return OperatorValue{Presence: &held}, nil
+		case OperatorCasePresenceAbsent:
+			held := false
+			return OperatorValue{Presence: &held}, nil
+		}
+		return OperatorValue{}, fmt.Errorf(
+			"%q is not a presence cell; write %s or %s",
+			text, OperatorCasePresencePresent, OperatorCasePresenceAbsent)
 	}
 	return OperatorValue{}, fmt.Errorf("%q is not a value of an input this program reads", text)
 }

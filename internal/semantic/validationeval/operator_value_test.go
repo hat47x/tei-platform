@@ -183,9 +183,11 @@ func TestAnAnyValueCarriesTheTypeItHolds(t *testing.T) {
 	}
 }
 
-// A rule whose operator declares a presence input is still refused, because
-// the reader reads values and not whether there is one.
-func TestAPresenceInputRuleIsStillRefused(t *testing.T) {
+// A rule whose operator declares a presence input is refused when its
+// implementation decides from a number: the presence answer is carried in
+// OperatorValue.Presence, so a numeric implementation has no value it can read.
+// The presence input itself has a reader on this path now.
+func TestAPresenceInputRuleIsStillRefusedByANumericImplementation(t *testing.T) {
 	contract := semantic.Operator{
 		ID: "sales.op", Symbol: "op", Input: semantic.OperatorInputPresence,
 		Inputs: []semantic.OperatorInputDeclaration{{Name: "value", Type: semantic.OperatorInputPresence}},

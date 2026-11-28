@@ -78,6 +78,22 @@ func readTypedConstant(rule semantic.Validation, input semantic.OperatorInputDec
 			return semantic.OperatorValue{}, err
 		}
 		return semantic.OperatorValue{Truth: &value}, nil
+	case semantic.OperatorInputPresence:
+		// A presence constant states whether a value is there, in the two words
+		// the example table writes. A presence input asks that question, so a
+		// constant of another type does not answer it.
+		switch text {
+		case semantic.OperatorCasePresencePresent:
+			held := true
+			return semantic.OperatorValue{Presence: &held}, nil
+		case semantic.OperatorCasePresenceAbsent:
+			held := false
+			return semantic.OperatorValue{Presence: &held}, nil
+		}
+		return semantic.OperatorValue{}, fmt.Errorf(
+			"semantic validation %s assigns operator %s input %q the value %q, which is neither %s nor %s",
+			rule.ID, rule.Operator, input.Name, text,
+			semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent)
 	case semantic.OperatorInputAny:
 		spelled, ok := semantic.ReadSpelledValue(text)
 		if !ok {
@@ -162,6 +178,29 @@ func readAssignedTypedValue(rule semantic.Validation, input semantic.OperatorInp
 			truth := reading.Value
 			return semantic.OperatorValue{Truth: &truth}
 		})
+	case semantic.OperatorInputPresence:
+		reader, ok := source.(StatefulPresenceSource)
+		if !ok {
+			return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s reads operator %s input %q as presence, but this reader cannot read presence",
+				rule.ID, rule.Operator, input.Name)
+		}
+		reading, err := reader.ReadPresence(attribute)
+		if err != nil {
+			return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s cannot evaluate attribute %s: %w", rule.ID, attribute, err)
+		}
+		// A record that holds no value answers the presence question with "no".
+		// It is a settled answer, so it is carried as false rather than as an
+		// undecided reason (unlike a value nobody read).
+		switch reading.State {
+		case ValuePresent:
+			held := true
+			return semantic.OperatorValue{Presence: &held}, nil, nil
+		case ValueNull:
+			held := false
+			return semantic.OperatorValue{Presence: &held}, nil, nil
+		default:
+			return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}, nil
+		}
 	case semantic.OperatorInputAny:
 		reader, ok := source.(StatefulAnySource)
 		if !ok {

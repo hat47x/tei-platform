@@ -215,7 +215,12 @@ func (s exampleSource) readCellDate(row int, attribute core.CanonicalID) (valida
 
 // ReadPresence reports whether the item holds a value in this row. An item the
 // table has no column for was not written, so it is not fetched; an empty cell
-// is a record that holds no value.
+// is a record that holds no value; the word for "not read" is that state.
+//
+// A presence cell states one of the two words the table writes. A cell that
+// states anything else is refused with the text it holds rather than read as
+// presence, because reading a value nobody stated as "holds a value" would
+// answer a question the author did not ask (section 8.3).
 func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.PresenceReading, error) {
 	if s.row < 0 {
 		return validationeval.PresenceReading{}, fmt.Errorf("a rule about all the rows asked for the presence of %s", attribute)
@@ -224,10 +229,20 @@ func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.
 	if !written {
 		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
 	}
-	if s.example.Rows[s.row][column].Text == "" {
+	cell := s.example.Rows[s.row][column]
+	switch {
+	case cell.Text == "":
+		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
+	case semantic.IsOperatorCaseNotFetchedWord(cell.Text):
+		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
+	case cell.Text == semantic.OperatorCasePresencePresent:
+		return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
+	case cell.Text == semantic.OperatorCasePresenceAbsent:
 		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
 	}
-	return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
+	return validationeval.PresenceReading{}, fmt.Errorf(
+		"%q is not a presence cell; write %s or %s",
+		cell.Text, semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent)
 }
 
 func (s exampleSource) ReadRelationPeriods(relation, start, end, group core.CanonicalID) (validationeval.PeriodRowsReading, error) {
