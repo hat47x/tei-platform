@@ -85,6 +85,12 @@ func decidePresenceOperator(rule semantic.Validation, contract semantic.Operator
 		}
 	}
 	present := make(map[string]bool, len(inputs))
+	// A rule that asks about more than one attribute reads more than one value,
+	// and having several answers is not the same as knowing they came from one
+	// read (section 14.2 B-10). The origin of each input is collected while it
+	// is asked about, and compared before the implementation is asked, exactly
+	// as the value path does.
+	origins := make([]inputOrigin, 0, len(inputs))
 	for index, input := range inputs {
 		attribute := rule.Attribute
 		if index > 0 {
@@ -108,6 +114,7 @@ func decidePresenceOperator(rule semantic.Validation, contract semantic.Operator
 			}
 			attribute = named
 		}
+		origins = append(origins, dataOrigin(input.Name, string(attribute), source))
 		reading, err := reader.ReadPresence(attribute)
 		if err != nil {
 			return Decision{}, fmt.Errorf("semantic validation %s cannot ask whether attribute %s holds a value: %w",
@@ -129,6 +136,13 @@ func decidePresenceOperator(rule semantic.Validation, contract semantic.Operator
 			return Decision{}, fmt.Errorf("semantic validation %s: the reader reports attribute %s in the unknown state %q",
 				rule.ID, attribute, reading.State)
 		}
+	}
+	unknown, aerr := requireSameAttempt(rule, origins)
+	if aerr != nil {
+		return Decision{}, aerr
+	}
+	if unknown != nil {
+		return Decision{Undecided: unknown}, nil
 	}
 	satisfied, err := implementation.Presence(present)
 	if err != nil {
