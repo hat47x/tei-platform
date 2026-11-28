@@ -127,14 +127,40 @@ func TestMarkedTableBlankLineInsideIsRefused(t *testing.T) {
 		"```tei\n" +
 		"namespace organization\n" +
 		"```\n"
-	// The blank line closes the table, and the row behind it is prose-shaped.
-	// What matters is that the document is either refused or reads the row.
-	document, err := syntax.ScanTEIMarkdownDocument(src)
-	if err != nil {
-		return
-	}
-	if len(document.Tables) == 0 {
-		t.Fatal("the marked table was not read")
+	requireRefused(t, src, "| ghostName", "separated from its marked table by a blank line")
+}
+
+func TestMarkedCasesBlankLineInsideIsRefused(t *testing.T) {
+	src := "<!-- tei: cases of organization.non_negative -->\n" +
+		"| value | expect | note |\n" +
+		"| --- | --- | --- |\n" +
+		"| 1 | satisfied | |\n\n\n" +
+		"5 | satisfied | |\n"
+	requireRefused(t, src, "5 | satisfied", "separated from its marked table by a blank line")
+}
+
+func TestMarkedTableMayBeFollowedByDocumentation(t *testing.T) {
+	prefix := "<!-- tei: data Ghost in organization -->\n" +
+		"| attribute | type | required | display | description |\n" +
+		"| --- | --- | --- | --- | --- |\n" +
+		"| ghostId | std.identifier | yes | ghost | |\n\n"
+	for _, suffix := range []string{
+		"Ordinary prose with a pipe | in it.\n",
+		"| a | b | c | d | e |\n| --- | --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 | 5 |\n",
+		"| a | b | c | d | e |\n--- | --- | --- | --- | ---\n| 1 | 2 | 3 | 4 | 5 |\n",
+		"<!-- tei: data Other in organization -->\n| attribute | type | required | display | description |\n| --- | --- | --- | --- | --- |\n| otherId | std.identifier | yes | other | |\n",
+	} {
+		doc, err := syntax.ScanTEIMarkdownDocument(prefix + suffix)
+		if err != nil {
+			t.Fatalf("valid following content refused: %v", err)
+		}
+		want := 1
+		if strings.HasPrefix(suffix, "<!-- tei:") {
+			want = 2
+		}
+		if len(doc.Tables) != want || len(doc.Tables[0].Rows) != 1 {
+			t.Fatalf("unexpected definition tables: %+v", doc.Tables)
+		}
 	}
 }
 

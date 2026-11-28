@@ -31,7 +31,9 @@ import (
 // trailing one: a line that ends with `|` and has as many cells as the header is
 // read as a row, and a line that does not is not. Without the trailing pipe the
 // rule could not tell a row from prose that merely contains a pipe, so that case
-// is documentation rather than a silent loss. Nothing that looks like a `tei`
+// is documentation rather than a silent loss. An isolated row immediately after
+// a marked table and blank lines is ambiguous; report it unless it starts a
+// separate documentation table. Nothing that looks like a `tei`
 // fence or a `tei:` mark is ever skipped without a diagnostic: a region or table
 // the scanner did not read is reported with its position.
 
@@ -123,6 +125,7 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 	var document MarkdownDocument
 	var fence *markdownFence
 	var table *markdownTableState
+	var endedTableColumns int // only across blank lines immediately after a marked table
 	var documentation []Anchor
 	rawHTMLBlockOpen := ""
 	inComment := false
@@ -165,6 +168,21 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 		lineSpan := Anchor{Start: at(0), End: at(len(text))}
 
 		consumed := false
+		if endedTableColumns != 0 && strings.TrimSpace(text) != "" {
+			// A blank line ends a Markdown table. A following row of the same
+			// shape is easily mistaken for another definition or test case.
+			// Do not turn it into a definition implicitly or drop it silently.
+			cells, isRow, err := markdownTableRow(text, at)
+			if !isRow {
+				cells, isRow, err = markdownTableRowDetached(text, at, endedTableColumns)
+			}
+			if isRow && err == nil && len(cells) == endedTableColumns &&
+				!startsDocumentationTable(src, next, len(cells)) {
+				return MarkdownDocument{}, &ParseError{Pos: lineSpan.Start, End: lineSpan.End,
+					Msg: "a row is separated from its marked table by a blank line; remove the blank line or start a separate table"}
+			}
+			endedTableColumns = 0
+		}
 		if table != nil {
 			cells, isRow, err := markdownTableRow(text, at)
 			if err != nil {
@@ -189,6 +207,9 @@ func scanTEIMarkdown(src string, readTables bool) (MarkdownDocument, error) {
 						return MarkdownDocument{}, &ParseError{Pos: lineSpan.Start, End: lineSpan.End,
 							Msg: fmt.Sprintf("this line renders as a row of the marked table above, but it has %d cells where the header has %d; write the missing cells, or end the table with a blank line", strings.Count(strings.TrimSpace(text), "|")+1, len(table.table.Header))}
 					}
+				}
+				if table.stage == 2 && strings.TrimSpace(text) == "" {
+					endedTableColumns = len(table.table.Header)
 				}
 				if err := finishTable(); err != nil {
 					return MarkdownDocument{}, err
@@ -607,6 +628,32 @@ func markdownTableRowDetached(text string, at func(int) Position, cells int) ([]
 		start += len(raw) + 1
 	}
 	return row, true, nil
+}
+
+// startsDocumentationTable recognises the delimiter immediately following a
+// candidate header, including optional outside pipes. It does not read the
+// documentation table as a definition.
+func startsDocumentationTable(src string, offset, columns int) bool {
+	if offset >= len(src) {
+		return false
+	}
+	line, _, _ := strings.Cut(src[offset:], "\n")
+	indent, body := markdownIndent(strings.TrimSuffix(line, "\r"))
+	if indent > 3 {
+		return false
+	}
+	body = strings.TrimSpace(body)
+	body = strings.TrimPrefix(body, "|")
+	body = strings.TrimSuffix(body, "|")
+	parts := strings.Split(body, "|")
+	if len(parts) != columns {
+		return false
+	}
+	cells := make([]MarkdownCell, len(parts))
+	for i, part := range parts {
+		cells[i].Text = strings.TrimSpace(part)
+	}
+	return markdownDelimiterRow(cells)
 }
 
 func markdownDelimiterRow(cells []MarkdownCell) bool {
