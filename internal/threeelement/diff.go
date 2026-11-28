@@ -17,15 +17,32 @@ type DiffEntry struct {
 	After    string `json:"after,omitempty"`
 }
 
+// AmbiguousIdentity names an identity that one side of the comparison declares
+// more than once.
+//
+// A diff works by identity, so two declarations that share one name can only be
+// compared as one. That reduction is invisible unless it is reported: the same
+// model then projects two rows in a cross-reference and one entry in a diff,
+// and a reader cannot tell which declaration the entry stands for (#6113).
+// The entry states what the diff had to reduce; it does not choose a winner.
+type AmbiguousIdentity struct {
+	// Side is "before" or "after": the model that declares the duplicate.
+	Side     string `json:"side"`
+	Category string `json:"category"` // data | function | business | cross-reference | crud
+	ID       string `json:"id"`
+	Count    int    `json:"count"`
+}
+
 // DiffResult is the full diff between two models.
 type DiffResult struct {
-	SchemaVersion   string      `json:"schemaVersion"`
-	BeforeID        string      `json:"beforeId"`
-	AfterID         string      `json:"afterId"`
-	Added           []DiffEntry `json:"added"`
-	Removed         []DiffEntry `json:"removed"`
-	Changed         []DiffEntry `json:"changed"`
-	AuthorityLimits []string    `json:"authorityLimits,omitempty"`
+	SchemaVersion       string              `json:"schemaVersion"`
+	BeforeID            string              `json:"beforeId"`
+	AfterID             string              `json:"afterId"`
+	Added               []DiffEntry         `json:"added"`
+	Removed             []DiffEntry         `json:"removed"`
+	Changed             []DiffEntry         `json:"changed"`
+	AmbiguousIdentities []AmbiguousIdentity `json:"ambiguousIdentities,omitempty"`
+	AuthorityLimits     []string            `json:"authorityLimits,omitempty"`
 }
 
 // DiffModels computes a deterministic diff between two models.
@@ -50,6 +67,35 @@ func DiffModels(before, after ThreeElementModel) DiffResult {
 	afterCrossRef := byID(after.CrossReferences)
 	beforeCRUD := byID(before.CRUDDefinitions)
 	afterCRUD := byID(after.CRUDDefinitions)
+
+	res.AmbiguousIdentities = append(ambiguousIdentities("before", "data", before.DataElements),
+		ambiguousIdentities("before", "function", before.FunctionElements)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("before", "business", before.BusinessElements)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("before", "cross-reference", before.CrossReferences)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("before", "crud", before.CRUDDefinitions)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("after", "data", after.DataElements)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("after", "function", after.FunctionElements)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("after", "business", after.BusinessElements)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("after", "cross-reference", after.CrossReferences)...)
+	res.AmbiguousIdentities = append(res.AmbiguousIdentities,
+		ambiguousIdentities("after", "crud", after.CRUDDefinitions)...)
+	sort.Slice(res.AmbiguousIdentities, func(i, j int) bool {
+		a, b := res.AmbiguousIdentities[i], res.AmbiguousIdentities[j]
+		if a.Side != b.Side {
+			return a.Side < b.Side
+		}
+		if a.Category != b.Category {
+			return a.Category < b.Category
+		}
+		return a.ID < b.ID
+	})
 
 	allData := stringKeys(beforeData, afterData)
 	allFn := stringKeys(beforeFn, afterFn)
@@ -132,6 +178,25 @@ func byID[T any](items []T) map[string]T {
 			out[id] = item
 		}
 	}
+	return out
+}
+
+// ambiguousIdentities names every id a side declares more than once, so the
+// reduction byID performs is reported instead of hidden.
+func ambiguousIdentities[T any](side, category string, items []T) []AmbiguousIdentity {
+	counts := map[string]int{}
+	for _, item := range items {
+		if id := idOf(item); id != "" {
+			counts[id]++
+		}
+	}
+	var out []AmbiguousIdentity
+	for id, count := range counts {
+		if count > 1 {
+			out = append(out, AmbiguousIdentity{Side: side, Category: category, ID: id, Count: count})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
 }
 
