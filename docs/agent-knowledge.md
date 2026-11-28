@@ -51,7 +51,7 @@
 | 実装からの設計改善 | [作業ガイド §6](agent-development-guide.md#6-ai協業と作業別ガイド)。仕様発掘・実装フィードバック・三要素分析に返す |
 | 公開文書・規約・計画を変更する | 変更の前に`python3 -B tools/check-public-boundary/check.py --root .`を実行する。CIの`repository-health`は`repository-health-check.sh`より前にこの検査を走らせるため、ローカルで先に落とすと手戻りが小さい。非公開資料の書き方は[文書品質 §11.1](documentation-quality.md#111-非公開資料を指すときの書き方)。[作業ガイド §1](agent-development-guide.md#まず使う検査コマンド) |
 | 証拠に基づく自律統合 | [ADR-0035](../plan/adr/0035-autonomy-levels-and-verification-packets.md)と[CONTRIBUTING](../CONTRIBUTING.md)。対象head、許可範囲、必要な検証を照合する |
-| DSHセッションの活動を機械で読む | `tools/dsh-session-evidence/collect-session.mjs` は永続Session Log（`session.v4.jsonl.zstd`）の**全zstd frame**を展開し、Tool call↔result相関・TEI argv分類・Skill記録を出す。単一frame復号は先頭だけを返す偽陰性になる。CLI呼出は `tei.exe` だけでなく `go run ./cmd/tei` も数える（`viaGoRun`）。収集は観測であり、正答・意味受理・権限の証明ではない（[#2509](https://github.com/hat47x/tei-platform/issues/2509)） |
+| DSHセッションの活動を機械で読む | `tools/dsh-session-evidence/collect-session.mjs` は永続Session Log（`session.v4.jsonl.zstd`）の**全zstd frame**を展開し、Tool call↔result相関・TEI argv分類・Skill記録を出す。単一frame復号は先頭だけを返す偽陰性になる。CLI呼出は `tei.exe` だけでなく `go run ./cmd/tei` も数える（`viaGoRun`）。収集は観測であり、正答・意味受理・権限の証明ではない（[#2509](https://github.com/hat47x/tei-platform/issues/2509)）。回帰テストは `tools/repository-node-tests` が `go test ./...` の一部として実行する |
 
 ## 5. 運用の改善
 

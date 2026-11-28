@@ -25,6 +25,14 @@ var unreferencedNodeTests = []string{
 	"tools/reference-sui-interaction/sui-http-ports.test.mjs",
 	"tools/reference-studio-host-qualification/client_transport_contract.test.mjs",
 	"reference/business-spec-templates/template-reference.test.mjs",
+	// The Session-evidence collector is the tool that reads another Harness's
+	// persisted Session log. Its regression tests are the only thing that keeps
+	// the zstd frame expansion and the TEI argv classification (including
+	// `go run ./cmd/tei`) from silently regressing; nothing else ran them
+	// (#2509, #6110).
+	"tools/dsh-session-evidence/collect-session.test.mjs",
+	"tools/dsh-session-evidence/run-dsh-session.test.mjs",
+	"tools/dsh-session-evidence/build-and-sync.test.mjs",
 }
 
 func TestUnreferencedNodeTestsPass(t *testing.T) {
