@@ -485,6 +485,36 @@ func (d *Detail) ReadRelationKeys(relation, attribute core.CanonicalID) (validat
 	return reading, nil
 }
 
+// ReadRelationPresence answers, for every row of the relation, whether the row
+// holds a value for attribute, together with whether those rows are all the
+// rows. It is the row reader of a presence input (decision sections 3 and
+// 15.1): a rule that asks "does every row hold a value" is decided from the
+// states of the rows, not from one record's answer.
+//
+// The value is not parsed: SQL NULL is "no value" and an empty text or a zero
+// is a value, exactly as the one-record reader (Row.ReadPresence) reads it.
+func (d *Detail) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+	if err := d.checkRelation(relation); err != nil {
+		return validationeval.PresenceRowsReading{}, err
+	}
+	reading := validationeval.PresenceRowsReading{
+		Coverage: d.coverage,
+		Rows:     make([]validationeval.PresenceReading, 0, len(d.rows)),
+	}
+	for index := range d.rows {
+		presence, err := d.readPresence(index, attribute)
+		if err != nil {
+			// A row this reader cannot turn into a reading is the reader's
+			// error, not a value that was absent: it is returned rather than
+			// recorded as "no value", which would answer a question about the
+			// data with a statement about the read.
+			return validationeval.PresenceRowsReading{}, err
+		}
+		reading.Rows = append(reading.Rows, presence)
+	}
+	return reading, nil
+}
+
 // ReadRelationNumbers reads one numeric attribute in every row of the relation,
 // in the order the rows were read, together with whether those rows are all the
 // rows. It is the row-scoped reader decision section 15.1 fixes: one call is one

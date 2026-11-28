@@ -163,6 +163,39 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "no value input", present: map[string]bool{}, wantErr: true},
 		},
 	}
+	// tei.presence.every-present decides, over the rows of a relation, whether
+	// every row holds a value. Its expectations are the row states a reader
+	// reports: a row that holds a value, a row that holds none, and a row
+	// nobody read.
+	presentRowInputWant := map[string][]struct {
+		name string
+		rows map[string][]validationeval.PresenceReading
+		want validationeval.Tri
+	}{
+		"tei.presence.every-present": {
+			{name: "every row holds a value", rows: map[string][]validationeval.PresenceReading{
+				"value": {{State: validationeval.ValuePresent}, {State: validationeval.ValuePresent}},
+			}, want: validationeval.TriYes},
+			{name: "one row holds no value", rows: map[string][]validationeval.PresenceReading{
+				"value": {{State: validationeval.ValuePresent}, {State: validationeval.ValueNull}},
+			}, want: validationeval.TriNo},
+			{name: "a row nobody read", rows: map[string][]validationeval.PresenceReading{
+				"value": {{State: validationeval.ValuePresent}, {State: validationeval.ValueNotFetched}},
+			}, want: validationeval.TriMaybe},
+			// A counterexample that was seen is a counterexample however many
+			// rows around it were not read: section 8's rule about a witnessed
+			// refutation is the operator's own statement, and this implementation
+			// reports the certain answer it found.
+			{name: "a row that holds no value and a row nobody read", rows: map[string][]validationeval.PresenceReading{
+				"value": {{State: validationeval.ValueNull}, {State: validationeval.ValueNotFetched}},
+			}, want: validationeval.TriNo},
+			// Section 8.1: the empty relation is one example, and every row
+			// holding a value is true of no rows.
+			{name: "no rows", rows: map[string][]validationeval.PresenceReading{
+				"value": {},
+			}, want: validationeval.TriYes},
+		},
+	}
 	// tei.day.every-not-before decides days through the one value shape section
 	// 8.4 fixes, over the rows of a relation. Its expectations are the rows as
 	// the reader hands them over, each value carrying the type it was read as,
@@ -388,12 +421,26 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
 				}
 			}
+		} else if implementation.PresenceRows != nil {
+			cases, known := presentRowInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.PresenceRows(tc.rows)
+				if err != nil {
+					t.Fatalf("%s(%s)=%d err=%v, want %d", implementation.ID, tc.name, int(got), err, int(tc.want))
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
+				}
+			}
 		} else {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant)+len(presentRowInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant)+len(presentRowInputWant))
 	}
 }
 

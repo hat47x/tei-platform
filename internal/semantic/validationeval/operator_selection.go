@@ -54,6 +54,14 @@ type NamedImplementation struct {
 	// none. At most one of Number, Numbers, NumberRows, Values, ValueRows and
 	// Presence is non-nil.
 	Presence func(present map[string]bool) (bool, error)
+	// PresenceRows decides for an operator whose input asks, of every row of a
+	// relation, whether it holds a value (decision section 15.1). It receives,
+	// per input name, the state of every row in the order the rows were read,
+	// and answers TriYes, TriNo or TriMaybe.
+	//
+	// At most one of Number, Numbers, NumberRows, Values, ValueRows, Presence
+	// and PresenceRows is non-nil.
+	PresenceRows func(rows map[string][]PresenceReading) (Tri, error)
 	// Absent reads an absent value under the mapping the rule named, or
 	// reports that this implementation cannot read that mapping. A shipped
 	// implementation that states none leaves every absence undecided.
@@ -533,6 +541,41 @@ func BuiltinImplementations() []NamedImplementation {
 				return value, nil
 			},
 		},
+		{
+			// tei.presence.every-present decides "every row of the relation
+			// holds a value". It is the row form of is-present: the same
+			// question, asked of a column instead of one record (section 15.1).
+			//
+			// A row that holds no value is a counterexample, so it answers
+			// TriNo; a row nobody read leaves the answer unknown unless a
+			// counterexample was already seen, which is what TriMaybe says and
+			// what the evaluator composes with Coverage and the operator's
+			// `refutes on some rows` statement.
+			ID:    "tei.presence.every-present",
+			Input: semantic.OperatorInputPresence,
+			PresenceRows: func(rows map[string][]PresenceReading) (Tri, error) {
+				column, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-present reads an input named \"value\"; the rule supplied no value input")
+				}
+				unread := false
+				for _, row := range column {
+					switch row.State {
+					case ValueNull:
+						return TriNo, nil
+					case ValueNotFetched:
+						unread = true
+					case ValuePresent:
+					default:
+						return TriMaybe, fmt.Errorf("every-present reads whether a row holds a value; the reader reported the unknown state %q", row.State)
+					}
+				}
+				if unread {
+					return TriMaybe, nil
+				}
+				return TriYes, nil
+			},
+		},
 	}
 }
 
@@ -612,6 +655,19 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 					called(call)
 				}
 				return decide(present)
+			}
+		}
+		if match.PresenceRows != nil {
+			// Whether every row of a relation holds a value is decided from
+			// the row states the reader reports, not from one record's answer
+			// (section 15.1). The implementation sees no Source.
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.PresenceRows
+			implementation.PresenceRows = func(rows map[string][]PresenceReading) (Tri, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(rows)
 			}
 		}
 		if match.Values != nil {
