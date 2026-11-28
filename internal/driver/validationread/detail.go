@@ -543,12 +543,12 @@ func (d *Detail) ReadRelationValues(relation core.CanonicalID, attribute core.Ca
 	return reading, nil
 }
 
-// ReadRelationPresences reads whether one attribute holds a value in every row
+// ReadRelationPresence reads whether one attribute holds a value in every row
 // of the relation, in the order the rows were read, together with whether those
 // rows are all the rows. It is the row-scoped form of ReadPresence: the same
 // three states, read once for the whole relation rather than once per record,
 // so every row-scoped input of one rule comes from this same reading.
-func (d *Detail) ReadRelationPresences(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+func (d *Detail) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
 	if err := d.checkRelation(relation); err != nil {
 		return validationeval.PresenceRowsReading{}, err
 	}
@@ -694,9 +694,9 @@ func (r Row) ReadRelationNumbers(relation, attribute core.CanonicalID) (validati
 		"one row is not the rows of relation %s; a row-scoped input needs the reader of the whole relation", relation)
 }
 
-// ReadRelationPresences refuses for the same reason as ReadRelationNumbers: the
+// ReadRelationPresence refuses for the same reason as ReadRelationNumbers: the
 // rows of a relation are not one record's presence.
-func (r Row) ReadRelationPresences(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+func (r Row) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
 	return validationeval.PresenceRowsReading{}, fmt.Errorf("a rule about one record asked for the presence of attribute %s over the rows of relation %s", attribute, relation)
 }
 

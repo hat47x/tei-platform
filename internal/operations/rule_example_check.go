@@ -344,12 +344,12 @@ func (s exampleSource) ReadRelationNumbers(relation, attribute core.CanonicalID)
 	return reading, nil
 }
 
-// ReadRelationPresences reads whether one item holds a value in every row of the
+// ReadRelationPresence reads whether one item holds a value in every row of the
 // example table. The rows of the example are the rows of the relation it states,
 // so the states are read from those rows rather than from one record: an item
 // nobody wrote a column for was not read, an empty cell holds no value, and the
 // word for "not read" is that state.
-func (s exampleSource) ReadRelationPresences(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+func (s exampleSource) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
 	if s.row >= 0 {
 		return validationeval.PresenceRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
 	}

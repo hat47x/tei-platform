@@ -24,7 +24,7 @@ type PresenceRowsReading struct {
 // presence of every row is refused by a reader that cannot; it is not answered
 // from one record (decision section 15.1).
 type StatefulPresenceRowSource interface {
-	ReadRelationPresences(relation, attribute core.CanonicalID) (PresenceRowsReading, error)
+	ReadRelationPresence(relation, attribute core.CanonicalID) (PresenceRowsReading, error)
 }
 
 // readRelationPresences reads one input's presence column over the rows of a
@@ -37,7 +37,7 @@ func readRelationPresences(rule semantic.Validation, source StatefulSource, rela
 		return PresenceRowsReading{}, fmt.Errorf("semantic validation %s reads whether attribute %s holds a value in every row of %s, but this reader cannot read presence over rows",
 			rule.ID, attribute, relation)
 	}
-	reading, err := reader.ReadRelationPresences(relation, attribute)
+	reading, err := reader.ReadRelationPresence(relation, attribute)
 	if err != nil {
 		return PresenceRowsReading{}, fmt.Errorf("semantic validation %s cannot read whether attribute %s holds a value over the rows of %s: %w",
 			rule.ID, attribute, relation, err)
@@ -49,10 +49,12 @@ func readRelationPresences(rule semantic.Validation, source StatefulSource, rela
 // attribute holds a value in every row of a relation.
 //
 // The implementation receives, per input name, the state of every row that was
-// read, so it can answer the three-valued question itself. The read Coverage and
-// the operator's refutation statement are composed in the one place that decides
-// a row-scoped answer (decideRowScoped, row_scope.go), exactly as they are for
-// the numeric and typed row paths.
+// read, so it can answer the three-valued question itself. A row that holds no
+// value reaches it as ValueNull, which is an answer to the presence question; a
+// row nobody read does not, because that is not an answer (section 8.6). The read
+// Coverage and the operator's refutation statement are composed in the one place
+// that decides a row-scoped answer (decideRowScoped, row_scope.go), exactly as
+// they are for the numeric and typed row paths.
 //
 // A constant belongs to no record, so a presence input assigned a constant is
 // refused rather than read: there is no row whose value it could ask about.
@@ -102,12 +104,15 @@ func decidePresenceRowScopedOperator(rule semantic.Validation, contract semantic
 		}
 		coverage = reading.Coverage
 		rows[input.Name] = reading.Rows
-		// A row nobody read keeps its own reason. The first such row in read order
-		// is reported; the implementation is still asked, so a counterexample
-		// found in another row is not thrown away.
+		// Section 8.6: a row nobody read is settled before an implementation is
+		// asked, so the implementation never receives a state that is not an
+		// answer. The first such row in read order is the reason reported.
 		if reason == nil {
 			reason = firstPresenceRowReason(attribute, reading.Rows)
 		}
+	}
+	if reason != nil {
+		return Decision{Undecided: reason}, nil
 	}
 	answer, err := implementation.PresenceRows(rows)
 	if err != nil {
@@ -120,15 +125,14 @@ func decidePresenceRowScopedOperator(rule semantic.Validation, contract semantic
 //
 // A row that holds no value is not a reason here: it is an answer to the presence
 // question, and the implementation is the one that decides what that answer
-// means for the operator.
+// means for the operator (section 8.6: `ValueNull` reaches the implementation,
+// `ValueNotFetched` does not).
 func firstPresenceRowReason(attribute core.CanonicalID, rows []PresenceReading) *Undecided {
 	for _, row := range rows {
-		if row.State == ValueNotFetched {
-			return &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}
+		if row.State == ValuePresent || row.State == ValueNull {
+			continue
 		}
-		if row.State != ValuePresent && row.State != ValueNull {
-			return &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}
-		}
+		return &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}
 	}
 	return nil
 }

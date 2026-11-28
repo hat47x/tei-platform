@@ -83,16 +83,30 @@ func TestAPresenceRowRuleIsAnsweredPerRelation(t *testing.T) {
 	}
 }
 
-// A row nobody read leaves the rule undecided with that reason, even when every
-// other row holds a value: an answer that claims the rule holds has to account
-// for every row.
+// A row nobody read leaves the rule undecided with that reason, and section 8.6
+// settles it before an implementation is asked: the implementation never receives
+// `ValueNotFetched`, because "nobody looked" is not an answer it could weigh.
 func TestAPresenceRowRuleWithAnUnreadRowIsUndecided(t *testing.T) {
+	operators := presenceRowOperators()
+	asked := false
+	implementation := operators.Implementations[0]
+	implementation.PresenceRows = func(rows map[string][]validationeval.PresenceReading) (validationeval.Tri, error) {
+		asked = true
+		for _, row := range rows["value"] {
+			if row.State == validationeval.ValueNotFetched {
+				return validationeval.TriMaybe, nil
+			}
+		}
+		return validationeval.TriYes, nil
+	}
+	operators.Implementations = []validationeval.OperatorImplementation{implementation}
+
 	decision, err := validationeval.Decide(presenceRowRule(),
 		presenceRowsSource{rows: []validationeval.PresenceReading{
 			{State: validationeval.ValuePresent},
 			{State: validationeval.ValueNotFetched},
 		}},
-		presenceRowOperators())
+		operators)
 	if err != nil {
 		t.Fatalf("a presence row rule was refused: %v", err)
 	}
@@ -101,6 +115,9 @@ func TestAPresenceRowRuleWithAnUnreadRowIsUndecided(t *testing.T) {
 	}
 	if decision.Undecided.Reason != validationeval.UndecidedValueNotFetched {
 		t.Fatalf("reason=%q, want value-not-fetched", decision.Undecided.Reason)
+	}
+	if asked {
+		t.Fatal("the implementation was asked about a row nobody read")
 	}
 }
 
@@ -129,7 +146,7 @@ func (s presenceRowsSource) ReadRelationKeys(core.CanonicalID, core.CanonicalID)
 
 func (s presenceRowsSource) ReadAttempt(core.CanonicalID) (string, bool) { return "one-read", true }
 
-func (s presenceRowsSource) ReadRelationPresences(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+func (s presenceRowsSource) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
 	return validationeval.PresenceRowsReading{
 		Coverage: validationeval.CoverageComplete,
 		Rows:     s.rows,
