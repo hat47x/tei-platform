@@ -93,8 +93,11 @@ func loadThreeElementModel(path string) (threeelement.ThreeElementModel, error) 
 	if err != nil {
 		return threeelement.ThreeElementModel{}, err
 	}
-	var model threeelement.ThreeElementModel
-	if err := json.Unmarshal(raw, &model); err != nil {
+	// The admission rules live in the package, not here: every reader (this
+	// CLI and the document draft) must refuse the same documents, or a model
+	// one command accepts is silently reinterpreted by another (#6113).
+	model, err := threeelement.DecodeModel(raw)
+	if err != nil {
 		return threeelement.ThreeElementModel{}, err
 	}
 	model.ModelFingerprint = threeelement.ModelFingerprint(model)

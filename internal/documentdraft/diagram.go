@@ -1,10 +1,8 @@
 package documentdraft
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"os"
 	"sort"
 	"strings"
@@ -19,7 +17,7 @@ import (
 // The input model is a SEPARATE artifact from a TEI Workspace: it is the
 // three-element analysis (Data / Function / Business) the model file declares.
 // This kind never merges the two, and never decides which declared TEI subject
-// counts as Data, Function or Business 窶・the model file states it, and TEI
+// counts as Data, Function or Business 遯ｶ繝ｻthe model file states it, and TEI
 // reports what the file said. The element mapping itself is an Owner decision
 // (THREE_ELEMENT_OWNER_ACCEPTANCE_ITEMS), so a projection that invented a mapping
 // would be asserting meaning nobody accepted.
@@ -76,7 +74,7 @@ type DiagramContent struct {
 	AuthorityLimits   []string `json:"authorityLimits,omitempty"`
 }
 
-// DiagramCRUD is one declared Function→Data CRUD mapping. The declared
+// DiagramCRUD is one declared Function竊奪ata CRUD mapping. The declared
 // operations are the cell the reader sees; DerivedOperations keeps the
 // Function.Operations intent that the declaration overrode, and
 // ConflictingDeclarations marks a cell whose two qualifications disagree.
@@ -175,7 +173,7 @@ func buildDiagramTitle(requested string, model threeelement.ThreeElementModel) s
 	if name == "" {
 		name = model.ModelID
 	}
-	return "荳芽ｦ∫ｴ蛻・梵蝗ｳ: " + name
+	return "闕ｳ闃ｽ・ｦ竏ｫ・ｴ・ｰ陋ｻ繝ｻ譴ｵ陜暦ｽｳ: " + name
 }
 
 // projectThreeElementDiagram fills one draft with the nodes and edges of the
@@ -243,21 +241,19 @@ func (d *Draft) projectThreeElementDiagram(modelPath string) error {
 
 // loadThreeElementModelFile reads one three-element model and recomputes its
 // fingerprint, exactly as the three-element CLI does. A model that cannot be read
-// is an argument failure, not an empty diagram.
+// is an argument failure, not an empty diagram. The version and field rules come
+// from the package (DecodeModel), so a draft and the CLI cannot disagree about
+// which documents are readable (#6113).
 func loadThreeElementModelFile(path string) (threeelement.ThreeElementModel, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return threeelement.ThreeElementModel{}, draftError(CodeInvalidArgument,
 			"three-element model %s cannot be read: %v", path, err)
 	}
-	// A leading UTF-8 BOM is a byte-order mark, not JSON text. Windows editors add
-	// one often enough that refusing it would report a broken model for an
-	// encoding detail.
-	raw = bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
-	var model threeelement.ThreeElementModel
-	if err := json.Unmarshal(raw, &model); err != nil {
+	model, err := threeelement.DecodeModel(raw)
+	if err != nil {
 		return threeelement.ThreeElementModel{}, draftError(CodeInvalidArgument,
-			"three-element model %s is not readable JSON: %v", path, err)
+			"three-element model %s is not a readable %s model: %v", path, threeelement.SchemaVersion(), err)
 	}
 	if strings.TrimSpace(model.ModelID) == "" {
 		return threeelement.ThreeElementModel{}, draftError(CodeInvalidArgument,
