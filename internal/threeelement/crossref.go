@@ -80,9 +80,17 @@ func GenerateBusinessDataCrossReference(model ThreeElementModel) []BusinessDataC
 }
 
 // DataDataCrossReference describes Data→Data relations.
+//
+// RelationID is the DataRelation identity inside the DataElement named by
+// SourceID. Two relations between the same pair of Data elements are different
+// declarations, and a projection that drops the identity cannot say which row
+// is which (decision section 33.6 SDM-01). The pair SourceID+RelationID is the
+// qualified identity; a RelationID alone is not, because each Data element owns
+// its own relation ids.
 type DataDataCrossReference struct {
 	SourceID   string `json:"sourceId"`
 	SourceName string `json:"sourceName"`
+	RelationID string `json:"relationId"`
 	TargetID   string `json:"targetId"`
 	TargetName string `json:"targetName"`
 	Kind       string `json:"kind"`
@@ -91,6 +99,12 @@ type DataDataCrossReference struct {
 }
 
 // GenerateDataDataCrossReference derives Data→Data relations.
+//
+// The order is total and independent of input order: source, target, then the
+// relation identity. Without the last key two parallel relations that agree on
+// every other projected field would come out in whatever order the sort
+// happened to produce, so a Consumer comparing two projections of the same
+// model could see a difference that is not a difference in the model.
 func GenerateDataDataCrossReference(model ThreeElementModel) []DataDataCrossReference {
 	dataByID, _, _ := model.Index()
 	var out []DataDataCrossReference
@@ -99,6 +113,7 @@ func GenerateDataDataCrossReference(model ThreeElementModel) []DataDataCrossRefe
 			out = append(out, DataDataCrossReference{
 				SourceID:   d.ID,
 				SourceName: d.Name,
+				RelationID: rel.ID,
 				TargetID:   rel.TargetID,
 				TargetName: dataByID[rel.TargetID].Name,
 				Kind:       rel.Kind,
@@ -107,11 +122,14 @@ func GenerateDataDataCrossReference(model ThreeElementModel) []DataDataCrossRefe
 			})
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
+	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].SourceID != out[j].SourceID {
 			return out[i].SourceID < out[j].SourceID
 		}
-		return out[i].TargetID < out[j].TargetID
+		if out[i].TargetID != out[j].TargetID {
+			return out[i].TargetID < out[j].TargetID
+		}
+		return out[i].RelationID < out[j].RelationID
 	})
 	return out
 }
