@@ -120,6 +120,7 @@ GitHub Issue/PRを介する異種AIの協調では、**モデル → ロール �
 - DSH側のDeepSeek等がStep Codeへ委任できるときは、**独立IssueをStep Codeの空きワーカーへ非同期投入し、完了を同期的に待たずDSH自身も別の独立作業を進める**。Step Codeは、検証済みのCLI/契約の並列上限、ホスト資源、作業依存関係の範囲で可能な限り並列稼働する。並列数を根拠なく無制限としない。
 - ワーカーごとに独立branch/worktreeとIssue leaseを割り当てる。Dispatcherが起動・生存・heartbeat・終了・失敗・再開の状態を監視し、成果はcommit/PR、障害はIssueへの証拠付き差し戻しとして回収する。親DSHの切断、VPS再起動、契約枠切れによる停止・復旧を別々に確認する。単なるGitHubラベル変更・CLIプロセスの起動を作業完了とみなさない。
 - Step Codeの`/goal`、RPC、内部複数エージェント機能は実環境での対応・再開条件を確認した範囲だけ利用し、第二のDispatcherや重複キューを作らない。既存`tools/reference-external-role-dispatcher/`を優先して拡張する。不要な既存ツールの削除は使用箇所・履歴・Evidence・試験を確認してから行い、`tools/README.md`の参照を更新する。実装・受入条件は[#4218](https://github.com/hat47x/tei-platform/issues/4218)を参照する。
+- **委任文は長いヒアドキュメントで渡さず、作業票ファイルを作って`@<path>`で渡す。** PowerShellのヒアドキュメントや変数経由の複数行引数は、行頭の空行・`;`・長さによってCLIへ届かないことがある（2026-11-28に`step-cc -p`で実測）。指示が届かないまま「対象が無い」と回答させる偽陰性を避けるため、委任PacketはMarkdownで書き、`step-cc "@D:\path\to\packet.md"`の形で渡す。届いたかどうかは復唱させた既知の語で確かめる。ツールを使わせない読み取り専用の相談は`--no-tools`、編集を要する作業は`--non-interactive-approval allow --approval-mode auto`を明示する（承認UIの無い環境では既定でツール呼出が拒否される）。
 
 ### 無人運用の条件
 
