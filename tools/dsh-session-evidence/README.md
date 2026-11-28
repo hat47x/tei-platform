@@ -22,6 +22,7 @@ H2（Tool-only）／H3（Product Skill付き）比較試験の**証拠を取得�
 ```bash
 # 0. 回帰テスト（合成のみ）
 node --test "tools/dsh-session-evidence/*.test.mjs"
+#    CIでは tools/repository-node-tests が同じ3ファイルを実行する（#6110）
 
 # 1. 腕ごとのステージングRootを組む（H2: Skill無し / H3: Skill付き）
 node tools/dsh-session-evidence/build-participant-root.mjs \

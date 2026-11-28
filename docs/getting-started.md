@@ -1,4 +1,4 @@
-﻿# TEIを動かす
+# TEIを動かす
 
 この文書では、TEIを取得して動作を確認するまでの手順を説明します。設計の考え方から知りたい場合は、[はじめてTEIを知る方へ](for-readers.md)を参照してください。
 
@@ -21,7 +21,7 @@ go version
 
 ### Node.jsを使う試験の前提
 
-リポジトリ全体のGo試験は、`go test ./...`の一部として、どのworkflowからも参照されていなかったNode.js試験5ファイルを実行します（`tools/repository-node-tests/`）。Node.jsが無い環境ではskipし、GitHub Actionsでは必須です。手元でNode.js試験を再現する場合はNode.jsを用意してください。
+リポジトリ全体のGo試験は、`go test ./...`の一部として、どのworkflowからも参照されていなかったNode.js試験8ファイルを実行します（`tools/repository-node-tests/`）。Node.jsが無い環境ではskipし、GitHub Actionsでは必須です。手元でNode.js試験を再現する場合はNode.jsを用意してください。この一覧は新しいNode試験がCIから漏れるたびに増えるため、ファイルを足したら一覧へ入れるかを決めます。
 
 個別の参照ツールは、それぞれの`package.json`の`engines`が要求版を示します。2026-11-07時点では、`reference/tei-studio-independent-consumer`が`>=22.16.0`、`reference/tei-studio-workbench`が`>=24`です。workflowには`22`・`22.16.0`・`24`・`24.21.0`が混在しており、単一の版へ統一していません。使うツールの`package.json`を確認し、版が合わない場合はそのツールの試験を実行しないでください。この混在を解消するかは未決です（[#2953](https://github.com/hat47x/tei-platform/issues/2953)）。
 
