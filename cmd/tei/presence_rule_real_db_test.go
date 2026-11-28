@@ -22,7 +22,7 @@ import (
 //
 // A value of 0 is a value, so it answers "holds a value" and never "holds none".
 // The expected answers are written from these rows, not read back from the CLI.
-const presenceProductDatabase = "tei_presence_e2e"
+const presenceProductDatabase = "tei_destination_order_e2e"
 
 const presenceProductDocument = "```tei\n" +
 	"namespace sales\n" +
@@ -79,7 +79,7 @@ func presenceProductFixture(t *testing.T) (binary, dsn string) {
 	t.Cleanup(func() { _, _ = db.Exec("drop table if exists public.order_lines") })
 	if _, err := db.Exec(`insert into public.order_lines
 		(order_line_id, order_id, line_number, item_code, quantity, unit_price) values
-		(1, 1030, 1, 'A-100', 2, 100),
+		(1, 1030, 1, 'A-100', 2, 2),
 		(2, 1030, 2, 'B-200', 0, null)`); err != nil {
 		t.Fatalf("cannot insert the presence rows: %v", err)
 	}
