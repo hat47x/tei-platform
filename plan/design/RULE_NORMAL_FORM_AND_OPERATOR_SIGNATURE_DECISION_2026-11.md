@@ -421,6 +421,32 @@ type OperatorValue struct {
 
 **次のコード変更は、`internal/semantic/validationeval` の `OperatorImplementation` に `Presence func(values map[string]bool) (bool, error)` を足し、`refuseNonNumberInputs` から `presence` の拒否を外し、評価器の `Values` 経路で `StatefulPresenceSource.ReadPresence` を呼んで上の表どおりに値を埋め、形の検査に `Presence` を一つの形として数え、`presence` のセルの二語を例の照合へ通し、出荷実装を一つ足すことである。** 期待は六つ——`presence` の入力を持つ演算子の規則が `ValuePresent` の属性で `satisfied`／`not-satisfied` を返し、`ValueNull` が `false` として実装へ届き、`ValueNotFetched` が実装を呼ばずに判定不能になり、`Presence` と他の欄を併せて提供する実装が拒否され、`presence` のセルの `present` と `absent` が、それぞれ `true` と `false` として実装へ届き、**既存の型ごとの実装とその試験が変更なく通る**。
 
+### 8.6 行集合の `presence` を、行ごとの有無として読む（2026年11月28日、決定）
+
+§8.5 は `presence` を一件の入力として実装へ渡す形を決め、**「行集合の `presence` は本節が決めない」と明記して次の判断へ送った。** 本節がそれを決める。**決定の対象は行集合の有無の運び方だけであり、一件の `presence` の意味は §8.5 から変えない。**
+
+**行ごとの有無は、行ごとの三状態として運ぶ。** 一件の `presence` は `ValuePresent`／`ValueNull`／`ValueNotFetched` の三状態を持ち、§8.5 の表がそれを `true`／`false`／判定不能へ写す。行集合ではこれを行の数だけ持つ。**行の値は真偽ではなく状態である**——「値がある」「値がない」「読んでいない」は三つの別の事実であり、真偽へ潰すと「読んでいない」が「値がない」に化ける（§5 が一件で禁じたのと同じ混同である）。
+
+**実装は `map[string][]PresenceReading` を受け取る。** 欄は `PresenceRows func(rows map[string][]PresenceReading) (Tri, error)` である。`Presence`（§8.5）と同じく、**一つの形として数える**——`Presence` と `PresenceRows` の両方を提供することは拒否する。
+
+**実装へ渡す三状態の扱いは、一件の表をそのまま行へ広げる。**
+
+| 行の状態 | 意味 | 扱い |
+| --- | --- | --- |
+| `ValuePresent` | その行の属性は値を一つ持つ | その行は「値がある」 |
+| `ValueNull` | その行の属性は値を一つも持たない | その行は「値がない」 |
+| `ValueNotFetched` | その行を誰も読んでいない | その行は判定不能 |
+
+**「読んでいない」行があっても、見えた反例は隠れない。** §6 と §15.2 の原則をそのまま適用する。全行を見てから答えを決め、一つの行でも判定不能なら `TriMaybe` を返して評価器がその行の理由を報告する。**ただし `refutes on some rows` を宣言した演算子では、見えた反証が判定を決める**（`decideRowScoped` の一箇所が扱う）。
+
+**空の関係は「行が無い」として実装へ問う。** §8.2 と同じである。行が0行なら反例も0件であり、答えは `refutes on some rows` の有無で変わらない。
+
+**例の表では、行集合の `presence` のセルに §8.5 と同じ二語を書く。** `present` は「その行の属性は値を一つ持つ」、`absent` は「値を持たない」。**空のセルは「値がない行」ではなく「読んでいない行」であり、`presence` の「値がない」を空のセルで書くことはできない**（§8.1 の三状態の書き分けをそのまま適用する）。
+
+**この節が変えないもの。** §8.4 の `OperatorValue`・`Values`・`ValueRows`、§8.5 の `Presence`・一件の意味、§8.3 のセルの書き方はそのままである。新しい結果分類も作らない。
+
+**次のコード変更は、`internal/semantic/validationeval` の `OperatorImplementation` に `PresenceRows func(rows map[string][]PresenceReading) (Tri, error)` を足し、形の検査に `PresenceRows` を一つの形として数え、`of each row` を持つ `presence` 入力を `readPresence` の行ごとの読みへ通し、`refutes on some rows` を `decideRowScoped` の一箇所で合成し、出荷実装を一つ足すことである。** 期待は五つ——`of each row` を持つ `presence` 入力の規則が実 PostgreSQL の行で判定され、値を持つ行だけの関係では `satisfied`、`ValueNull` の行があればその行の理由で `undecided`、`Presence` と `PresenceRows` の併設が拒否され、**既存の一件の `presence` と型ごとの実装とその試験が変更なく通る**。
+
 ## 9. 判断：式の入れ子は入れない
 
 規則の入力は項目か定数に限る。`a + b > c`のような入れ子、`let`、`it`、パイプは入れない。
