@@ -6,7 +6,7 @@ Codex・Claude Code・DSH・Step Codeなど、すべての開発エージェン�
 
 - [現在の優先順位と到達点（NOW）](plan/NOW.md)、対象Issue/PR、最新main、作業branch・HEAD・差分・担当範囲を確認する。既存の担当や変更を上書きしない。
 - [README](README.md)と対象ディレクトリのREADMEを読み、既存のOwner・型・API・プラグイン・テストを利用する。仕様の変更は[製品価値](product/value/TEI_PRODUCT_VALUE.md)・[製品原則](product/principles/TEI_PRODUCT_PRINCIPLES.md)、[製品要求](requirements/TEI_PRODUCT_REQUIREMENTS.md)、[採用済みADR](plan/adr/README.md)と照合する。
-- 権限のある開発環境では、[非公開作業資料](https://github.com/hat47x/tei-platform-private-resources)の仕様書（`docs/presentations/`）、設計資料、公開前のエージェントスキルを関連する作業で参照する。未採用案を確定仕様として扱わず、非公開情報を許可されていない送信先や公開Issue/PRへ出さない。
+- 権限のある開発環境では、非公開の資料庫にある仕様書・設計資料・公開前のエージェントスキルを関連する作業で参照する。参照先と利用条件はその扱いを定めたIssueで確認する。公開文書には名前・所在・ファイル名・集計を書かない（[文書品質 §11.1](docs/documentation-quality.md#111-非公開資料を指すときの書き方)、[#2342](https://github.com/hat47x/tei-platform/issues/2342)、[#2436](https://github.com/hat47x/tei-platform/issues/2436)）。未採用案を確定仕様として扱わず、非公開情報を許可されていない送信先や公開Issue/PRへ出さない。
 
 ## 共通規則
 
