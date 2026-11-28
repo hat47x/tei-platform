@@ -172,6 +172,44 @@ func (s exampleSource) ReadRelationPeriods(relation, start, end, group core.Cano
 	return reading, nil
 }
 
+// ReadTypedRows reads one input's column over every row of the example in the
+// type the declaration states. An example is the whole record set it states, so
+// the coverage is complete. A column the example does not have was not written,
+// so every row is not fetched; an empty cell is a row that holds no value; the
+// word for "not read" is that state. A cell that is not the input's type is
+// refused with the text it holds, so the author can find the cell.
+//
+// A rule about one record cannot ask this: its operator reads one record, and
+// the example says which row that is.
+func (s exampleSource) ReadTypedRows(input semantic.OperatorInputDeclaration, relation, attribute core.CanonicalID) (validationeval.TypedRowReading, error) {
+	if s.row >= 0 {
+		return validationeval.TypedRowReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
+	}
+	column, written := s.column(attribute)
+	reading := validationeval.TypedRowReading{
+		Coverage: validationeval.CoverageComplete,
+		State:    validationeval.ValuePresent,
+		Values:   make([]validationeval.RowValueReading, 0, len(s.example.Rows)),
+	}
+	for _, row := range s.example.Rows {
+		switch {
+		case !written:
+			reading.Values = append(reading.Values, validationeval.RowValueReading{State: validationeval.ValueNotFetched})
+		case row[column].Text == "":
+			reading.Values = append(reading.Values, validationeval.RowValueReading{State: validationeval.ValueNull})
+		case semantic.IsOperatorCaseNotFetchedWord(row[column].Text):
+			reading.Values = append(reading.Values, validationeval.RowValueReading{State: validationeval.ValueNotFetched})
+		default:
+			value, err := semantic.ParseOperatorInputValue(input.Type, row[column].Text)
+			if err != nil {
+				return validationeval.TypedRowReading{}, err
+			}
+			reading.Values = append(reading.Values, validationeval.RowValueReading{State: validationeval.ValuePresent, Value: value})
+		}
+	}
+	return reading, nil
+}
+
 // ReadRelationNumbers reads one numeric attribute over every row of the
 // example. The author wrote the rows the example has, so the coverage is
 // complete: an example is the whole record set it states, not a page of a
