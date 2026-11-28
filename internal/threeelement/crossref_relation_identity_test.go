@@ -81,6 +81,38 @@ func TestDataDataCrossReferenceQualifiesTheRelationIdentityBySource(t *testing.T
 	}
 }
 
+// Two models that declare the same relations in a different order are the same
+// model content for this projection. The rows must come out identical, or a
+// Consumer comparing two projections would report a change that is only a
+// declaration-order difference.
+func TestDataDataCrossReferenceOrderIsIndependentOfDeclarationOrder(t *testing.T) {
+	build := func(first, second string) ThreeElementModel {
+		model := NewThreeElementModel("order", "Declaration order")
+		model.DataElements = []DataElement{
+			{ID: "order", Name: "Order"},
+			{
+				ID: "customer", Name: "Customer",
+				Relations: []DataRelation{
+					{ID: first, TargetID: "order", Kind: "many-to-one", Directed: true},
+					{ID: second, TargetID: "order", Kind: "many-to-one", Directed: true},
+				},
+			},
+		}
+		return model
+	}
+
+	a := GenerateDataDataCrossReference(build("r-1", "r-2"))
+	b := GenerateDataDataCrossReference(build("r-2", "r-1"))
+	if len(a) != 2 || len(b) != 2 {
+		t.Fatalf("expected two rows from each model, got %d and %d", len(a), len(b))
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			t.Fatalf("row %d depends on declaration order:\n  %+v\n  %+v", i, a[i], b[i])
+		}
+	}
+}
+
 // The projection is read-only and must not reorder the model it was given.
 // Sorting the output is a projection property; the source arrays keep their
 // declared order so an editor can still find the declaration it read.
