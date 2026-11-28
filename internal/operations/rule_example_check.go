@@ -217,10 +217,12 @@ func (s exampleSource) readCellDate(row int, attribute core.CanonicalID) (valida
 // table has no column for was not written, so it is not fetched; an empty cell
 // is a record that holds no value; the word for "not read" is that state.
 //
-// A presence cell states one of the two words the table writes. A cell that
-// states anything else is refused with the text it holds rather than read as
-// presence, because reading a value nobody stated as "holds a value" would
-// answer a question the author did not ask (section 8.3).
+// The cell states the item's own value, not a presence word: a rule that reads
+// presence is asked whether that item holds anything, and a cell that writes
+// anything else does hold a value. So a number, a date and a quoted text all
+// answer "holds a value" here, which is the question presence asks. The words
+// present and absent belong to an operator's own example table, where the cell
+// states the presence directly (section 8.3); this table states a record.
 func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.PresenceReading, error) {
 	if s.row < 0 {
 		return validationeval.PresenceReading{}, fmt.Errorf("a rule about all the rows asked for the presence of %s", attribute)
@@ -235,14 +237,8 @@ func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.
 		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
 	case semantic.IsOperatorCaseNotFetchedWord(cell.Text):
 		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
-	case cell.Text == semantic.OperatorCasePresencePresent:
-		return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
-	case cell.Text == semantic.OperatorCasePresenceAbsent:
-		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
 	}
-	return validationeval.PresenceReading{}, fmt.Errorf(
-		"%q is not a presence cell; write %s or %s",
-		cell.Text, semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent)
+	return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
 }
 
 func (s exampleSource) ReadRelationPeriods(relation, start, end, group core.CanonicalID) (validationeval.PeriodRowsReading, error) {
