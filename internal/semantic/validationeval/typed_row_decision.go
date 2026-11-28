@@ -2,6 +2,7 @@ package validationeval
 
 import (
 	"fmt"
+	"math/big"
 
 	"tei/internal/core"
 	"tei/internal/semantic"
@@ -14,7 +15,13 @@ import (
 // constant is one value for the whole relation: it belongs to no record, so the
 // reader is not asked about it. A value the reader did not read leaves the rule
 // undecided rather than being read as the zero of its type.
-func decideTypedRowScopedOperator(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration, implementation OperatorImplementation, source StatefulSource) (Decision, error) {
+//
+// The three-valued answer, the read Coverage and the operator's refutation
+// statement are composed in the one place that decides it (decideRowScoped,
+// row_scope.go), exactly as they are for the numeric row path: a counterexample
+// that was seen settles the rule, and a relation that was only partly read
+// cannot be answered satisfied.
+func decideTypedRowScopedOperator(rule semantic.Validation, contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, implementation OperatorImplementation, source StatefulSource) (Decision, error) {
 	if rule.Relation == "" {
 		return Decision{}, fmt.Errorf(
 			"semantic validation %s uses operator %s, which reads every row, but the rule names no relation; write \"per <relation>\"",
@@ -22,8 +29,13 @@ func decideTypedRowScopedOperator(rule semantic.Validation, inputs []semantic.Op
 	}
 
 	rows := make(map[string][]RowValueReading, len(inputs))
+	var coverage Coverage
 	var reason *Undecided
-	constantColumns := map[string][]RowValueReading{}
+	// A constant states one value for the whole relation. Its column is as long
+	// as the rows that were read, so the value is written into every row once
+	// the row count is known.
+	var constants map[string]semantic.OperatorValue
+	var width []RowValueReading
 
 	for index, input := range inputs {
 		attribute := rule.Attribute
@@ -37,10 +49,10 @@ func decideTypedRowScopedOperator(rule semantic.Validation, inputs []semantic.Op
 				if parseErr != nil {
 					return Decision{}, fmt.Errorf("semantic validation %s cannot read operator %s input %q as %s: %w", rule.ID, rule.Operator, input.Name, input.Type, parseErr)
 				}
-				constantColumns[input.Name] = append(constantColumns[input.Name], RowValueReading{
-					State: ValuePresent,
-					Value: value,
-				})
+				if constants == nil {
+					constants = make(map[string]semantic.OperatorValue, len(inputs))
+				}
+				constants[input.Name] = value
 				continue
 			}
 			attribute = core.CanonicalID(assignment.Value)
@@ -49,6 +61,15 @@ func decideTypedRowScopedOperator(rule semantic.Validation, inputs []semantic.Op
 		if readErr != nil {
 			return Decision{}, readErr
 		}
+		// Every input of this one rule is read from this one relation, so all of
+		// them report the same coverage. Two coverages would mean two reads, and
+		// one answer must not mix them.
+		if coverage != "" && reading.Coverage != coverage {
+			return Decision{}, fmt.Errorf(
+				"semantic validation %s read relation %s with two coverages (%q and %q); one answer cannot mix two reads",
+				rule.ID, rule.Relation, coverage, reading.Coverage)
+		}
+		coverage = reading.Coverage
 		column, stopped, stateErr := typedRowColumn(rule, attribute, reading)
 		if stateErr != nil {
 			return Decision{}, stateErr
@@ -60,23 +81,26 @@ func decideTypedRowScopedOperator(rule semantic.Validation, inputs []semantic.Op
 			continue
 		}
 		rows[input.Name] = column
+		if index == 0 {
+			width = column
+		}
+		// A row that holds no value, or was not read, keeps its own reason. The
+		// first such row in read order is reported; the implementation is still
+		// asked, so a counterexample found in another row is not thrown away.
+		if reason == nil {
+			reason = firstTypedRowReason(attribute, column)
+		}
 	}
 
-	// A constant states one value for the whole relation, so its column holds
-	// that value for every row the relation was read into.
-	for name, value := range constantColumns {
-		rows[name] = value
+	for name, value := range constants {
+		rows[name] = fillTypedConstant(width, value)
 	}
 
-	if reason != nil {
-		return Decision{Undecided: reason}, nil
-	}
-
-	result, err := implementation.ValueRows(rows)
+	answer, err := implementation.ValueRows(rows)
 	if err != nil {
 		return Decision{}, fmt.Errorf("operator %s could not decide semantic validation %s: %w", rule.Operator, rule.ID, err)
 	}
-	return decided(relationResult(result))
+	return decideRowScoped(rule, coverage, contract.RefutesOnSomeRows, answer, reason)
 }
 
 // typedRowColumn returns the rows one input's column was read into, or the
@@ -97,13 +121,33 @@ func typedRowColumn(rule semantic.Validation, attribute core.CanonicalID, readin
 	}
 }
 
-// relationResult maps a row-scoped answer to the Result a rule carries.
-func relationResult(tri Tri) Result {
-	if tri == TriYes {
-		return ResultSatisfied
+// fillTypedConstant returns one column of the relation in which every row holds
+// the same value. A constant input states one value for the whole relation, so
+// the operator sees that value once per row rather than a column of one row.
+func fillTypedConstant(width []RowValueReading, value semantic.OperatorValue) []RowValueReading {
+	rows := make([]RowValueReading, len(width))
+	for index := range rows {
+		held := value
+		if held.Number != nil {
+			held.Number = new(big.Rat).Set(held.Number)
+		}
+		rows[index] = RowValueReading{State: ValuePresent, Value: held}
 	}
-	if tri == TriNo {
-		return ResultNotSatisfied
+	return rows
+}
+
+// firstTypedRowReason reports the first row that holds no value or was not read,
+// in read order. It is the reason a row-scoped answer may be undecided; a
+// decided answer must not be reported together with it (decideRowScoped checks
+// that).
+func firstTypedRowReason(attribute core.CanonicalID, rows []RowValueReading) *Undecided {
+	for _, row := range rows {
+		switch row.State {
+		case ValueNull:
+			return &Undecided{Reason: UndecidedValueNull, Attribute: attribute}
+		case ValueNotFetched:
+			return &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}
+		}
 	}
-	return Result("")
+	return nil
 }

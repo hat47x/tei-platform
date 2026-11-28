@@ -21,10 +21,14 @@ type RowValueReading struct {
 
 // TypedRowReading is what a reader knows about one input's column over the rows
 // of a relation: the rows in the order they were read, each value carrying the
-// type the declaration states.
+// type the declaration states, and whether those rows are all the rows.
 type TypedRowReading struct {
-	State  ValueState
-	Values []RowValueReading
+	// Coverage is the reader's statement about the rows, the same one
+	// NumberRowsReading carries: whether they are every row of the relation or
+	// possibly only some of them.
+	Coverage Coverage
+	State    ValueState
+	Values   []RowValueReading
 }
 
 // StatefulTypedRowSource is implemented by a reader that can read one column of

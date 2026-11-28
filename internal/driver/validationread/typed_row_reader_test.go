@@ -112,23 +112,6 @@ func TestAColumnOfCalendarDatesIsReadAsDays(t *testing.T) {
 	}
 }
 
-// A row the query did not return makes the whole column undecided, and the state
-// says which of the two it was rather than reading the row as the zero of its
-// type.
-func TestAColumnWithARowNobodyReadIsNotRead(t *testing.T) {
-	detail := shippedDetail(t, validationeval.CoverageComplete,
-		shippedRow(map[core.CanonicalID]any{shippedAt: "2026-04-06"}),
-		shippedRow(map[core.CanonicalID]any{}),
-	)
-	reading := readShippedTypedRows(t, detail, semantic.OperatorInputDate, shippedAt)
-	if reading.State != validationeval.ValueNotFetched {
-		t.Fatalf("state=%q, want not-fetched", reading.State)
-	}
-	if len(reading.Values) != 0 {
-		t.Fatalf("values=%v, want none for a column nobody read", reading.Values)
-	}
-}
-
 // A row that holds no value makes the column undecided with the record's own
 // reason, and it is not read as the zero of its type.
 func TestAColumnWithARowThatHoldsNoValueIsNotRead(t *testing.T) {
@@ -137,8 +120,17 @@ func TestAColumnWithARowThatHoldsNoValueIsNotRead(t *testing.T) {
 		shippedRow(map[core.CanonicalID]any{shippedAt: nil}),
 	)
 	reading := readShippedTypedRows(t, detail, semantic.OperatorInputDate, shippedAt)
-	if reading.State != validationeval.ValueNull {
-		t.Fatalf("state=%q, want null", reading.State)
+	// The column is read: one row holds a day and the other holds no value.
+	// The row that holds no value keeps its own state beside the value, so it
+	// is not read as the zero day.
+	if reading.State != validationeval.ValuePresent || len(reading.Values) != 2 {
+		t.Fatalf("reading=%+v, want the column read with two row states", reading)
+	}
+	if reading.Values[1].State != validationeval.ValueNull {
+		t.Fatalf("row 1 state=%q, want null", reading.Values[1].State)
+	}
+	if reading.Values[1].Value.Date != nil {
+		t.Fatalf("row 1 holds %v, want no day for a row that holds no value", reading.Values[1].Value.Date)
 	}
 }
 

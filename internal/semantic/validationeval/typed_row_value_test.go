@@ -91,8 +91,13 @@ func TestATextRowScopedRuleIsDecidedByItsRows(t *testing.T) {
 			}
 			decision, decideErr := validationeval.Decide(rule, typedRowsSource{
 				textRows: validationeval.TypedRowReading{
-					State:  validationeval.ValuePresent,
-					Values: rows,
+					// The reader states whether these rows are all the rows of
+					// the relation, as every reader of a relation's rows does:
+					// without the statement a rule over all the rows cannot be
+					// answered.
+					Coverage: validationeval.CoverageComplete,
+					State:    validationeval.ValuePresent,
+					Values:   rows,
 				},
 			}, validationeval.Operators{
 				Declared:        []semantic.Operator{contract},
