@@ -224,8 +224,17 @@ func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.
 	if !written {
 		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
 	}
-	if s.example.Rows[s.row][column].Text == "" {
+	cell := s.example.Rows[s.row][column]
+	if cell.Text == "" {
 		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
+	}
+	// Section 8.3: the writing for "not read" does not depend on the input's
+	// type, so a cell that states the word is a row nobody read rather than a
+	// row that holds a value. Reading it as present would answer the presence
+	// question from a value nobody looked at, which is the same mistake the
+	// number path already avoids (it checks this word before parsing a decimal).
+	if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
+		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
 	}
 	return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
 }
