@@ -212,6 +212,19 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	if !declaresPresenceInput(inputs) && hasPresence {
 		return fmt.Errorf("operator %s declares no presence input, but its implementation decides whether a value is there", contract.ID)
 	}
+	// A presence implementation answers every input with "does this record
+	// hold a value?, so a contract that also declares a value input would have
+	// that input answered the same way, its value never read. The two
+	// questions cannot be asked in one signature on this path, so it is
+	// refused rather than answered from a value nobody read (#4359).
+	if declaresPresenceInput(inputs) {
+		for _, input := range inputs {
+			if input.Type != semantic.OperatorInputPresence {
+				return fmt.Errorf("operator %s declares the %s input %q beside a presence input; a presence implementation answers whether a value is there for every input, so the two cannot share one signature",
+					contract.ID, input.Type, input.Name)
+			}
+		}
+	}
 	if rowScoped && !hasRows && !hasTypedRows {
 		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
