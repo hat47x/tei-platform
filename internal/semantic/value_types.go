@@ -34,3 +34,13 @@ func IsNumberType(types map[core.CanonicalID]Type, id core.CanonicalID) bool {
 func IsCalendarDateType(types map[core.CanonicalID]Type, id core.CanonicalID) bool {
 	return followAlias(types, id, "std.date")
 }
+
+// IsTextType reports whether a type is a text: std.text or an alias of it.
+func IsTextType(types map[core.CanonicalID]Type, id core.CanonicalID) bool {
+	return followAlias(types, id, "std.text")
+}
+
+// IsTruthType reports whether a type is a truth: std.boolean or an alias of it.
+func IsTruthType(types map[core.CanonicalID]Type, id core.CanonicalID) bool {
+	return followAlias(types, id, "std.boolean")
+}

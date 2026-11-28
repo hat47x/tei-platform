@@ -38,6 +38,16 @@ type RuleExampleItem struct {
 	// Date is true when the item is a calendar date. Its cells were read as
 	// YYYY-MM-DD.
 	Date bool
+	// Text is true when the item is a text (std.text or an alias of it). Its
+	// cells were read with the quotes section 8.3 fixes, so an empty cell (no
+	// value) and `""` (an empty text) stay apart.
+	Text bool
+	// Truth is true when the item is a truth (std.boolean or an alias of it).
+	// Its cells were read as the words true and false.
+	Truth bool
+	// Any is true when the item is declared `std.any`, which states no type of
+	// its own: the writing of a cell decides what its value is.
+	Any bool
 }
 
 // RuleExampleCell is one value as written. An empty Text means the record
@@ -132,9 +142,17 @@ func resolveRuleExamples(r *Result) error {
 				}
 				continue
 			}
+			// The column states the type its item declares, so a cell is read
+			// the way section 8.3 writes that type. An item of a type outside
+			// the five is read as written and not checked here, which is the
+			// reading the one-record table already had for such an item.
 			example.Items = append(example.Items, RuleExampleItem{
 				Attribute: found.ID, Symbol: found.Symbol,
-				Numeric: semantic.IsNumberType(types, found.TypeRef), Date: semantic.IsCalendarDateType(types, found.TypeRef),
+				Numeric: semantic.IsNumberType(types, found.TypeRef),
+				Date:    semantic.IsCalendarDateType(types, found.TypeRef),
+				Text:    semantic.IsTextType(types, found.TypeRef),
+				Truth:   semantic.IsTruthType(types, found.TypeRef),
+				Any:     found.TypeRef == "std.any",
 			})
 		}
 		if rejected {
@@ -153,6 +171,27 @@ func resolveRuleExamples(r *Result) error {
 				if cell.Text != "" && example.Items[i].Numeric && !unread {
 					if _, err := semantic.ParseOperatorCaseValue(cell.Text); err != nil {
 						if err := reject(cell.Anchor, fmt.Sprintf("item %s is a number: %v", example.Items[i].Symbol, err)); err != nil {
+							return err
+						}
+					}
+				}
+				if cell.Text != "" && example.Items[i].Text && !unread {
+					if _, err := semantic.ParseOperatorTextValue(cell.Text); err != nil {
+						if err := reject(cell.Anchor, fmt.Sprintf("item %s is a text: %v", example.Items[i].Symbol, err)); err != nil {
+							return err
+						}
+					}
+				}
+				if cell.Text != "" && example.Items[i].Truth && !unread {
+					if _, err := semantic.ParseOperatorTruthValue(cell.Text); err != nil {
+						if err := reject(cell.Anchor, fmt.Sprintf("item %s is a truth: %v", example.Items[i].Symbol, err)); err != nil {
+							return err
+						}
+					}
+				}
+				if cell.Text != "" && example.Items[i].Any && !unread {
+					if _, err := semantic.ParseOperatorInputValue(semantic.OperatorInputAny, cell.Text); err != nil {
+						if err := reject(cell.Anchor, fmt.Sprintf("item %s states a value of no single type: %v", example.Items[i].Symbol, err)); err != nil {
 							return err
 						}
 					}
