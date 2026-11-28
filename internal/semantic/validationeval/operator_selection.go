@@ -509,6 +509,43 @@ func BuiltinImplementations() []NamedImplementation {
 				return anySameAs(values)
 			},
 		},
+		{
+			// tei.presence.holds decides "the record holds a value". It is the
+			// presence question, not a question about a value: a number of 0
+			// and an empty text are values, and only a record that holds none
+			// answers false. The reader reports which of the two it is, so this
+			// implementation never reads an attribute to decide it.
+			ID:    "tei.presence.holds",
+			Input: semantic.OperatorInputPresence,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("holds reads an input named \"value\"; the rule supplied no value input")
+				}
+				if value.Presence == nil {
+					return false, fmt.Errorf("holds reads whether a value is there; its input was not read as presence")
+				}
+				return *value.Presence, nil
+			},
+		},
+		{
+			// tei.presence.absent decides "the record holds no value", the
+			// other half of the same question. It exists so a rule can be
+			// written that requires an attribute to be empty, which `holds`
+			// alone cannot state.
+			ID:    "tei.presence.absent",
+			Input: semantic.OperatorInputPresence,
+			Values: func(values map[string]semantic.OperatorValue) (bool, error) {
+				value, ok := values["value"]
+				if !ok {
+					return false, fmt.Errorf("absent reads an input named \"value\"; the rule supplied no value input")
+				}
+				if value.Presence == nil {
+					return false, fmt.Errorf("absent reads whether a value is there; its input was not read as presence")
+				}
+				return !*value.Presence, nil
+			},
+		},
 	}
 }
 

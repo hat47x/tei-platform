@@ -119,6 +119,22 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			// implementation says so rather than reading it as the nearest text.
 			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(7, 1)}, "other": {Text: textValue("7")}}, wantErr: true},
 		},
+		// The two presence implementations answer the presence question, so their
+		// expectations are the two answers a reader can report: a record that
+		// holds a value, and one that holds none.
+		"tei.presence.holds": {
+			{name: "the record holds a value", values: presenceValues(true), want: true},
+			{name: "the record holds none", values: presenceValues(false), want: false},
+			{name: "no value input", values: map[string]semantic.OperatorValue{}, wantErr: true},
+			// A value read as something other than presence is not an answer to
+			// this question, so it is refused rather than read as true.
+			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(1, 1)}}, wantErr: true},
+		},
+		"tei.presence.absent": {
+			{name: "the record holds a value", values: presenceValues(true), want: false},
+			{name: "the record holds none", values: presenceValues(false), want: true},
+			{name: "no value input", values: map[string]semantic.OperatorValue{}, wantErr: true},
+		},
 		"tei.any.same-as": {
 			{name: "the same number", values: anyPair(anyValueOf(big.NewRat(100, 1)), anyValueOf(big.NewRat(100, 1))), want: true},
 			{name: "a different number", values: anyPair(anyValueOf(big.NewRat(100, 1)), anyValueOf(big.NewRat(200, 1))), want: false},
@@ -631,4 +647,11 @@ func TestEveryAtMostReadsAbsentValuesUnderTheMappingItKnows(t *testing.T) {
 // anyPair builds the two inputs the shipped `tei.any.same-as` reads.
 func anyPair(value, other semantic.OperatorValue) map[string]semantic.OperatorValue {
 	return map[string]semantic.OperatorValue{"value": value, "other": other}
+}
+
+// presenceValues states one presence answer as the value an implementation
+// receives.
+func presenceValues(held bool) map[string]semantic.OperatorValue {
+	answer := held
+	return map[string]semantic.OperatorValue{"value": {Presence: &answer}}
 }

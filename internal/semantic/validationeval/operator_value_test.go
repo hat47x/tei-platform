@@ -2,6 +2,7 @@ package validationeval_test
 
 import (
 	"math/big"
+	"strings"
 	"testing"
 
 	"tei/internal/semantic"
@@ -151,6 +152,43 @@ func TestAnEmptyTextIsNotTheSameAsNoValue(t *testing.T) {
 func TestAPresenceInputTakesNoValueInAnExample(t *testing.T) {
 	if _, err := exampleValue(t, semantic.OperatorInputPresence, "7"); err == nil {
 		t.Fatal("a presence input was read a value")
+	}
+}
+
+// A presence input's cell states one of the two words the design gives it, and
+// the value it produces answers the presence question rather than carrying a
+// value of some type. The words are read here, so an example table is checked
+// against the same reading the rule path uses.
+func TestAPresenceCellStatesWhetherTheValueIsThere(t *testing.T) {
+	for _, tc := range []struct {
+		word string
+		held bool
+	}{
+		{semantic.OperatorCasePresencePresent, true},
+		{semantic.OperatorCasePresenceAbsent, false},
+	} {
+		t.Run(tc.word, func(t *testing.T) {
+			got, err := exampleValue(t, semantic.OperatorInputPresence, tc.word)
+			if err != nil {
+				t.Fatalf("the word was refused: %v", err)
+			}
+			if got.Presence == nil || *got.Presence != tc.held {
+				t.Fatalf("the cell was read as %+v, want presence=%v", got, tc.held)
+			}
+			if got.Kind() != semantic.OperatorInputPresence {
+				t.Fatalf("the cell was read as %s, want presence", got.Kind())
+			}
+		})
+	}
+	// A word that is neither of the two is refused and the refusal names both.
+	_, err := exampleValue(t, semantic.OperatorInputPresence, "yes")
+	if err == nil {
+		t.Fatal("an unknown presence word was read")
+	}
+	for _, word := range []string{semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent} {
+		if !strings.Contains(err.Error(), word) {
+			t.Fatalf("the refusal does not name %q: %v", word, err)
+		}
 	}
 }
 

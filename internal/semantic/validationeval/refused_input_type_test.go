@@ -15,15 +15,13 @@ import (
 // called, so a rule cannot be answered from a value of the wrong kind (#4359).
 //
 // The four typed words (date, text, truth, any) are read as their own type by
-// the value carrier of section 8.4, so this test pins only the input whose
-// question is different: presence asks whether a value is there, not what it
-// is, and the numeric read would answer the second question by accident.
+// the value carrier of section 8.4, and presence is read as whether a value is
+// there. This test pins the refusal that remains: a numeric implementation
+// answers a value, which is a different question than presence asks, so the
+// rule is refused and the refusal names both the type and the input.
 //
-// The refusal used to name `presence` whatever the type was, because the message
-// was written for that type and then generalised without changing the wording.
-// Measured: a `date` contract said "the presence input has no reader on this
-// path yet", which sends the author looking at the wrong declaration. The
-// wording now names its own type, which this pins for the type it still refuses.
+// The refusal used to say the presence input had no reader at all. It now says
+// what is actually wrong: the selected implementation decides a value.
 func TestARefusedInputNamesItsOwnType(t *testing.T) {
 	t.Run("presence", func(t *testing.T) {
 		kind := semantic.OperatorInputPresence
@@ -56,11 +54,11 @@ func TestARefusedInputNamesItsOwnType(t *testing.T) {
 		if !strings.Contains(err.Error(), `"value"`) {
 			t.Fatalf("the refusal does not name the input: %v", err)
 		}
-		// The reason names this type: "the <type> input has no reader".
-		// A message written for one type and reused for others names the
-		// wrong one, which is what this pins.
-		if !strings.Contains(err.Error(), "the "+string(kind)+" input has no reader") {
-			t.Fatalf("the refusal does not give %q as the reason: %v", kind, err)
+		// The reason says what is wrong with the implementation rather than
+		// blaming a missing reader: presence has a reader now, and the
+		// implementation is the part that cannot answer it.
+		if !strings.Contains(err.Error(), "its selected implementation decides a value") {
+			t.Fatalf("the refusal does not give the reason: %v", err)
 		}
 		// And it does not blame a different type.
 		for _, other := range []semantic.OperatorInput{

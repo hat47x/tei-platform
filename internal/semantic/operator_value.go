@@ -38,6 +38,12 @@ type OperatorValue struct {
 	// Any is a value read from an input declared `any`. It keeps the type it
 	// was read as, so a number and a quoted text are different values.
 	Any *AnyValue
+	// Presence is the answer of an input declared `presence`: whether the
+	// attribute holds a value, not which value it is. It is true when the
+	// record certainly holds a value and false when it certainly holds none;
+	// a record the reader did not fetch is undecided rather than false, because
+	// nobody read whether it holds one.
+	Presence *bool
 }
 
 // AnyValue is one value read from an input that may be of any type. The Type
@@ -85,6 +91,9 @@ func (v OperatorValue) Valid() bool {
 		}
 		set++
 	}
+	if v.Presence != nil {
+		set++
+	}
 	return set == 1
 }
 
@@ -118,6 +127,8 @@ func (v OperatorValue) Kind() OperatorInput {
 		return OperatorInputTruth
 	case v.Any != nil:
 		return OperatorInputAny
+	case v.Presence != nil:
+		return OperatorInputPresence
 	}
 	return ""
 }
@@ -169,7 +180,19 @@ func ParseOperatorInputValue(input OperatorInput, text string) (OperatorValue, e
 		}
 		return OperatorValue{Any: value}, nil
 	case OperatorInputPresence:
-		return OperatorValue{}, fmt.Errorf("%q is a value, but this input reads whether an attribute holds one; presence takes no value in an example", text)
+		// A presence input reads whether the attribute holds a value, so its
+		// cell states one of the two words section 8.1 gives it rather than a
+		// value of any type. The words are read here, so an example table is
+		// checked against the same reading the rule path uses.
+		switch text {
+		case OperatorCasePresencePresent:
+			held := true
+			return OperatorValue{Presence: &held}, nil
+		case OperatorCasePresenceAbsent:
+			held := false
+			return OperatorValue{Presence: &held}, nil
+		}
+		return OperatorValue{}, fmt.Errorf("%q is not a presence word; write %s or %s", text, OperatorCasePresencePresent, OperatorCasePresenceAbsent)
 	}
 	return OperatorValue{}, fmt.Errorf("%q is not a value of an input this program reads", text)
 }

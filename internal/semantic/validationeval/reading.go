@@ -308,6 +308,32 @@ func readAnySubject(rule semantic.Validation, source StatefulSource) (semantic.O
 	}
 }
 
+// readPresenceSubject reads the subject attribute as the answer to the
+// question "does this record hold a value?" The reader reports one of three
+// states; present is "holds a value", absent is "holds none", and a record
+// nobody fetched is undecided rather than "holds none", because nobody read
+// whether it holds one.
+func readPresenceSubject(rule semantic.Validation, source StatefulSource) (semantic.OperatorValue, *Undecided, error) {
+	reader, ok := source.(StatefulPresenceSource)
+	if !ok {
+		return semantic.OperatorValue{}, nil, fmt.Errorf("semantic validation %s reads attribute %s as presence, but this reader cannot read whether a value is there", rule.ID, rule.Attribute)
+	}
+	reading, err := readPresence(rule, reader, rule.Attribute)
+	if err != nil {
+		return semantic.OperatorValue{}, nil, err
+	}
+	switch reading.State {
+	case ValuePresent:
+		held := true
+		return semantic.OperatorValue{Presence: &held}, nil, nil
+	case ValueNull:
+		held := false
+		return semantic.OperatorValue{Presence: &held}, nil, nil
+	default:
+		return semantic.OperatorValue{}, &Undecided{Reason: UndecidedValueNotFetched, Attribute: rule.Attribute}, nil
+	}
+}
+
 // readAssignedInput reads one input value that was assigned by name in the rule.
 // For an attribute reference it reads from the source; for a constant it parses
 // the decimal text. The input's absent-as mapping is not yet carried in the
@@ -325,30 +351,53 @@ func readAnySubject(rule semantic.Validation, source StatefulSource) (semantic.O
 //
 // refuseNonNumberInputs refuses a rule whose operator declares an input this
 // evaluator cannot read on the operator path. The operator path reads every
-// number input through ReadNumber and every calendar-day input through
-// ReadDate, so a contract that declares `presence` would be handed the
-// attribute's number: `takes value: presence` was answered satisfied from the
-// value 7, which is a different question answered by accident (#4359).
-//
-// The refusal is at the rule, not at the declaration: the surface reads the
-// word `presence` and carries it in the contract, and the evaluator's one
-// operator path has no presence reader yet. A rule that needs it is refused
-// rather than answered from a number.
+// number input through ReadNumber, every calendar-day input through ReadDate,
+// and a presence input through ReadPresence, so a contract that declares
+// `presence` is handed the answer to "does this record hold a value" rather
+// than the attribute's number: measured before this, `takes value: presence`
+// was answered satisfied from the value 7 (#4359).
 //
 // A value of any type is read as that type (section 8.4), so the four typed
-// words are no longer refused: the value the reader hands the implementation
-// carries the type, and the reader decides which one from the declaration.
-// Only presence, which asks whether a value is there rather than what it is,
-// stays refused on this path.
+// words are not refused: the value the reader hands the implementation carries
+// the type, and the reader decides which one from the declaration.
+//
+// A presence input read over every row of a relation is still refused, because
+// this reader reads whether ONE record holds a value: a column of presence has
+// no reader on this path.
 func refuseNonNumberInputs(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration) error {
 	for _, input := range inputs {
-		if input.Type != semantic.OperatorInputPresence {
+		if input.Type != semantic.OperatorInputPresence || !input.OfEachRow {
 			continue
 		}
-		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as values; the presence input has no reader on this path yet",
-			rule.ID, rule.Operator, input.Name, input.Type)
+		return fmt.Errorf("semantic validation %s reads operator %s input %q as presence over every row of a relation, but this reader reads whether one record holds a value; a column of presence has no reader on this path yet",
+			rule.ID, rule.Operator, input.Name)
 	}
 	return nil
+}
+
+// presenceInputName names the presence input of a declaration, so a refusal
+// says which input it is about.
+func presenceInputName(inputs []semantic.OperatorInputDeclaration) string {
+	for _, input := range inputs {
+		if input.Type == semantic.OperatorInputPresence {
+			if input.Name == "" {
+				return "value"
+			}
+			return input.Name
+		}
+	}
+	return ""
+}
+
+// declaresPresenceInput reports whether some declared input reads whether a
+// value is there.
+func declaresPresenceInput(inputs []semantic.OperatorInputDeclaration) bool {
+	for _, input := range inputs {
+		if input.Type == semantic.OperatorInputPresence {
+			return true
+		}
+	}
+	return false
 }
 
 // A subject attribute that was not read stays undecided, and in the legacy
@@ -611,6 +660,14 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		if refusal := refuseNonNumberInputs(rule, inputs); refusal != nil {
 			return Decision{}, refusal
 		}
+
+		// A presence input is answered by an implementation that decides
+		// presence, not by one that decides a value: a numeric implementation
+		// reading an attribute's number answers a different question.
+		if declaresPresenceInput(inputs) && implementation.Values == nil {
+			return Decision{}, fmt.Errorf("semantic validation %s reads operator %s input %q as presence, but its selected implementation decides a value; a presence input needs an implementation that answers whether a value is there",
+				rule.ID, rule.Operator, presenceInputName(inputs))
+		}
 		// A rule whose operator declares an input read over every row of a
 		// relation is asked of those rows, not of one record (decision section
 		// 15.1). Every such input of this rule is read in one call, so one
@@ -679,6 +736,15 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 			typedSubject = value
 		case semantic.OperatorInputAny:
 			value, undecided, err := readAnySubject(rule, source)
+			if err != nil {
+				return Decision{}, err
+			}
+			if undecided != nil {
+				return Decision{Undecided: undecided}, nil
+			}
+			typedSubject = value
+		case semantic.OperatorInputPresence:
+			value, undecided, err := readPresenceSubject(rule, source)
 			if err != nil {
 				return Decision{}, err
 			}
