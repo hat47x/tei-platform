@@ -195,8 +195,15 @@ func ParseOperatorRowCasesTable(table MarkdownTable) (OperatorRowCasesAuthoring,
 			// is a value holder that is empty, and a row nobody read is said
 			// so. A value of a text input is written with quotes, so the empty
 			// text is not the same as an empty text value (section 8.3).
+			//
+			// A presence input's cell states `present` or `absent` instead of
+			// a value (section 8.6). Whether the column belongs to a presence
+			// input is not known here, where only the table is read, so the
+			// two words are carried as text and checked against the signature
+			// where the operator is in hand.
 			switch cell.Text {
 			case semantic.RowCellNoValue, semantic.RowCellNotFetched:
+			case semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent:
 			default:
 				if _, err := semantic.ParseOperatorRowCellValue(cell.Text); err != nil {
 					return out, cellError(cell, fmt.Sprintf("input %q of row %d: %v", name, index+1, err))

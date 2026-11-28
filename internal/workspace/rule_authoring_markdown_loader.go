@@ -376,6 +376,40 @@ func requireRowCaseNamesMatchSignature(
 			}
 		}
 	}
+	// A cell's writing depends on the input's type (section 8.3), and a
+	// presence input writes a state rather than a value (section 8.6). The
+	// table is read before the signature is known, so the words are checked
+	// here, where both are in hand: a presence column states one of the three
+	// words, and every other column states anything but one of them.
+	for index, row := range table.Case.Rows {
+		for _, input := range operator.Inputs {
+			name := input.Name
+			if name == "" {
+				name = "value"
+			}
+			cell, stated := row[name]
+			if !stated {
+				continue
+			}
+			presence := input.Type == semantic.OperatorInputPresence
+			word := semantic.IsOperatorCasePresenceWord(cell) || semantic.IsOperatorCaseNotFetchedWord(cell)
+			if presence && !word {
+				if err := fail(table.CellSpans[index][name], fmt.Sprintf(
+					"input %q of row %d is read as presence, but its cell %q is not one of %s, %s or %s",
+					name, index+1, cell,
+					semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent, semantic.RowCellNotFetched)); err != nil {
+					return err
+				}
+			}
+			if !presence && semantic.IsOperatorCasePresenceWord(cell) {
+				if err := fail(table.CellSpans[index][name], fmt.Sprintf(
+					"input %q of row %d is not read as presence, so its cell cannot state %q; write a value of its type",
+					name, index+1, cell)); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 

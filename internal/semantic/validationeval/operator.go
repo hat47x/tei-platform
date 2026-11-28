@@ -230,11 +230,11 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 		if len(contract.Cases) > 0 {
 			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its meaning is stated by a table of rows; a one-record example is not checked against it", contract.ID)
 		}
-		if len(contract.RowCases) > 0 {
-			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s states a table of rows for a presence input, whose cells are not written yet; the rows are read and decided, but an example cannot be checked against it",
-				contract.ID)
-		}
-		return nil
+		// Section 8.6: the row example of a presence input is written in
+		// section 8.1's table with the three words a presence cell states, and
+		// those cells are read and compared with the implementation exactly as
+		// a row example of any other type is.
+		return checkPresenceRowCases(contract, implementation)
 	}
 	if declaresPresenceInput(inputs) && !hasPresence {
 		return fmt.Errorf("operator %s declares the presence input %q, but its implementation decides values; presence asks whether a value is there, not which value it is",

@@ -239,6 +239,45 @@ func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.
 	return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
 }
 
+// ReadRelationPresence answers, for every row of the example, whether the item
+// holds a value (decision section 8.6). An example is the whole record set it
+// states, so the coverage is complete.
+//
+// The cells are read the way the one-record reader reads one cell: `present`
+// and `absent` are the two states a row states, the word for "not read" is
+// that state, an empty cell is a row that holds no value, and a cell the table
+// does not have was not written. The two words are read rather than treated as
+// "a value is there": a cell that says `absent` states a row with no value, not
+// a row with a value whose spelling happens to be `absent`.
+func (s exampleSource) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+	if s.row >= 0 {
+		return validationeval.PresenceRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
+	}
+	column, written := s.column(attribute)
+	reading := validationeval.PresenceRowsReading{
+		Coverage: validationeval.CoverageComplete,
+		Rows:     make([]validationeval.PresenceReading, 0, len(s.example.Rows)),
+	}
+	for _, row := range s.example.Rows {
+		switch {
+		case !written:
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValueNotFetched})
+		case row[column].Text == "":
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValueNull})
+		case semantic.IsOperatorCaseNotFetchedWord(row[column].Text):
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValueNotFetched})
+		case row[column].Text == semantic.OperatorCasePresenceAbsent:
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValueNull})
+		default:
+			// `present`, and anything else the cell holds, which the product
+			// Load has already refused for a presence column. A cell that
+			// reached here states a value is there.
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValuePresent})
+		}
+	}
+	return reading, nil
+}
+
 func (s exampleSource) ReadRelationPeriods(relation, start, end, group core.CanonicalID) (validationeval.PeriodRowsReading, error) {
 	if s.row >= 0 {
 		return validationeval.PeriodRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)

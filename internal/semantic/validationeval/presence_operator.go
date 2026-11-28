@@ -65,6 +65,36 @@ func ParsePresenceExampleValue(text string) (bool, error) {
 		text, semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent)
 }
 
+// parsePresenceRowExampleCell reads the cell of a row example for a presence
+// input read over every row of a relation (section 8.6).
+//
+// Section 8.6 fixes three words for the cell, the same three words a row cell
+// may write (section 8.3): `present` when the row holds a value, `absent` when
+// it holds none, and `not-fetched` when nobody read the row. The third word is
+// a cell here while a one-record example cannot write it, because a row example
+// states rows nobody read and the one-record reader hands an implementation
+// answers, not the fact that nobody looked.
+//
+// An empty cell is refused. Section 8.1 lets a value input write "the row holds
+// no value" as an empty cell, and a presence input writes that state as
+// `absent`. Accepting both would give one state two writings, so the empty cell
+// is refused rather than read as one of them.
+func parsePresenceRowExampleCell(text string) (PresenceReading, error) {
+	switch text {
+	case semantic.OperatorCasePresencePresent:
+		return PresenceReading{State: ValuePresent}, nil
+	case semantic.OperatorCasePresenceAbsent:
+		return PresenceReading{State: ValueNull}, nil
+	case semantic.RowCellNotFetched:
+		return PresenceReading{State: ValueNotFetched}, nil
+	case semantic.RowCellNoValue:
+		return PresenceReading{}, fmt.Errorf("the cell is empty; a presence input states one of %s, %s or %s, and a row that holds no value is written %s rather than left empty",
+			semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent, semantic.RowCellNotFetched, semantic.OperatorCasePresenceAbsent)
+	}
+	return PresenceReading{}, fmt.Errorf("%q is not a state of a presence input; write %s, %s or %s",
+		text, semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent, semantic.RowCellNotFetched)
+}
+
 // decidePresenceOperator decides a rule whose operator declares at least one
 // presence input, from the states of one record.
 func decidePresenceOperator(rule semantic.Validation, contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, implementation OperatorImplementation, source StatefulSource) (Decision, error) {
