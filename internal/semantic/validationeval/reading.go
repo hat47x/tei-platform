@@ -323,34 +323,6 @@ func readAnySubject(rule semantic.Validation, source StatefulSource) (semantic.O
 // the rule names, and if that attribute certainly holds no value the
 // declaration's `absent as <name>` decides how the absence reads.
 //
-// refuseNonNumberInputs refuses a rule whose operator declares an input this
-// evaluator cannot read on the operator path. The operator path reads every
-// number input through ReadNumber and every calendar-day input through
-// ReadDate, so a contract that declares `presence` would be handed the
-// attribute's number: `takes value: presence` was answered satisfied from the
-// value 7, which is a different question answered by accident (#4359).
-//
-// The refusal is at the rule, not at the declaration: the surface reads the
-// word `presence` and carries it in the contract, and the evaluator's one
-// operator path has no presence reader yet. A rule that needs it is refused
-// rather than answered from a number.
-//
-// A value of any type is read as that type (section 8.4), so the four typed
-// words are no longer refused: the value the reader hands the implementation
-// carries the type, and the reader decides which one from the declaration.
-// Only presence, which asks whether a value is there rather than what it is,
-// stays refused on this path.
-func refuseNonNumberInputs(rule semantic.Validation, inputs []semantic.OperatorInputDeclaration) error {
-	for _, input := range inputs {
-		if input.Type != semantic.OperatorInputPresence {
-			continue
-		}
-		return fmt.Errorf("semantic validation %s reads operator %s input %q as %s, but this evaluator reads operator inputs as values; the presence input has no reader on this path yet",
-			rule.ID, rule.Operator, input.Name, input.Type)
-	}
-	return nil
-}
-
 // A subject attribute that was not read stays undecided, and in the legacy
 // reader a nil number stays the error it has always been: a reader that did not
 // ask, or cannot say, knows nothing about the value, so no mapping applies. The
@@ -603,13 +575,14 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		}
 		contract := declared[0]
 		inputs := contractInputs(contract)
-		// A presence input is read as presence and never as a number. Before
-		// this the evaluator read every input through ReadNumber, so a contract
-		// that declared `takes value: presence` was handed the attribute's
-		// number: measured, a presence contract was answered satisfied from the
-		// value 7. The two reads ask different questions (#4359).
-		if refusal := refuseNonNumberInputs(rule, inputs); refusal != nil {
-			return Decision{}, refusal
+		// A presence input asks whether an attribute holds a value, and not
+		// which value it holds. It is decided by its own path, before the
+		// value paths: reading it through ReadNumber was the mistake #4359
+		// measured (a presence contract answered satisfied from the value 7),
+		// and reading it as a value of any type would answer the same
+		// question by accident.
+		if declaresPresenceInput(inputs) {
+			return decidePresenceOperator(rule, contract, inputs, implementation, source)
 		}
 		// A rule whose operator declares an input read over every row of a
 		// relation is asked of those rows, not of one record (decision section

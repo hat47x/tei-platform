@@ -48,6 +48,12 @@ type NamedImplementation struct {
 	// (section 8.4), so a day is decided by the same field that decides a
 	// number and a text.
 	Values func(values map[string]semantic.OperatorValue) (bool, error)
+	// Presence decides for an operator whose input asks whether an attribute
+	// holds a value (decision section 3). It receives, per input name, whether
+	// the record holds a value: true when it holds one, false when it holds
+	// none. At most one of Number, Numbers, NumberRows, Values, ValueRows and
+	// Presence is non-nil.
+	Presence func(present map[string]bool) (bool, error)
 	// Absent reads an absent value under the mapping the rule named, or
 	// reports that this implementation cannot read that mapping. A shipped
 	// implementation that states none leaves every absence undecided.
@@ -509,10 +515,27 @@ func BuiltinImplementations() []NamedImplementation {
 				return anySameAs(values)
 			},
 		},
+		{
+			// tei.presence.is-present decides "the attribute holds a value".
+			// It is the shipped implementation of a presence input: the reader
+			// states whether the record holds a value, and this answers that
+			// question. A record that holds no value is an answer (it does not
+			// hold one), so the rule is refuted there rather than left
+			// undecided; only a value nobody read leaves the rule undecided,
+			// and the evaluator settles that before an implementation is asked.
+			ID:    "tei.presence.is-present",
+			Input: semantic.OperatorInputPresence,
+			Presence: func(present map[string]bool) (bool, error) {
+				value, ok := present["value"]
+				if !ok {
+					return false, fmt.Errorf("is-present reads an input named \"value\"; the rule supplied no value input")
+				}
+				return value, nil
+			},
+		},
 	}
 }
 
-// ResolveImplementations turns the selections of a composition into operator
 // implementations. Every selection must name exactly one available
 // implementation, and one operator may be selected only once. Nothing is
 // chosen by position, and an implementation nobody selected is not returned.
@@ -575,6 +598,20 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 					called(call)
 				}
 				return decide(rows)
+			}
+		}
+		if match.Presence != nil {
+			// Presence asks whether a record holds a value, so its answer is
+			// carried as the two states the reader states, not as a value of a
+			// type. A field of OperatorValue would let an implementation answer
+			// a question about a value from a record that holds none.
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.Presence
+			implementation.Presence = func(present map[string]bool) (bool, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(present)
 			}
 		}
 		if match.Values != nil {

@@ -54,6 +54,20 @@ type OperatorImplementation struct {
 	// An implementation provides either this field or one of the others, never
 	// both: providing both would leave which value it answers from ambiguous.
 	ValueRows func(rows map[string][]RowValueReading) (Tri, error)
+	// Presence decides a rule whose operator declares an input that reads
+	// whether an attribute holds a value rather than which value it holds
+	// (decision section 3: "presence reads whether, not what"). It receives,
+	// per input name, whether the attribute held a value: true when the record
+	// holds one, false when the record holds none. A value nobody read is not
+	// passed at all, so an implementation never has to tell "no value" from
+	// "not read".
+	//
+	// A presence value is not a value of any type, so it does not travel in
+	// OperatorValue: a truth is what a column says, and presence is whether
+	// the column says anything. Giving presence a field there would let an
+	// implementation answer a question about a value from a record that holds
+	// none.
+	Presence func(present map[string]bool) (bool, error)
 	// Absent reads an absent value under the mapping the rule named. A rule may
 	// write `or <name>` after an input, and the declaration may state
 	// `absent as <name>`; the mapping says how an absent value is to be read.
@@ -167,8 +181,9 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasSingle := implementation.Number != nil
 	hasTyped := implementation.Values != nil
 	hasTypedRows := implementation.ValueRows != nil
+	hasPresence := implementation.Presence != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows, hasPresence} {
 		if present {
 			shapes++
 		}
@@ -181,6 +196,21 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 		// One that provides a number function and a typed one would answer a
 		// rule from whichever the evaluator happened to fill.
 		return fmt.Errorf("the implementation of operator %s provides more than one kind of decision function", contract.ID)
+	}
+	// A presence input asks whether an attribute holds a value, and a value
+	// input asks which value it holds. An implementation of one kind cannot
+	// answer the other: an implementation deciding values would be handed the
+	// number a presence rule never asked about, which is the mistake #4359
+	// measured (a presence contract answered satisfied from the value 7).
+	if rowScoped && declaresPresenceInput(inputs) {
+		return fmt.Errorf("operator %s reads whether an attribute holds a value of every row of relation, which no reader reads yet", contract.ID)
+	}
+	if declaresPresenceInput(inputs) && !hasPresence {
+		return fmt.Errorf("operator %s declares the presence input %q, but its implementation decides values; presence asks whether a value is there, not which value it is",
+			contract.ID, presenceInputName(inputs))
+	}
+	if !declaresPresenceInput(inputs) && hasPresence {
+		return fmt.Errorf("operator %s declares no presence input, but its implementation decides whether a value is there", contract.ID)
 	}
 	if rowScoped && !hasRows && !hasTypedRows {
 		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
@@ -196,7 +226,7 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// are what decide which value each input gets, not how many inputs there
 	// are. A contract that declares a calendar day is one of those, so it is
 	// decided by the typed field and never by a number one.
-	if !rowScoped && !hasTyped {
+	if !rowScoped && !hasTyped && !hasPresence {
 		multiInput := len(inputs) > 1
 		if multiInput && !hasMulti {
 			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))
@@ -227,6 +257,13 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// The contract's own examples come first. An implementation that
 	// answers one of them differently is not an implementation of this
 	// operator, so it is not asked about real data.
+	//
+	// A presence implementation is asked about the two words an example
+	// states, not about a decimal it never reads: whether a record holds a
+	// value is a different question from which value it holds.
+	if hasPresence {
+		return checkPresenceOperatorCases(contract, implementation, inputs)
+	}
 	if err := checkOperatorCases(contract, implementation); err != nil {
 		return err
 	}
