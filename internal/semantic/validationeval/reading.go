@@ -575,6 +575,20 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		}
 		contract := declared[0]
 		inputs := contractInputs(contract)
+		// A rule whose operator declares an input read over every row of a
+		// relation is asked of those rows, not of one record (decision section
+		// 15.1). Every such input of this rule is read in one call, so one
+		// answer never mixes two reads (section 14.2 B-10).
+		//
+		// This comes before every one-record path: a column of rows is not one
+		// record's value, whatever type the input declares, and asking the
+		// one-record question would answer a question about the relation from
+		// one row of it.
+		for _, input := range inputs {
+			if input.OfEachRow {
+				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
+			}
+		}
 		// A presence input asks whether an attribute holds a value, and not
 		// which value it holds. It is decided by its own path, before the
 		// value paths: reading it through ReadNumber was the mistake #4359
@@ -583,20 +597,6 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		// question by accident.
 		if declaresPresenceInput(inputs) {
 			return decidePresenceOperator(rule, contract, inputs, implementation, source)
-		}
-		// A rule whose operator declares an input read over every row of a
-		// relation is asked of those rows, not of one record (decision section
-		// 15.1). Every such input of this rule is read in one call, so one
-		// answer never mixes two reads (section 14.2 B-10).
-		//
-		// The row-scoped question is decided before the one-record one: a
-		// column of days is not one record's day, and reading it through the
-		// one-record reader would answer a question about the relation from one
-		// record of it.
-		for _, input := range inputs {
-			if input.OfEachRow {
-				return decideRowScopedOperator(rule, contract, inputs, implementation, source)
-			}
 		}
 		// A contract may declare a calendar-day input. A day is read as a day,
 		// never as a number: `2026-04-01` read as a decimal is not a value
@@ -789,10 +789,16 @@ func decideRowScopedOperator(rule semantic.Validation, contract semantic.Operato
 			"semantic validation %s uses operator %s, which reads every row, but the rule names no relation; write \"per <relation>\"",
 			rule.ID, rule.Operator)
 	}
-	if implementation.NumberRows == nil && implementation.ValueRows == nil {
+	if implementation.NumberRows == nil && implementation.ValueRows == nil && implementation.PresenceRows == nil {
 		return Decision{}, fmt.Errorf(
 			"operator %s reads every row of a relation, but its selected implementation does not decide over rows",
 			rule.Operator)
+	}
+	// A rule whose input asks, of every row, whether it holds a value is decided
+	// by the presence-row path: a value of one record is not the answer to that
+	// question (sections 3 and 15.1).
+	if implementation.PresenceRows != nil {
+		return decidePresenceRowScopedOperator(rule, contract, inputs, implementation, source)
 	}
 	// A row-scoped operator whose inputs are of a type other than number is read
 	// by the reader that understands that type over rows, not by the row number
