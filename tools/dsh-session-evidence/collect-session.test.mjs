@@ -195,6 +195,48 @@ test("TEI argv family classification follows the initial read-only selection", (
   assert.equal(classifyTeiArgv(["tei"]).family, "no-command");
 });
 
+test("a CLI run through the Go toolchain is counted as a TEI invocation", () => {
+  // A model that runs `go run ./cmd/tei <sub> ...` instead of a built binary
+  // used to be recorded as `not-tei`, so real CLI use disappeared from the
+  // Session evidence.
+  const viaGoRun = classifyTeiArgv(["go", "run", "./cmd/tei", "version"]);
+  assert.equal(viaGoRun.tei, true);
+  assert.equal(viaGoRun.family, "allowed-family");
+  assert.equal(viaGoRun.command, "version");
+  assert.equal(viaGoRun.viaGoRun, true);
+
+  const outOfFamily = classifyTeiArgv(["go", "run", "./cmd/tei", "three-element", "validate", "-model", "m.json"]);
+  assert.equal(outOfFamily.family, "outside-initial-readonly-profile");
+  assert.equal(outOfFamily.command, "three-element");
+
+  // The same tokens after a separator, and a Windows-style package path.
+  const afterSeparator = classifyTeiArgv([";", "go", "run", "cmd\\tei", "inspect", "-workspace", "ws"]);
+  assert.equal(afterSeparator.tei, true);
+  assert.equal(afterSeparator.workspace, "ws");
+  assert.equal(afterSeparator.viaGoRun, true);
+
+  // Another Go program is not the TEI CLI. The `go run ./cmd/tei` shape is
+  // unambiguous even when it follows shell setup tokens, because the
+  // tokenizer drops `;` and a real command reads `cd repo; go run ./cmd/tei`.
+  assert.equal(classifyTeiArgv(["go", "run", "./cmd/other", "validate"]).tei, false);
+  assert.equal(classifyTeiArgv(["go", "run", "cmd/other", "validate"]).tei, false);
+  assert.equal(classifyTeiArgv(["go", "run", "./cmd/tei"]).family, "no-command");
+  const afterSetup = classifyTeiArgv(["cd", "D:\\repo", "$env:GOFLAGS=-mod=mod", "go", "run", "./cmd/tei", "validate"]);
+  assert.equal(afterSetup.tei, true);
+  assert.equal(afterSetup.viaGoRun, true);
+  assert.equal(afterSetup.command, "validate");
+});
+
+test("a go run invocation is counted once in the Session summary", () => {
+  const log = SESSION_HEADER
+    + toolCallEvent(10, 1, 1, "call_g", "pwsh", JSON.stringify({ command: "go run ./cmd/tei version" }))
+    + toolResultEvent(11, 1, 1, "call_g", "{}");
+  const out = collectSession(log);
+  assert.equal(out.counts.teiInvocations, 1);
+  assert.equal(out.teiInvocations[0].command, "version");
+  assert.equal(out.teiInvocations[0].viaGoRun, true);
+});
+
 test("out-of-family TEI invocation and mixed workspace targets are surfaced", () => {
   const log = SESSION_HEADER
     + toolCallEvent(10, 1, 1, "call_1", "pwsh", JSON.stringify({ command: ".\\bin\\tei.exe source-index -workspace reference/workspace" }))
