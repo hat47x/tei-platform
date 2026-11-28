@@ -46,6 +46,17 @@ type exampleSource struct {
 	row     int
 }
 
+// ReadAttempt states that every value of the example came from one read. The
+// example is one authoring statement: its rows are written together, so a rule
+// that reads two of its items reads them from the same statement rather than
+// from two reads that could disagree about what the records held.
+//
+// It is the answer section 14.2 asks a reader for when a rule reads more than
+// one attribute: a reader that states no attempt leaves that rule undecided.
+func (s exampleSource) ReadAttempt(attribute core.CanonicalID) (string, bool) {
+	return "the example table " + s.example.File, true
+}
+
 func (s exampleSource) column(attribute core.CanonicalID) (int, bool) {
 	for i, item := range s.example.Items {
 		if item.Attribute == attribute {
@@ -105,6 +116,87 @@ func (s exampleSource) ReadDate(attribute core.CanonicalID) (validationeval.Date
 
 // readCellDate reads the date of one cell of one row. A column the example
 // does not have was not written, so it is not fetched.
+// ReadText reads one text of the example. A column the example does not have
+// was not written, so it is not fetched; an empty cell is a record that holds no
+// text; the word for "not read" is that state. The cell states the text with
+// the quotes section 8.3 fixes, so an empty quoted text is a value of length
+// zero and stays apart from a record that holds no value.
+func (s exampleSource) ReadText(attribute core.CanonicalID) (validationeval.TextReading, error) {
+	if s.row < 0 {
+		return validationeval.TextReading{}, fmt.Errorf("a rule about all the rows asked for the single value %s", attribute)
+	}
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.TextReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[s.row][column]
+	if cell.Text == "" {
+		return validationeval.TextReading{State: validationeval.ValueNull}, nil
+	}
+	if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
+		return validationeval.TextReading{State: validationeval.ValueNotFetched}, nil
+	}
+	value, err := semantic.ParseOperatorTextValue(cell.Text)
+	if err != nil {
+		return validationeval.TextReading{}, err
+	}
+	return validationeval.TextReading{State: validationeval.ValuePresent, Value: value}, nil
+}
+
+// ReadTruth reads one truth of the example. A column the example does not have
+// was not written, so it is not fetched; an empty cell is a record that holds no
+// truth; the word for "not read" is that state. The cell states the truth as the
+// words true and false, never as a number.
+func (s exampleSource) ReadTruth(attribute core.CanonicalID) (validationeval.TruthReading, error) {
+	if s.row < 0 {
+		return validationeval.TruthReading{}, fmt.Errorf("a rule about all the rows asked for the single value %s", attribute)
+	}
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.TruthReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[s.row][column]
+	if cell.Text == "" {
+		return validationeval.TruthReading{State: validationeval.ValueNull}, nil
+	}
+	if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
+		return validationeval.TruthReading{State: validationeval.ValueNotFetched}, nil
+	}
+	value, err := semantic.ParseOperatorTruthValue(cell.Text)
+	if err != nil {
+		return validationeval.TruthReading{}, err
+	}
+	return validationeval.TruthReading{State: validationeval.ValuePresent, Value: value}, nil
+}
+
+// ReadAny reads one value of an `any` input of the example. The cell's writing
+// decides the type, so an unquoted 100 and a quoted "100" are different values
+// and the value carries which one it was.
+func (s exampleSource) ReadAny(attribute core.CanonicalID) (validationeval.AnyReading, error) {
+	if s.row < 0 {
+		return validationeval.AnyReading{}, fmt.Errorf("a rule about all the rows asked for the single value %s", attribute)
+	}
+	column, written := s.column(attribute)
+	if !written {
+		return validationeval.AnyReading{State: validationeval.ValueNotFetched}, nil
+	}
+	cell := s.example.Rows[s.row][column]
+	if cell.Text == "" {
+		return validationeval.AnyReading{State: validationeval.ValueNull}, nil
+	}
+	if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
+		return validationeval.AnyReading{State: validationeval.ValueNotFetched}, nil
+	}
+	value, err := semantic.ParseOperatorInputValue(semantic.OperatorInputAny, cell.Text)
+	if err != nil {
+		return validationeval.AnyReading{}, err
+	}
+	if value.Any == nil {
+		return validationeval.AnyReading{}, fmt.Errorf("%q is not a value of any single type", cell.Text)
+	}
+	return validationeval.AnyReading{State: validationeval.ValuePresent, Value: *value.Any}, nil
+}
+
 func (s exampleSource) readCellDate(row int, attribute core.CanonicalID) (validationeval.DateReading, error) {
 	column, written := s.column(attribute)
 	if !written {
