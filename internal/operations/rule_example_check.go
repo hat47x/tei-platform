@@ -319,6 +319,32 @@ func (s exampleSource) ReadTypedRows(input semantic.OperatorInputDeclaration, re
 //
 // A rule about one record cannot ask this: its operator reads one record, and
 // the example says which row that is.
+// ReadRelationPresence reads whether one item holds a value in every row of the
+// example table. A row-set example states records, so its cell states the item's
+// own value: a written cell is a value the record holds, an empty cell is a
+// record that holds none, and the word for "not read" is that state (section
+// 8.3). The rows of the example are the rows of the relation the mark names.
+func (s exampleSource) ReadRelationPresence(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+	if s.row >= 0 {
+		return validationeval.PresenceRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
+	}
+	column, written := s.column(attribute)
+	reading := validationeval.PresenceRowsReading{Coverage: validationeval.CoverageComplete}
+	for _, row := range s.example.Rows {
+		switch {
+		case !written:
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValueNotFetched})
+		case row[column].Text == "":
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValueNull})
+		case semantic.IsOperatorCaseNotFetchedWord(row[column].Text):
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValueNotFetched})
+		default:
+			reading.Rows = append(reading.Rows, validationeval.PresenceReading{State: validationeval.ValuePresent})
+		}
+	}
+	return reading, nil
+}
+
 func (s exampleSource) ReadRelationNumbers(relation, attribute core.CanonicalID) (validationeval.NumberRowsReading, error) {
 	if s.row >= 0 {
 		return validationeval.NumberRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
