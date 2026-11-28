@@ -217,12 +217,9 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// presence field, not by the one-record presence field: a column of rows is
 	// not one record's answer (sections 3 and 15.1).
 	//
-	// A row-example table that states a presence column's cells is refused
-	// rather than read: section 8.1's cell writing fixes a value per type, and a
-	// presence cell states whether there is one rather than which one it is. The
-	// operator whose meaning is only stated by such a table is refused until
-	// that writing is fixed, rather than having its rows read and its example
-	// silently unchecked.
+	// Section 8.6 fixes the cells of a presence row-example table: they write
+	// whether a row holds a value (present, absent, not-fetched), so a table
+	// for a presence input states the operator's meaning and is checked.
 	if rowScoped && declaresPresenceInput(inputs) {
 		if !hasPresenceRows {
 			return fmt.Errorf("operator %s reads whether every row of a relation holds a value, but its implementation does not decide over rows", contract.ID)
@@ -230,11 +227,11 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 		if len(contract.Cases) > 0 {
 			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s reads every row of a relation, so its meaning is stated by a table of rows; a one-record example is not checked against it", contract.ID)
 		}
-		if len(contract.RowCases) > 0 {
-			return fmt.Errorf("TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH: operator %s states a table of rows for a presence input, whose cells are not written yet; the rows are read and decided, but an example cannot be checked against it",
-				contract.ID)
-		}
-		return nil
+		// A row-example table for a presence input is read: section 8.6 fixes
+		// the cells to present, absent and not-fetched, so the example states
+		// the rows and is checked against the implementation like any other
+		// row example.
+		return checkOperatorRowCases(contract, implementation)
 	}
 	if declaresPresenceInput(inputs) && !hasPresence {
 		return fmt.Errorf("operator %s declares the presence input %q, but its implementation decides values; presence asks whether a value is there, not which value it is",
@@ -506,7 +503,7 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 	if len(contract.RowCases) == 0 {
 		return nil
 	}
-	if implementation.NumberRows == nil && implementation.ValueRows == nil {
+	if implementation.NumberRows == nil && implementation.ValueRows == nil && implementation.PresenceRows == nil {
 		return fmt.Errorf("operator %s states row examples, but its selected implementation does not decide over rows", contract.ID)
 	}
 	inputs := contractInputs(contract)
@@ -515,12 +512,21 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 			answer Tri
 			err    error
 		)
-		if implementation.ValueRows != nil {
+		switch {
+		case implementation.PresenceRows != nil:
+			// A presence example states, per row, whether the row holds a
+			// value rather than which value it holds (section 8.6), so its
+			// cells are read as the three row states and not as values.
+			var rows map[string][]PresenceReading
+			if rows, err = rowExamplePresenceColumns(contract, inputs, example); err == nil {
+				answer, err = implementation.PresenceRows(rows)
+			}
+		case implementation.ValueRows != nil:
 			var rows map[string][]RowValueReading
 			if rows, err = rowExampleValueColumns(contract, inputs, example); err == nil {
 				answer, err = implementation.ValueRows(rows)
 			}
-		} else {
+		default:
 			var rows map[string][]NumberReading
 			if rows, err = rowExampleNumberColumns(contract, inputs, example); err == nil {
 				answer, err = implementation.NumberRows(rows)
@@ -539,6 +545,46 @@ func checkOperatorRowCases(contract semantic.Operator, implementation OperatorIm
 		}
 	}
 	return nil
+}
+
+// rowExamplePresenceColumns reads one example's rows as the presence column an
+// implementation that decides whether a row holds a value is asked about.
+//
+// A presence cell writes whether the row holds a value rather than which value
+// it holds (decision section 8.6): `present` and `absent` are the two words,
+// the empty cell is refused because it already means "holds no value" for every
+// other input, and `not-fetched` keeps the row unread.
+func rowExamplePresenceColumns(contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, example semantic.OperatorRowCase) (map[string][]PresenceReading, error) {
+	rows := make(map[string][]PresenceReading, len(inputs))
+	for _, input := range inputs {
+		name := input.Name
+		if name == "" {
+			name = "value"
+		}
+		column := make([]PresenceReading, 0, len(example.Rows))
+		for index, row := range example.Rows {
+			text, stated := row[name]
+			if !stated {
+				return nil, fmt.Errorf("operator %s row example states no presence for input %q on row %d", contract.ID, name, index+1)
+			}
+			switch text {
+			case semantic.RowCellNotFetched:
+				column = append(column, PresenceReading{State: ValueNotFetched})
+			case semantic.OperatorCasePresencePresent:
+				column = append(column, PresenceReading{State: ValuePresent})
+			case semantic.OperatorCasePresenceAbsent:
+				column = append(column, PresenceReading{State: ValueNull})
+			case semantic.RowCellNoValue:
+				return nil, fmt.Errorf("operator %s row example leaves input %q of row %d empty; a presence input writes %s or %s, because the empty cell already states that the row holds no value for every other input",
+					contract.ID, name, index+1, semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent)
+			default:
+				return nil, fmt.Errorf("operator %s row example writes %q for the presence input %q on row %d; a presence input writes %s or %s",
+					contract.ID, text, name, index+1, semantic.OperatorCasePresencePresent, semantic.OperatorCasePresenceAbsent)
+			}
+		}
+		rows[name] = column
+	}
+	return rows, nil
 }
 
 // rowExampleNumberColumns reads one example's rows as the numeric columns an

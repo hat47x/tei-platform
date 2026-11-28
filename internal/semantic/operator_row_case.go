@@ -71,6 +71,14 @@ const RowCellNotFetched = "not-fetched"
 // declared input applies the type; this one only says whether the text can be
 // read as a value at all.
 func ParseOperatorRowCellValue(text string) (OperatorValue, error) {
+	// A presence cell writes whether the row holds a value rather than which
+	// value it holds (decision section 8.6), so it is a shape the row-cell
+	// reader accepts even though it carries no OperatorValue: the evaluator
+	// reads it as a presence state, not as a value of any type.
+	switch text {
+	case OperatorCasePresencePresent, OperatorCasePresenceAbsent:
+		return OperatorValue{}, nil
+	}
 	if strings.HasPrefix(text, `"`) {
 		value, err := ParseOperatorTextValue(text)
 		if err != nil {
@@ -99,6 +107,12 @@ func ParseOperatorRowCellValue(text string) (OperatorValue, error) {
 	return OperatorValue{Number: number}, nil
 }
 
+// isPresenceRowCellWord reports whether a row cell writes whether the row
+// holds a value rather than a value of some type (decision section 8.6).
+func isPresenceRowCellWord(text string) bool {
+	return text == OperatorCasePresencePresent || text == OperatorCasePresenceAbsent
+}
+
 // Valid reports whether this is an answer an example may state.
 func (e OperatorRowExpect) Valid() bool {
 	switch e {
@@ -113,6 +127,12 @@ func (e OperatorRowExpect) Valid() bool {
 // same as an empty cell, `not-fetched` is the same as `not-fetched`, and a
 // number is never the same as no value or as an unread row.
 func SameOperatorRowValue(left, right string) bool {
+	// A presence cell is neither a value nor an unread row: the words present
+	// and absent say whether the row holds a value (section 8.6), so they are
+	// equal to themselves and to nothing else.
+	if isPresenceRowCellWord(left) || isPresenceRowCellWord(right) {
+		return left == right
+	}
 	switch {
 	case left == RowCellNotFetched || right == RowCellNotFetched:
 		return left == RowCellNotFetched && right == RowCellNotFetched
