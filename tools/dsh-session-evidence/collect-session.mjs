@@ -134,6 +134,24 @@ function isTeiToken(token) {
   return exe === "tei" || exe === "tei.exe";
 }
 
+/** True when the argv slice at `index` is `go run <package path>` where the
+ *  package directory is the TEI CLI entry (`./cmd/tei`, `cmd/tei/`,
+ *  `C:\\...\\cmd\\tei`). Models also drive the CLI through the Go toolchain
+ *  instead of a built binary; without this the invocation is recorded as
+ *  `not-tei`, which undercounts real CLI use in the Session evidence. */
+function isGoRunTeiAt(argv, index) {
+  const go = argv[index];
+  const run = argv[index + 1];
+  const pkg = argv[index + 2];
+  if (typeof go !== "string" || typeof run !== "string" || typeof pkg !== "string") return false;
+  if (!/^go(\.exe)?$/i.test(go.replace(/\\/g, "/").split("/").pop())) return false;
+  if (!/^run$/i.test(run)) return false;
+  const parts = pkg.replace(/\\/g, "/").split("/").filter((p) => p.length > 0 && p !== ".");
+  if (parts.length < 2) return false;
+  const dir = parts[parts.length - 1];
+  return /^tei$/i.test(dir) && /^cmd$/i.test(parts[parts.length - 2]);
+}
+
 /** Unwrap a `cmd /c <command>` invocation (one Session in this experiment
  *  drives the CLI through cmd to avoid PowerShell's ConstrainedLanguage
  *  stderr noise). Returns the argv starting at the real command. A single
@@ -157,10 +175,27 @@ export function unwrapCmd(argv) {
 export function classifyTeiArgv(argv) {
   if (!Array.isArray(argv) || argv.length === 0) return { family: "unobserved", tei: false, workspace: null };
   let start = -1;
+  let argvStart = -1;
+  let viaGoRun = false;
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
     if (typeof t !== "string" || t.length === 0) return { family: "unobserved", tei: false, workspace: null };
-    if (isTeiToken(t) && (i === 0 || ["&", ";", "|", "&&", "||"].includes(argv[i - 1]))) { start = i; break; }
+    if (isTeiToken(t) && (i === 0 || ["&", ";", "|", "&&", "||"].includes(argv[i - 1]))) {
+      start = i;
+      argvStart = i;
+      break;
+    }
+    // `go run <.../cmd/tei>` is unambiguous: the three-token shape names the
+    // TEI CLI entry package, and the tokens before it are shell setup
+    // (`cd ...`, `$env:X=...`). Tokenization drops `;`, so requiring a
+    // preceding separator would miss a command written as
+    // `cd repo; $env:GOFLAGS=...; go run ./cmd/tei ...`.
+    if (isGoRunTeiAt(argv, i)) {
+      start = i + 2;
+      argvStart = i;
+      viaGoRun = true;
+      break;
+    }
   }
   if (start < 0) return { family: "not-tei", tei: false, workspace: null, argvStart: -1 };
   const rest = argv.slice(start + 1);
@@ -191,7 +226,7 @@ export function classifyTeiArgv(argv) {
   else if (cmd && ALLOWED_FAMILY.has(cmd)) family = "allowed-family";
   else if (cmd === null) family = "no-command";
   else family = "outside-initial-readonly-profile";
-  return { family, tei: true, workspace, command: cmd, argvStart: start };
+  return { family, tei: true, workspace, command: cmd, argvStart, viaGoRun };
 }
 
 function safeJsonParse(s) {
@@ -284,10 +319,14 @@ export function collectSession(logText, options = {}) {
       const argv = unwrapCmd(tokenizeCommand(resolvePowerShellVars(c.arguments.command)));
       const cls = classifyTeiArgv(argv);
       if (cls.tei) {
-        // record the invocation from the executable onward, so the stored argv
-        // is the command line that actually ran (assignments/operators dropped)
+        // record the invocation from the executable (or `go run`) onward, so
+        // the stored argv is the command line that actually ran (assignments
+        // and operators dropped)
         const invocationArgv = cls.argvStart >= 0 ? argv.slice(cls.argvStart) : argv;
-        row.teiInvocation = { argv: invocationArgv, family: cls.family, command: cls.command ?? null, workspace: cls.workspace };
+        row.teiInvocation = {
+          argv: invocationArgv, family: cls.family, command: cls.command ?? null,
+          workspace: cls.workspace, viaGoRun: cls.viaGoRun === true,
+        };
       }
     }
     if (c.tool === "skill" && c.arguments && typeof c.arguments.name === "string") {
@@ -353,6 +392,7 @@ export function collectSession(logText, options = {}) {
   const teiInvocations = calls.filter((c) => c.teiInvocation).map((c) => ({
     callId: c.callId, argv: c.teiInvocation.argv, family: c.teiInvocation.family,
     command: c.teiInvocation.command, workspace: c.teiInvocation.workspace,
+    viaGoRun: c.teiInvocation.viaGoRun === true,
     resultReceived: c.resultReceived, resultBytes: c.resultBytes,
   }));
   const outsideFamily = teiInvocations.filter((t) => t.family !== "allowed-family");
