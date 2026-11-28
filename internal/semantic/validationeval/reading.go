@@ -582,6 +582,11 @@ func decide(rule semantic.Validation, source StatefulSource, operators Operators
 		// and reading it as a value of any type would answer the same
 		// question by accident.
 		if declaresPresenceInput(inputs) {
+			for _, input := range inputs {
+				if input.OfEachRow {
+					return decidePresenceRowScopedOperator(rule, contract, inputs, implementation, source)
+				}
+			}
 			return decidePresenceOperator(rule, contract, inputs, implementation, source)
 		}
 		// A rule whose operator declares an input read over every row of a

@@ -543,6 +543,33 @@ func (d *Detail) ReadRelationValues(relation core.CanonicalID, attribute core.Ca
 	return reading, nil
 }
 
+// ReadRelationPresences reads whether one attribute holds a value in every row
+// of the relation, in the order the rows were read, together with whether those
+// rows are all the rows. It is the row-scoped form of ReadPresence: the same
+// three states, read once for the whole relation rather than once per record,
+// so every row-scoped input of one rule comes from this same reading.
+func (d *Detail) ReadRelationPresences(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+	if err := d.checkRelation(relation); err != nil {
+		return validationeval.PresenceRowsReading{}, err
+	}
+	reading := validationeval.PresenceRowsReading{
+		Coverage: d.coverage,
+		Rows:     make([]validationeval.PresenceReading, 0, len(d.rows)),
+	}
+	for index := range d.rows {
+		row, err := d.readPresence(index, attribute)
+		if err != nil {
+			// A row this reader cannot turn into a reading is the reader's error,
+			// not a value that was absent: it is returned rather than recorded as
+			// "no value", which would answer a question about the data with a
+			// statement about the read.
+			return validationeval.PresenceRowsReading{}, err
+		}
+		reading.Rows = append(reading.Rows, row)
+	}
+	return reading, nil
+}
+
 // ReadTypedRows is the capability the evaluator asks a reader for. It is the
 // same reading ReadRelationValues makes, in the order the capability takes its
 // arguments.
@@ -665,6 +692,12 @@ func (r Row) ReadDate(attribute core.CanonicalID) (validationeval.DateReading, e
 func (r Row) ReadRelationNumbers(relation, attribute core.CanonicalID) (validationeval.NumberRowsReading, error) {
 	return validationeval.NumberRowsReading{}, fmt.Errorf(
 		"one row is not the rows of relation %s; a row-scoped input needs the reader of the whole relation", relation)
+}
+
+// ReadRelationPresences refuses for the same reason as ReadRelationNumbers: the
+// rows of a relation are not one record's presence.
+func (r Row) ReadRelationPresences(relation, attribute core.CanonicalID) (validationeval.PresenceRowsReading, error) {
+	return validationeval.PresenceRowsReading{}, fmt.Errorf("a rule about one record asked for the presence of attribute %s over the rows of relation %s", attribute, relation)
 }
 
 // ReadRelationValues refuses for the same reason as ReadRelationNumbers: the

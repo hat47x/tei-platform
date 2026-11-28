@@ -68,6 +68,16 @@ type OperatorImplementation struct {
 	// implementation answer a question about a value from a record that holds
 	// none.
 	Presence func(present map[string]bool) (bool, error)
+	// PresenceRows decides a rule whose operator reads whether an attribute
+	// holds a value in every row of a relation. It receives, per input name, the
+	// state of every row that was read, in read order, and answers TriYes, TriNo
+	// or TriMaybe. It sees no Source, so what a rule reads stays decided by the
+	// declaration (decision section 15.1).
+	//
+	// A row that holds no value and a row nobody read are told apart here as
+	// everywhere else: whether a row that holds nothing is a counterexample is
+	// the operator's own statement, and a row nobody read is no answer at all.
+	PresenceRows func(rows map[string][]PresenceReading) (Tri, error)
 	// Absent reads an absent value under the mapping the rule named. A rule may
 	// write `or <name>` after an input, and the declaration may state
 	// `absent as <name>`; the mapping says how an absent value is to be read.
@@ -182,8 +192,9 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasTyped := implementation.Values != nil
 	hasTypedRows := implementation.ValueRows != nil
 	hasPresence := implementation.Presence != nil
+	hasPresenceRows := implementation.PresenceRows != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows, hasPresence} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows, hasPresence, hasPresenceRows} {
 		if present {
 			shapes++
 		}
@@ -202,17 +213,23 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// answer the other: an implementation deciding values would be handed the
 	// number a presence rule never asked about, which is the mistake #4359
 	// measured (a presence contract answered satisfied from the value 7).
-	if rowScoped && declaresPresenceInput(inputs) {
-		return fmt.Errorf("operator %s reads whether an attribute holds a value of every row of relation, which no reader reads yet", contract.ID)
-	}
-	if declaresPresenceInput(inputs) && !hasPresence {
+	if declaresPresenceInput(inputs) && !hasPresence && !hasPresenceRows {
 		return fmt.Errorf("operator %s declares the presence input %q, but its implementation decides values; presence asks whether a value is there, not which value it is",
 			contract.ID, presenceInputName(inputs))
 	}
-	if !declaresPresenceInput(inputs) && hasPresence {
+	if !declaresPresenceInput(inputs) && (hasPresence || hasPresenceRows) {
 		return fmt.Errorf("operator %s declares no presence input, but its implementation decides whether a value is there", contract.ID)
 	}
-	if rowScoped && !hasRows && !hasTypedRows {
+	// A presence input is answered about one record or about every row of a
+	// relation, and the two questions are different: an implementation of one
+	// cannot answer the other.
+	if rowScoped && hasPresence && !hasPresenceRows {
+		return fmt.Errorf("operator %s reads whether an attribute holds a value of every row of relation, but its implementation decides presence of one record", contract.ID)
+	}
+	if !rowScoped && hasPresenceRows {
+		return fmt.Errorf("operator %s reads no rows of a relation, but its implementation decides presence over rows", contract.ID)
+	}
+	if rowScoped && !hasRows && !hasTypedRows && !hasPresenceRows {
 		return fmt.Errorf("operator %s reads every row of a relation but its implementation decides from the values of one record", contract.ID)
 	}
 	if !rowScoped && hasRows {
@@ -226,7 +243,7 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// are what decide which value each input gets, not how many inputs there
 	// are. A contract that declares a calendar day is one of those, so it is
 	// decided by the typed field and never by a number one.
-	if !rowScoped && !hasTyped && !hasPresence {
+	if !rowScoped && !hasTyped && !hasPresence && !hasPresenceRows {
 		multiInput := len(inputs) > 1
 		if multiInput && !hasMulti {
 			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))
@@ -261,6 +278,9 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// A presence implementation is asked about the two words an example
 	// states, not about a decimal it never reads: whether a record holds a
 	// value is a different question from which value it holds.
+	if hasPresenceRows {
+		return checkPresenceRowCases(contract, implementation, inputs)
+	}
 	if hasPresence {
 		return checkPresenceOperatorCases(contract, implementation, inputs)
 	}
