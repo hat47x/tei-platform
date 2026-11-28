@@ -46,6 +46,18 @@ type OperatorImplementation struct {
 	// never both: providing both would leave which value it answers from
 	// ambiguous.
 	Values func(values map[string]semantic.OperatorValue) (bool, error)
+	// Presence decides a rule whose operator reads whether its inputs hold a
+	// value. It receives, per input name, true when the attribute holds one
+	// value and false when it holds none (decision section 8.5).
+	//
+	// It is not called when the attribute was not read: section 5 puts the
+	// "nobody read it" handling in one place, the evaluator, so the rule stays
+	// undecided rather than handing the implementation a state that is not an
+	// answer.
+	//
+	// An implementation provides either this field or one of the value ones,
+	// never both: a presence input has no value a value field could carry.
+	Presence func(values map[string]bool) (bool, error)
 	// ValueRows decides a rule whose operator reads every row of a relation in
 	// any type. It receives, per input name, the rows that were read in the
 	// order they were read, each value carrying the type it was read as
@@ -167,8 +179,9 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	hasSingle := implementation.Number != nil
 	hasTyped := implementation.Values != nil
 	hasTypedRows := implementation.ValueRows != nil
+	hasPresence := implementation.Presence != nil
 	shapes := 0
-	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows} {
+	for _, present := range []bool{hasRows, hasMulti, hasSingle, hasTyped, hasTypedRows, hasPresence} {
 		if present {
 			shapes++
 		}
@@ -188,6 +201,23 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	if !rowScoped && hasRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows", contract.ID)
 	}
+	// A presence contract is decided from presence and never from a value, so
+	// an implementation that offers only value fields cannot be its
+	// implementation. A presence implementation decides one record: the three
+	// states are of one record's attribute.
+	presenceContract := false
+	for _, input := range inputs {
+		if input.Type == semantic.OperatorInputPresence {
+			presenceContract = true
+			break
+		}
+	}
+	if presenceContract != hasPresence {
+		if presenceContract {
+			return fmt.Errorf("operator %s reads whether a value is there, but its implementation decides from a value", contract.ID)
+		}
+		return fmt.Errorf("operator %s reads values, but its implementation decides from whether a value is there", contract.ID)
+	}
 	if !rowScoped && hasTypedRows {
 		return fmt.Errorf("operator %s reads no rows of a relation but its implementation decides over rows of any type", contract.ID)
 	}
@@ -196,7 +226,10 @@ func CheckImplementationMatchesContract(contract semantic.Operator, implementati
 	// are what decide which value each input gets, not how many inputs there
 	// are. A contract that declares a calendar day is one of those, so it is
 	// decided by the typed field and never by a number one.
-	if !rowScoped && !hasTyped {
+	// A presence implementation decides one record from presence alone, so it
+	// is its own shape and is not required to carry a value field for the
+	// multi-input branch below (section 8.5).
+	if !rowScoped && !hasTyped && !hasPresence {
 		multiInput := len(inputs) > 1
 		if multiInput && !hasMulti {
 			return fmt.Errorf("operator %s declares %d inputs but its implementation takes a single value", contract.ID, len(inputs))

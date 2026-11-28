@@ -24,53 +24,41 @@ import (
 // Measured: a `date` contract said "the presence input has no reader on this
 // path yet", which sends the author looking at the wrong declaration. The
 // wording now names its own type, which this pins for the type it still refuses.
-func TestARefusedInputNamesItsOwnType(t *testing.T) {
-	t.Run("presence", func(t *testing.T) {
-		kind := semantic.OperatorInputPresence
-		contract := semantic.Operator{
-			ID: "sales.op", Symbol: "op", Input: kind,
-			Inputs: []semantic.OperatorInputDeclaration{{Name: "value", Type: kind}},
+// A presence declaration is decided from presence, so a numeric implementation
+// is refused: whether a value is there is a different question from what the
+// value is, and the refusal names that difference rather than the type word.
+func TestAPresenceContractRefusesANumericImplementation(t *testing.T) {
+	kind := semantic.OperatorInputPresence
+	contract := semantic.Operator{
+		ID: "sales.op", Symbol: "op", Input: kind,
+		Inputs: []semantic.OperatorInputDeclaration{{Name: "value", Type: kind}},
+	}
+	implementation := validationeval.OperatorImplementation{
+		Operator: "sales.op",
+		Input:    kind,
+		Number:   func(*big.Rat) (bool, error) { return true, nil },
+	}
+	rule := semantic.Validation{
+		ID: "sales.order_line.probe", Kind: semantic.ValidationOperator,
+		Attribute: "sales.order_line.quantity", Operator: "sales.op",
+	}
+	_, err := validationeval.Decide(rule, refusingTypeSource{},
+		validationeval.Operators{
+			Declared:        []semantic.Operator{contract},
+			Implementations: []validationeval.OperatorImplementation{implementation},
+		})
+	if err == nil {
+		t.Fatal("a presence contract was decided from a number")
+	}
+	if !strings.Contains(err.Error(), "whether a value is there") {
+		t.Fatalf("the refusal does not name the question: %v", err)
+	}
+	// And it does not blame a different type.
+	for _, other := range []string{"date", "text", "truth", "any"} {
+		if strings.Contains(err.Error(), " "+other+" input has no reader") {
+			t.Fatalf("the refusal for presence blames the %s input: %v", other, err)
 		}
-		implementation := validationeval.OperatorImplementation{
-			Operator: "sales.op",
-			Input:    kind,
-			Number:   func(*big.Rat) (bool, error) { return true, nil },
-		}
-		rule := semantic.Validation{
-			ID: "sales.order_line.probe", Kind: semantic.ValidationOperator,
-			Attribute: "sales.order_line.quantity", Operator: "sales.op",
-		}
-		_, err := validationeval.Decide(rule, refusingTypeSource{},
-			validationeval.Operators{
-				Declared:        []semantic.Operator{contract},
-				Implementations: []validationeval.OperatorImplementation{implementation},
-			})
-		if err == nil {
-			t.Fatalf("a %s input was accepted by a path that reads values", kind)
-		}
-		// The message names this type and this input, so the author does
-		// not have to guess which declaration is unreadable.
-		if !strings.Contains(err.Error(), string(kind)) {
-			t.Fatalf("the refusal does not name the type %q: %v", kind, err)
-		}
-		if !strings.Contains(err.Error(), `"value"`) {
-			t.Fatalf("the refusal does not name the input: %v", err)
-		}
-		// The reason names this type: "the <type> input has no reader".
-		// A message written for one type and reused for others names the
-		// wrong one, which is what this pins.
-		if !strings.Contains(err.Error(), "the "+string(kind)+" input has no reader") {
-			t.Fatalf("the refusal does not give %q as the reason: %v", kind, err)
-		}
-		// And it does not blame a different type.
-		for _, other := range []semantic.OperatorInput{
-			"date", "text", "truth", "any",
-		} {
-			if strings.Contains(err.Error(), " "+string(other)+" input has no reader") {
-				t.Fatalf("the refusal for %s blames the %s input: %v", kind, other, err)
-			}
-		}
-	})
+	}
 }
 
 // The typed words are read by the example table, and the reader that decides a

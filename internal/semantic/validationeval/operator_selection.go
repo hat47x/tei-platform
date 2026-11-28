@@ -48,6 +48,10 @@ type NamedImplementation struct {
 	// (section 8.4), so a day is decided by the same field that decides a
 	// number and a text.
 	Values func(values map[string]semantic.OperatorValue) (bool, error)
+	// Presence decides for an operator whose inputs read whether a value is
+	// there. It receives, per input name, the state the reader reported, so a
+	// presence rule is decided from presence and never from a value.
+	Presence func(values map[string]bool) (bool, error)
 	// Absent reads an absent value under the mapping the rule named, or
 	// reports that this implementation cannot read that mapping. A shipped
 	// implementation that states none leaves every absence undecided.
@@ -450,6 +454,21 @@ func BuiltinImplementations() []NamedImplementation {
 			},
 		},
 		{
+			// tei.presence.present decides "the attribute holds a value". A
+			// presence input asks whether a value is there, whatever its type,
+			// so this implementation is asked about presence and never about a
+			// value: a number, a text and a day all satisfy it when present.
+			//
+			// A state that was not read is refused rather than read as "no
+			// value": answering a question about the data with a statement
+			// about the read is not a decision (decision section 5).
+			ID:    "tei.presence.present",
+			Input: semantic.OperatorInputPresence,
+			Presence: func(values map[string]bool) (bool, error) {
+				return presenceIsPresent(values)
+			},
+		},
+		{
 			// tei.text.same-as decides "the text holds exactly the other text".
 			// Both inputs are texts, and a text is read as a text: the reader
 			// reports what each attribute holds, and this implementation
@@ -585,6 +604,19 @@ func ResolveImplementations(selected []ImplementationSelection, available []Name
 			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
 			decide := match.Values
 			implementation.Values = func(values map[string]semantic.OperatorValue) (bool, error) {
+				if called != nil {
+					called(call)
+				}
+				return decide(values)
+			}
+		}
+		if match.Presence != nil {
+			// A presence rule is decided by whether the inputs hold a value,
+			// so the three states the reader reported are handed over as they
+			// are (decision section 5).
+			call := ImplementationCall{Operator: selection.Operator, Implementation: match.ID}
+			decide := match.Presence
+			implementation.Presence = func(values map[string]bool) (bool, error) {
 				if called != nil {
 					called(call)
 				}

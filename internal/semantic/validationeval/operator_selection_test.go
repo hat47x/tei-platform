@@ -331,6 +331,26 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%d, want %d", implementation.ID, tc.name, int(got), int(tc.want))
 				}
 			}
+		} else if implementation.Presence != nil {
+			cases, known := presenceInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected presence values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.Presence(tc.values)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%v err=nil, want an error", implementation.ID, tc.name, got)
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%v err=%v, want %v", implementation.ID, tc.name, got, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
+				}
+			}
 		} else if implementation.Values != nil {
 			cases, known := typedInputWant[implementation.ID]
 			if !known {
@@ -355,9 +375,37 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presenceInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presenceInputWant))
 	}
+}
+
+// presenceInputWant is what each shipped presence implementation answers for the
+// three states a reader reports. A presence rule is decided by whether a value
+// is there, so the answer is read from the state and never from a value.
+var presenceInputWant = map[string][]struct {
+	name    string
+	values  map[string]bool
+	want    bool
+	wantErr bool
+}{
+	"tei.presence.present": {
+		{
+			name:   "an attribute that holds a value",
+			values: map[string]bool{"value": true},
+			want:   true,
+		},
+		{
+			name:   "an attribute that holds no value",
+			values: map[string]bool{"value": false},
+			want:   false,
+		},
+		{
+			name:    "no value input",
+			values:  map[string]bool{},
+			wantErr: true,
+		},
+	},
 }
 
 // textColumns builds the two text columns a rule hands to an implementation:
