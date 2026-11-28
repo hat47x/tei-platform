@@ -225,6 +225,16 @@ func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.
 		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
 	}
 	cell := s.example.Rows[s.row][column]
+	// Section 8.3 fixes the two words a presence cell states: `present` means
+	// the record holds a value, and `absent` means it holds none. The word has
+	// to be read before the fallback below, or `absent` would be answered as a
+	// value that is there, which states the opposite of what the author wrote.
+	switch cell.Text {
+	case semantic.OperatorCasePresencePresent:
+		return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
+	case semantic.OperatorCasePresenceAbsent:
+		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
+	}
 	if cell.Text == "" {
 		return validationeval.PresenceReading{State: validationeval.ValueNull}, nil
 	}
@@ -236,6 +246,9 @@ func (s exampleSource) ReadPresence(attribute core.CanonicalID) (validationeval.
 	if semantic.IsOperatorCaseNotFetchedWord(cell.Text) {
 		return validationeval.PresenceReading{State: validationeval.ValueNotFetched}, nil
 	}
+	// Any other written cell states that the record holds a value: the table
+	// already writes a cell per item, and a presence column's other cells are
+	// the author's way of saying the item is there.
 	return validationeval.PresenceReading{State: validationeval.ValuePresent}, nil
 }
 
