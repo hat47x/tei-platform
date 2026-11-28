@@ -53,7 +53,7 @@ func selectionCheckAvailable() []validationeval.NamedImplementation {
 		{ID: "test.number", Input: semantic.OperatorInputNumber,
 			Number: func(*big.Rat) (bool, error) { return true, nil }},
 		{ID: "test.presence", Input: semantic.OperatorInputPresence,
-			Number: func(*big.Rat) (bool, error) { return true, nil }},
+			Presence: func(map[string]bool) (bool, error) { return true, nil }},
 	}
 }
 

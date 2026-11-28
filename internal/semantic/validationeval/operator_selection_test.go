@@ -146,6 +146,23 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 			{name: "a value read as a number", values: map[string]semantic.OperatorValue{"value": {Number: big.NewRat(1, 1)}}, wantErr: true},
 		},
 	}
+	// tei.presence.is-present answers whether a record holds a value. The
+	// expectations are read from that definition: a record that holds a value
+	// satisfies "the value is present", and a record that holds none refutes
+	// it. An input the rule did not supply cannot be answered, so it is an
+	// error rather than a "no value".
+	presentInputWant := map[string][]struct {
+		name    string
+		present map[string]bool
+		want    bool
+		wantErr bool
+	}{
+		"tei.presence.is-present": {
+			{name: "the record holds a value", present: map[string]bool{"value": true}, want: true},
+			{name: "the record holds no value", present: map[string]bool{"value": false}, want: false},
+			{name: "no value input", present: map[string]bool{}, wantErr: true},
+		},
+	}
 	// tei.day.every-not-before decides days through the one value shape section
 	// 8.4 fixes, over the rows of a relation. Its expectations are the rows as
 	// the reader hands them over, each value carrying the type it was read as,
@@ -351,12 +368,32 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
 				}
 			}
+		} else if implementation.Presence != nil {
+			cases, known := presentInputWant[implementation.ID]
+			if !known {
+				t.Fatalf("built-in implementation %s has no expected values in this test", implementation.ID)
+			}
+			for _, tc := range cases {
+				got, err := implementation.Presence(tc.present)
+				if tc.wantErr {
+					if err == nil {
+						t.Fatalf("%s(%s)=%v err=nil, want an error", implementation.ID, tc.name, got)
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s(%s)=%v err=%v, want %v", implementation.ID, tc.name, got, err, tc.want)
+				}
+				if got != tc.want {
+					t.Fatalf("%s(%s)=%v, want %v", implementation.ID, tc.name, got, tc.want)
+				}
+			}
 		} else {
 			t.Fatalf("built-in implementation %s has no decision function", implementation.ID)
 		}
 	}
-	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant) {
-		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant))
+	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant) {
+		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant)+len(presentInputWant))
 	}
 }
 

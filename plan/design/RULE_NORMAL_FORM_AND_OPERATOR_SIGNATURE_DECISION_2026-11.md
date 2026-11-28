@@ -391,6 +391,32 @@ type OperatorValue struct {
 
 本節は設計案であり、Parser・意味型・実装の変更や実行済みの証拠ではない。担当は #4359。優先順位は `plan/NOW.md` のままとする。
 
+### 8.5 `presence` 入力を、実装へどの形で渡すか（2026年11月28日、決定）
+
+§3 は入力の型を `number`・`date`・`text`・`truth`・`any` と定め、`presence` を「値の有無を読む入力で、型を問わない」と定めた。§8.4 は型ごとの値を `semantic.OperatorValue` 一つに載せ、実装はその型の欄だけを見ると決めた。**しかし `presence` は値ではなく「値があるか」という状態であり、`OperatorValue` のどの欄にも載らない。** `ParseOperatorInputValue` は `presence` のセルを「値ではない」として拒否しており、`OperatorImplementation` にも `presence` を受ける欄が無い。`presence` の入力を持つ演算子を決める次の変更は、その口を必要とする。本節がそれを決める。
+
+**`presence` の値は、`OperatorValue` に載せない。** `presence` は「値があるかないか」を問う入力であり、値そのものではない。`OperatorValue` の欄に `Presence bool` を足すと、同じ型の中に「値」と「値の有無」が混ざり、`Any` の `Type` が `presence` を持ちうることも含めて、§8.4 の「型ごとの判別」が二つの意味を持つ。**別の欄にする。**
+
+**実装は `map[string]bool` を受け取る。** 欄は `Presence func(values map[string]bool) (bool, error)` である。`true` はその入力の属性が値を一つ持つこと、`false` は持たないことを表す。
+
+**「読んでいない」は実装へ渡さない。** §5 の「値がない・読んでいないの扱いは評価器が一か所で行う」をそのまま適用する。`presence` の読みは三つの状態を持ち、評価器が次のように扱う。
+
+| 読んだ状態 | 意味 | 扱い |
+| --- | --- | --- |
+| `ValuePresent` | 属性は値を一つ持つ | 実装へ `true` を渡す |
+| `ValueNull` | 属性は値を一つも持たない | 実装へ `false` を渡す |
+| `ValueNotFetched` | 誰も読んでいない | 実装を呼ばず、判定不能（`value-not-fetched`） |
+
+**`ValueNull` が判定不能にならない点が、型ごとの値と違う。** 型ごとの入力では「値がない」ことは答えを決められないので判定不能にした（§5）。`presence` の入力では「値がない」こと自体が問いへの答えである。**「値がない」と「読んでいない」を混ぜない**という §5 の要求は、この表で満たしている。
+
+**`presence` を受ける欄は、それだけで一つの形である。** 実装は `Presence` と他のどの欄（`Number`・`Numbers`・`NumberRows`・`Values`・`ValueRows`）も併せて提供しない。§8.4 と同じ理由である——どちらの値で答えるかが曖昧になる。**形の検査の二箇所を直す必要がある。** 一つは「提供する欄の数を数える」箇所へ `Presence` を足すこと。もう一つは `!rowScoped && !hasTyped` の分岐で、これは複数入力の宣言に多値の欄を要求する。`Presence` だけを提供する実装は多値の欄を持たないので、**この条件へ `hasPresence` を足さないと、新しい欄を見る前に拒否される。****行集合の `presence` は本節が決めない**（行ごとの有無をどう運ぶかは別の判断である）。宣言が `of each row` を付けた `presence` 入力を持つ演算子は、本節の変更では拒否する。
+
+**例の表では `presence` を書かない。** §8.1 の一表一例は値を書く場所であり、「値がない」を書くセルは無い（空のセルは「値がない行」を意味し、入力の値ではない）。したがって `presence` 入力を持つ演算子の一レコードの例は、**その形の不一致として拒否する**（`TEI_OPERATOR_EXAMPLE_SHAPE_MISMATCH`）。行集合の例と同じ扱いである。**その演算子の意味は、実データの読みで確かめる。**
+
+**この節が変えないもの。** §8.3 の型ごとのセルの書き方、§8.4 の `OperatorValue`・`Values`・`ValueRows` はそのままである。新しい結果分類も作らない。
+
+**次のコード変更は、`internal/semantic/validationeval` の `OperatorImplementation` に `Presence func(values map[string]bool) (bool, error)` を足し、`refuseNonNumberInputs` から `presence` の拒否を外し、評価器の `Values` 経路で `StatefulPresenceSource.ReadPresence` を呼んで上の表どおりに値を埋め、形の検査に `Presence` を一つの形として数え、`presence` 入力を持つ演算子の一レコードの例を形の不一致として拒否し、出荷実装を一つ足すことである。** 期待は六つ——`presence` の入力を持つ演算子の規則が `ValuePresent` の属性で `satisfied`／`not-satisfied` を返し、`ValueNull` が `false` として実装へ届き、`ValueNotFetched` が実装を呼ばずに判定不能になり、`Presence` と他の欄を併せて提供する実装が拒否され、`presence` 入力を持つ演算子の一レコードの例が形の不一致として拒否され、**既存の型ごとの実装とその試験が変更なく通る**。
+
 ## 9. 判断：式の入れ子は入れない
 
 規則の入力は項目か定数に限る。`a + b > c`のような入れ子、`let`、`it`、パイプは入れない。

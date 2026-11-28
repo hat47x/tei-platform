@@ -54,7 +54,9 @@ node <tai-repo>/evaluations/tools/check-sk02-pair-eligibility.cjs trial-group.js
 - **argv分類**: 初回許可群（`version`／`commands`／`model catalog`／`inspect`／
   `trace`／`validate`）外（`source-index`・`dbcheck`等）を`outside-initial-readonly-profile`
   として記録。Workspace targetsの混在も記録する。PowerShellの
-  `$exe = ...; & $exe <cmd>` 形式を解決してから分類する
+  `$exe = ...; & $exe <cmd>` 形式を解決し、`go run ./cmd/tei <cmd>` で起動した
+  実行も同じ1件として数える（`viaGoRun`で区別する）。ビルド済み `tei`／`tei.exe`
+  だけを数えると、Goツールチェーン経由の実行が`not-tei`になり実利用が消える（#2509）
 - **Root構築/slot sync**: pin不一致時のbuild拒否、再構築時の腕残留消去、
   tree digestの決定性、改変の検出性
 
