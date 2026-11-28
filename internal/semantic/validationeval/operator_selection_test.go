@@ -195,6 +195,60 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 				"deadline": {dayCell("2026-04-01")},
 			}, wantErr: true},
 		},
+		// The row forms of the text, truth and any implementations compare the
+		// rows the reader hands over. The expected answers are read from their
+		// definitions: the row form answers about the rows as the one-record form
+		// answers about one record, so the same counterexample settles it.
+		"tei.text.every-same-as": {
+			{name: "every row's texts are the same", rows: textColumns(
+				[2]string{"\"A-100\"", "\"A-100\""}, [2]string{"\"B-2\"", "\"B-2\""},
+			), want: validationeval.TriYes},
+			{name: "one row's texts differ", rows: textColumns(
+				[2]string{"\"A-100\"", "\"A-100\""}, [2]string{"\"B-2\"", "\"B-3\""},
+			), want: validationeval.TriNo},
+			{name: "a row nobody read", rows: textColumns(
+				[2]string{"\"A-100\"", "\"A-100\""}, [2]string{semantic.RowCellNotFetched, "\"B-2\""},
+			), want: validationeval.TriMaybe},
+			{name: "columns of different lengths", rows: map[string][]validationeval.RowValueReading{
+				"value": {textCell("\"A-100\""), textCell("\"B-2\"")},
+				"other": {textCell("\"A-100\"")},
+			}, wantErr: true},
+			{name: "no other input", rows: map[string][]validationeval.RowValueReading{
+				"value": {textCell("\"A-100\"")},
+			}, wantErr: true},
+		},
+		"tei.truth.every-is-true": {
+			{name: "every row holds true", rows: map[string][]validationeval.RowValueReading{
+				"value": {truthCell("true"), truthCell("true")},
+			}, want: validationeval.TriYes},
+			{name: "one row holds false", rows: map[string][]validationeval.RowValueReading{
+				"value": {truthCell("true"), truthCell("false")},
+			}, want: validationeval.TriNo},
+			{name: "a row nobody read", rows: map[string][]validationeval.RowValueReading{
+				"value": {truthCell("true"), {State: validationeval.ValueNotFetched}},
+			}, want: validationeval.TriMaybe},
+			{name: "no value input", rows: map[string][]validationeval.RowValueReading{}, wantErr: true},
+			{name: "a number is not a truth", rows: map[string][]validationeval.RowValueReading{
+				"value": {{State: validationeval.ValuePresent, Value: semantic.OperatorValue{Number: big.NewRat(1, 1)}}},
+			}, wantErr: true},
+		},
+		"tei.any.every-same-as": {
+			{name: "every row's values are the same", rows: anyColumns(
+				[2]string{"100", "100"}, [2]string{"\"100\"", "\"100\""},
+			), want: validationeval.TriYes},
+			{name: "a number and a text are not the same", rows: anyColumns(
+				[2]string{"100", "\"100\""},
+			), want: validationeval.TriNo},
+			{name: "one row's values differ", rows: anyColumns(
+				[2]string{"100", "100"}, [2]string{"200", "100"},
+			), want: validationeval.TriNo},
+			{name: "a row nobody read", rows: anyColumns(
+				[2]string{"100", "100"}, [2]string{semantic.RowCellNotFetched, "100"},
+			), want: validationeval.TriMaybe},
+			{name: "no other input", rows: map[string][]validationeval.RowValueReading{
+				"value": {anyCell("100")},
+			}, wantErr: true},
+		},
 	}
 	seen := map[string]bool{}
 	for _, implementation := range validationeval.BuiltinImplementations() {
@@ -304,6 +358,73 @@ func TestBuiltinImplementationsDecideByTheirDefinitions(t *testing.T) {
 	if len(seen) != len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant) {
 		t.Fatalf("built-in implementations=%v, want exactly %d", seen, len(singleInputWant)+len(multiInputWant)+len(rowInputWant)+len(typedInputWant)+len(typedRowInputWant))
 	}
+}
+
+// textColumns builds the two text columns a rule hands to an implementation:
+// one row per pair, in the order written.
+func textColumns(pairs ...[2]string) map[string][]validationeval.RowValueReading {
+	rows := map[string][]validationeval.RowValueReading{}
+	for _, pair := range pairs {
+		rows["value"] = append(rows["value"], textCell(pair[0]))
+		rows["other"] = append(rows["other"], textCell(pair[1]))
+	}
+	return rows
+}
+
+// anyColumns builds the two columns of an `any` input, one row per pair.
+func anyColumns(pairs ...[2]string) map[string][]validationeval.RowValueReading {
+	rows := map[string][]validationeval.RowValueReading{}
+	for _, pair := range pairs {
+		rows["value"] = append(rows["value"], anyCell(pair[0]))
+		rows["other"] = append(rows["other"], anyCell(pair[1]))
+	}
+	return rows
+}
+
+// textCell reads one cell of a text column, in the writing section 8.3 fixes:
+// quotes around the text, and the two words for "no value" and "not read".
+func textCell(text string) validationeval.RowValueReading {
+	switch text {
+	case semantic.RowCellNoValue:
+		return validationeval.RowValueReading{State: validationeval.ValueNull}
+	case semantic.RowCellNotFetched:
+		return validationeval.RowValueReading{State: validationeval.ValueNotFetched}
+	}
+	value, err := semantic.ParseOperatorTextValue(text)
+	if err != nil {
+		panic(err)
+	}
+	return validationeval.RowValueReading{
+		State: validationeval.ValuePresent,
+		Value: semantic.OperatorValue{Text: &value},
+	}
+}
+
+// truthCell reads one cell of a truth column: the words true and false.
+func truthCell(text string) validationeval.RowValueReading {
+	value, err := semantic.ParseOperatorTruthValue(text)
+	if err != nil {
+		panic(err)
+	}
+	return validationeval.RowValueReading{
+		State: validationeval.ValuePresent,
+		Value: semantic.OperatorValue{Truth: &value},
+	}
+}
+
+// anyCell reads one cell of an `any` column, where the quoting decides the type.
+func anyCell(text string) validationeval.RowValueReading {
+	switch text {
+	case semantic.RowCellNoValue:
+		return validationeval.RowValueReading{State: validationeval.ValueNull}
+	case semantic.RowCellNotFetched:
+		return validationeval.RowValueReading{State: validationeval.ValueNotFetched}
+	}
+	value, err := semantic.ParseOperatorInputValue(semantic.OperatorInputAny, text)
+	if err != nil {
+		panic(err)
+	}
+	return validationeval.RowValueReading{State: validationeval.ValuePresent, Value: value}
 }
 
 // dayColumns builds the two columns a rule about days hands to an
