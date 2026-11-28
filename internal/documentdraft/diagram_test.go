@@ -16,7 +16,7 @@ func diagramFixture(t *testing.T) string {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "model.json")
 	model := map[string]any{
-		"schemaVersion": "tei.three-element/v0",
+		"schemaVersion": "tei.three-element.model/v0",
 		"effect":        "read-only",
 		"modelId":       "sales-analysis",
 		"name":          "Sales analysis",

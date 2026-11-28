@@ -17,7 +17,7 @@ import (
 func writeDiagramModel(t *testing.T, name string, model map[string]any) string {
 	t.Helper()
 	if _, ok := model["schemaVersion"]; !ok {
-		model["schemaVersion"] = "tei.three-element/v0"
+		model["schemaVersion"] = "tei.three-element.model/v0"
 	}
 	if _, ok := model["effect"]; !ok {
 		model["effect"] = "read-only"

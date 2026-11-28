@@ -990,7 +990,7 @@ func TestModelDocumentDraftThreeElementDiagramReconcileReportsAMovedModel(t *tes
 func writeThreeElementModelFixture(t *testing.T) string {
 	t.Helper()
 	model := map[string]any{
-		"schemaVersion": "tei.three-element/v0",
+		"schemaVersion": "tei.three-element.model/v0",
 		"effect":        "read-only",
 		"modelId":       "cli-diagram-test",
 		"name":          "CLI diagram test",
