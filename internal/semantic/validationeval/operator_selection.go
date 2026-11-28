@@ -296,6 +296,160 @@ func BuiltinImplementations() []NamedImplementation {
 			},
 		},
 		{
+			// tei.text.every-same-as decides "every row's text is exactly the
+			// other text". It is the row form of tei.text.same-as: the same two
+			// texts, asked of every row of a relation instead of of one record.
+			// Both inputs are texts, and a text is read as a text: the reader
+			// reports what each attribute holds, and this implementation
+			// compares the two. A text is never read as a number, so the text
+			// "7" and the number 7 are not the same value and are never
+			// compared.
+			//
+			// One row whose two texts differ is the counterexample the
+			// declaration's `refutes on some rows` is about. A row whose texts
+			// were not read, or holds no text, answers TriMaybe, so the evaluator
+			// reports that row's own reason instead of reading it as a text this
+			// implementation invented. The rows are all looked at before such a
+			// row decides the answer: a counterexample that was seen is a
+			// counterexample however many rows around it were not read (decision
+			// section 8).
+			ID:    "tei.text.every-same-as",
+			Input: semantic.OperatorInputText,
+			ValueRows: func(rows map[string][]RowValueReading) (Tri, error) {
+				values, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-same-as reads an input named \"value\"; the rule supplied no value input")
+				}
+				others, ok := rows["other"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-same-as reads an input named \"other\"; the rule supplied no other input")
+				}
+				if len(values) != len(others) {
+					return TriMaybe, fmt.Errorf("every-same-as reads %d value rows and %d other rows; both are columns of the same rows", len(values), len(others))
+				}
+				// A row the reader reports as present without a text is a
+				// contract violation, not a text that was absent. It is checked
+				// for every row before any row is compared: a known
+				// counterexample must not hide a violation the reader made
+				// (decision section 8.1).
+				for index := range values {
+					if values[index].State == ValuePresent && values[index].Value.Kind() != semantic.OperatorInputText {
+						return TriMaybe, fmt.Errorf("every-same-as reads row %d as present without a text", index)
+					}
+					if others[index].State == ValuePresent && others[index].Value.Kind() != semantic.OperatorInputText {
+						return TriMaybe, fmt.Errorf("every-same-as reads row %d as present without an other text", index)
+					}
+				}
+				unreadable := false
+				for index := range values {
+					value, other := values[index], others[index]
+					if value.State != ValuePresent || other.State != ValuePresent {
+						unreadable = true
+						continue
+					}
+					if *value.Value.Text != *other.Value.Text {
+						return TriNo, nil
+					}
+				}
+				if unreadable {
+					return TriMaybe, nil
+				}
+				return TriYes, nil
+			},
+		},
+		{
+			// tei.truth.every-is-true decides "every row's truth holds". It is
+			// the row form of tei.truth.is-true: the same truth, asked of every
+			// row of a relation instead of of one record. A truth is read as a
+			// truth, never as the number 1, which would answer a different
+			// question.
+			//
+			// One row that holds false is the counterexample the declaration's
+			// `refutes on some rows` is about. A row whose truth was not read, or
+			// holds no truth, answers TriMaybe, so the evaluator reports that
+			// row's own reason.
+			ID:    "tei.truth.every-is-true",
+			Input: semantic.OperatorInputTruth,
+			ValueRows: func(rows map[string][]RowValueReading) (Tri, error) {
+				values, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-is-true reads an input named \"value\"; the rule supplied no value input")
+				}
+				for index := range values {
+					if values[index].State == ValuePresent && values[index].Value.Kind() != semantic.OperatorInputTruth {
+						return TriMaybe, fmt.Errorf("every-is-true reads row %d as present without a truth", index)
+					}
+				}
+				unreadable := false
+				for index := range values {
+					if values[index].State != ValuePresent {
+						unreadable = true
+						continue
+					}
+					if !*values[index].Value.Truth {
+						return TriNo, nil
+					}
+				}
+				if unreadable {
+					return TriMaybe, nil
+				}
+				return TriYes, nil
+			},
+		},
+		{
+			// tei.any.every-same-as decides "every row's value is exactly the
+			// other value". It is the row form of tei.any.same-as, and it keeps
+			// the same rule about kinds: an `any` value carries the type it was
+			// read as, so a number and a text that spell the same characters are
+			// different values and are never the same.
+			//
+			// One row whose two values differ is the counterexample. A row whose
+			// value was not read answers TriMaybe, so the evaluator reports that
+			// row's own reason.
+			ID:    "tei.any.every-same-as",
+			Input: semantic.OperatorInputAny,
+			ValueRows: func(rows map[string][]RowValueReading) (Tri, error) {
+				values, ok := rows["value"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-same-as reads an input named \"value\"; the rule supplied no value input")
+				}
+				others, ok := rows["other"]
+				if !ok {
+					return TriMaybe, fmt.Errorf("every-same-as reads an input named \"other\"; the rule supplied no other input")
+				}
+				if len(values) != len(others) {
+					return TriMaybe, fmt.Errorf("every-same-as reads %d value rows and %d other rows; both are columns of the same rows", len(values), len(others))
+				}
+				for index := range values {
+					if values[index].State == ValuePresent && values[index].Value.Kind() != semantic.OperatorInputAny {
+						return TriMaybe, fmt.Errorf("every-same-as reads row %d as present without a value", index)
+					}
+					if others[index].State == ValuePresent && others[index].Value.Kind() != semantic.OperatorInputAny {
+						return TriMaybe, fmt.Errorf("every-same-as reads row %d as present without an other value", index)
+					}
+				}
+				unreadable := false
+				for index := range values {
+					value, other := values[index], others[index]
+					if value.State != ValuePresent || other.State != ValuePresent {
+						unreadable = true
+						continue
+					}
+					same, err := sameAnyOperatorValue(value.Value, other.Value)
+					if err != nil {
+						return TriMaybe, err
+					}
+					if !same {
+						return TriNo, nil
+					}
+				}
+				if unreadable {
+					return TriMaybe, nil
+				}
+				return TriYes, nil
+			},
+		},
+		{
 			// tei.text.same-as decides "the text holds exactly the other text".
 			// Both inputs are texts, and a text is read as a text: the reader
 			// reports what each attribute holds, and this implementation

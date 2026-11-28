@@ -32,6 +32,21 @@ func anySameAs(values map[string]semantic.OperatorValue) (bool, error) {
 	if other.Any == nil || !other.Any.Valid() {
 		return false, fmt.Errorf("same-as reads a value of any type; the other input was not read as one")
 	}
+	return sameAnyOperatorValue(value, other)
+}
+
+// sameAnyOperatorValue compares two values of an `any` input as the values they
+// were read as, so a number and a text that spell the same characters are
+// different values and are never the same. It is the comparison both the one
+// record form (tei.any.same-as) and the row form (tei.any.every-same-as) use,
+// so the two cannot come to disagree about what "the same value" means.
+func sameAnyOperatorValue(value, other semantic.OperatorValue) (bool, error) {
+	if value.Any == nil || !value.Any.Valid() {
+		return false, fmt.Errorf("same-as reads a value of any type; its input was not read as one")
+	}
+	if other.Any == nil || !other.Any.Valid() {
+		return false, fmt.Errorf("same-as reads a value of any type; the other input was not read as one")
+	}
 	if value.Any.Type != other.Any.Type {
 		return false, nil
 	}
