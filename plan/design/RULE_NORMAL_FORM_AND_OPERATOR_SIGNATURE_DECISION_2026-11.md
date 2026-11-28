@@ -421,6 +421,36 @@ type OperatorValue struct {
 
 **次のコード変更は、`internal/semantic/validationeval` の `OperatorImplementation` に `Presence func(values map[string]bool) (bool, error)` を足し、`refuseNonNumberInputs` から `presence` の拒否を外し、評価器の `Values` 経路で `StatefulPresenceSource.ReadPresence` を呼んで上の表どおりに値を埋め、形の検査に `Presence` を一つの形として数え、`presence` のセルの二語を例の照合へ通し、出荷実装を一つ足すことである。** 期待は六つ——`presence` の入力を持つ演算子の規則が `ValuePresent` の属性で `satisfied`／`not-satisfied` を返し、`ValueNull` が `false` として実装へ届き、`ValueNotFetched` が実装を呼ばずに判定不能になり、`Presence` と他の欄を併せて提供する実装が拒否され、`presence` のセルの `present` と `absent` が、それぞれ `true` と `false` として実装へ届き、**既存の型ごとの実装とその試験が変更なく通る**。
 
+### 8.6 `presence` 入力の行集合形を、実装へどの形で渡すか（2026年11月28日、決定）
+
+§8.5 は一件の `presence` 入力を `OperatorImplementation.Presence`（`map[string]bool`）へ渡すと決め、**`of each row` を付けた `presence` は本節が決めないとして拒否に残した。** 本節がその残りを決める。
+
+**いまの状態。** `of each row` を付けた `presence` を持つ演算子は、形の検査（`internal/semantic/validationeval/operator.go`）で「no reader reads yet」として拒否されている。**行ごとの有無を読む口が無いためである**——一件の有無を読む `StatefulPresenceSource.ReadPresence` は在るが、関係のすべての行について同じ属性の有無を返す口は無い。
+
+**読者の口を足す。** `StatefulPresenceRowSource` を足し、`ReadRelationPresence(relation, attribute core.CanonicalID) (PresenceRowsReading, error)` を要求する。`PresenceRowsReading` は `Coverage`（読んだ行が関係のすべてか）と、行ごとの `PresenceReading` の並び（読んだ順）を持つ。**行ごとの状態は `ValuePresent`・`ValueNull`・`ValueNotFetched` の三つで、一件の読者と同じ意味である。**
+
+**実装の欄は、行集合の他の形と同じく `Tri` を返す。** `OperatorImplementation` に `PresenceRows func(rows map[string][]PresenceReading) (Tri, error)` を足す。**既存の `ValueRows` が `Tri` を返すのと同じ理由**であり、`refutes on some rows` を持つ宣言では反例の有無がそのまま `TriNo` になる。**新しい結果分類は作らない。**
+
+**「読んでいない」行は、実装へ渡す前に判定に効かせる。** §8.5 の一件の規則と同じく、§5 の「値がない・読んでいないの扱いは評価器が一か所で行う」を適用する。
+
+| 行の状態 | 意味 | 扱い |
+| --- | --- | --- |
+| `ValuePresent` | その行は値を一つ持つ | 実装へ `ValuePresent` として渡す |
+| `ValueNull` | その行は値を一つも持たない | 実装へ `ValueNull` として渡す |
+| `ValueNotFetched` | その行を誰も読んでいない | **実装を呼ばず、その行の理由で判定不能**（`value-not-fetched`） |
+
+**一件の規則と違い、`ValueNull` の行は実装へ渡す。** 一件の `presence` でも `ValueNull` は「値がない」という答えとして `false` を渡した（§8.5）。行集合では行ごとの `true`/`false` を並べて渡すので、**`ValueNull` の行を `false` に畳むのは実装の仕事ではなく、値をそのまま渡すのが評価器の仕事**である。**実装は受け取った並びだけを見て `Tri` を返す。**
+
+**`Coverage` は今までどおり扱う。** 読んだ行が関係のすべてでなければ、`TriYes`（反例が無い）は `satisfied` にしない（既存の行集合の規則と同じである）。**部分的に読んだ関係で「反例が無い」を全件の答えとして扱わない。**
+
+**`presence` の行集合の欄は、それだけで一つの形である。** `Presence`（一件）・`PresenceRows`（行集合）と他の欄を併せて提供しない。宣言が `of each row` を付けたかどうかで、どちらの欄を使うかが決まる。
+
+**行集合の例は、§8.1 の表で書く。** セルの語は `present`・`absent`・`not-fetched` の三つであり（§8.3 の「値がないことと読んでいないことは型によらず同じ書き方」）、`presence` の一件の例と同じ語を使う。**行集合の例は、実装と照合する**（§8.1 の「実装を選ぶとき、すべての例と照合する」）。
+
+**この節が変えないもの。** §8.5 の一件の `presence`（`Presence`、`OperatorValue` に載せない、`ValueNotFetched` は判定不能）はそのままである。§8.4 の `ValueRows` とその他の型ごとの行集合もそのままである。**新しい結果分類も作らない。**
+
+**次のコード変更は、`internal/semantic/validationeval` に `StatefulPresenceRowSource`・`PresenceRowsReading` を足し、`OperatorImplementation.PresenceRows` を足し、形の検査の「no reader reads yet」を外して `PresenceRows` を一つの形として数え、評価器の行集合経路で `ReadRelationPresence` を呼んで上の表どおりに判定し、`presence` の行集合の例を照合へ通し、出荷実装を一つ足すことである。** 期待は六つ——`of each row` を付けた `presence` の演算子の規則が実 PostgreSQL の行で `satisfied`／`not-satisfied` を返し、`ValueNull` の行が値なしとして実装へ届き、`ValueNotFetched` の行が実装を呼ばずに判定不能になり、部分的に読んだ関係で反例が無いことが `satisfied` にならず、`present`/`absent`/`not-fetched` の行集合の例が実装と照合され、**既存の行集合の型ごとの実装とその試験が変更なく通る**。
+
 ## 9. 判断：式の入れ子は入れない
 
 規則の入力は項目か定数に限る。`a + b > c`のような入れ子、`let`、`it`、パイプは入れない。
