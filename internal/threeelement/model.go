@@ -285,6 +285,52 @@ func (m ThreeElementModel) Validate() []Diagnostic {
 				diags = append(diags, Diagnostic{Code: "EMPTY_ATTRIBUTE_ID", Severity: "error", Message: fmt.Sprintf("data %q has attribute with empty id", e.ID), SubjectIDs: []string{e.ID}})
 			}
 		}
+		// A duplicated nested identity is ambiguous the same way a duplicated
+		// top-level identity is: two declarations claim one name, and a
+		// projection that keeps either one answers for a declaration it did
+		// not choose (#6113). Empty ids are reported as empty, not as
+		// duplicates of each other.
+		attributePositions := map[string]int{}
+		for i, attr := range e.Attributes {
+			if attr.ID == "" {
+				continue
+			}
+			if first, exists := attributePositions[attr.ID]; exists {
+				diags = append(diags, Diagnostic{
+					Code:       "DUPLICATE_ATTRIBUTE_ID",
+					Severity:   "error",
+					Message:    fmt.Sprintf("data %q declares attribute id %q at positions %d and %d", e.ID, attr.ID, first, i+1),
+					SubjectIDs: []string{e.ID, attr.ID},
+				})
+			} else {
+				attributePositions[attr.ID] = i + 1
+			}
+		}
+		relationPositions := map[string]int{}
+		for i, rel := range e.Relations {
+			// A relation is the projection's identity now that DataDataCrossReference
+			// carries RelationID (#6118): an empty id leaves a row that names no
+			// declaration, so it is reported rather than silently projected.
+			if rel.ID == "" {
+				diags = append(diags, Diagnostic{
+					Code:       "EMPTY_RELATION_ID",
+					Severity:   "error",
+					Message:    fmt.Sprintf("data %q has relation with empty id at position %d", e.ID, i+1),
+					SubjectIDs: []string{e.ID},
+				})
+				continue
+			}
+			if first, exists := relationPositions[rel.ID]; exists {
+				diags = append(diags, Diagnostic{
+					Code:       "DUPLICATE_RELATION_ID",
+					Severity:   "error",
+					Message:    fmt.Sprintf("data %q declares relation id %q at positions %d and %d", e.ID, rel.ID, first, i+1),
+					SubjectIDs: []string{e.ID, rel.ID},
+				})
+			} else {
+				relationPositions[rel.ID] = i + 1
+			}
+		}
 		for _, rel := range e.Relations {
 			if rel.TargetID == "" {
 				diags = append(diags, Diagnostic{Code: "EMPTY_RELATION_TARGET", Severity: "error", Message: fmt.Sprintf("data relation %q has empty target", rel.ID), SubjectIDs: []string{e.ID, rel.ID}})
@@ -362,6 +408,22 @@ func (m ThreeElementModel) Validate() []Diagnostic {
 			diags = append(diags, Diagnostic{Code: "UNKNOWN_CROSS_REF_TO", Severity: "warning", Message: fmt.Sprintf("cross-reference %q to unknown %s/%s", ref.ID, ref.ToKind, ref.ToID), SubjectIDs: []string{ref.ID, ref.ToID}})
 		}
 	}
+	crossRefPositions := map[string]int{}
+	for i, ref := range m.CrossReferences {
+		if ref.ID == "" {
+			continue
+		}
+		if first, exists := crossRefPositions[ref.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_CROSS_REF_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("cross-reference id %q is declared at positions %d and %d", ref.ID, first, i+1),
+				SubjectIDs: []string{ref.ID},
+			})
+		} else {
+			crossRefPositions[ref.ID] = i + 1
+		}
+	}
 
 	for _, crud := range m.CRUDDefinitions {
 		if _, ok := fnByID[crud.FunctionID]; !ok {
@@ -372,6 +434,22 @@ func (m ThreeElementModel) Validate() []Diagnostic {
 		}
 		if !crud.Create && !crud.Read && !crud.Update && !crud.Delete {
 			diags = append(diags, Diagnostic{Code: "EMPTY_CRUD_DEFINITION", Severity: "warning", Message: fmt.Sprintf("CRUD %q has no operations", crud.ID), SubjectIDs: []string{crud.ID}})
+		}
+	}
+	crudPositions := map[string]int{}
+	for i, crud := range m.CRUDDefinitions {
+		if crud.ID == "" {
+			continue
+		}
+		if first, exists := crudPositions[crud.ID]; exists {
+			diags = append(diags, Diagnostic{
+				Code:       "DUPLICATE_CRUD_ID",
+				Severity:   "error",
+				Message:    fmt.Sprintf("CRUD definition id %q is declared at positions %d and %d", crud.ID, first, i+1),
+				SubjectIDs: []string{crud.ID},
+			})
+		} else {
+			crudPositions[crud.ID] = i + 1
 		}
 	}
 

@@ -8,19 +8,31 @@ import "testing"
 // (#4032). This case builds one model that violates each rule, then requires the
 // exact code for it: a code that stops being emitted, or one that changes name,
 // fails here.
+//
+// The nested identities (attribute, relation, cross-reference, CRUD definition)
+// were added when #6113 showed that a duplicated or empty nested identity was
+// projected as if only one declaration existed.
 func TestValidateEmitsEveryDeclaredDiagnosticCode(t *testing.T) {
 	model := NewThreeElementModel("probe", "Probe")
 
 	// One data element breaks the data rules: no id, no name, an attribute with
-	// no id, a relation with no target, a relation to a missing target, and a
-	// composite key naming an attribute that does not exist.
+	// no id and a duplicated attribute id, a relation with no target, a relation
+	// with no id, a relation to a missing target, and a duplicated relation id,
+	// and a composite key naming an attribute that does not exist.
 	model.DataElements = []DataElement{
 		{
 			ID: "", Name: "",
-			Attributes: []DataAttribute{{ID: "", Name: "Order ID", Type: "text"}},
+			Attributes: []DataAttribute{
+				{ID: "", Name: "Order ID", Type: "text"},
+				{ID: "dup_attr", Name: "A", Type: "text"},
+				{ID: "dup_attr", Name: "B", Type: "text"},
+			},
 			Relations: []DataRelation{
 				{ID: "r_empty", TargetID: ""},
 				{ID: "r_unknown", TargetID: "missing"},
+				{ID: "", TargetID: "missing"},
+				{ID: "dup_rel", TargetID: "missing"},
+				{ID: "dup_rel", TargetID: "missing"},
 			},
 			CompositeKey: []string{"absent"},
 		},
@@ -46,15 +58,21 @@ func TestValidateEmitsEveryDeclaredDiagnosticCode(t *testing.T) {
 		},
 	}
 
-	// A cross reference with no id, and one whose ends do not resolve.
+	// A cross reference with no id, one whose ends do not resolve, and a
+	// duplicated cross reference id.
 	model.CrossReferences = []CrossReference{
 		{ID: "", Kind: "data-to-data", FromKind: "data", FromID: "missing", ToKind: "data", ToID: "missing"},
+		{ID: "dup_x", Kind: "data-to-data", FromKind: "data", FromID: "missing", ToKind: "data", ToID: "missing"},
+		{ID: "dup_x", Kind: "data-to-data", FromKind: "data", FromID: "missing", ToKind: "data", ToID: "missing"},
 	}
 
-	// A CRUD definition pointing at missing subjects, and one with no operation.
+	// A CRUD definition pointing at missing subjects, one with no operation, and
+	// a duplicated CRUD definition id.
 	model.CRUDDefinitions = []CRUDDefinition{
 		{ID: "crud_unknown", FunctionID: "missing", DataID: "missing"},
 		{ID: "crud_empty", FunctionID: "missing", DataID: "missing"},
+		{ID: "dup_crud", FunctionID: "missing", DataID: "missing"},
+		{ID: "dup_crud", FunctionID: "missing", DataID: "missing"},
 	}
 
 	want := map[string]bool{
@@ -79,6 +97,11 @@ func TestValidateEmitsEveryDeclaredDiagnosticCode(t *testing.T) {
 		"UNKNOWN_CRUD_FUNCTION":           false,
 		"UNKNOWN_CRUD_DATA":               false,
 		"EMPTY_CRUD_DEFINITION":           false,
+		"DUPLICATE_ATTRIBUTE_ID":          false,
+		"DUPLICATE_RELATION_ID":           false,
+		"EMPTY_RELATION_ID":               false,
+		"DUPLICATE_CROSS_REF_ID":          false,
+		"DUPLICATE_CRUD_ID":               false,
 	}
 	for _, diagnostic := range model.Validate() {
 		if _, tracked := want[diagnostic.Code]; tracked {
@@ -103,6 +126,8 @@ func TestValidateDeclaresOnlyTheCodesThisTestReaches(t *testing.T) {
 		"EMPTY_BUSINESS_ID", "EMPTY_BUSINESS_NAME", "EMPTY_ACTIVITY_ID", "UNKNOWN_ACTIVITY_FUNCTION",
 		"EMPTY_CROSS_REF_ID", "UNKNOWN_CROSS_REF_FROM", "UNKNOWN_CROSS_REF_TO",
 		"UNKNOWN_CRUD_FUNCTION", "UNKNOWN_CRUD_DATA", "EMPTY_CRUD_DEFINITION",
+		"DUPLICATE_ATTRIBUTE_ID", "DUPLICATE_RELATION_ID", "EMPTY_RELATION_ID",
+		"DUPLICATE_CROSS_REF_ID", "DUPLICATE_CRUD_ID",
 	}
 	covered := map[string]bool{}
 	for _, code := range declared {
@@ -111,7 +136,7 @@ func TestValidateDeclaresOnlyTheCodesThisTestReaches(t *testing.T) {
 		}
 		covered[code] = true
 	}
-	if len(covered) != 21 {
+	if len(covered) != 26 {
 		t.Fatalf("this test lists %d codes; update it when Validate gains one", len(covered))
 	}
 }

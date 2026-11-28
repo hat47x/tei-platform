@@ -50,33 +50,35 @@ func TestDataDataCrossReferenceKeepsTheRelationIdentity(t *testing.T) {
 func TestDataDataCrossReferenceQualifiesTheRelationIdentityBySource(t *testing.T) {
 	model := NewThreeElementModel("qualified", "Qualified relation identity")
 	model.DataElements = []DataElement{
-		{ID: "order", Name: "Order"},
-		{ID: "invoice", Name: "Invoice"},
 		{
 			ID: "customer", Name: "Customer",
 			Relations: []DataRelation{
 				{ID: "r-1", TargetID: "order", Kind: "many-to-one", Directed: true},
-				{ID: "r-1", TargetID: "invoice", Kind: "many-to-one", Directed: true},
 			},
 		},
+		{
+			ID: "invoice", Name: "Invoice",
+			Relations: []DataRelation{
+				// The same relation id under a different Data element is a
+				// different declaration: each element owns its own ids.
+				{ID: "r-1", TargetID: "order", Kind: "many-to-one", Directed: true},
+			},
+		},
+		{ID: "order", Name: "Order"},
 	}
 
 	rows := GenerateDataDataCrossReference(model)
 	if len(rows) != 2 {
 		t.Fatalf("two declarations sharing a relation id must both survive, got %+v", rows)
 	}
-	// Ordered by target: order before invoice is not the point; both rows must
-	// exist and be distinguishable by source+relation id, which they are only
-	// because the target differs as well. The row for the same target is what
-	// the ordering test above covers.
 	seen := map[string]bool{}
 	for _, row := range rows {
-		if row.SourceID != "customer" || row.RelationID != "r-1" {
-			t.Fatalf("relation lost its source or identity: %+v", row)
+		if row.RelationID != "r-1" || row.TargetID != "order" {
+			t.Fatalf("relation lost its target or identity: %+v", row)
 		}
-		seen[row.TargetID] = true
+		seen[row.SourceID] = true
 	}
-	if !seen["order"] || !seen["invoice"] {
+	if !seen["customer"] || !seen["invoice"] {
 		t.Fatalf("a declaration was dropped: %+v", rows)
 	}
 }

@@ -137,6 +137,59 @@ func TestEveryDiagnosticCodeIsReachable(t *testing.T) {
 			m.CRUDDefinitions = []CRUDDefinition{{ID: "c1", FunctionID: "f1", DataID: "d1"}}
 			return m
 		}},
+		// Nested identities: a duplicate or empty identity inside a data
+		// element, a cross-reference or a CRUD definition is as ambiguous as a
+		// duplicate top-level one, and the projection keeps only one of the
+		// declarations (#6113).
+		{"DUPLICATE_ATTRIBUTE_ID", func() ThreeElementModel {
+			m := NewThreeElementModel("probe", "Probe")
+			m.DataElements = []DataElement{{ID: "d1", Name: "D1",
+				Attributes: []DataAttribute{
+					{ID: "a1", Name: "A", Type: "text"},
+					{ID: "a1", Name: "A again", Type: "text"},
+				}}}
+			return m
+		}},
+		{"DUPLICATE_RELATION_ID", func() ThreeElementModel {
+			m := NewThreeElementModel("probe", "Probe")
+			m.DataElements = []DataElement{
+				{ID: "d1", Name: "D1",
+					Relations: []DataRelation{
+						{ID: "r1", TargetID: "d2", Kind: "many-to-one"},
+						{ID: "r1", TargetID: "d2", Kind: "lookup"},
+					}},
+				{ID: "d2", Name: "D2"},
+			}
+			return m
+		}},
+		{"EMPTY_RELATION_ID", func() ThreeElementModel {
+			m := NewThreeElementModel("probe", "Probe")
+			m.DataElements = []DataElement{
+				{ID: "d1", Name: "D1",
+					Relations: []DataRelation{{TargetID: "d2", Kind: "many-to-one"}}},
+				{ID: "d2", Name: "D2"},
+			}
+			return m
+		}},
+		{"DUPLICATE_CROSS_REF_ID", func() ThreeElementModel {
+			m := NewThreeElementModel("probe", "Probe")
+			m.DataElements = []DataElement{{ID: "d1", Name: "D1"}, {ID: "d2", Name: "D2"}}
+			m.CrossReferences = []CrossReference{
+				{ID: "x1", Kind: "data-to-data", FromKind: "data", FromID: "d1", ToKind: "data", ToID: "d2"},
+				{ID: "x1", Kind: "data-to-data", FromKind: "data", FromID: "d2", ToKind: "data", ToID: "d1"},
+			}
+			return m
+		}},
+		{"DUPLICATE_CRUD_ID", func() ThreeElementModel {
+			m := NewThreeElementModel("probe", "Probe")
+			m.DataElements = []DataElement{{ID: "d1", Name: "D1"}}
+			m.FunctionElements = []FunctionElement{{ID: "f1", Name: "F1"}}
+			m.CRUDDefinitions = []CRUDDefinition{
+				{ID: "c1", FunctionID: "f1", DataID: "d1", Read: true},
+				{ID: "c1", FunctionID: "f1", DataID: "d1", Update: true},
+			}
+			return m
+		}},
 	}
 	seen := map[string]bool{}
 	for _, tc := range cases {
