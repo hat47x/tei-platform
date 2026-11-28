@@ -172,6 +172,39 @@ func (s exampleSource) ReadRelationPeriods(relation, start, end, group core.Cano
 	return reading, nil
 }
 
+// ReadRelationNumbers reads one numeric attribute over every row of the
+// example. The author wrote the rows the example has, so the coverage is
+// complete: an example is the whole record set it states, not a page of a
+// larger one. A column the example does not have was not written, so every row
+// is not fetched; an empty cell is a row that holds no value.
+//
+// A rule about one record cannot ask this: its operator reads one record, and
+// the example says which row that is.
+func (s exampleSource) ReadRelationNumbers(relation, attribute core.CanonicalID) (validationeval.NumberRowsReading, error) {
+	if s.row >= 0 {
+		return validationeval.NumberRowsReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)
+	}
+	column, written := s.column(attribute)
+	reading := validationeval.NumberRowsReading{Coverage: validationeval.CoverageComplete}
+	for _, row := range s.example.Rows {
+		switch {
+		case !written:
+			reading.Rows = append(reading.Rows, validationeval.NumberReading{State: validationeval.ValueNotFetched})
+		case row[column].Text == "":
+			reading.Rows = append(reading.Rows, validationeval.NumberReading{State: validationeval.ValueNull})
+		case semantic.IsOperatorCaseNotFetchedWord(row[column].Text):
+			reading.Rows = append(reading.Rows, validationeval.NumberReading{State: validationeval.ValueNotFetched})
+		default:
+			value, err := semantic.ParseOperatorCaseValue(row[column].Text)
+			if err != nil {
+				return validationeval.NumberRowsReading{}, err
+			}
+			reading.Rows = append(reading.Rows, validationeval.NumberReading{State: validationeval.ValuePresent, Value: value})
+		}
+	}
+	return reading, nil
+}
+
 func (s exampleSource) ReadRelationKeys(relation, attribute core.CanonicalID) (validationeval.RelationReading, error) {
 	if s.row >= 0 {
 		return validationeval.RelationReading{}, fmt.Errorf("a rule about one record asked for the rows of relation %s", relation)

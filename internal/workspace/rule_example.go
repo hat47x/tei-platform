@@ -184,7 +184,15 @@ func resolveRuleExamples(r *Result) error {
 				}
 				continue
 			}
-			aboutAllRows := rule.Kind == semantic.ValidationRelationUnique || rule.Kind == semantic.ValidationNoOverlap
+			// A rule is about all the rows together when it reads the rows of a
+			// relation: the uniqueness rules compare rows with each other, and an
+			// operator rule whose input reads every row answers about the rows
+			// that relation holds. Either way the answer is one answer about the
+			// rows, so it is written in the mark and not in a column, because a
+			// column states one answer per record.
+			aboutAllRows := rule.Kind == semantic.ValidationRelationUnique ||
+				rule.Kind == semantic.ValidationNoOverlap ||
+				(rule.Kind == semantic.ValidationOperator && rule.Relation != "")
 			switch {
 			case aboutAllRows && expectation.Row >= 0:
 				if err := reject(expectation.RuleSpan, fmt.Sprintf("rule %s is about all the rows together; write it in the mark after expecting, not as a column", rule.ID)); err != nil {
