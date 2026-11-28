@@ -68,6 +68,18 @@ func readPresenceRows(rule semantic.Validation, input semantic.OperatorInputDecl
 // must be assigned by name to an attribute of the same relation. A constant is
 // refused rather than expanded to every row: a constant belongs to no record,
 // so a presence question about each row cannot be asked of it.
+//
+// A row that holds no value is a reading of that row, so it is handed to the
+// implementation as ValueNull and the operator's own statement decides what a
+// counterexample is worth (section 15.2). A row nobody read is not a reading:
+// nothing is known about it, including whether a value is there, so the rule is
+// undecided with that row's reason **before the implementation is asked**
+// (section 8.6's table and section 5).
+//
+// Every input's column must come from one Read of one relation: the origin of
+// each attribute input is collected and compared before the implementation is
+// asked, so one answer never mixes two reads (section 14.2 B-10). Two reads of
+// the same relation with the same Coverage are not the same read.
 func decidePresenceRowScopedOperator(rule semantic.Validation, contract semantic.Operator, inputs []semantic.OperatorInputDeclaration, implementation OperatorImplementation, source StatefulSource) (Decision, error) {
 	if rule.Relation == "" {
 		return Decision{}, fmt.Errorf(
@@ -81,8 +93,9 @@ func decidePresenceRowScopedOperator(rule semantic.Validation, contract semantic
 	}
 
 	rows := make(map[string][]PresenceReading, len(inputs))
+	attributes := make(map[string]core.CanonicalID, len(inputs))
+	origins := make([]inputOrigin, 0, len(inputs))
 	var coverage Coverage
-	var reason *Undecided
 	for index, input := range inputs {
 		attribute := rule.Attribute
 		if index > 0 {
@@ -96,6 +109,8 @@ func decidePresenceRowScopedOperator(rule semantic.Validation, contract semantic
 			}
 			attribute = core.CanonicalID(assignment.Value)
 		}
+		origins = append(origins, dataOrigin(input.Name, string(attribute), source))
+		attributes[input.Name] = core.CanonicalID(attribute)
 		reading, err := readPresenceRows(rule, input, source, core.CanonicalID(rule.Relation), attribute)
 		if err != nil {
 			return Decision{}, err
@@ -110,31 +125,38 @@ func decidePresenceRowScopedOperator(rule semantic.Validation, contract semantic
 		}
 		coverage = reading.Coverage
 		rows[input.Name] = reading.Rows
-		// A row that holds no value, or was not read, keeps its own reason. The
-		// first such row in read order is reported; the implementation is still
-		// asked, so a counterexample found in another row is not thrown away.
-		if reason == nil {
-			reason = firstPresenceRowReason(attribute, reading.Rows)
-		}
+	}
+	// A column nobody read leaves the rule undecided before the implementation
+	// is asked: what is unknown could be a value or no value, and telling the
+	// implementation that nothing is there would answer a question nobody asked.
+	unknown, err := requireSameAttempt(rule, origins)
+	if err != nil {
+		return Decision{}, err
+	}
+	if unknown != nil {
+		return Decision{Undecided: unknown}, nil
+	}
+	if reason := firstNotFetchedPresenceRow(rows, inputs, attributes); reason != nil {
+		return Decision{Undecided: reason}, nil
 	}
 
 	answer, err := implementation.PresenceRows(rows)
 	if err != nil {
 		return Decision{}, fmt.Errorf("operator %s could not decide semantic validation %s: %w", rule.Operator, rule.ID, err)
 	}
-	return decideRowScoped(rule, coverage, contract.RefutesOnSomeRows, answer, reason)
+	return decideRowScoped(rule, coverage, contract.RefutesOnSomeRows, answer, nil)
 }
 
-// firstPresenceRowReason reports the first row that holds no value or was not
-// read, in read order. A decided answer must not be reported together with it
-// (decideRowScoped checks that).
-func firstPresenceRowReason(attribute core.CanonicalID, rows []PresenceReading) *Undecided {
-	for _, row := range rows {
-		switch row.State {
-		case ValueNull:
-			return &Undecided{Reason: UndecidedValueNull, Attribute: attribute}
-		case ValueNotFetched:
-			return &Undecided{Reason: UndecidedValueNotFetched, Attribute: attribute}
+// firstNotFetchedPresenceRow reports the first row nobody read, in signature
+// order and then in read order, so an undecided rule names the attribute it
+// stopped at. A row that holds no value is not reported here: it was read and
+// states something, and the operator decides what that is worth.
+func firstNotFetchedPresenceRow(rows map[string][]PresenceReading, inputs []semantic.OperatorInputDeclaration, attributes map[string]core.CanonicalID) *Undecided {
+	for _, input := range inputs {
+		for _, row := range rows[input.Name] {
+			if row.State == ValueNotFetched {
+				return &Undecided{Reason: UndecidedValueNotFetched, Attribute: attributes[input.Name]}
+			}
 		}
 	}
 	return nil
