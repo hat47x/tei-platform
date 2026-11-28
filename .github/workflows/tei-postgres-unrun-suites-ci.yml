@@ -270,7 +270,7 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/go-test.log"
-          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$|^TestRowScopedRuleDecidedFromPostgresRows$|^TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows$|^TestAbsentPriceIsReadAsZeroOnTheProductPath$|^TestARowScopedRuleOverAnEmptyRelationIsSatisfied$' ./cmd/tei | tee -a "$log"
+          go test -count=1 -v -timeout 10m -run '^TestDestinationOrderChangeReadViaCLIFromPostgres$|^TestIndependentWarehouseDataFormThroughProductView$|^TestWithinOperatorDecidesRealPostgresRows$|^TestDesiredSchemaSQLCreatesTheTableTheReadNeeds$|^TestDeclaredDecimalPrecisionSurvivesToTheDatabaseAndBack$|^TestEnvironmentReportsWhetherTheDeclarationWasChecked$|^TestRowScopedRuleDecidedFromPostgresRows$|^TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows$|^TestAbsentPriceIsReadAsZeroOnTheProductPath$|^TestARowScopedRuleOverAnEmptyRelationIsSatisfied$|^TestATypedRuleDecidesRealPostgresRows$' ./cmd/tei | tee -a "$log"
           # plan/NOW.md road item 5: a rule decided by the multi-input operator
           # must be answered for rows that actually came from PostgreSQL.
           go test -count=1 -v -timeout 10m -run '^TestMultipleInputOperatorDecidesRealPostgresRows$|^TestMultipleInputOperatorDataRangeIsAnEvaluationError$|^TestMultipleInputOperatorWithoutASelectionIsRefused$|^TestRowScopedOperatorRuleIsAnsweredPerRelationFromPostgres$|^TestARowScopedRuleReadingAnotherRelationsAttributeIsRefusedByTheRead$' ./cmd/tei | tee -a "$log"
@@ -359,6 +359,7 @@ jobs:
             'TestAbsentPriceIsReadAsZeroOnTheProductPath/sales.order_line.quantity_at_most_price_mapped'
             'TestAbsentPriceIsReadAsZeroOnTheProductPath/sales.order_line.quantity_at_most_price_unmapped'
             'TestARowScopedRuleOverAnEmptyRelationIsSatisfied'
+            'TestATypedRuleDecidesRealPostgresRows'
             'TestARowScopedRuleReadingAnotherRelationsAttributeIsRefusedByTheRead'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows/1001'
             'TestARowScopedRuleIsDecidedThroughTheCLIFromRealPostgresRows/1002'
